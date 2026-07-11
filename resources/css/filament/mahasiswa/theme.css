@@ -1,0 +1,218 @@
+@import 'https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Mono:wght@400;500;600&display=swap';
+@import '../../../../vendor/filament/filament/resources/css/theme.css';
+
+@source '../../../../app/Filament/Mahasiswa/**/*';
+@source '../../../../resources/views/filament/mahasiswa/**/*';
+@source '../../../../app/Livewire/**/*';
+@source '../../../../app/Providers/Filament/MahasiswaPanelProvider.php';
+
+@theme {
+    --font-sans: 'Instrument Sans', ui-sans-serif, system-ui, sans-serif;
+    --font-display: 'Fraunces', ui-serif, Georgia, serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, 'SF Mono', monospace;
+
+    --color-horizon-50: #FBF6EA;
+    --color-horizon-100: #F5E9C9;
+    --color-horizon-300: #E8C784;
+    --color-horizon-500: #D9A441;
+    --color-horizon-600: #BD8A2E;
+    --color-horizon-700: #96701F;
+
+    --color-crest-500: #2C3F8C;
+    --color-crest-600: #1B2A6B;
+}
+
+/* ============================================
+   SIGNATURE: Horizon arc — adaptif light/dark
+   ============================================ */
+.bg-horizon-arc {
+    position: relative;
+    overflow: hidden;
+}
+
+.bg-horizon-arc::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+        radial-gradient(ellipse 140% 80% at 50% 120%, rgba(217, 164, 65, 0.14), transparent 60%),
+        linear-gradient(180deg, #FAF8F3 0%, #F3EEE2 100%);
+    pointer-events: none;
+}
+
+.dark .bg-horizon-arc::before {
+    background:
+        radial-gradient(ellipse 140% 80% at 50% 120%, rgba(217, 164, 65, 0.18), transparent 60%),
+        linear-gradient(180deg, #0A0F1C 0%, #0D1526 100%);
+}
+
+.bg-horizon-arc::after {
+    content: '';
+    position: absolute;
+    left: 50%;
+    bottom: -1px;
+    width: 160%;
+    height: 2px;
+    background: linear-gradient(90deg, transparent, var(--color-horizon-500) 50%, transparent);
+    box-shadow: 0 0 24px 2px rgba(217, 164, 65, 0.35);
+    transform: translateX(-50%);
+}
+
+/* ============================================
+   LOGIN PAGE
+   ============================================ */
+.fi-simple-layout {
+    background: #FAF8F3;
+}
+
+.dark .fi-simple-layout {
+    background: #0A0F1C;
+}
+
+.fi-simple-layout .fi-simple-main-ctn {
+    background: #FFFFFF;
+    border: 1px solid rgba(217, 164, 65, 0.2);
+}
+
+.dark .fi-simple-layout .fi-simple-main-ctn {
+    background: #0D1526;
+    border-color: rgba(217, 164, 65, 0.15);
+}
+
+.fi-simple-layout .fi-simple-header h1,
+.fi-simple-layout .fi-simple-header .fi-header-heading {
+    font-family: var(--font-display);
+    font-weight: 600;
+    letter-spacing: -0.01em;
+}
+
+/* ============================================
+   SIDEBAR
+   ============================================ */
+.fi-sidebar {
+    background: #FFFFFF;
+    border-inline-end: 1px solid rgba(217, 164, 65, 0.15);
+}
+
+.dark .fi-sidebar {
+    background: #0D1526;
+    border-inline-end-color: rgba(217, 164, 65, 0.1);
+}
+
+.fi-sidebar-nav-item.fi-active .fi-sidebar-item-button {
+    background: rgba(44, 63, 140, 0.08);
+    color: var(--color-crest-600);
+    border-inline-start: 2px solid var(--color-horizon-500);
+}
+
+.dark .fi-sidebar-nav-item.fi-active .fi-sidebar-item-button {
+    background: rgba(217, 164, 65, 0.12);
+    color: var(--color-horizon-500);
+}
+
+.fi-sidebar-nav-item .fi-sidebar-item-button:hover {
+    background: rgba(217, 164, 65, 0.06);
+}
+
+.fi-sidebar-header {
+    position: relative;
+}
+
+.fi-sidebar-header::after {
+    content: '';
+    position: absolute;
+    bottom: 0;
+    left: 1rem;
+    right: 1rem;
+    height: 1px;
+    background: linear-gradient(90deg, transparent, rgba(217, 164, 65, 0.35), transparent);
+}
+
+/* ============================================
+   TOPBAR
+   ============================================ */
+.fi-topbar {
+    backdrop-filter: blur(8px);
+    background: rgba(255, 255, 255, 0.85);
+    border-bottom: 1px solid rgba(217, 164, 65, 0.12);
+}
+
+.dark .fi-topbar {
+    background: rgba(13, 21, 38, 0.85);
+    border-bottom-color: rgba(217, 164, 65, 0.1);
+}
+
+/* ============================================
+   ANGKA / NOMINAL — font mono
+   ============================================ */
+.fi-in-text[data-field*="nominal"],
+.fi-in-text[data-field*="tagihan"],
+.fi-ta-text[data-column*="nominal"],
+.fi-ta-text[data-column*="tagihan"] {
+    font-family: var(--font-mono);
+    font-variant-numeric: tabular-nums;
+}
+
+/* ============================================
+   CARD / STAT WIDGET
+   ============================================ */
+.fi-wi-stats-overview-stat {
+    background: #FFFFFF;
+    border: 1px solid rgba(217, 164, 65, 0.15);
+    transition: border-color 0.2s ease, transform 0.2s ease;
+}
+
+.dark .fi-wi-stats-overview-stat {
+    background: #131B2E;
+    border-color: rgba(217, 164, 65, 0.1);
+}
+
+.fi-wi-stats-overview-stat:hover {
+    border-color: rgba(217, 164, 65, 0.4);
+    transform: translateY(-1px);
+}
+
+/* ============================================
+   SCROLLBAR
+   ============================================ */
+::-webkit-scrollbar {
+    width: 8px;
+    height: 8px;
+}
+
+::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+    background: rgba(217, 164, 65, 0.25);
+    border-radius: 999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: rgba(217, 164, 65, 0.45);
+}
+
+/* ============================================
+   FOCUS STATE
+   ============================================ */
+:focus-visible {
+    outline: 2px solid var(--color-horizon-500);
+    outline-offset: 2px;
+}
+
+/* ============================================
+   TOP NAVIGATION — geser ke kanan
+   ============================================ */
+.fi-topbar-nav-groups {
+    margin-inline: auto;
+}
+
+/* ============================================
+   TOPBAR — align logo & nav sejajar dengan container konten
+   ============================================ */
+.fi-topbar>nav {
+    max-width: 80rem;
+    margin-inline: auto;
+    padding-inline: 2rem;
+}
