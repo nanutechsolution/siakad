@@ -9,10 +9,8 @@ use App\Filament\Resources\KurikulumMataKuliahs\Pages\ListKurikulumMataKuliahs;
 use App\Filament\Resources\KurikulumMataKuliahs\Schemas\KurikulumMataKuliahForm;
 use App\Filament\Resources\KurikulumMataKuliahs\Tables\KurikulumMataKuliahsTable;
 use App\Models\KurikulumMataKuliah;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 
 class KurikulumMataKuliahResource extends Resource
@@ -22,7 +20,6 @@ class KurikulumMataKuliahResource extends Resource
     protected static ?string $slug = 'master-akademik/kurikulum-mata-kuliah';
     protected static ?string $modelLabel = 'Pemetaan MK Kurikulum';
     protected static ?string $pluralModelLabel = 'Pemetaan Mata Kuliah';
-    protected static ?string $recordTitleAttribute = 'id';
     protected static ?int $navigationSort = 5;
     public static function getNavigationGroup(): ?string
     {

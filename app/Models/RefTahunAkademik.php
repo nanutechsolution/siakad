@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -11,7 +12,7 @@ class RefTahunAkademik extends Model
      * Nama tabel di database.
      */
     protected $table = 'ref_tahun_akademik';
-
+    public $timestamps = false;
     /**
      * Kolom-kolom yang dapat diisi (sesuai persis dengan skema .sql).
      *
@@ -96,5 +97,35 @@ class RefTahunAkademik extends Model
     public function activator(): BelongsTo
     {
         return $this->belongsTo(User::class, 'activated_by');
+    }
+
+    public function jadwalKuliah(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(JadwalKuliah::class, 'tahun_akademik_id');
+    }
+
+    public function isInputNilaiOpen(): bool
+    {
+        if ($this->is_locked_nilai) {
+            return false;
+        }
+
+        if ($this->buka_input_nilai) {
+            return true;
+        }
+
+        if (!$this->tgl_mulai_input_nilai || !$this->tgl_selesai_input_nilai) {
+            return false;
+        }
+
+        $today = Carbon::today();
+        return $today->betweenIncluded($this->tgl_mulai_input_nilai, $this->tgl_selesai_input_nilai);
+    }
+
+    public function inputNilaiStatusLabel(): string
+    {
+        if ($this->is_locked_nilai) return 'Terkunci oleh Admin';
+        if ($this->isInputNilaiOpen()) return 'Terbuka';
+        return 'Sudah Ditutup';
     }
 }

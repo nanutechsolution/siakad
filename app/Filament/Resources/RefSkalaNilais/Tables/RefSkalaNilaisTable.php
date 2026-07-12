@@ -7,6 +7,8 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 
@@ -16,8 +18,30 @@ class RefSkalaNilaisTable
     {
         return $table
             ->columns([
-                //
+                TextColumn::make('huruf')
+                    ->label('Nilai Huruf')
+                    ->weight('bold')
+                    ->badge()
+                    ->color('primary')
+                    ->searchable(),
+
+                TextColumn::make('bobot_indeks')
+                    ->label('Bobot Indeks')
+                    ->numeric(2)
+                    ->sortable(),
+
+                TextColumn::make('rentang')
+                    ->label('Rentang Angka')
+                    ->badge()
+                    ->state(fn($record) => "{$record->nilai_min} - {$record->nilai_max}"),
+
+                IconColumn::make('is_lulus')
+                    ->label('Lulus?')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle'),
             ])
+            ->defaultSort('bobot_indeks', 'desc')
             ->filters([
                 TrashedFilter::make(),
             ])

@@ -9,7 +9,21 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class RefRuang extends Model
 {
     use HasFactory;
+    protected static function boot()
+    {
+        parent::boot();
 
+        static::saving(function ($model) {
+            if ($model->kapasitas < 1) {
+                throw new \Exception("Kapasitas ruangan tidak boleh kurang dari 1.");
+            }
+
+            // Proteksi Radius Absensi (misal: maksimal 500 meter)
+            if ($model->radius_meter > 500 || $model->radius_meter < 5) {
+                throw new \Exception("Radius absensi harus antara 5 hingga 500 meter.");
+            }
+        });
+    }
     /**
      * The table associated with the model.
      *

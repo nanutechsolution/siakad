@@ -25,4 +25,32 @@ class RefSkalaNilai extends Model
         'nilai_max' => 'decimal:2',
         'is_lulus' => 'boolean',
     ];
+    /**
+     * Mencari skala nilai (huruf) berdasarkan angka akhir.
+     */
+    public static function forNilai($angka)
+    {
+        if (! is_numeric($angka)) {
+            return null;
+        }
+        return self::where('nilai_min', '<=', (float) $angka)
+            ->where('nilai_max', '>=', (float) $angka)
+            ->first();
+    }
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::saving(function ($model) {
+            // 1. Proteksi Range DB
+            if ($model->nilai_min > 999.99 || $model->nilai_max > 999.99) {
+                throw new \Exception("Nilai melebihi kapasitas sistem (Max 999.99)");
+            }
+
+            // 2. Proteksi Logika Akademik
+            if ($model->nilai_min >= $model->nilai_max) {
+                throw new \Exception("Logika Nilai Salah: Min harus lebih kecil dari Max");
+            }
+        });
+    }
 }

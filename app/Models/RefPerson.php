@@ -51,6 +51,10 @@ class RefPerson extends Model
         return $this->hasOne(TrxDosen::class, 'person_id');
     }
 
+    public function trxDosen()
+    {
+        return $this->hasOne(TrxDosen::class, 'person_id');
+    }
     public function jabatans(): HasMany
     {
         return $this->hasMany(TrxPersonJabatan::class, 'person_id');
@@ -61,6 +65,10 @@ class RefPerson extends Model
         return $this->hasMany(TrxPersonRole::class, 'person_id');
     }
 
+    public function mahasiswa(): \Illuminate\Database\Eloquent\Relations\HasOne
+    {
+        return $this->hasOne(Mahasiswa::class, 'person_id');
+    }
     public function getNamaDenganGelarAttribute(): string
     {
         $gelarDepan = $this->gelars

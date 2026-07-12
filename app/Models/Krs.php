@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Enums\KrsStatusEnum;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -40,6 +41,7 @@ class Krs extends Model
 
     protected $casts = [
         'tgl_krs' => 'datetime',
+        'status_krs' => KrsStatusEnum::class,
         'is_paket_snapshot' => 'boolean',
         'diajukan_at' => 'datetime',
         'disetujui_pada' => 'datetime',
@@ -104,5 +106,9 @@ class Krs extends Model
     public function statusLogs(): HasMany
     {
         return $this->hasMany(KrsStatusLog::class, 'krs_id')->orderBy('created_at', 'desc');
+    }
+    public function dosenWaliSnapshot(): BelongsTo
+    {
+        return $this->belongsTo(TrxDosen::class, 'dosen_wali_id', 'id');
     }
 }

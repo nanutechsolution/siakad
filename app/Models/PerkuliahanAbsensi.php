@@ -2,64 +2,56 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
+use App\Enums\StatusKehadiran;
+use App\Enums\StatusKehadiranEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Support\Str;
 
 class PerkuliahanAbsensi extends Model
 {
-    use HasFactory, HasUuids;
-
-    /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
     protected $table = 'perkuliahan_absensi';
 
-    /**
-     * The attributes that aren't mass assignable.
-     *
-     * @var array<string>|bool
-     */
-    protected $guarded = ['id'];
+    protected $keyType = 'string';
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
+    public $incrementing = false;
+
+    protected $fillable = [
+        'perkuliahan_sesi_id',
+        'krs_detail_id',
+        'status_kehadiran',
+        'waktu_check_in',
+        'bukti_validasi',
+        'is_manual_update',
+        'modified_by_user_id',
+        'alasan_perubahan',
+    ];
+
+    protected $casts = [
+        'status_kehadiran' => StatusKehadiranEnum::class,
+        'waktu_check_in' => 'datetime',
+        'bukti_validasi' => 'array',
+        'is_manual_update' => 'boolean',
+    ];
+
+    protected static function boot(): void
     {
-        return [
-            'waktu_check_in' => 'datetime',
-            'bukti_validasi' => 'json',
-            'is_manual_update' => 'boolean',
-        ];
+        parent::boot();
+
+        static::creating(function (self $model): void {
+            if (empty($model->getKey())) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
     }
 
-    /**
-     * Get the session associated with the attendance.
-     */
-    public function perkuliahanSesi(): BelongsTo
+    public function sesi(): BelongsTo
     {
         return $this->belongsTo(PerkuliahanSesi::class, 'perkuliahan_sesi_id');
     }
 
-    /**
-     * Get the KRS detail representing the student enrollment.
-     */
     public function krsDetail(): BelongsTo
     {
         return $this->belongsTo(KrsDetail::class, 'krs_detail_id');
-    }
-
-    /**
-     * Get the user who manually updated the attendance (if applicable).
-     */
-    public function modifier(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'modified_by_user_id');
     }
 }

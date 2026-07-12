@@ -2,16 +2,16 @@
 
 namespace App\Providers\Filament;
 
+use App\Enums\DosenNavigation;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
 use Filament\Support\Colors\Color;
-use Filament\Widgets\AccountWidget;
-use Filament\Widgets\FilamentInfoWidget;
 use Illuminate\Cookie\Middleware\AddQueuedCookiesToResponse;
 use Illuminate\Cookie\Middleware\EncryptCookies;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
@@ -29,6 +29,7 @@ class DosenPanelProvider extends PanelProvider
             ->colors([
                 'primary' => Color::Amber,
             ])
+            ->profile()
             ->login()
             ->viteTheme('resources/css/filament/dosen/theme.css')
             ->brandName('Portal Dosen — UNMARIS')
@@ -40,11 +41,21 @@ class DosenPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
+            ->databaseNotifications()
             ->discoverWidgets(in: app_path('Filament/Dosen/Widgets'), for: 'App\Filament\Dosen\Widgets')
             ->widgets([
-                AccountWidget::class,
-                FilamentInfoWidget::class,
+                \App\Filament\Dosen\Widgets\PortalSwitcher::class,
+                \App\Filament\Dosen\Widgets\DashboardDosenOverview::class, // Widget Utama Stats
+                \App\Filament\Dosen\Widgets\BebanMengajarChart::class,      // Widget Grafik Batang Tatap Muka
+                \App\Filament\Dosen\Widgets\DispensasiWaliTable::class,
             ])
+            ->navigationGroups(
+                // Me-render otomatis seluruh Navigation Group dari Enum
+                array_map(function ($group) {
+                    return NavigationGroup::make($group->value)
+                        ->icon($group->icon());
+                }, DosenNavigation::cases())
+            )
             ->middleware([
                 EncryptCookies::class,
                 AddQueuedCookiesToResponse::class,

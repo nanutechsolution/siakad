@@ -2,7 +2,6 @@
 
 namespace App\Filament\Resources\KurikulumMataKuliahs\Schemas;
 
-use App\Models\KurikulumMataKuliah;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -72,20 +71,27 @@ class KurikulumMataKuliahForm
                                 ->schema([
                                     Select::make('prasyarat_kurikulum_mk_id')
                                         ->label('Pilih MK Prasyarat')
-                                        ->options(function (Get $get, ?KurikulumMataKuliah $record) {
-                                            // Hanya tampilkan MK di kurikulum yang sama, hindari memilih diri sendiri
-                                            $kurikulumId = $get('../../kurikulum_id') ?? $record?->kurikulum_id;
+                                        // Ubah type-hint di sini menjadi Model yang umum atau sesuai dengan model Repeater Anda
+                                        ->options(function (Get $get, ?\Illuminate\Database\Eloquent\Model $record) {
+
+                                            // 1. Ambil ID kurikulum dari form utama (naik 2 level ke atas)
+                                            $kurikulumId = $get('../../kurikulum_id');
+
+                                            // 2. Jika sedang edit, $record akan berisi data dari baris Repeater tersebut
+                                            // Kita ambil kurikulum_mk_id dari model KurikulumMkPrasyarat
+                                            $currentId = $record?->kurikulum_mk_id;
 
                                             if (!$kurikulumId) {
                                                 return [];
                                             }
 
-                                            $query = KurikulumMataKuliah::query()
+                                            $query = \App\Models\KurikulumMataKuliah::query()
                                                 ->where('kurikulum_id', $kurikulumId)
                                                 ->with('mataKuliah');
 
-                                            if ($record) {
-                                                $query->where('id', '!=', $record->id);
+                                            // Hindari memilih mata kuliah yang sama dengan yang sedang diedit
+                                            if ($currentId) {
+                                                $query->where('id', '!=', $currentId);
                                             }
 
                                             return $query->get()->pluck('mataKuliah.nama_mk', 'id');
@@ -123,7 +129,6 @@ class KurikulumMataKuliahForm
                                 ->addActionLabel('Tambah Prasyarat')
                                 ->collapsible()
                                 ->defaultItems(0)
-                                // Disable repeater jika kurikulum belum dipilih
                                 ->disabled(fn(Get $get): bool => blank($get('kurikulum_id'))),
                         ]),
                 ]),

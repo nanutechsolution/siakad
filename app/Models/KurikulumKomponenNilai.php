@@ -32,4 +32,14 @@ class KurikulumKomponenNilai extends Model
     {
         return $this->belongsTo(RefKomponenNilai::class, 'komponen_id');
     }
+
+    /**
+     * Relasi ke master data komponen nilai (seperti UTS, UAS, Tugas)
+     */
+    public function komponen()
+    {
+        // Pastikan \App\Models\RefKomponenNilai adalah nama model yang benar
+        // untuk tabel 'ref_komponen_nilai' di sistem Anda.
+        return $this->belongsTo(\App\Models\RefKomponenNilai::class, 'komponen_id');
+    }
 }

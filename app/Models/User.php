@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -46,27 +47,80 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->belongsTo(RefPerson::class, 'person_id');
     }
+    public function mahasiswa(): HasOne
+    {
+        return $this->hasOne(
+            Mahasiswa::class,
+            'person_id',
+            'person_id'
+        );
+    }
+
+    public function dosen(): HasOne
+    {
+        return $this->hasOne(
+            TrxDosen::class,
+            'person_id',
+            'person_id'
+        );
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Helper Access
+    |--------------------------------------------------------------------------
+    */
+
+
+    public function isDosen(): bool
+    {
+        return $this->dosen()->exists();
+    }
+
+
+    public function isMahasiswa(): bool
+    {
+        return $this->mahasiswa()->exists();
+    }
+
+
+    public function canAccessAdmin(): bool
+    {
+        return $this->hasAnyRole([
+            'super_admin',
+            'admin',
+            'admin_bauk',
+        ]);
+    }
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | Filament Panel Access
+    |--------------------------------------------------------------------------
+    */
+
 
     public function canAccessPanel(Panel $panel): bool
     {
-        $id = $panel->getId();
 
-        // 1. Panel Mahasiswa
-        if ($id === 'mahasiswa') {
-            return \App\Models\Mahasiswa::where('person_id', $this->person_id)->exists();
-        }
+        return match ($panel->getId()) {
 
-        // 2. Panel Dosen
-        if ($id === 'dosen') {
-            return \App\Models\TrxDosen::where('person_id', $this->person_id)->exists();
-        }
 
-        // 3. Panel Admin (Gunakan hasRole dari Spatie)
-        if ($id === 'admin') {
-            return $this->hasRole(['admin', 'super_admin']);
-        }
+            'mahasiswa' =>
+            $this->isMahasiswa(),
 
-        // 4. Default: Tolak akses jika tidak cocok dengan panel manapun
-        return false;
+
+            'dosen' =>
+            $this->isDosen(),
+
+
+            'admin' =>
+            $this->canAccessAdmin(),
+
+
+            default => false,
+        };
     }
 }

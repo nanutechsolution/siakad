@@ -111,4 +111,9 @@ class TrxDosen extends Model
     {
         return $this->hasMany(TrxPersonJabatan::class, 'person_id', 'person_id');
     }
+
+    public function kelasPerwalian(): HasMany
+    {
+        return $this->hasMany(KelasDosenWali::class, 'dosen_id', 'id');
+    }
 }

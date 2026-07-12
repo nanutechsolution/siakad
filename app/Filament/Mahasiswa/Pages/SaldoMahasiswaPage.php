@@ -22,7 +22,6 @@ class SaldoMahasiswaPage extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
     protected string $view = 'filament.mahasiswa.pages.saldo-mahasiswa-page';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-wallet';
     protected static string|UnitEnum|null $navigationGroup = 'Keuangan';
     protected static ?string $navigationLabel = 'Saldo Deposit';
     protected static ?string $title = 'Saldo Deposit Mahasiswa';

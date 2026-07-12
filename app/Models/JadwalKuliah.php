@@ -6,7 +6,9 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class JadwalKuliah extends Model
 {
@@ -47,7 +49,20 @@ class JadwalKuliah extends Model
         'isi_kelas' => 'integer',
         // Jam biarkan string agar kompatibel dengan format 'H:i' di Filament TimePicker
     ];
+    protected static function boot(): void
+    {
+        parent::boot();
 
+        static::creating(function (self $model): void {
+            if (empty($model->getKey())) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
+    }
+    public function krsDetail(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(KrsDetail::class, 'jadwal_kuliah_id');
+    }
     /**
      * Relasi ke Tahun Akademik.
      */
@@ -87,7 +102,11 @@ class JadwalKuliah extends Model
     {
         return $this->belongsTo(RefRuang::class, 'ruang_id');
     }
-
+    // Relasi ke tabel pivot jadwal_kuliah_dosen
+    public function dosenPengajar(): HasMany
+    {
+        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id', 'id');
+    }
     /**
      * Relasi ke Dosen Pengajar (Pivot / Child).
      */
@@ -96,13 +115,69 @@ class JadwalKuliah extends Model
         return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id');
     }
 
-    /**
+    // Relasi ke krs_detail (peserta kelas)
+    public function krsDetails(): HasMany
+    {
+        return $this->hasMany(KrsDetail::class, 'jadwal_kuliah_id', 'id');
+    }
+    /** 
      * Relasi ke data Komponen Nilai (Bobot Penilaian)
      */
-    public function komponenNilai(): HasMany
+    public function komponenNilai()
     {
-        // Parameter ke-2 adalah Foreign Key di tabel komponen_nilais yang mengarah ke jadwal_kuliah.
-        // Sesuaikan 'jadwal_kuliah_id' dengan nama kolom asli di database Anda (misal: 'jadwal_id').
-        return $this->hasMany(RefKomponenNilai::class, 'jadwal_kuliah_id');
+        return $this->hasMany(JadwalKomponenNilai::class);
+    }
+
+    public function sesiPerkuliahan(): HasMany
+    {
+        return $this->hasMany(PerkuliahanSesi::class, 'jadwal_kuliah_id');
+    }
+    public function dosenPengampu(): HasMany
+    {
+        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id');
+    }
+    public function dosenPengampus(): HasMany
+    {
+        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id', 'id');
+    }
+    /**
+     * Scope: hanya jadwal yang diampu oleh dosen tertentu.
+     */
+    public function scopeUntukDosen($query, string $dosenId)
+    {
+        return $query->whereHas('dosenPengampu', fn($q) => $q->where('dosen_id', $dosenId));
+    }
+
+    public function dosen(): BelongsToMany
+    {
+        return $this->belongsToMany(TrxDosen::class, 'jadwal_kuliah_dosen', 'jadwal_kuliah_id', 'dosen_id')
+            ->withPivot('is_koordinator', 'is_penilai', 'rencana_tatap_muka')
+            ->withTimestamps();
+    }
+
+    /**
+     * Mengecek apakah dosen ini terdaftar sebagai penilai.
+     * Menerima parameter berupa $dosenId (string) dari Policy.
+     */
+    public function isPenilaiOleh(string $dosenId): bool
+    {
+        return \Illuminate\Support\Facades\DB::table('jadwal_kuliah_dosen')
+            ->where('jadwal_kuliah_id', (string) $this->id)
+            ->where('dosen_id', $dosenId)
+            ->where('is_penilai', 1)
+            ->exists();
+    }
+
+    /**
+     * Mengecek apakah dosen ini terdaftar sebagai koordinator kelas.
+     * Menerima parameter berupa $dosenId (string) dari Policy.
+     */
+    public function isKoordinatorOleh(string $dosenId): bool
+    {
+        return \Illuminate\Support\Facades\DB::table('jadwal_kuliah_dosen')
+            ->where('jadwal_kuliah_id', (string) $this->id)
+            ->where('dosen_id', $dosenId)
+            ->where('is_koordinator', 1) // Sesuaikan nama kolom ini jika berbeda di database Anda
+            ->exists();
     }
 }

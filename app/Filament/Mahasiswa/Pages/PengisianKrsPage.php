@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mahasiswa\Pages;
 
+use App\Enums\MahasiswaNavigationGroup;
 use App\Models\JadwalKuliah;
 use App\Models\Krs;
 use App\Models\Mahasiswa;
@@ -23,8 +24,7 @@ use Illuminate\Support\Str;
 class PengisianKrsPage extends Page implements HasForms
 {
     protected string $view = 'filament.mahasiswa.pages.pengisian-krs-page';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-text';
-    protected static string|UnitEnum|null $navigationGroup = 'Akademik';
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::AKADEMIK->value;
     protected static ?string $navigationLabel = 'Isi KRS';
     protected static ?string $title = 'Pengisian Kartu Rencana Studi (KRS)';
     protected static ?int $navigationSort = 1;
@@ -112,7 +112,10 @@ class PengisianKrsPage extends Page implements HasForms
 
                                         // Ambil nama dari relasi, pastikan tidak error jika null
                                         $namaRuang = $jadwal->ruang->nama_ruang ?? 'Belum ditentukan';
-                                        $namaDosen = $jadwal->dosen->nama_dosen ?? '-';
+                                        $namaDosen = $jadwal->dosenPengajars
+                                            ->map(fn($dp) => $dp->person?->nama_dengan_gelar)
+                                            ->filter()
+                                            ->implode(', ') ?: '-';
 
                                         // Desain UI yang lebih rapi menggunakan struktur div dan Tailwind CSS
                                         $label = "

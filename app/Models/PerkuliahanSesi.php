@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Support\Str;
 
 class PerkuliahanSesi extends Model
 {
@@ -24,21 +25,44 @@ class PerkuliahanSesi extends Model
      *
      * @var array<string>|bool
      */
-    protected $guarded = ['id'];
+    protected $fillable = [
+        'jadwal_kuliah_id',
+        'pertemuan_ke',
+        'waktu_mulai_rencana',
+        'waktu_mulai_realisasi',
+        'waktu_selesai_realisasi',
+        'materi_kuliah',
+        'catatan_dosen',
+        'token_sesi',
+        'metode_validasi',
+        'status_sesi',
+    ];
 
+
+    protected $keyType = 'string';
+
+    public $incrementing = false;
     /**
      * Get the attributes that should be cast.
      *
      * @return array<string, string>
      */
-    protected function casts(): array
+    protected $casts = [
+        'pertemuan_ke' => 'integer',
+        'waktu_mulai_rencana' => 'datetime',
+        'waktu_mulai_realisasi' => 'datetime',
+        'waktu_selesai_realisasi' => 'datetime',
+        'status_sesi' => \App\Enums\StatusSesiEnum::class,
+    ];
+    protected static function boot(): void
     {
-        return [
-            'pertemuan_ke' => 'integer',
-            'waktu_mulai_rencana' => 'datetime',
-            'waktu_mulai_realisasi' => 'datetime',
-            'waktu_selesai_realisasi' => 'datetime',
-        ];
+        parent::boot();
+
+        static::creating(function (self $model): void {
+            if (empty($model->getKey())) {
+                $model->{$model->getKeyName()} = (string) Str::uuid();
+            }
+        });
     }
 
     /**
@@ -49,10 +73,8 @@ class PerkuliahanSesi extends Model
         return $this->belongsTo(JadwalKuliah::class, 'jadwal_kuliah_id');
     }
 
-    /**
-     * Get the student attendances for the session.
-     */
-    public function perkuliahanAbsensis(): HasMany
+
+    public function absensi(): HasMany
     {
         return $this->hasMany(PerkuliahanAbsensi::class, 'perkuliahan_sesi_id');
     }

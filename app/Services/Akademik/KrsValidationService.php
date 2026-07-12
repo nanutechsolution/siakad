@@ -9,6 +9,7 @@ use App\Enums\StatusKuliah;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Models\JadwalKuliah;
+use App\Models\Krs;
 use Illuminate\Support\Facades\DB;
 
 class KrsValidationService
@@ -351,5 +352,25 @@ class KrsValidationService
         }
 
         return KrsValidationResult::pass('GATE_KUOTA');
+    }
+
+    /**
+     * Menjalankan seluruh proses validasi KRS.
+     * Mengembalikan array berisi DTO KrsValidationResult.
+     */
+    public function runAllValidations(Mahasiswa $mahasiswa, Krs $krs, RefTahunAkademik $ta): array
+    {
+        $jadwalIds = $krs->krsDetails->pluck('jadwal_kuliah_id')->filter()->toArray();
+        $requestedSks = $krs->krsDetails->sum('sks_snapshot');
+
+        return [
+            $this->checkPeriode($ta),
+            $this->checkStatusMahasiswa($mahasiswa, $ta),
+            $this->checkKeuangan($mahasiswa, $ta),
+            $this->checkSksMaksimal($mahasiswa, (int) $requestedSks),
+            $this->checkPrasyarat($mahasiswa, $jadwalIds),
+            $this->checkDuplikasiDanBentrok($jadwalIds),
+            $this->checkKuotaKelas($jadwalIds),
+        ];
     }
 }

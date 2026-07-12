@@ -28,7 +28,7 @@ class TrxDosensTable
         return $table
             ->columns([
 
-                TextColumn::make('person.nama_dengan_gelar')
+                TextColumn::make('person.nama_lengkap')
                     ->label('Nama Dosen')
                     ->searchable()
                     ->sortable(),

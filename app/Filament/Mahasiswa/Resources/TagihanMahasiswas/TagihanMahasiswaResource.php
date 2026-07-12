@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mahasiswa\Resources\TagihanMahasiswas;
 
+use App\Enums\MahasiswaNavigationGroup;
 use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Pages\ListTagihanMahasiswas;
 use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Pages\ViewTagihanMahasiswa;
 use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Schemas\TagihanMahasiswaForm;
@@ -22,9 +23,7 @@ use UnitEnum;
 class TagihanMahasiswaResource extends Resource
 {
     protected static ?string $model = TagihanMahasiswa::class;
-
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCreditCard;
-    protected static string|UnitEnum|null $navigationGroup = 'Keuangan';
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KEUANGAN->value;
     protected static ?string $navigationLabel = 'Informasi Tagihan';
     protected static ?string $modelLabel = 'Tagihan';
     protected static ?string $pluralModelLabel = 'Daftar Tagihan';

@@ -37,6 +37,13 @@ class KrsDetail extends Model
         'is_edom_filled' => 'boolean',
     ];
 
+
+    public function nilaiKomponen(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(KrsDetailNilai::class, 'krs_detail_id');
+    }
+
+
     public function krs(): BelongsTo
     {
         return $this->belongsTo(Krs::class, 'krs_id');
@@ -51,9 +58,15 @@ class KrsDetail extends Model
     {
         return $this->belongsTo(MasterMataKuliah::class, 'mata_kuliah_id');
     }
-
-    public function krsDetailNilais(): HasMany
+    /**
+     * Relasi ke detail nilai komponen mahasiswa.
+     */
+    public function detailNilai()
     {
-        return $this->hasMany(KrsDetailNilai::class, 'krs_detail_id');
+        return $this->hasMany(\App\Models\KrsDetailNilai::class, 'krs_detail_id');
+    }
+    public function getNilaiKomponen(int $komponenId): float
+    {
+        return (float) $this->detailNilai->where('komponen_id', $komponenId)->first()?->nilai_angka ?? 0.00;
     }
 }

@@ -10,6 +10,7 @@ use App\Filament\Dosen\Resources\MahasiswaBimbingans\Schemas\MahasiswaBimbinganF
 use App\Filament\Dosen\Resources\MahasiswaBimbingans\Schemas\MahasiswaBimbinganInfolist;
 use App\Filament\Dosen\Resources\MahasiswaBimbingans\Tables\MahasiswaBimbingansTable;
 use App\Models\Mahasiswa;
+use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -27,26 +28,44 @@ class MahasiswaBimbinganResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
     protected static ?string $navigationLabel = 'Bimbingan Akademik';
     protected static ?string $modelLabel = 'Mahasiswa Bimbingan';
-    
-    
+
+
+    /**
+     * Otorisasi: Pastikan yang login adalah Dosen
+     */
     public static function canViewAny(): bool
     {
-        return true;
+        return Auth::user()?->person_id !== null && Auth::user()?->person?->dosen !== null;
     }
 
-    public static function canView($record): bool
+    public static function canCreate(): bool
     {
-        return true;
+        return false; // Dosen tidak membuat data mahasiswa
     }
+    /**
+     * Optimasi Query (Mencegah N+1 dan memfilter data)
+     */
     public static function getEloquentQuery(): Builder
     {
-        $dosen = TrxDosen::where('person_id', Auth::user()->person_id)->first();
+        $user = Auth::user();
+        $dosenId = $user->person?->dosen?->id;
 
-        // Dosen hanya melihat mahasiswa yang kelasnya memiliki dosen wali tersebut
+        // Ambil ID Tahun Akademik Aktif sekali saja
+        $activeTaId = RefTahunAkademik::where('is_active', 1)->value('id');
+
         return parent::getEloquentQuery()
-            ->whereHas('kelas', function ($query) use ($dosen) {
-                $query->whereHas('kelasDosenWalis', function ($q) use ($dosen) {
-                    $q->where('dosen_id', $dosen?->id ?? 0);
+            // Eager load relasi yang dibutuhkan untuk mencegah N+1 di Tabel
+            ->with([
+                'person',
+                'prodi',
+                'angkatan',
+                'krs' => fn($q) => $q->where('tahun_akademik_id', $activeTaId) // Hanya ambil KRS aktif
+            ])
+            // Filter Mahasiswa bimbingannya saja
+            ->whereHas('kelas', function ($query) use ($dosenId) {
+                $query->whereHas('kelasDosenWalis', function ($q) use ($dosenId) {
+                    $q->where('dosen_id', $dosenId)
+                        ->where('is_primary', 1);
                 });
             });
     }
@@ -76,9 +95,7 @@ class MahasiswaBimbinganResource extends Resource
     {
         return [
             'index' => ListMahasiswaBimbingans::route('/'),
-            'create' => CreateMahasiswaBimbingan::route('/create'),
             'view' => ViewMahasiswaBimbingan::route('/{record}'),
-            'edit' => EditMahasiswaBimbingan::route('/{record}/edit'),
         ];
     }
 }

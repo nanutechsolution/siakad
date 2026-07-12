@@ -48,8 +48,6 @@ class RefAturanSksResource extends Resource
     {
         return [
             'index' => ListRefAturanSks::route('/'),
-            'create' => CreateRefAturanSks::route('/create'),
-            'edit' => EditRefAturanSks::route('/{record}/edit'),
         ];
     }
 }

@@ -2,19 +2,23 @@
 
 namespace App\Filament\Dosen\Resources\MahasiswaBimbingans\Tables;
 
+use App\Enums\KrsStatusEnum;
 use App\Models\Krs;
+use App\Services\Akademik\KrsApprovalService;
+use App\Services\Akademik\KrsValidationService;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
+use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Model;
+use Throwable;
 
 class MahasiswaBimbingansTable
 {
@@ -22,97 +26,149 @@ class MahasiswaBimbingansTable
     {
         return $table
             ->columns([
-                TextColumn::make('nim')->label('NIM')->searchable(),
-                TextColumn::make('person.nama_lengkap')->label('Nama')->searchable(),
-                TextColumn::make('prodi.nama_prodi')->label('Prodi'),
-                TextColumn::make('status_krs_terakhir')
+                TextColumn::make('nim')
+                    ->label('NIM')
+                    ->searchable()
+                    ->sortable(),
+
+                TextColumn::make('person.nama_lengkap')
+                    ->label('Nama Lengkap')
+                    ->searchable(),
+
+                TextColumn::make('prodi.nama_prodi')
+                    ->label('Prodi'),
+
+                TextColumn::make('krs.status_krs')
                     ->label('Status KRS Aktif')
                     ->badge()
-                    ->state(fn($record) => Krs::where('mahasiswa_id', $record->id)
-                        ->where('tahun_akademik_id', \App\Models\RefTahunAkademik::where('is_active', 1)->first()?->id)
-                        ->value('status_krs') ?? 'BELUM AJUAN')
-                    ->color(fn($state) => match ($state) {
-                        'DISETUJUI' => 'success',
-                        'DIAJUKAN' => 'warning',
-                        default => 'danger',
+                    // Mengambil status dari relasi Eager Loaded, bukan query baru
+                    ->state(fn(Model $record) => $record->krs->first()?->status_krs?->value ?? 'BELUM AJUAN')
+                    ->color(fn(string $state) => match ($state) {
+                        KrsStatusEnum::DISETUJUI->value => KrsStatusEnum::DISETUJUI->getColor(),
+                        KrsStatusEnum::DIAJUKAN->value => KrsStatusEnum::DIAJUKAN->getColor(),
+                        KrsStatusEnum::DITOLAK->value => KrsStatusEnum::DITOLAK->getColor(),
+                        default => 'gray',
                     }),
             ])
             ->filters([
                 SelectFilter::make('status_krs')
                     ->label('Status Pengajuan KRS')
                     ->options([
-                        'DIAJUKAN' => 'Menunggu Persetujuan',
-                        'DISETUJUI' => 'Sudah Disetujui',
+                        KrsStatusEnum::DIAJUKAN->value => 'Menunggu Persetujuan',
+                        KrsStatusEnum::DISETUJUI->value => 'Sudah Disetujui',
+                        KrsStatusEnum::DITOLAK->value => 'Ditolak',
                     ])
                     ->query(function (Builder $query, array $data): Builder {
                         if (empty($data['value'])) return $query;
-
-                        return $query->whereHas('krs', function ($q) use ($data) {
-                            $q->where('tahun_akademik_id', \App\Models\RefTahunAkademik::where('is_active', 1)->value('id'))
-                                ->where('status_krs', $data['value']);
-                        });
+                        return $query->whereHas('krs', fn($q) => $q->where('status_krs', $data['value']));
                     }),
-
-                // 2. Filter Angkatan
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
-                    ->relationship('angkatan', 'id_tahun') // Pastikan relasi 'angkatan' ada di Model Mahasiswa
-                    ->searchable()
-                    ->preload(),
-
-                // 3. Filter Program Studi (Jika dosen mengampu mahasiswa lintas prodi)
-                SelectFilter::make('prodi_id')
-                    ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
+                    ->relationship('angkatan', 'id_tahun')
                     ->searchable()
                     ->preload(),
             ])
             ->recordActions([
-                ViewAction::make(),
-                Action::make('setujui_krs')
-                    ->label('Review & Setujui')
-                    ->icon('heroicon-o-document-magnifying-glass')
-                    ->color('success')
-                    // Menggunakan modalContent untuk menampilkan isi KRS sebelum setuju
-                    ->modalContent(function ($record) {
-                        $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
-                        $krs = Krs::where('mahasiswa_id', $record->id)
-                            ->where('tahun_akademik_id', $activeTa->id)
-                            ->first();
+                self::makeReviewAction(),
+            ]);
+    }
 
-                        if (!$krs) return 'KRS tidak ditemukan.';
+    /**
+     * Custom Action untuk Review KRS (SlideOver dengan Tombol Approve & Reject)
+     */
+    protected static function makeReviewAction(): Action
+    {
+        return Action::make('review_krs')
+            ->label('Review KRS')
+            ->icon('heroicon-o-document-magnifying-glass')
+            ->color('warning')
+            ->slideOver() // Membuka modal dari samping
+            // Action ini hanya muncul jika statusnya DIAJUKAN
+            ->visible(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN)
 
-                        // Ambil detail MK
-                        $details = \App\Models\KrsDetail::where('krs_id', $krs->id)->get();
+            // Modal Content (Akan kita buat menggunakan Infolist/View terpisah nanti)
+            ->modalContent(function (Model $record, KrsValidationService $validationService) {
+                $krs = $record->krs->first();
+                $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
+                $krs->loadMissing(['krsDetails.jadwalKuliah.mataKuliah', 'krsDetails.jadwalKuliah.dosenPengampus.dosen.person']);
+                $hasilValidasi = $validationService->runAllValidations($record, $krs, $activeTa);
+                // Menjalankan semua validasi secara real-time saat slideover dibuka
 
-                        return view('filament.dosen.components.review-krs-modal', [
-                            'details' => $details,
-                            'krs' => $krs
-                        ]);
-                    })
-                    ->modalSubmitActionLabel('Setujui KRS Ini')
-                    ->requiresConfirmation()
-                    ->modalHeading('Review KRS Mahasiswa')
-                    ->visible(fn($record) => Krs::where('mahasiswa_id', $record->id)
-                        ->where('tahun_akademik_id', \App\Models\RefTahunAkademik::where('is_active', 1)->first()?->id)
-                        ->where('status_krs', 'DIAJUKAN')
-                        ->exists())
-                    ->action(function ($record) {
-                        // Logika update status tetap sama...
-                        $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
-                        $krs = Krs::where('mahasiswa_id', $record->id)->where('tahun_akademik_id', $activeTa->id)->first();
+                return view('filament.dosen.components.review-krs-modal', [
+                    'krs' => $krs,
+                    'mahasiswa' => $record,
+                    'hasilValidasi' => $hasilValidasi,
+                ]);
+            })
 
-                        if ($krs) {
-                            $krs->update(['status_krs' => 'DISETUJUI', 'disetujui_oleh' => Auth::user()->person_id, 'disetujui_pada' => now()]);
-                            // Log insert...
-                            Notification::make()->success()->title('KRS Disetujui')->send();
-                        }
-                    }),
+            // Form untuk catatan (wajib jika ditolak)
+            ->schema([
+                Textarea::make('catatan_dosen')
+                    ->label('Catatan Dosen Wali')
+                    ->placeholder('Isi catatan opsional jika menyetujui, atau alasan wajib jika menolak.')
+                    ->rows(3),
             ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
+
+            // Konfigurasi 2 Tombol: Setujui & Tolak
+            ->modalSubmitAction(false)
+            ->modalCancelAction(false)
+            ->extraModalFooterActions(fn(Action $action) => [
+
+                // Tombol Setujui
+                Action::make('approve')
+                    ->label('Setujui KRS')
+                    ->color('success')
+                    ->icon('heroicon-o-check-circle')
+                    ->requiresConfirmation()
+                    ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
+                        try {
+                            $krs = $record->krs->first();
+                            $approvalService->approve($krs, $data['catatan_dosen'] ?? null);
+
+                            Notification::make()->title('KRS berhasil disetujui')->success()->send();
+                        } catch (\Throwable $e) {
+                            // Abaikan (throw kembali) jika ini adalah exception Halt dari Filament
+                            if ($e instanceof \Filament\Support\Exceptions\Halt) {
+                                throw $e;
+                            }
+
+                            Notification::make()->title('Gagal: ' . $e->getMessage())->danger()->send();
+                            return; // Hentikan proses jika benar-benar gagal
+                        }
+
+                        // Tutup modal dengan aman di luar blok try-catch
+                        $action->cancel();
+                    }),
+
+                // Tombol Tolak
+                Action::make('reject')
+                    ->label('Tolak KRS')
+                    ->color('danger')
+                    ->icon('heroicon-o-x-circle')
+                    ->requiresConfirmation()
+                    ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
+                        if (empty(trim($data['catatan_dosen'] ?? ''))) {
+                            Notification::make()->title('Catatan wajib diisi saat menolak KRS.')->warning()->send();
+                            return; // Hentikan proses jika catatan kosong (jangan tutup modal)
+                        }
+
+                        try {
+                            $krs = $record->krs->first();
+                            $approvalService->reject($krs, $data['catatan_dosen']);
+
+                            Notification::make()->title('KRS berhasil ditolak')->success()->send();
+                        } catch (\Throwable $e) {
+                            if ($e instanceof \Filament\Support\Exceptions\Halt) {
+                                throw $e;
+                            }
+
+                            Notification::make()->title('Gagal: ' . $e->getMessage())->danger()->send();
+                            return; // Hentikan proses jika benar-benar gagal
+                        }
+
+                        // Tutup modal dengan aman di luar blok try-catch
+                        $action->cancel();
+                    }),
             ]);
     }
 }

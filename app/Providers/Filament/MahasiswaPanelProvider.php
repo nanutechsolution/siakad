@@ -2,10 +2,12 @@
 
 namespace App\Providers\Filament;
 
+use App\Enums\MahasiswaNavigationGroup;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
 use Filament\PanelProvider;
@@ -49,6 +51,16 @@ class MahasiswaPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
+            ->databaseNotifications()
+            ->navigationGroups(
+                array_map(
+                    fn(MahasiswaNavigationGroup $group) =>
+                    NavigationGroup::make($group->value)
+                        ->icon($group->icon()),
+                    MahasiswaNavigationGroup::cases()
+                )
+
+            )
             ->discoverWidgets(in: app_path('Filament/Mahasiswa/Widgets'), for: 'App\Filament\Mahasiswa\Widgets')
             ->widgets([
                 AccountWidget::class,
