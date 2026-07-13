@@ -3,6 +3,7 @@
 namespace App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Tables;
 
 use App\Enums\StatusVerifikasiPembayaran;
+use App\Models\BankKampus;
 use App\Services\Pembayaran\Channels\MahasiswaUploadChannel;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -105,14 +106,17 @@ class TagihanMahasiswasTable
                                     ->default(now())
                                     ->required(),
                             ]),
-
                             Select::make('bank_tujuan')
                                 ->label('Rekening Bank Kampus Tujuan')
-                                ->options([
-                                    'BNI (Rektorat UNMARIS) - 123456789' => 'BNI (Rektorat UNMARIS) - 123456789',
-                                    'BRI (Yayasan UNMARIS) - 987654321' => 'BRI (Yayasan UNMARIS) - 987654321',
-                                ])
-                                ->required(),
+                                ->required()
+                                ->options(function () {
+                                    return BankKampus::where('is_active', true)
+                                        ->get()
+                                        ->mapWithKeys(function ($bank) {
+                                            $formatTampilan = "{$bank->nama_bank} ({$bank->atas_nama}) - {$bank->no_rekening}";
+                                            return [$formatTampilan => $formatTampilan];
+                                        });
+                                }),
 
                             FileUpload::make('file_bukti')
                                 ->label('Upload Foto/Scan Bukti Transfer')

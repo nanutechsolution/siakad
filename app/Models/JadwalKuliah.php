@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\StatusNilaiKelas;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -79,6 +81,51 @@ class JadwalKuliah extends Model
         return $this->belongsTo(MasterKurikulum::class, 'kurikulum_id');
     }
 
+    /**
+     * Scope untuk filter status nilai kelas
+     */
+    public function scopeStatusNilai(Builder $query, StatusNilaiKelas $status): Builder
+    {
+        return match ($status) {
+            // TERKUNCI: Kelas punya data KRS, dan TIDAK ADA mahasiswa yang status locked-nya false (Semua locked)
+            StatusNilaiKelas::TERKUNCI => $query->has('krsDetails')
+                ->whereDoesntHave('krsDetails', fn($q) => $q->where('is_locked', false)),
+
+            // SUDAH_PUBLISH: Punya data KRS, TIDAK ADA yang belum publish, TAPI masih ada yang belum di-lock
+            StatusNilaiKelas::SUDAH_PUBLISH => $query->has('krsDetails')
+                ->whereDoesntHave('krsDetails', fn($q) => $q->where('is_published', false))
+                ->whereHas('krsDetails', fn($q) => $q->where('is_locked', false)),
+
+            // SUDAH_INPUT (DRAFT): Ada minimal 1 mahasiswa yang nilainya sudah diisi, TAPI masih ada yang belum di-publish
+            StatusNilaiKelas::SUDAH_INPUT => $query->whereHas('krsDetails', fn($q) => $q->whereNotNull('nilai_angka'))
+                ->whereHas('krsDetails', fn($q) => $q->where('is_published', false)),
+
+            // BELUM_INPUT: Kelas belum punya data KRS, ATAU semua data KRS nilai angkanya masih kosong/null
+            StatusNilaiKelas::BELUM_INPUT => $query->whereDoesntHave('krsDetails', fn($q) => $q->whereNotNull('nilai_angka')),
+        };
+    }
+    public function scopeWithNilaiStats(Builder $query): void
+    {
+        $query->withCount([
+            'krsDetails as jumlah_mahasiswa', // Pastikan relasinya bernama krsDetails
+            'krsDetails as total_published' => fn($q) => $q->where('is_published', true),
+            'krsDetails as total_locked' => fn($q) => $q->where('is_locked', true),
+            'krsDetails as total_has_nilai' => fn($q) => $q->whereNotNull('nilai_angka'),
+        ]);
+    }
+
+    // Accessor dinamis untuk mendapatkan status kelas berdasarkan kalkulasi agregat krsDetails
+    public function getStatusNilaiAttribute(): StatusNilaiKelas
+    {
+        $totalMhs = $this->jumlah_mahasiswa ?? 0;
+
+        if ($totalMhs === 0) return StatusNilaiKelas::BELUM_INPUT;
+        if ($this->total_locked > 0 && $this->total_locked === $totalMhs) return StatusNilaiKelas::TERKUNCI;
+        if ($this->total_published > 0 && $this->total_published === $totalMhs) return StatusNilaiKelas::SUDAH_PUBLISH;
+        if ($this->total_has_nilai > 0) return StatusNilaiKelas::SUDAH_INPUT;
+
+        return StatusNilaiKelas::BELUM_INPUT;
+    }
     /**
      * Relasi ke Mata Kuliah.
      */
