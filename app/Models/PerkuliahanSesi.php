@@ -33,6 +33,7 @@ class PerkuliahanSesi extends Model
         'waktu_selesai_realisasi',
         'materi_kuliah',
         'catatan_dosen',
+        'token_generated_at',
         'token_sesi',
         'metode_validasi',
         'status_sesi',
@@ -52,7 +53,8 @@ class PerkuliahanSesi extends Model
         'waktu_mulai_rencana' => 'datetime',
         'waktu_mulai_realisasi' => 'datetime',
         'waktu_selesai_realisasi' => 'datetime',
-        'status_sesi' => \App\Enums\StatusSesiEnum::class,
+        'token_generated_at' => 'datetime',
+        'status_sesi' => \App\Enums\StatusSesiPerkuliahan::class,
     ];
     protected static function boot(): void
     {
@@ -77,5 +79,13 @@ class PerkuliahanSesi extends Model
     public function absensi(): HasMany
     {
         return $this->hasMany(PerkuliahanAbsensi::class, 'perkuliahan_sesi_id');
+    }
+
+    /**
+     * Relasi ke Tahun Akademik.
+     */
+    public function tahunAkademik(): BelongsTo
+    {
+        return $this->belongsTo(RefTahunAkademik::class, 'tahun_akademik_id');
     }
 }

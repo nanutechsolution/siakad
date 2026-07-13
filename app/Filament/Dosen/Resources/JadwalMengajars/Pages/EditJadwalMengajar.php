@@ -15,7 +15,6 @@ class EditJadwalMengajar extends EditRecord
     {
         return [
             ViewAction::make(),
-            DeleteAction::make(),
         ];
     }
 }

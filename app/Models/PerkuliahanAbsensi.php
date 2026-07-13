@@ -22,6 +22,9 @@ class PerkuliahanAbsensi extends Model
         'status_kehadiran',
         'waktu_check_in',
         'bukti_validasi',
+        'ip_address',
+        'device_fingerprint',
+        'is_flagged_duplikat',
         'is_manual_update',
         'modified_by_user_id',
         'alasan_perubahan',
@@ -32,6 +35,7 @@ class PerkuliahanAbsensi extends Model
         'waktu_check_in' => 'datetime',
         'bukti_validasi' => 'array',
         'is_manual_update' => 'boolean',
+        'is_flagged_duplikat' => 'boolean',
     ];
 
     protected static function boot(): void

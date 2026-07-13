@@ -53,6 +53,10 @@ class KrsDetail extends Model
     {
         return $this->belongsTo(JadwalKuliah::class, 'jadwal_kuliah_id');
     }
+    public function absensi(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PerkuliahanAbsensi::class, 'krs_detail_id');
+    }
 
     public function mataKuliah(): BelongsTo
     {

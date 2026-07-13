@@ -32,8 +32,6 @@ class InputNilaiKelas extends Page implements HasTable
 
     protected static bool $shouldRegisterNavigation = false;
 
-    // PENTING: harus 'static string', bukan 'string' saja -
-    // parent Filament\Pages\Page mendeklarasikan $view sebagai static property.
     protected  string $view = 'filament.dosen.pages.input-nilai-kelas';
 
     protected static ?string $slug = 'input-nilai-kelas/{record}';
@@ -164,7 +162,7 @@ class InputNilaiKelas extends Page implements HasTable
                             ->send();
                     }),
             ])
-          ->headerActions([
+            ->headerActions([
                 // 1. TOMBOL UTAMA: Biarkan tetap di luar agar mudah diakses dosen
                 Action::make('hitung_ulang')
                     ->label('Hitung & simpan nilai akhir')
@@ -195,7 +193,7 @@ class InputNilaiKelas extends Page implements HasTable
 
                 // 3. GROUP DROPDOWN: Satukan fitur Cetak & Export di sini agar hemat tempat!
                 ActionGroup::make([
-                    
+
                     // Fitur Cetak PDF yang dibungkus
                     Action::make('print_pdf')
                         ->label('Cetak PDF / Print')
@@ -247,10 +245,10 @@ class InputNilaiKelas extends Page implements HasTable
                         }),
 
                 ])
-                ->label('Download / Cetak') // Nama tombol utama dropdown-nya
-                ->icon('heroicon-m-ellipsis-vertical') // Icon titik tiga vertikal yang minimalis
-                ->color('gray')
-                ->button(), // Mengubah tampilan grup menjadi tombol elegan, bukan sekadar teks link
+                    ->label('Download / Cetak') // Nama tombol utama dropdown-nya
+                    ->icon('heroicon-m-ellipsis-vertical') // Icon titik tiga vertikal yang minimalis
+                    ->color('gray')
+                    ->button(), // Mengubah tampilan grup menjadi tombol elegan, bukan sekadar teks link
             ]);
     }
 }

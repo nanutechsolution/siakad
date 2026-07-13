@@ -2,8 +2,8 @@
 
 namespace App\Filament\Dosen\Resources\JadwalMengajars\Schemas;
 
+use App\Models\JadwalKuliah;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -13,21 +13,28 @@ class JadwalMengajarInfolist
     {
         return $schema
             ->components([
-                Section::make('Informasi Perkuliahan')
-                    ->collapsed()
+                Section::make('Detail Jadwal')
+                    ->columns(2)
                     ->schema([
-                        Grid::make(4)->schema([
-                            TextEntry::make('mataKuliah.nama_mk')->label('Mata Kuliah')->weight('bold'),
-                            TextEntry::make('mataKuliah.kode_mk')->label('Kode MK'),
-                            TextEntry::make('kelas.nama_kelas')->label('Kelas'),
-                            TextEntry::make('hari')->label('Hari'),
-                            TextEntry::make('jam_mulai')->label('Jam Mulai')->time('H:i'),
-                            TextEntry::make('jam_selesai')->label('Jam Selesai')->time('H:i'),
-                            TextEntry::make('ruang.nama_ruang')->label('Ruang'),
-                            TextEntry::make('isi_kelas')
-                                ->label('Mahasiswa Terdaftar')
-                                ->formatStateUsing(fn($state, $record) => $state . ' / ' . $record->kuota_kelas . ' Orang'),
-                        ]),
+                        TextEntry::make('mataKuliah.nama_mk')->label('Mata Kuliah'),
+                        TextEntry::make('mataKuliah.kode_mk')->label('Kode MK'),
+                        TextEntry::make('kelas.nama_kelas')->label('Kelas'),
+                        TextEntry::make('tahunAkademik.nama_tahun')->label('Tahun Akademik'),
+                        TextEntry::make('hari')->label('Hari'),
+                        TextEntry::make('jam_mulai')->label('Jam Mulai')->time('H:i'),
+                        TextEntry::make('jam_selesai')->label('Jam Selesai')->time('H:i'),
+                        TextEntry::make('ruang.nama_ruang')->label('Ruang')->placeholder('Belum ditentukan'),
+                    ]),
+
+                Section::make('Tim Pengajar')
+                    ->schema([
+                        TextEntry::make('dosenPengampu')
+                            ->label('')
+                            ->state(fn(JadwalKuliah $record) => $record->dosenPengampu()
+                                ->with('dosen.person')
+                                ->get()
+                                ->map(fn($d) => $d->dosen?->person?->nama_lengkap . ($d->is_koordinator ? ' (Koordinator)' : ''))
+                                ->implode(', ')),
                     ]),
             ]);
     }
