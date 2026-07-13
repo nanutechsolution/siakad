@@ -29,6 +29,13 @@ class TrxDosenResource extends Resource
     protected static ?string $modelLabel = 'Dosen';
     protected static ?string $pluralModelLabel = 'Dosen';
     protected static ?string $recordTitleAttribute = 'person.nama';
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'person.gelars',
+            ]);
+    }
     public static function form(Schema $schema): Schema
     {
         return TrxDosenForm::configure($schema);

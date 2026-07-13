@@ -2,18 +2,22 @@
 
 namespace App\Filament\Resources\Krs\Tables;
 
+use App\Enums\KrsStatusEnum;
 use App\Models\Krs;
 use App\Models\KrsStatusLog;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 
@@ -26,33 +30,79 @@ class KrsTable
                 TextColumn::make('mahasiswa.nim')
                     ->label('NIM')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('NIM berhasil disalin'),
+
                 TextColumn::make('mahasiswa.person.nama_lengkap')
                     ->label('Nama Mahasiswa')
                     ->searchable()
-                    ->sortable(),
-                TextColumn::make('tahunAkademik.nama_tahun')
-                    ->label('Periode')
-                    ->sortable(),
+                    ->sortable()
+                    ->description(function (Krs $record): string {
+                        $prodi = $record->mahasiswa->prodi->nama_prodi ?? 'Prodi tidak ditemukan';
+                        $kelas = $record->mahasiswa->kelas->first()?->nama_kelas ?? 'Belum ada kelas';
+                        return $prodi . ' • Kelas: ' . $kelas;
+                    })
+                    ->wrap(),
+
                 TextColumn::make('total_sks_diambil')
-                    ->label('Total SKS')
+                    ->label('SKS')
                     ->numeric()
-                    ->badge(),
-                TextColumn::make('status_krs')
-                    ->label('Status')
                     ->badge()
-                    ->color(fn(string $state): string => match ($state) {
-                        'DRAFT' => 'gray',
-                        'DIAJUKAN' => 'warning',
-                        'DISETUJUI' => 'success',
-                        'DITOLAK' => 'danger',
-                        'DIBATALKAN' => 'gray',
-                        default => 'primary',
-                    }),
-                TextColumn::make('dosenWali.person.nama_lengkap')
+                    ->color('gray')
+                    ->alignCenter(),
+                IconColumn::make('status_keuangan')
+                    ->label('Keuangan')
+                    ->boolean()
+                    ->getStateUsing(function (Krs $record): bool {
+                        // Cek apakah ada tagihan di semester/tahun akademik KRS ini yang BELUM LUNAS
+                        $adaTunggakanSemesterIni = $record->mahasiswa?->tagihanMahasiswas()
+                            ->where('tahun_akademik_id', $record->tahun_akademik_id) // Kunci ke tahun akademik KRS
+                            ->where('status_bayar', '!=', 'LUNAS')
+                            ->exists();
+
+                        // Jika tidak ada tunggakan, berarti keuangan aman (true)
+                        return !$adaTunggakanSemesterIni;
+                    })
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->tooltip(fn(Krs $record) => 'Dicek otomatis berdasarkan tagihan semester ini')
+                    ->alignCenter(),
+                TextColumn::make('status_krs')
+                    ->label('Status KRS')
+                    ->badge()
+                    ->color(fn(KrsStatusEnum $state) => $state->getColor())
+                    ->formatStateUsing(fn(KrsStatusEnum $state) => $state->getLabel()),
+
+                TextColumn::make('dosen_wali')
                     ->label('Dosen Wali')
-                    ->searchable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->getStateUsing(function (Krs $record): string {
+                        // 1. Ambil kelas pertama mahasiswa
+                        $kelas = $record->mahasiswa?->kelas?->first();
+                        if (!$kelas) return 'Belum Masuk Kelas';
+
+                        // 2. Ambil dosen wali utama (is_primary = 1)
+                        $dosenWali = $kelas->dosenWali?->where('pivot.is_primary', 1)->first()
+                            ?? $kelas->dosenWali?->first();
+
+                        // 3. Panggil accessor 'nama_dengan_gelar' dari model RefPerson
+                        return $dosenWali?->person?->nama_dengan_gelar ?? 'Belum di-set';
+                    })
+                    ->description(function (Krs $record): ?string {
+                        $kelas = $record->mahasiswa?->kelas?->first();
+                        if (!$kelas) return null;
+
+                        $dosenWali = $kelas->dosenWali?->where('pivot.is_primary', 1)->first()
+                            ?? $kelas->dosenWali?->first();
+                        return $dosenWali?->nidn ? 'NIDN: ' . $dosenWali->nidn : null;
+                    })
+                    // Kolom pencarian tetap diarahkan ke 'nama_lengkap' di database agar SQL LIKE bekerja
+                    ->searchable(query: function (Builder $query, string $search): Builder {
+                        return $query->whereHas('mahasiswa.kelas.dosenWali.person', function ($q) use ($search) {
+                            $q->where('nama_lengkap', 'like', "%{$search}%");
+                        });
+                    })
+                    ->toggleable(),
             ])
             ->filters([
                 SelectFilter::make('tahun_akademik_id')
@@ -194,6 +244,28 @@ class KrsTable
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+                    BulkAction::make('bulk_approve')
+                        ->label('Setujui Terpilih')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->action(function (\Illuminate\Database\Eloquent\Collection $records) {
+                            $berhasil = 0;
+                            foreach ($records as $record) {
+                                if ($record->status_krs === 'DIAJUKAN' && $record->is_financial_verified) {
+                                    self::logAndProcessAction($record, 'DISETUJUI', [
+                                        'status_krs' => 'DISETUJUI',
+                                        'disetujui_oleh' => Auth::id(),
+                                        'disetujui_pada' => now(),
+                                    ], 'KRS disetujui secara massal oleh Admin.');
+                                    $berhasil++;
+                                }
+                            }
+                            \Filament\Notifications\Notification::make()
+                                ->title("Berhasil menyetujui $berhasil KRS")
+                                ->success()
+                                ->send();
+                        })
                 ]),
             ]);
     }

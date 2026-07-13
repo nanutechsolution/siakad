@@ -41,7 +41,6 @@ class MahasiswaBimbingansTable
                 TextColumn::make('krs.status_krs')
                     ->label('Status KRS Aktif')
                     ->badge()
-                    // Mengambil status dari relasi Eager Loaded, bukan query baru
                     ->state(fn(Model $record) => $record->krs->first()?->status_krs?->value ?? 'BELUM AJUAN')
                     ->color(fn(string $state) => match ($state) {
                         KrsStatusEnum::DISETUJUI->value => KrsStatusEnum::DISETUJUI->getColor(),
@@ -49,6 +48,19 @@ class MahasiswaBimbingansTable
                         KrsStatusEnum::DITOLAK->value => KrsStatusEnum::DITOLAK->getColor(),
                         default => 'gray',
                     }),
+                TextColumn::make('status_risiko')
+                    ->label('Risiko Akademik')
+                    ->badge()
+                    ->state(fn(Model $record) => $record->statusRisiko())
+                    ->color(fn($state) => $state->getColor())
+                    ->icon(fn($state) => $state->getIcon()),
+
+                TextColumn::make('tunggakan')
+                    ->label('Tunggakan')
+                    ->state(fn(Model $record) => $record->totalTunggakan())
+                    ->money('IDR')
+                    ->color(fn(Model $record) => $record->totalTunggakan() > 0 ? 'danger' : 'success')
+                    ->weight(fn(Model $record) => $record->totalTunggakan() > 0 ? 'bold' : 'normal'),
             ])
             ->filters([
                 SelectFilter::make('status_krs')
@@ -69,6 +81,7 @@ class MahasiswaBimbingansTable
                     ->preload(),
             ])
             ->recordActions([
+                ViewAction::make(),
                 self::makeReviewAction(),
             ]);
     }
@@ -85,19 +98,19 @@ class MahasiswaBimbingansTable
             ->slideOver() // Membuka modal dari samping
             // Action ini hanya muncul jika statusnya DIAJUKAN
             ->visible(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN)
-
             // Modal Content (Akan kita buat menggunakan Infolist/View terpisah nanti)
             ->modalContent(function (Model $record, KrsValidationService $validationService) {
                 $krs = $record->krs->first();
                 $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
                 $krs->loadMissing(['krsDetails.jadwalKuliah.mataKuliah', 'krsDetails.jadwalKuliah.dosenPengampus.dosen.person']);
                 $hasilValidasi = $validationService->runAllValidations($record, $krs, $activeTa);
-                // Menjalankan semua validasi secara real-time saat slideover dibuka
-
                 return view('filament.dosen.components.review-krs-modal', [
                     'krs' => $krs,
                     'mahasiswa' => $record,
                     'hasilValidasi' => $hasilValidasi,
+                    'statusRisiko' => $record->statusRisiko(),
+                    'totalTunggakan' => $record->totalTunggakan(),
+                    'riwayatIpk' => $record->riwayatStatus,
                 ]);
             })
 
@@ -108,13 +121,9 @@ class MahasiswaBimbingansTable
                     ->placeholder('Isi catatan opsional jika menyetujui, atau alasan wajib jika menolak.')
                     ->rows(3),
             ])
-
-            // Konfigurasi 2 Tombol: Setujui & Tolak
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
             ->extraModalFooterActions(fn(Action $action) => [
-
-                // Tombol Setujui
                 Action::make('approve')
                     ->label('Setujui KRS')
                     ->color('success')
@@ -124,6 +133,13 @@ class MahasiswaBimbingansTable
                         try {
                             $krs = $record->krs->first();
                             $approvalService->approve($krs, $data['catatan_dosen'] ?? null);
+                            if ($userAkun = $record->akunUser()) {
+                                $userAkun->notify(new \App\Notifications\KrsStatusNotification(
+                                    status: 'DISETUJUI',
+                                    catatan: $data['catatan_dosen'] ?? null,
+                                    tahunAkademik: $krs->tahunAkademik?->nama_tahun,
+                                ));
+                            }
 
                             Notification::make()->title('KRS berhasil disetujui')->success()->send();
                         } catch (\Throwable $e) {

@@ -18,8 +18,9 @@ use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use UnitEnum;
+use Override;
 
 class MahasiswaBimbinganResource extends Resource
 {
@@ -28,14 +29,17 @@ class MahasiswaBimbinganResource extends Resource
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedUserGroup;
     protected static ?string $navigationLabel = 'Bimbingan Akademik';
     protected static ?string $modelLabel = 'Mahasiswa Bimbingan';
-
-
     /**
      * Otorisasi: Pastikan yang login adalah Dosen
      */
     public static function canViewAny(): bool
     {
         return Auth::user()?->person_id !== null && Auth::user()?->person?->dosen !== null;
+    }
+    #[Override]
+    public static function canView(Model $record): bool
+    {
+        return true;
     }
 
     public static function canCreate(): bool

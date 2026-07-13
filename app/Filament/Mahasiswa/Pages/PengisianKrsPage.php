@@ -10,10 +10,12 @@ use App\Models\RefTahunAkademik;
 use App\Services\Akademik\KrsValidationService;
 use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -35,7 +37,7 @@ class PengisianKrsPage extends Page implements HasForms
     public ?Mahasiswa $mahasiswa = null;
     public ?RefTahunAkademik $activeTa = null;
     public bool $hasExistingKrs = false;
-
+    public ?int $activeKelasId = null;
     public function mount(): void
     {
         $this->mahasiswa = Mahasiswa::where('person_id', Auth::user()->person_id)->first();
@@ -43,6 +45,15 @@ class PengisianKrsPage extends Page implements HasForms
 
         if (!$this->mahasiswa || !$this->activeTa) {
             $this->setIneligible('Data Mahasiswa atau Tahun Akademik aktif tidak ditemukan.');
+            return;
+        }
+        $this->activeKelasId = DB::table('mahasiswa_kelas')
+            ->where('mahasiswa_id', $this->mahasiswa->id)
+            ->whereNull('tanggal_keluar')
+            ->value('kelas_id');
+
+        if (!$this->activeKelasId) {
+            $this->setIneligible('Anda belum terdaftar di kelas manapun. Silakan hubungi bagian Akademik/Admin Prodi.');
             return;
         }
 
@@ -92,70 +103,132 @@ class PengisianKrsPage extends Page implements HasForms
     {
         return $schema
             ->components([
-                Section::make('Pilih Mata Kuliah')
-                    ->description('Centang mata kuliah yang ingin Anda ambil pada semester ini. Perhatikan batas maksimal SKS Anda.')
+                // 1. KOMPONEN RINGKASAN KRS (Auto-update saat Checkbox diklik)
+                Placeholder::make('ringkasan_krs')
+                    ->label('')
+                    ->content(function (Get $get) {
+                        $summaryData = $this->getSummaryData($get);
+                        return view('filament.mahasiswa.components.krs-summary', $summaryData);
+                    })
+                    ->columnSpanFull(),
+
+                // 2. DAFTAR MATA KULIAH PAKET UTAMA
+                Section::make('Mata Kuliah Paket (Kelas Anda)')
+                    ->description('Mata kuliah yang ditawarkan khusus untuk kelas Anda pada semester ini.')
                     ->schema([
                         CheckboxList::make('jadwal_kuliah_ids')
                             ->label('')
                             ->options(function () {
-                                if (!$this->mahasiswa || !$this->activeTa) return [];
+                                if (!$this->mahasiswa || !$this->activeTa || !$this->activeKelasId) return [];
 
-                                return JadwalKuliah::with(['mataKuliah', 'dosenPengajars'])
+                                return JadwalKuliah::with(['mataKuliah', 'dosenPengajars.dosen.person', 'ruang', 'kelas'])
                                     ->where('tahun_akademik_id', $this->activeTa->id)
-                                    // Buka jadwal untuk prodi mahasiswa tersebut atau jadwal lintas prodi
-                                    ->whereHas('kelas', function ($query) {
-                                        $query->where('prodi_id', $this->mahasiswa->prodi_id);
-                                    })
+                                    ->where('kelas_id', $this->activeKelasId)
                                     ->get()
-                                    ->mapWithKeys(function ($jadwal) {
-                                        $sisaKuota = $jadwal->kuota_kelas - $jadwal->isi_kelas;
-
-                                        // Ambil nama dari relasi, pastikan tidak error jika null
-                                        $namaRuang = $jadwal->ruang->nama_ruang ?? 'Belum ditentukan';
-                                        $namaDosen = $jadwal->dosenPengajars
-                                            ->map(fn($dp) => $dp->person?->nama_dengan_gelar)
-                                            ->filter()
-                                            ->implode(', ') ?: '-';
-
-                                        // Desain UI yang lebih rapi menggunakan struktur div dan Tailwind CSS
-                                        $label = "
-        <div class='flex flex-col py-1'>
-            <div class='flex items-center gap-2'>
-                <span class='font-bold text-gray-900 dark:text-white'>{$jadwal->mataKuliah->nama_mk}</span>
-                <span class='px-2 py-0.5 text-xs font-semibold bg-primary-100 text-primary-700 rounded-md dark:bg-primary-900/50 dark:text-primary-400'>
-                    {$jadwal->mataKuliah->sks_default} SKS
-                </span>
-            </div>
-            <div class='text-sm text-gray-500 dark:text-gray-400 mt-1 flex flex-wrap items-center gap-x-3 gap-y-1'>
-                <span>📅 {$jadwal->hari}, {$jadwal->jam_mulai}-{$jadwal->jam_selesai}</span>
-                <span>🚪 Ruang: {$namaRuang}</span>
-                <span>👨‍🏫 Dosen: {$namaDosen}</span>
-                <span class='" . ($sisaKuota <= 0 ? 'text-danger-500' : 'text-success-600 dark:text-success-400') . "'>
-                    👥 Sisa Kuota: <strong>{$sisaKuota}</strong>
-                </span>
-            </div>
-        </div>
-    ";
-
-                                        // Pastikan pakai HtmlString agar tag HTML-nya dirender oleh Filament
-                                        return [$jadwal->id => new \Illuminate\Support\HtmlString($label)];
-                                    });
+                                    ->mapWithKeys(fn($jadwal) => [
+                                        $jadwal->id => new HtmlString(view('filament.mahasiswa.components.krs-card', [
+                                            'jadwal' => $jadwal,
+                                            'isLintasKelas' => false,
+                                            'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
+                                            
+                                        ])->render())
+                                    ]);
                             })
+                            ->live() // Memanggil ulang Ringkasan KRS secara reaktif saat ada klik
                             ->columns(1)
                             ->required()
                             ->validationMessages([
                                 'required' => 'Anda harus memilih minimal satu mata kuliah.',
                             ]),
                     ]),
+
+                // 3. DAFTAR MATA KULIAH MENGULANG / LINTAS KELAS
+                Section::make('Mata Kuliah Mengulang / Lintas Kelas (Opsional)')
+                    ->description('Pilih kelas dari angkatan/prodi lain jika Anda ingin mengulang atau mengambil mata kuliah atas.')
+                    ->schema([
+                        CheckboxList::make('jadwal_mengulang_ids')
+                            ->label('')
+                            ->options(function () {
+                                if (!$this->mahasiswa || !$this->activeTa) return [];
+
+                                return JadwalKuliah::with(['mataKuliah', 'dosenPengajars.dosen.person', 'ruang', 'kelas'])
+                                    ->where('tahun_akademik_id', $this->activeTa->id)
+                                    ->whereHas('kelas', function ($query) {
+                                        $query->where('prodi_id', $this->mahasiswa->prodi_id);
+                                    })
+                                    ->where('kelas_id', '!=', $this->activeKelasId)
+                                    ->get()
+                                    ->mapWithKeys(fn($jadwal) => [
+                                        $jadwal->id => new HtmlString(view('filament.mahasiswa.components.krs-card', [
+                                            'jadwal' => $jadwal,
+                                            'isLintasKelas' => true,
+                                            'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
+                                        ])->render())
+                                    ]);
+                            })
+                            ->live() // Memanggil ulang Ringkasan KRS secara reaktif saat ada klik
+                            ->searchable() // Tambahkan fitur search karena datanya akan banyak
+                            ->columns(1),
+                    ])
+                    ->collapsed(), // Ditutup secara default agar fokus pada kelas utama
             ])
             ->statePath('data');
+    }
+
+
+    // Helper untuk menghitung Ringkasan secara real-time
+    public function getSummaryData(Get $get): array
+    {
+        $jadwalUtama = $get('jadwal_kuliah_ids') ?? [];
+        $jadwalMengulang = $get('jadwal_mengulang_ids') ?? [];
+        $selectedIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
+
+        $totalSks = 0;
+        $totalMk = count($selectedIds);
+
+        if ($totalMk > 0) {
+            $totalSks = (int) DB::table('jadwal_kuliah')
+                ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
+                ->whereIn('jadwal_kuliah.id', $selectedIds)
+                ->sum('master_mata_kuliahs.sks_default');
+        }
+
+        // Mengambil IP Semester terakhir mahasiswa untuk tampilan informatif[cite: 2]
+        $ips = DB::table('riwayat_status_mahasiswas')
+            ->where('mahasiswa_id', $this->mahasiswa->id)
+            ->orderByDesc('tahun_akademik_id')
+            ->value('ips') ?? 0;
+
+        // Mengambil SKS Maksimal berdasarkan IP Semester terakhir dari tabel referensi[cite: 2]
+        $maxSks = DB::table('ref_aturan_sks')
+            ->where('min_ips', '<=', $ips)
+            ->where('max_ips', '>=', $ips)
+            ->value('max_sks') ?? 24; // Fallback 24 jika belum ada aturan
+
+        // Estimasi Semester Mahasiswa (misal dihitung dari Tahun Masuk vs Tahun Aktif)
+        $tahunAngkatan = $this->mahasiswa->angkatan_id ?? date('Y');
+        $tahunSekarang = substr($this->activeTa->kode_tahun, 0, 4);
+        $semesterMhs = (($tahunSekarang - $tahunAngkatan) * 2) + ($this->activeTa->semester == 1 ? 1 : 2);
+
+        return [
+            'activeTa' => $this->activeTa,
+            'semesterMhs' => $semesterMhs > 0 ? $semesterMhs : 1,
+            'ips' => $ips,
+            'maxSks' => $maxSks,
+            'totalSks' => $totalSks,
+            'totalMk' => $totalMk,
+            'statusKrs' => 'DRAFT',
+        ];
     }
     public function simpanKrs(): void
     {
         if (!$this->isEligible) return;
 
         $data = $this->form->getState();
-        $jadwalIds = $data['jadwal_kuliah_ids'] ?? [];
+        $jadwalUtama = $data['jadwal_kuliah_ids'] ?? [];
+        $jadwalMengulang = $data['jadwal_mengulang_ids'] ?? [];
+        // 2. Gabungkan dan pastikan tidak ada ID yang duplikat
+        $jadwalIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
 
         if (empty($jadwalIds)) {
             Notification::make()->warning()->title('Peringatan')->body('Pilih minimal satu kelas.')->send();

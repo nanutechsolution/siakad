@@ -1353,6 +1353,9 @@ CREATE TABLE `perkuliahan_absensi` (
   `status_kehadiran` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'A',
   `waktu_check_in` datetime DEFAULT NULL,
   `bukti_validasi` json DEFAULT NULL,
+  `ip_address` varchar(45) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `device_fingerprint` varchar(64) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_flagged_duplikat` tinyint(1) NOT NULL DEFAULT '0',
   `is_manual_update` tinyint(1) NOT NULL DEFAULT '0',
   `modified_by_user_id` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `alasan_perubahan` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
@@ -1362,6 +1365,8 @@ CREATE TABLE `perkuliahan_absensi` (
   KEY `perkuliahan_absensi_perkuliahan_sesi_id_foreign` (`perkuliahan_sesi_id`),
   KEY `perkuliahan_absensi_krs_detail_id_status_kehadiran_index` (`krs_detail_id`,`status_kehadiran`),
   KEY `perkuliahan_absensi_status_kehadiran_index` (`status_kehadiran`),
+  KEY `perkuliahan_absensi_perkuliahan_sesi_id_device_fingerprint_index` (`perkuliahan_sesi_id`,`device_fingerprint`),
+  KEY `perkuliahan_absensi_perkuliahan_sesi_id_ip_address_index` (`perkuliahan_sesi_id`,`ip_address`),
   CONSTRAINT `perkuliahan_absensi_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE CASCADE,
   CONSTRAINT `perkuliahan_absensi_perkuliahan_sesi_id_foreign` FOREIGN KEY (`perkuliahan_sesi_id`) REFERENCES `perkuliahan_sesi` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1379,6 +1384,7 @@ CREATE TABLE `perkuliahan_sesi` (
   `materi_kuliah` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `catatan_dosen` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `token_sesi` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `token_generated_at` timestamp NULL DEFAULT NULL,
   `metode_validasi` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'QR',
   `status_sesi` enum('terjadwal','dibuka','selesai','dibatalkan') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'terjadwal',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1648,8 +1654,8 @@ CREATE TABLE `ref_skala_nilai` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `huruf` varchar(2) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `bobot_indeks` decimal(3,2) NOT NULL,
-  `nilai_min` decimal(5,2) NOT NULL,
-  `nilai_max` decimal(5,2) NOT NULL,
+  `nilai_min` decimal(6,2) NOT NULL,
+  `nilai_max` decimal(6,2) NOT NULL,
   `is_lulus` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -2126,3 +2132,5 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (140,'2026_07_11_09
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (141,'2026_07_11_100313_alter_activity_log_ids_to_string',25);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (142,'2026_07_11_123201_alter_keuangan_adjustments_add_approval_workflow',26);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (143,'2026_07_12_011906_alter_krs_and_create_krs_status_logs_table',27);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (144,'2026_07_12_205730_alter_ref_skala_nilai_precision',28);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (145,'2026_07_13_161719_add_security_columns_to_presensi_tables',29);

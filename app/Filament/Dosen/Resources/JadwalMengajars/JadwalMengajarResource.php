@@ -76,20 +76,20 @@ class JadwalMengajarResource extends Resource
         return JadwalMengajarsTable::configure($table);
     }
 
-    // public static function canCreate(): bool
-    // {
-    //     return false;
-    // }
+    public static function canCreate(): bool
+    {
+        return false;
+    }
 
     public static function canEdit($record): bool
     {
         return false;
     }
 
-    // public static function canDelete($record): bool
-    // {
-    //     return false;
-    // }
+    public static function canDelete($record): bool
+    {
+        return false;
+    }
 
     public static function getRelations(): array
     {
@@ -104,6 +104,7 @@ class JadwalMengajarResource extends Resource
             'index' => ListJadwalMengajars::route('/'),
             'view' => ViewJadwalMengajar::route('/{record}'),
             'presensi-sesi' => Pages\KelolaPresensiSesi::route('/{record}/presensi/{sesiId}'),
+            'rekap-kehadiran' => Pages\RekapKehadiran::route('/{record}/rekap-kehadiran'),
         ];
     }
 }

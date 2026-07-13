@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Kartu Rencana Studi</title>
@@ -12,25 +13,30 @@
             margin: 0;
             padding: 0;
         }
+
         .header {
             text-align: center;
             border-bottom: 3px solid #000;
             padding-bottom: 10px;
             margin-bottom: 20px;
         }
+
         .header h1 {
             margin: 0;
             font-size: 18px;
             text-transform: uppercase;
         }
+
         .header h2 {
             margin: 5px 0;
             font-size: 14px;
         }
+
         .header p {
             margin: 0;
             font-size: 11px;
         }
+
         .title {
             text-align: center;
             font-size: 16px;
@@ -39,70 +45,79 @@
             text-transform: uppercase;
             text-decoration: underline;
         }
+
         .info-table {
             width: 100%;
             margin-bottom: 20px;
         }
+
         .info-table td {
             vertical-align: top;
             padding: 2px 0;
         }
+
         .info-table .label {
             width: 15%;
             font-weight: bold;
         }
+
         .info-table .separator {
             width: 2%;
         }
+
         .info-table .value {
             width: 33%;
         }
+
         .data-table {
             width: 100%;
             border-collapse: collapse;
             margin-bottom: 20px;
         }
-        .data-table th, .data-table td {
+
+        .data-table th,
+        .data-table td {
             border: 1px solid #000;
             padding: 6px;
             text-align: left;
         }
+
         .data-table th {
             text-align: center;
             background-color: #f2f2f2;
             font-weight: bold;
         }
+
         .text-center {
             text-align: center !important;
         }
+
         .signature-table {
             width: 100%;
             margin-top: 40px;
         }
+
         .signature-table td {
             width: 33.33%;
             text-align: center;
             vertical-align: top;
         }
+
         .signature-space {
             height: 80px;
         }
+
         .bold-underline {
             font-weight: bold;
             text-decoration: underline;
         }
     </style>
 </head>
+
 <body>
 
-    <div class="header">
-        <h1>UNIVERSITAS STELLA MARIS SUMBA</h1>
-        <h2>PORTAL LAYANAN DIGITAL BTSI</h2>
-        <p>Jl. Kampus Unmaris, Tambolaka, Sumba Barat Daya, NTT</p>
-    </div>
 
-    <div class="title">KARTU RENCANA STUDI (KRS)</div>
-
+    @include('pdf.partials.header', ['judulDokumen' => 'KARTU RENCANA STUDI (KRS)'])
     <table class="info-table">
         <tr>
             <td class="label">NIM</td>
@@ -144,19 +159,19 @@
         <tbody>
             @php $totalSks = 0; @endphp
             @forelse($krsDetails as $index => $detail)
-                <tr>
-                    <td class="text-center">{{ $index + 1 }}</td>
-                    <td class="text-center">{{ $detail->kode_mk_snapshot }}</td>
-                    <td>{{ $detail->nama_mk_snapshot }}</td>
-                    <td class="text-center">{{ $detail->sks_snapshot }}</td>
-                    <td class="text-center">{{ $detail->jadwalKuliah->kelas->nama_kelas ?? '-' }}</td>
-                    <td class="text-center">{{ $detail->status_ambil === 'B' ? 'Baru' : 'Ulang' }}</td>
-                </tr>
-                @php $totalSks += $detail->sks_snapshot; @endphp
+            <tr>
+                <td class="text-center">{{ $index + 1 }}</td>
+                <td class="text-center">{{ $detail->kode_mk_snapshot }}</td>
+                <td>{{ $detail->nama_mk_snapshot }}</td>
+                <td class="text-center">{{ $detail->sks_snapshot }}</td>
+                <td class="text-center">{{ $detail->jadwalKuliah->kelas->nama_kelas ?? '-' }}</td>
+                <td class="text-center">{{ $detail->status_ambil === 'B' ? 'Baru' : 'Ulang' }}</td>
+            </tr>
+            @php $totalSks += $detail->sks_snapshot; @endphp
             @empty
-                <tr>
-                    <td colspan="6" class="text-center">Belum ada mata kuliah yang diambil.</td>
-                </tr>
+            <tr>
+                <td colspan="6" class="text-center">Belum ada mata kuliah yang diambil.</td>
+            </tr>
             @endforelse
         </tbody>
         <tfoot>
@@ -189,4 +204,5 @@
     </table>
 
 </body>
+
 </html>

@@ -38,7 +38,6 @@ class Kelas extends Model
             'kapasitas' => 'integer',
         ];
     }
-
     /**
      * Get the study program associated with the class.
      */
@@ -92,5 +91,10 @@ class Kelas extends Model
             ->withPivot('id', 'is_primary')
             ->withTimestamps();
     }
-    
+    public function dosenWali(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
+    {
+        return $this->belongsToMany(\App\Models\TrxDosen::class, 'kelas_dosen_wali', 'kelas_id', 'dosen_id')
+            ->withPivot('is_primary')
+            ->withTimestamps();
+    }
 }

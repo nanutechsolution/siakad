@@ -48,6 +48,15 @@ class KrsResource extends Resource
             //
         ];
     }
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        return parent::getEloquentQuery()
+            ->with([
+                'mahasiswa.prodi',
+                'mahasiswa.kelas.dosenWali.person.gelars',
+                'mahasiswa.tagihanMahasiswas'
+            ]);
+    }
 
     public static function getPages(): array
     {

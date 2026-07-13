@@ -1,29 +1,82 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Laporan Beasiswa UNMARIS</title>
     <style>
-        body { font-family: sans-serif; font-size: 11px; color: #333; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16px; color: #2c3e50; text-transform: uppercase; }
-        .header p { margin: 5px 0 0; font-size: 11px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #cbd5e1; padding: 6px; }
-        th { background-color: #f1f5f9; text-align: left; font-size: 10px; text-transform: uppercase; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .total-row { background-color: #e2e8f0; font-weight: bold; }
-        .success { color: #16a34a; }
+        body {
+            font-family: sans-serif;
+            font-size: 11px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 16px;
+            color: #2c3e50;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            font-size: 11px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #cbd5e1;
+            padding: 6px;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .total-row {
+            background-color: #e2e8f0;
+            font-weight: bold;
+        }
+
+        .success {
+            color: #16a34a;
+        }
     </style>
 </head>
+
 <body>
 
-    <div class="header">
-        <h1>Laporan Beasiswa & Potongan Mahasiswa</h1>
-        <p>Portal Layanan Digital BTSI - Universitas Stella Maris Sumba</p>
-        <p>Periode Akademik: {{ $tahun_akademik ?? 'Semua Periode' }} | Dicetak pada: {{ now()->format('d/m/Y H:i') }}</p>
-    </div>
+    @include('pdf.partials.header', [
+    'judulDokumen' => 'Laporan Beasiswa & Potongan Mahasiswa',
+    'infoBaris' => [
+    'Periode Akademik: '.($tahun_akademik ?? 'Semua Periode'),
+    'Dicetak pada: '.now()->format('d/m/Y H:i'),
+    ],
+    ])
 
     <table>
         <thead>
@@ -58,7 +111,7 @@
                 <td colspan="8" class="text-center">Tidak ada mahasiswa penerima beasiswa pada filter ini.</td>
             </tr>
             @endforelse
-            
+
             @if($data->count() > 0)
             <tr class="total-row">
                 <td colspan="7" class="text-right">TOTAL NILAI BEASISWA DIBERIKAN KESELURUHAN</td>
@@ -69,4 +122,5 @@
     </table>
 
 </body>
+
 </html>

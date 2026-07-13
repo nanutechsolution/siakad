@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Enums\MetodePembayaran;
+use App\Enums\StatusVerifikasiPembayaran;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -39,6 +41,8 @@ class PembayaranMahasiswa extends Model
             'nominal_bayar' => 'decimal:2',
             'tanggal_bayar' => 'datetime',
             'verified_at' => 'datetime',
+            'metode_pembayaran' => MetodePembayaran::class,
+            'status_verifikasi_id' => StatusVerifikasiPembayaran::class,
         ];
     }
 
@@ -56,13 +60,20 @@ class PembayaranMahasiswa extends Model
     {
         return $this->belongsTo(TagihanMahasiswa::class, 'tagihan_id');
     }
-
+    public function isPending(): bool
+    {
+        return $this->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING;
+    }
     /**
      * Get the verification status of this payment.
      */
     public function statusVerifikasi(): BelongsTo
     {
         return $this->belongsTo(RefStatusVerifikasiPembayaran::class, 'status_verifikasi_id');
+    }
+    public function verifikator(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
     }
 
     /**

@@ -1,7 +1,9 @@
 <?php
 
 use App\Http\Controllers\Akademik\CetakKrsController;
+use App\Models\PembayaranMahasiswa;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/krs/{id}/cetak', CetakKrsController::class)->name('krs.cetak');
@@ -28,6 +30,27 @@ Route::middleware(['auth'])->group(function () {
 
         return view('print.nilai-kelas', compact('jadwal', 'komponenAktif', 'peserta'));
     })->name('dosen.nilai.print');
+
+    Route::get('/pembayaran/bukti/{pembayaran}/download', function (PembayaranMahasiswa $pembayaran) {
+
+        // 1. Tentukan disk tempat menyimpan file private Anda ('local' atau 'private')
+        $disk = 'local';
+
+        // 2. Validasi Keamanan (Opsional tapi Sangat Disarankan):
+        // Pastikan mahasiswa yang login hanya bisa melihat buktinya sendiri, 
+        // KECUALI jika yang login adalah Admin/Verifikator.
+        if (auth()->user()->hasRole('mahasiswa') && $pembayaran->tagihan->mahasiswa_id !== auth()->user()->mahasiswa_id) {
+            abort(403, 'Anda tidak memiliki akses ke dokumen ini.');
+        }
+
+        // 3. Cek apakah file fisik benar-benar ada di server
+        if (!Storage::disk($disk)->exists($pembayaran->bukti_bayar_path)) {
+            abort(404, 'File bukti pembayaran tidak ditemukan di server.');
+        }
+
+        // 4. Stream file langsung ke browser tanpa membocorkan path aslinya
+        return Storage::disk($disk)->response($pembayaran->bukti_bayar_path);
+    })->name('pembayaran.bukti.download');
 });
 Route::post('/presensi/checkin', [\App\Http\Controllers\PresensiCheckinController::class, 'store'])
     ->middleware(['auth'])

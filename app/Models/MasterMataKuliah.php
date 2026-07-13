@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MasterMataKuliah extends Model
@@ -61,5 +62,15 @@ class MasterMataKuliah extends Model
     public function kurikulumMataKuliahs(): HasMany
     {
         return $this->hasMany(KurikulumMataKuliah::class, 'mata_kuliah_id');
+    }
+
+    public function kurikulums(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            MasterKurikulum::class,          // Ganti dengan class model Kurikulum Anda (misal MasterKurikulum::class)
+            'kurikulum_mata_kuliah',   // Nama tabel pivot sesuai skema Anda
+            'mata_kuliah_id',          // Foreign key di tabel pivot ke tabel ini
+            'kurikulum_id'             // Foreign key di tabel pivot ke tabel kurikulum
+        );
     }
 }

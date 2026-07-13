@@ -2,16 +2,12 @@
 
 namespace App\Filament\Resources\TrxDosens\Tables;
 
-use App\Models\RefGelar;
-use App\Models\TrxDosen;
 use Filament\Actions\Action;
-use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
-use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
@@ -31,7 +27,8 @@ class TrxDosensTable
                 TextColumn::make('person.nama_lengkap')
                     ->label('Nama Dosen')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->formatStateUsing(fn($record) => $record->person?->nama_dengan_gelar ?? '-'),
 
                 TextColumn::make('nidn')
                     ->label('NIDN')

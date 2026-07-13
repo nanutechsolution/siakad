@@ -2,7 +2,6 @@
 
 namespace App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Schemas;
 
-use Filament\Infolists\Components\TextEntry;
 use Filament\Infolists\Components\ViewEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -13,28 +12,68 @@ class TagihanMahasiswaInfolist
     {
         return $schema
             ->components([
-                Section::make('Informasi Invoice')
+
+                /*
+                |--------------------------------------------------------------------------
+                | Ringkasan Invoice
+                |--------------------------------------------------------------------------
+                */
+
+                Section::make()
                     ->schema([
-                        TextEntry::make('kode_transaksi')->label('Nomor Invoice'),
-                        TextEntry::make('tahunAkademik.nama_tahun')->label('Tahun Akademik'),
-                        TextEntry::make('status_bayar')
-                            ->label('Status Pembayaran')
-                            ->badge()
-                            ->color(fn(string $state): string => match ($state) {
-                                'LUNAS' => 'success',
-                                'CICIL' => 'warning',
-                                'BELUM' => 'danger',
-                                default => 'gray',
-                            }),
-                    ])->columns(3),
+                        ViewEntry::make('summary')
+                            ->hiddenLabel()
+                            ->view('filament.mahasiswa.tagihan.invoice-summary'),
+                    ]),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Komponen Tagihan
+                |--------------------------------------------------------------------------
+                */
 
                 Section::make('Rincian Komponen Biaya')
-                    ->description('Daftar kewajiban item pembiayaan Anda di semester ini.')
+                    ->description('Daftar seluruh komponen tagihan semester ini.')
+                    ->icon('heroicon-o-clipboard-document-list')
                     ->schema([
                         ViewEntry::make('details')
-                            ->label('')
-                            ->view('filament.mahasiswa.components.tagihan-details-table'),
-                    ]),
+                            ->hiddenLabel()
+                            ->view('filament.mahasiswa.tagihan.invoice-components'),
+                    ])
+                    ->collapsible(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Riwayat Pembayaran
+                |--------------------------------------------------------------------------
+                */
+
+                Section::make('Riwayat Pembayaran')
+                    ->description('Seluruh pembayaran yang pernah Anda lakukan.')
+                    ->icon('heroicon-o-banknotes')
+                    ->schema([
+                        ViewEntry::make('payments')
+                            ->hiddenLabel()
+                            ->view('filament.mahasiswa.tagihan.invoice-payments'),
+                    ])
+                    ->collapsible(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | Konfirmasi Pembayaran
+                |--------------------------------------------------------------------------
+                */
+
+                Section::make('Konfirmasi Pembayaran')
+                    ->description('Upload bukti transfer apabila pembayaran dilakukan secara manual.')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->schema([
+                        ViewEntry::make('upload')
+                            ->hiddenLabel()
+                            ->view('filament.mahasiswa.tagihan.invoice-upload'),
+                    ])
+                    ->visible(fn($record) => $record->status_bayar !== 'LUNAS'),
+
             ]);
     }
 }

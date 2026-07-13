@@ -23,10 +23,15 @@ class PembayaranMahasiswaResource extends Resource
     protected static ?string $model = PembayaranMahasiswa::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
-    protected static string|UnitEnum|null $navigationGroup =NavigationGroup::KEUANGAN->value;
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
+    protected static ?string $navigationLabel = 'Verifikasi Pembayaran Mahasiswa';
     public static function form(Schema $schema): Schema
     {
         return PembayaranMahasiswaForm::configure($schema);
+    }
+    public static function getNavigationBadge(): ?string
+    {
+        return static::getModel()::where('status_verifikasi_id', 1)->count() ?: null;
     }
 
     public static function table(Table $table): Table

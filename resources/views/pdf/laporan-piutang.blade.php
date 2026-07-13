@@ -1,29 +1,84 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Laporan Piutang UNMARIS</title>
     <style>
-        body { font-family: sans-serif; font-size: 11px; color: #333; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16px; color: #2c3e50; text-transform: uppercase; }
-        .header p { margin: 5px 0 0; font-size: 11px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        th, td { border: 1px solid #cbd5e1; padding: 6px; }
-        th { background-color: #f1f5f9; text-align: left; font-size: 10px; text-transform: uppercase; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .total-row { background-color: #e2e8f0; font-weight: bold; }
-        .danger { color: #dc2626; }
+        body {
+            font-family: sans-serif;
+            font-size: 11px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 16px;
+            color: #2c3e50;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            font-size: 11px;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        th,
+        td {
+            border: 1px solid #cbd5e1;
+            padding: 6px;
+        }
+
+        th {
+            background-color: #f1f5f9;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .total-row {
+            background-color: #e2e8f0;
+            font-weight: bold;
+        }
+
+        .danger {
+            color: #dc2626;
+        }
     </style>
 </head>
+
 <body>
 
-    <div class="header">
-        <h1>Laporan Piutang Mahasiswa</h1>
-        <p>Portal Layanan Digital BTSI - Universitas Stella Maris Sumba</p>
-        <p>Dicetak pada: {{ now()->format('d/m/Y H:i') }}</p>
-    </div>
+
+    @include('pdf.partials.header', [
+    'judulDokumen' => 'Laporan Rekapitulasi Keuangan',
+    'infoBaris' => [
+    'Dicetak pada: '.now()->format('d/m/Y H:i'),
+    ],
+    ])
+
+
 
     <table>
         <thead>
@@ -54,11 +109,11 @@
                 <td class="text-center">{{ $row->tenggat_waktu ? date('d-m-Y', strtotime($row->tenggat_waktu)) : '-' }}</td>
                 <td class="text-center">
                     @if(is_null($row->hari_terlambat))
-                        -
+                    -
                     @elseif($row->hari_terlambat > 0)
-                        {{ $row->hari_terlambat }} Hari
+                    {{ $row->hari_terlambat }} Hari
                     @else
-                        Belum
+                    Belum
                     @endif
                 </td>
             </tr>
@@ -67,7 +122,7 @@
                 <td colspan="10" class="text-center">Tidak ada data piutang pada filter ini.</td>
             </tr>
             @endforelse
-            
+
             @if($data->count() > 0)
             <tr class="total-row">
                 <td colspan="7" class="text-right">TOTAL PIUTANG KESELURUHAN</td>
@@ -79,4 +134,5 @@
     </table>
 
 </body>
+
 </html>

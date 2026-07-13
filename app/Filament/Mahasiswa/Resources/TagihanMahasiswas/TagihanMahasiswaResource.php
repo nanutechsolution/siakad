@@ -10,10 +10,8 @@ use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Schemas\TagihanMahasiswaI
 use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Tables\TagihanMahasiswasTable;
 use App\Models\Mahasiswa;
 use App\Models\TagihanMahasiswa;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -32,9 +30,17 @@ class TagihanMahasiswaResource extends Resource
      */
     public static function getEloquentQuery(): Builder
     {
-        $mahasiswa = Mahasiswa::where('person_id', Auth::user()->person_id)->first();
+        $mahasiswa = Mahasiswa::where(
+            'person_id',
+            Auth::user()->person_id
+        )->first();
 
         return parent::getEloquentQuery()
+            ->with([
+                'details',
+                'pembayarans',
+                'tahunAkademik',
+            ])
             ->where('mahasiswa_id', $mahasiswa?->id ?? 0);
     }
     public static function form(Schema $schema): Schema

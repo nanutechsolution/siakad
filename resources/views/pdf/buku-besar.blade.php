@@ -1,32 +1,97 @@
 <!DOCTYPE html>
 <html lang="id">
+
 <head>
     <meta charset="UTF-8">
     <title>Buku Besar - {{ $info->nim }}</title>
     <style>
-        body { font-family: sans-serif; font-size: 11px; color: #333; }
-        .header { text-align: center; margin-bottom: 20px; border-bottom: 2px solid #2c3e50; padding-bottom: 10px; }
-        .header h1 { margin: 0; font-size: 16px; color: #2c3e50; text-transform: uppercase; }
-        .header p { margin: 5px 0 0; font-size: 11px; }
-        .info-table { width: 100%; margin-bottom: 20px; border: none; }
-        .info-table td { padding: 4px; border: none; font-size: 12px; }
-        .info-table td:first-child { width: 120px; font-weight: bold; }
-        .ledger-table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-        .ledger-table th, .ledger-table td { border: 1px solid #cbd5e1; padding: 6px; }
-        .ledger-table th { background-color: #f1f5f9; text-align: left; font-size: 10px; text-transform: uppercase; }
-        .text-right { text-align: right; }
-        .text-center { text-align: center; }
-        .text-danger { color: #dc2626; }
-        .text-success { color: #16a34a; }
-        .font-bold { font-weight: bold; }
+        body {
+            font-family: sans-serif;
+            font-size: 11px;
+            color: #333;
+        }
+
+        .header {
+            text-align: center;
+            margin-bottom: 20px;
+            border-bottom: 2px solid #2c3e50;
+            padding-bottom: 10px;
+        }
+
+        .header h1 {
+            margin: 0;
+            font-size: 16px;
+            color: #2c3e50;
+            text-transform: uppercase;
+        }
+
+        .header p {
+            margin: 5px 0 0;
+            font-size: 11px;
+        }
+
+        .info-table {
+            width: 100%;
+            margin-bottom: 20px;
+            border: none;
+        }
+
+        .info-table td {
+            padding: 4px;
+            border: none;
+            font-size: 12px;
+        }
+
+        .info-table td:first-child {
+            width: 120px;
+            font-weight: bold;
+        }
+
+        .ledger-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+        }
+
+        .ledger-table th,
+        .ledger-table td {
+            border: 1px solid #cbd5e1;
+            padding: 6px;
+        }
+
+        .ledger-table th {
+            background-color: #f1f5f9;
+            text-align: left;
+            font-size: 10px;
+            text-transform: uppercase;
+        }
+
+        .text-right {
+            text-align: right;
+        }
+
+        .text-center {
+            text-align: center;
+        }
+
+        .text-danger {
+            color: #dc2626;
+        }
+
+        .text-success {
+            color: #16a34a;
+        }
+
+        .font-bold {
+            font-weight: bold;
+        }
     </style>
 </head>
+
 <body>
 
-    <div class="header">
-        <h1>Buku Besar Mahasiswa</h1>
-        <p>Portal Layanan Digital BTSI - Universitas Stella Maris Sumba</p>
-    </div>
+    @include('pdf.partials.header', ['judulDokumen' => 'Buku Besar Mahasiswa'])
+
 
     <table class="info-table">
         <tr>
@@ -78,4 +143,5 @@
     <p style="text-align: right; font-style: italic; font-size: 10px;">Dicetak pada: {{ now()->format('d/m/Y H:i') }}</p>
 
 </body>
+
 </html>

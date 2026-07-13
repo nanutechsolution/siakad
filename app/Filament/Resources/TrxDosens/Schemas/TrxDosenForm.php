@@ -33,7 +33,9 @@ class TrxDosenForm
                     ->label('Jenis Dosen')
                     ->options([
                         'TETAP' => 'Dosen Tetap',
-                        'TIDAK_TETAP' => 'Dosen Tidak Tetap',
+                        'LB' => 'Dosen Luar Biasa',
+                        'PRAKTISI' => 'Praktisi',
+                        'TIDAK_TETAP' => 'Tidak Tetap',
                     ])
                     ->default('TETAP')
                     ->required(),
@@ -59,7 +61,7 @@ class TrxDosenForm
                     ->label('Data Tambahan')
                     ->keyLabel('Field')
                     ->valueLabel('Nilai')
-                    ->addButtonLabel('Tambah Data')
+                    ->addActionLabel('Tambah Data')
                     ->columnSpanFull(),
             ]);
     }

@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JadwalKuliahs\Schemas;
 
 use App\Models\JadwalKuliah;
+use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -15,6 +16,9 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Closure;
+use Filament\Schemas\Components\Utilities\Set;
+use Illuminate\Database\Eloquent\Builder;
+
 class JadwalKuliahForm
 {
     public static function configure(Schema $schema): Schema
@@ -29,27 +33,74 @@ class JadwalKuliahForm
                                 ->relationship('tahunAkademik', 'nama_tahun')
                                 ->required()
                                 ->searchable()
-                                ->preload(),
-
-                            Select::make('mata_kuliah_id')
-                                ->label('Mata Kuliah')
-                                ->relationship('mataKuliah', 'nama_mk')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
-
+                                ->preload()
+                                ->default(function () {
+                                    return RefTahunAkademik::where('is_active', true)->first()?->id;
+                                }),
                             Select::make('kurikulum_id')
                                 ->label('Kurikulum (Opsional)')
                                 ->relationship('kurikulum', 'nama_kurikulum')
                                 ->searchable()
-                                ->preload(),
+                                ->required()
+                                ->preload()
+                                ->live() // Menjadikan kolom ini reaktif saat nilainya berubah
+                                ->afterStateUpdated(function (Set $set) {
+                                    // Ketika kurikulum diganti, kosongkan pilihan mata kuliah sebelumnya
+                                    $set('mata_kuliah_id', null);
+                                    $set('kelas_id', null);
+                                }),
+                            Select::make('mata_kuliah_id')
+                                ->label('Mata Kuliah')
+                                ->relationship(
+                                    name: 'mataKuliah',
+                                    titleAttribute: 'nama_mk',
+                                    modifyQueryUsing: function (Builder $query, Get $get) {
+                                        $kurikulumId = $get('kurikulum_id');
 
-                            Select::make('kelas_id')
-                                ->label('Kelas')
-                                ->relationship('kelas', 'nama_kelas')
+                                        // Jika kurikulum dipilih, filter mata kuliah yang terdaftar di kurikulum tersebut lewat relasi pivot
+                                        return $query->when(
+                                            $kurikulumId,
+                                            function ($q) use ($kurikulumId) {
+                                                // Pastikan di model MataKuliah Anda sudah mendefinisikan relasi 'kurikulums' (BelongsToMany)
+                                                return $q->whereHas('kurikulums', function ($pivotQuery) use ($kurikulumId) {
+                                                    $pivotQuery->where('master_kurikulums.id', $kurikulumId);
+                                                });
+                                            }
+                                        );
+                                    }
+                                )
                                 ->required()
                                 ->searchable()
-                                ->preload(),
+                                ->preload()
+                                ->key('mata_kuliah_by_kurikulum'),
+                            Select::make('kelas_id')
+                                ->label('Kelas')
+                                ->relationship(
+                                    name: 'kelas',
+                                    titleAttribute: 'nama_kelas',
+                                    modifyQueryUsing: function (Builder $query, Get $get) {
+                                        $kurikulumId = $get('kurikulum_id');
+
+                                        // Jika kurikulum sudah dipilih, cari tahu prodi_id dari kurikulum tersebut
+                                        return $query->when(
+                                            $kurikulumId,
+                                            function ($q) use ($kurikulumId) {
+                                                return $q->whereHas('prodi', function ($prodiQuery) use ($kurikulumId) {
+                                                    // Filter kelas berdasarkan prodi_id yang ada di tabel master_kurikulums
+                                                    $prodiQuery->whereIn('ref_prodi.id', function ($subQuery) use ($kurikulumId) {
+                                                        $subQuery->select('prodi_id')
+                                                            ->from('master_kurikulums')
+                                                            ->where('id', $kurikulumId);
+                                                    });
+                                                });
+                                            }
+                                        );
+                                    }
+                                )
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->key('kelas_by_kurikulum_prodi'),
                         ])->columns(2),
 
                     Section::make('Waktu & Tempat')
@@ -180,9 +231,11 @@ class JadwalKuliahForm
                                     Select::make('dosen_id')
                                         ->label('Nama Dosen')
                                         ->options(
-                                            TrxDosen::with('person')
+                                            TrxDosen::with('person.gelars')
                                                 ->get()
-                                                ->pluck('person.nama_lengkap', 'id')
+                                                ->mapWithKeys(fn($dosen) => [
+                                                    $dosen->id => $dosen->person?->nama_dengan_gelar ?? '-'
+                                                ])
                                         )
                                         ->required()
                                         ->searchable()

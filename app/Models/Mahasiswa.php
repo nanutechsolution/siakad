@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\StatusRisikoAkademikEnum;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Mahasiswa extends Model
@@ -103,9 +103,23 @@ class Mahasiswa extends Model
      */
     public function riwayatStatus(): HasMany
     {
-        return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id');
+        return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id')->orderBy('tahun_akademik_id');
     }
-    
+    public function tagihanMahasiswas(): HasMany
+    {
+        return $this->hasMany(TagihanMahasiswa::class, 'mahasiswa_id');
+    }
+
+    /**
+     * Total tunggakan yang belum lunas (status_bayar != LUNAS).
+     * sisa_tagihan sudah generated column di DB (total_tagihan - total_bayar).
+     */
+    public function totalTunggakan(): float
+    {
+        return (float) $this->tagihanMahasiswas()
+            ->where('status_bayar', '!=', 'LUNAS')
+            ->sum('sisa_tagihan');
+    }
     /**
      * Relasi ke Kelas (Inverse dari kelas->mahasiswas)
      */
@@ -114,5 +128,40 @@ class Mahasiswa extends Model
         return $this->belongsToMany(Kelas::class, 'mahasiswa_kelas', 'mahasiswa_id', 'kelas_id')
             ->withPivot('id', 'tanggal_masuk', 'tanggal_keluar')
             ->withTimestamps();
+    }
+
+    /**
+     * Status risiko akademik sederhana berdasar IPK terakhir & tren IPS.
+     * Sesuaikan ambang batas (2.00) dengan aturan akademik kampusmu.
+     */
+    public function statusRisiko(): StatusRisikoAkademikEnum
+    {
+        $riwayat = $this->riwayatStatus;
+        $terakhir = $riwayat->last();
+
+        if (! $terakhir) {
+            return StatusRisikoAkademikEnum::BELUM_ADA_DATA;
+        }
+
+        if ((float) $terakhir->ipk < 2.00) {
+            return  StatusRisikoAkademikEnum::KRITIS;
+        }
+
+        $duaTerakhir = $riwayat->slice(-2)->values();
+        if ($duaTerakhir->count() === 2 && (float) $duaTerakhir[1]->ips < (float) $duaTerakhir[0]->ips) {
+            return StatusRisikoAkademikEnum::WASPADA;
+        }
+
+        return StatusRisikoAkademikEnum::AMAN;
+    }
+
+    /**
+     * Cari akun User (login) milik mahasiswa ini via person_id.
+     * Bukan relasi Eloquent karena users<->mahasiswas hanya sibling lewat ref_person,
+     * bukan parent-child, jadi query langsung lebih jelas daripada hasOneThrough yang dipaksakan.
+     */
+    public function akunUser(): ?\App\Models\User
+    {
+        return \App\Models\User::where('person_id', $this->person_id)->first();
     }
 }

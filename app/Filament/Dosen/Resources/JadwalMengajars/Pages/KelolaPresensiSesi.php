@@ -3,6 +3,7 @@
 namespace App\Filament\Dosen\Resources\JadwalMengajars\Pages;
 
 use App\Enums\StatusKehadiran;
+use App\Enums\StatusSesiPerkuliahan;
 use App\Filament\Dosen\Resources\JadwalMengajars\JadwalMengajarResource;
 use App\Models\PerkuliahanAbsensi;
 use App\Models\PerkuliahanSesi;

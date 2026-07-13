@@ -111,7 +111,7 @@ class SesiPerkuliahanRelationManager extends RelationManager
                 CreateAction::make()->label('Buat Rencana Sesi'),
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->visible(fn($record) => $record->status_sesi !== StatusSesiPerkuliahan::Selesai),
                 Action::make('buka_sesi')
                     ->label('Buka Sesi')
                     ->icon('heroicon-o-play')

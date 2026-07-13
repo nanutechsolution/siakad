@@ -74,6 +74,10 @@ class TagihanMahasiswa extends Model
         return $this->hasMany(TagihanMahasiswaDetail::class, 'tagihan_id');
     }
 
+    public function pembayaran(): \Illuminate\Database\Eloquent\Relations\HasMany
+    {
+        return $this->hasMany(PembayaranMahasiswa::class, 'tagihan_id');
+    }
     /**
      * Get the payments made against this bill.
      */
@@ -88,5 +92,22 @@ class TagihanMahasiswa extends Model
     public function adjustments(): HasMany
     {
         return $this->hasMany(KeuanganAdjustment::class, 'tagihan_id');
+    }
+
+    public function getSisaTagihanAttribute(): float
+    {
+        return max(0, $this->total_tagihan - $this->total_bayar);
+    }
+
+    public function getPersentasePembayaranAttribute(): int
+    {
+        if ($this->total_tagihan == 0) {
+            return 0;
+        }
+
+        return min(
+            100,
+            round(($this->total_bayar / $this->total_tagihan) * 100)
+        );
     }
 }

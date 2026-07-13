@@ -2,9 +2,11 @@
 
 namespace App\Filament\Dosen\Resources\JadwalMengajars\Tables;
 
+use App\Filament\Dosen\Resources\JadwalMengajars\JadwalMengajarResource;
 use App\Models\JadwalKuliah;
 use App\Models\RefTahunAkademik;
 use Carbon\Carbon;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -87,6 +89,11 @@ class JadwalMengajarsTable
             ->striped()
             ->recordActions([
                 ViewAction::make(),
+                Action::make('rekapKehadiran')
+                    ->label('Rekap Kehadiran')
+                    ->icon('heroicon-o-clipboard-document-check')
+                    ->color('gray')
+                    ->url(fn($record) => JadwalMengajarResource::getUrl('rekap-kehadiran', ['record' => $record])),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([]),
