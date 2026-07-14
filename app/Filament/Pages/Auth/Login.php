@@ -6,6 +6,7 @@ use Filament\Auth\Pages\Login as PagesLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\ValidationException;
 
 class Login extends PagesLogin
 {
@@ -19,7 +20,12 @@ class Login extends PagesLogin
             ])
             ->statePath('data');
     }
-
+    protected function throwFailureValidationException(): never
+    {
+        throw ValidationException::withMessages([
+            'data.username' => __('filament-panels::auth/pages/login.messages.failed'),
+        ]);
+    }
     // Membuat form input khusus untuk Username
     protected function getUsernameFormComponent(): Component
     {

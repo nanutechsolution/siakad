@@ -6,6 +6,7 @@ use Filament\Auth\Pages\Login as PagesLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
 use Filament\Schemas\Schema;
+use Illuminate\Validation\ValidationException;
 
 class LoginDosen extends PagesLogin
 {
@@ -29,6 +30,12 @@ class LoginDosen extends PagesLogin
             ->autocomplete('username')
             ->autofocus()
             ->extraInputAttributes(['tabindex' => 1]);
+    }
+    protected function throwFailureValidationException(): never
+    {
+        throw ValidationException::withMessages([
+            'data.username' => __('filament-panels::auth/pages/login.messages.failed'),
+        ]);
     }
 
     protected function getCredentialsFromFormData(array $data): array
