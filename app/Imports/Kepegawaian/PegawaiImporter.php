@@ -27,12 +27,6 @@ class PegawaiImporter extends Importer
                 ->rules([
                     'required',
                     'digits:16',
-                ])
-                ->validationMessages([
-                    'digits' => 'NIK harus 16 digit angka. Kemungkinan kolom NIK di file sumber ' .
-                        'berformat Angka (bukan Teks) sehingga digit nol di depan hilang / angka ' .
-                        'terbulatkan. Format ulang kolom NIK di Excel sebagai Text sebelum export.',
-                    'required' => 'NIK wajib diisi.',
                 ]),
 
 
@@ -83,9 +77,6 @@ class PegawaiImporter extends Importer
                 ->rules([
                     'nullable',
                     'in:L,P',
-                ])
-                ->validationMessages([
-                    'in' => 'Jenis Kelamin harus L atau P (menerima juga "Laki-laki"/"Perempuan").',
                 ]),
 
 
@@ -111,12 +102,26 @@ class PegawaiImporter extends Importer
                 ->castStateUsing(fn ($state) => self::normalizeJenisPegawai($state))
                 ->rules([
                     'required',
-                ])
-                ->validationMessages([
-                    'required' => 'Jenis Pegawai tidak dikenali. Nilai valid: PNS, PPPK, ' .
-                        'TETAP YAYASAN, KONTRAK, HONORER (variasi penulisan umum juga diterima).',
                 ]),
 
+        ];
+    }
+
+
+    /**
+     * Pesan validasi custom di Filament Import diatur di level Importer,
+     * bukan per ImportColumn. Key format: '{nama_kolom}.{rule}'.
+     */
+    public function getValidationMessages(): array
+    {
+        return [
+            'nik.required' => 'NIK wajib diisi.',
+            'nik.digits' => 'NIK harus 16 digit angka. Kemungkinan kolom NIK di file sumber ' .
+                'berformat Angka (bukan Teks) sehingga digit nol di depan hilang / angka ' .
+                'terbulatkan. Format ulang kolom NIK di Excel sebagai Text sebelum export.',
+            'jenis_kelamin.in' => 'Jenis Kelamin harus L atau P (menerima juga "Laki-laki"/"Perempuan").',
+            'jenis_pegawai.required' => 'Jenis Pegawai tidak dikenali. Nilai valid: PNS, PPPK, ' .
+                'TETAP YAYASAN, KONTRAK, HONORER (variasi penulisan umum juga diterima).',
         ];
     }
 
