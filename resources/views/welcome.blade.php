@@ -1,19 +1,18 @@
 <!DOCTYPE html>
 <html lang="{{ str_replace('_', '-', app()->getLocale()) }}">
+
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>SIAKAD | Universitas Stella Maris Sumba</title>
-
-    <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.bunny.net">
     <link href="https://fonts.bunny.net/css?family=inter:300,400,500,600,700&display=swap" rel="stylesheet" />
-
+    <link rel="icon" href="{{ asset('favicons/logo-unmaris.svg') }}" type="image/svg+xml">
     <!-- Styles / Scripts -->
     @if (file_exists(public_path('build/manifest.json')) || file_exists(public_path('hot')))
-        @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @vite(['resources/css/app.css', 'resources/js/app.js'])
     @else
-        <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.tailwindcss.com"></script>
     @endif
 
     <script>
@@ -26,7 +25,7 @@
                     colors: {
                         unmaris: {
                             // Menggunakan warna biru dongker (Navy) yang senada dengan warna logo
-                            900: '#1e1b4b', 
+                            900: '#1e1b4b',
                             800: '#312e81',
                             600: '#4f46e5',
                             100: '#e0e7ff',
@@ -43,6 +42,7 @@
         }
     </script>
 </head>
+
 <body class="bg-slate-50 antialiased min-h-screen flex flex-col relative overflow-x-hidden">
 
     <!-- Background Ornaments (Subtle & Professional) -->
@@ -56,7 +56,7 @@
         <div class="flex items-center gap-3">
             <!-- Menampilkan Logo Asli -->
             <img src="{{ asset('images/logo-unmaris.png') }}" alt="Logo Universitas Stella Maris Sumba" class="w-12 h-12 object-contain drop-shadow-sm">
-            
+
             <div>
                 <h1 class="text-sm font-bold text-unmaris-900 tracking-wide uppercase">Univ. Stella Maris Sumba</h1>
                 <p class="text-xs text-slate-500 font-medium">Sistem Informasi Akademik</p>
@@ -69,11 +69,11 @@
 
     <!-- Main Content -->
     <main class="relative z-10 flex-grow flex flex-col items-center justify-center px-4 sm:px-6 py-12">
-        
+
         <div class="text-center max-w-3xl mx-auto mb-14">
             <!-- Menampilkan Logo di Tengah, ukuran diperbesar -->
             <img src="{{ asset('images/logo-unmaris.png') }}" alt="SIAKAD Unmaris" class="w-32 h-32 mx-auto mb-6 object-contain drop-shadow-md">
-            
+
             <h2 class="text-3xl md:text-5xl font-extrabold text-unmaris-900 tracking-tight mb-4">
                 Selamat Datang di SIAKAD
             </h2>
@@ -84,7 +84,7 @@
 
         <!-- Portal Cards -->
         <div class="grid grid-cols-1 md:grid-cols-3 gap-6 w-full max-w-5xl mb-12">
-            
+
             <!-- Mahasiswa -->
             <a href="/mahasiswa" class="group relative bg-white rounded-xl border border-gray-200 p-8 shadow-sm hover:shadow-xl hover:border-unmaris-600 hover:ring-1 hover:ring-unmaris-600 transition-all duration-300 flex flex-col h-full">
                 <div class="mb-6 inline-flex items-center justify-center w-14 h-14 rounded-lg bg-unmaris-100 text-unmaris-800 group-hover:bg-unmaris-800 group-hover:text-white transition-colors duration-300">
@@ -97,7 +97,7 @@
                     Akses layanan akademik mahasiswa termasuk Kartu Rencana Studi (KRS), transkrip nilai, dan jadwal perkuliahan.
                 </p>
                 <div class="flex items-center text-sm font-semibold text-unmaris-800 group-hover:text-unmaris-600 transition-colors">
-                    Masuk Portal 
+                    Masuk Portal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
@@ -116,7 +116,7 @@
                     Sistem manajemen kegiatan belajar mengajar, input nilai mahasiswa, absensi, dan bimbingan akademik.
                 </p>
                 <div class="flex items-center text-sm font-semibold text-unmaris-800 group-hover:text-unmaris-600 transition-colors">
-                    Masuk Portal 
+                    Masuk Portal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
@@ -135,7 +135,7 @@
                     Pusat kendali master data, pengaturan periode semester, manajemen pengguna, dan laporan operasional.
                 </p>
                 <div class="flex items-center text-sm font-semibold text-unmaris-800 group-hover:text-unmaris-600 transition-colors">
-                    Masuk Portal 
+                    Masuk Portal
                     <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="w-4 h-4 ml-2 transform group-hover:translate-x-1 transition-transform">
                         <path stroke-linecap="round" stroke-linejoin="round" d="M13.5 4.5L21 12m0 0l-7.5 7.5M21 12H3" />
                     </svg>
@@ -148,7 +148,7 @@
     <!-- Professional Footer Section -->
     <footer class="relative z-10 border-t border-gray-200 bg-white pt-12 pb-6">
         <div class="max-w-7xl mx-auto px-6 lg:px-12">
-            
+
             <!-- Footer Links Grid -->
             <div class="grid grid-cols-1 md:grid-cols-3 gap-8 mb-12">
                 <!-- Kolom 1: Info Kampus -->
@@ -176,23 +176,13 @@
                     <h4 class="font-bold text-unmaris-900 mb-4 tracking-wide">Layanan Akademik</h4>
                     <ul class="space-y-3 text-sm text-slate-600">
                         <li>
-                            <a href="#" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
+                            <a href="unmarssumba.ac.id" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
                                 <span class="w-1.5 h-1.5 rounded-full bg-unmaris-500"></span> Website Resmi UNMARIS
                             </a>
                         </li>
                         <li>
-                            <a href="#" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
+                            <a href="pmbunmarssumba.ac.id" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
                                 <span class="w-1.5 h-1.5 rounded-full bg-unmaris-500"></span> Penerimaan Mahasiswa Baru (PMB)
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-unmaris-500"></span> E-Learning / LMS
-                            </a>
-                        </li>
-                        <li>
-                            <a href="#" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
-                                <span class="w-1.5 h-1.5 rounded-full bg-unmaris-500"></span> Perpustakaan Digital
                             </a>
                         </li>
                     </ul>
@@ -204,13 +194,17 @@
                     <ul class="space-y-3 text-sm text-slate-600">
                         <li>
                             <a href="#" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M21.75 6.75v10.5a2.25 2.25 0 01-2.25 2.25h-15a2.25 2.25 0 01-2.25-2.25V6.75m19.5 0A2.25 2.25 0 0019.5 4.5h-15a2.25 2.25 0 00-2.25 2.25m19.5 0v.243a2.25 2.25 0 01-1.07 1.916l-7.5 4.615a2.25 2.25 0 01-2.36 0L3.32 8.91a2.25 2.25 0 01-1.07-1.916V6.75" />
+                                </svg>
                                 helpdesk@unmaris.ac.id
                             </a>
                         </li>
                         <li>
                             <a href="#" class="hover:text-unmaris-600 hover:underline transition-colors flex items-center gap-2">
-                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4"><path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.896-1.596-5.48-4.08-7.074-6.996l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" /></svg>
+                                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor" class="w-4 h-4">
+                                    <path stroke-linecap="round" stroke-linejoin="round" d="M2.25 6.75c0 8.284 6.716 15 15 15h2.25a2.25 2.25 0 002.25-2.25v-1.372c0-.516-.351-.966-.852-1.091l-4.423-1.106c-.44-.11-.902.055-1.173.417l-.97 1.293c-2.896-1.596-5.48-4.08-7.074-6.996l1.293-.97c.363-.271.527-.734.417-1.173L6.963 3.102a1.125 1.125 0 00-1.091-.852H4.5A2.25 2.25 0 002.25 4.5v2.25z" />
+                                </svg>
                                 IT Support: (0387) 123456
                             </a>
                         </li>
@@ -228,13 +222,14 @@
                 </p>
                 <div class="flex items-center gap-2">
                     <p class="text-xs text-slate-600 bg-slate-100 px-3 py-1.5 rounded-full border border-gray-200">
-                        Dikembangkan oleh <span class="font-semibold text-unmaris-600">BTSI</span>  <span class="font-semibold text-yellow-500">UNMARIS</span>
+                        Dikembangkan oleh <span class="font-semibold text-unmaris-600">BTSI</span> <span class="font-semibold text-yellow-500">UNMARIS</span>
                     </p>
                 </div>
             </div>
-            
+
         </div>
     </footer>
 
 </body>
+
 </html>
