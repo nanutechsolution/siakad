@@ -3,9 +3,9 @@
 namespace App\Filament\Widgets;
 
 use App\Models\Mahasiswa;
-use App\Models\MasterKurikulum; 
+use App\Models\MasterKurikulum;
 use App\Models\RefTahunAkademik;
-use App\Models\TrxDosen; 
+use App\Models\TrxDosen;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;

@@ -398,7 +398,7 @@ return [
         'batalkan_beasiswa'        => 'Batalkan Beasiswa',
         'hentikan_beasiswa'        => 'Hentikan Beasiswa',
 
-        
+
         // Adjustment Keuangan
         'CreateKeuanganAdjustment'   => 'Create Keuangan Adjustment',
         'UpdateKeuanganAdjustment'   => 'Update Keuangan Adjustment',
@@ -414,6 +414,9 @@ return [
         'CancelKeuanganAdjustment'   => 'Cancel Keuangan Adjustment',
         'PrintKeuanganAdjustment'    => 'Print Keuangan Adjustment',
         'ExportKeuanganAdjustment'   => 'Export Keuangan Adjustment',
+        'download-backup' => 'Download Backup',
+        'delete-backup'   => 'Delete Backup',
+        'create-backup'   => 'Create Backup',
     ],
     /*
     |--------------------------------------------------------------------------

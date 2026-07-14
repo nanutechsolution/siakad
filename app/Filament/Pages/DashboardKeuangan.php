@@ -3,21 +3,37 @@
 namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Widgets\KeuanganOverview;
+use App\Filament\Widgets\KeuanganPendingVerifikasiList;
+use App\Filament\Widgets\KeuanganTrendChart;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
-use Filament\Pages\Page;
+use Filament\Pages\Dashboard as BaseDashboard;
 use UnitEnum;
 
-class DashboardKeuangan extends Page
+class DashboardKeuangan extends BaseDashboard
 {
     use HasPageShield;
+
+    protected static string $routePath = '/dashboard-keuangan';
+
     protected static ?string $navigationLabel = 'Dashboard Keuangan';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::DASHBOARD->value;
     protected static ?int $navigationSort = 2;
-    protected string $view = 'filament.pages.dashboard-keuangan';
-
 
     public function getWidgets(): array
     {
-        return [];
+        return [
+            KeuanganOverview::class,
+            KeuanganTrendChart::class,
+            KeuanganPendingVerifikasiList::class,
+        ];
+    }
+
+    public function getColumns(): int|array
+    {
+        return [
+            'md' => 2,
+            'xl' => 2,
+        ];
     }
 }

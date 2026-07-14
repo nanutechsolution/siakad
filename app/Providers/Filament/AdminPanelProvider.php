@@ -22,6 +22,7 @@ use App\Filament\Pages\Auth\Login;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
 use Filament\Navigation\NavigationGroup;
+use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 
 class AdminPanelProvider extends PanelProvider
 {
@@ -44,9 +45,6 @@ class AdminPanelProvider extends PanelProvider
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
-            ->pages([
-                Dashboard::class,
-            ])
             //  ->brandLogo(asset('images/logo-unmaris.png'))
             ->collapsibleNavigationGroups(true)
             ->collapsedSidebarWidth(false)
@@ -58,10 +56,19 @@ class AdminPanelProvider extends PanelProvider
                         ->icon($group->icon());
                 }, AppNavigationGroup::cases())
             )
+            ->pages([
+                Dashboard::class,
+            ])
             ->breadcrumbs(false)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
             ->plugins([
+                FilamentSpatieLaravelBackupPlugin::make()
+                    ->navigationIcon('heroicon-o-cpu-chip')
+                    ->navigationLabel('Backups')
+                    ->navigationGroup('Settings')
+                    ->navigationGroup(AppNavigationGroup::SISTEM->value)
+                    ->navigationSort(3),
                 ActivityLogPlugin::make()
                     ->label('Log')
                     ->pluralLabel('Logs')
