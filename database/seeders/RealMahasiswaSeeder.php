@@ -22,7 +22,7 @@ class RealMahasiswaSeeder extends Seeder
     {
         $this->command->info('🚀 Memulai import SEMUA data Mahasiswa Real dari CSV...');
         $limit = 3000; // jumlah maksimal mahasiswa yang mau diimport
-        $startAngkatan = 2025; // angkatan minimal yang mau diimport
+        $startAngkatan = 2022; // angkatan minimal yang mau diimport
         $csvPath = database_path('csv/mahasiswa_real.csv');
 
         if (!File::exists($csvPath)) {
