@@ -58,19 +58,23 @@ class ProcessCamabaStaging implements ShouldQueue
                 'tempat_lahir'  => $payload['tempat_lahir'] ?? null,
                 'jenis_kelamin' => $payload['jenis_kelamin'] ?? null,
             ]);
-
             // 3. Buat Akun Filament (Users)
             $passwordRaw = date('Ymd', strtotime($person->tanggal_lahir));
             $emailUser = $person->email ?? ($this->staging->external_id . '@camaba.local');
-
-            User::create([
-                'person_id' => $person->id,
-                'name'      => $person->nama_lengkap,
-                'username'  => $this->staging->external_id,
-                'email'     => $emailUser,
-                'password'  => Hash::make($passwordRaw),
-                'is_active' => 1,
-            ]);
+            try {
+                $user = User::create([
+                    'person_id' => $person->id,
+                    'name'      => $person->nama_lengkap,
+                    'username'  => $this->staging->external_id,
+                    'email'     => $emailUser,
+                    'password'  => Hash::make($passwordRaw),
+                    'is_active' => 1,
+                ]);
+                Log::info("User created successfully: " . $user->id);
+            } catch (\Exception $e) {
+                Log::error("USER CREATE FAILED: " . $e->getMessage());
+                throw $e; // Ini akan memicu rollback dan muncul di log error
+            }
 
             // 4. Susun Data Tambahan (Orang Tua & Sekolah)
             $dataTambahan = [
@@ -101,7 +105,6 @@ class ProcessCamabaStaging implements ShouldQueue
                 ['id_tahun' => $angkatanTahun],
                 ['is_active_pmb' => 0] // Default value sesuai skema
             );
-
             // 5. Buat Data Mahasiswa Sementara (NIM berawalan PMB-)
             $mahasiswa = Mahasiswa::create([
                 'person_id'     => $person->id,
@@ -109,7 +112,7 @@ class ProcessCamabaStaging implements ShouldQueue
                 'angkatan_id'   => (int) $payload['tahun_masuk'],
                 'prodi_id'      => $prodi->id,
                 'program_id'    => $programId,
-                'data_tambahan' => $dataTambahan, // Disimpan sebagai JSON di tabel
+                'data_tambahan' => $dataTambahan,
             ]);
 
             // 6. Tandai Sukses

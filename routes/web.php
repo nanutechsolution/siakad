@@ -3,6 +3,7 @@
 use App\Http\Controllers\Akademik\CetakKrsController;
 use App\Http\Controllers\Bara\NilaiRekapExportController;
 use App\Models\PembayaranMahasiswa;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 
@@ -61,5 +62,15 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/bara/nilai/export', NilaiRekapExportController::class)
         ->name('bara.nilai.export');
 });
+Route::get('/mahasiswa/reauth', function () {
+    // 1. Logout dari guard mahasiswa
+    Auth::guard('mahasiswa')->logout();
 
+    // 2. Bersihkan sesi agar tidak ada data sampah dari sesi PMB
+    session()->invalidate();
+    session()->regenerateToken();
 
+    // 3. Redirect ke halaman login dengan pesan sukses yang jelas
+    return redirect('/mahasiswa/login')
+        ->with('status', 'NIM Anda sudah aktif! Silakan login kembali menggunakan NIM: ' . request('nim'));
+})->middleware('web');

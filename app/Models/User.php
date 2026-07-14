@@ -14,20 +14,29 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Foundation\Auth\User as Authenticatable;
+use Illuminate\Notifications\HasDatabaseNotifications;
 use Illuminate\Notifications\Notifiable;
 use Laravel\Sanctum\HasApiTokens;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 use Spatie\Permission\Traits\HasRoles;
 
-#[Fillable(['name', 'email', 'password', 'username', 'is_active'])]
 #[Hidden(['password', 'remember_token'])]
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasUuids, SoftDeletes, HasRoles, HasApiTokens;
+    use HasFactory, Notifiable, HasUuids, SoftDeletes, HasRoles, HasApiTokens, HasDatabaseNotifications;
     protected $keyType = 'string';
     public $incrementing = false;
+
+    protected $fillable = [
+        'name',
+        'email',
+        'person_id', // Pastikan ini ada
+        'password',
+        'username',
+        'is_active'
+    ];
     /**
      * Get the attributes that should be cast.
      *

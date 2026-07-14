@@ -55,6 +55,7 @@ class MahasiswaPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->databaseNotifications()
+            ->databaseNotificationsPolling('30s')
             ->navigationGroups(
                 array_map(
                     fn(MahasiswaNavigationGroup $group) =>
