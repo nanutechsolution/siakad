@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Enums\DosenNavigation;
+use App\Filament\Dosen\Pages\Auth\LoginDosen;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -30,7 +32,8 @@ class DosenPanelProvider extends PanelProvider
                 'primary' => Color::Amber,
             ])
             ->profile()
-            ->login()
+            ->defaultThemeMode(ThemeMode::Light)
+            ->login(LoginDosen::class)
             ->viteTheme('resources/css/filament/dosen/theme.css')
             ->brandName('Portal Dosen — UNMARIS')
             ->brandLogo(fn() => view('filament.dosen.logo'))
