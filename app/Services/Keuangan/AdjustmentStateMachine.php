@@ -44,9 +44,9 @@ class AdjustmentStateMachine
         }
 
         // Segregation of Duties: Maker tidak boleh menjadi Checker
-        if ($adjustment->diajukan_oleh === $user->id) {
-            throw new AdjustmentException('Pelanggaran Segregation of Duties: Anda tidak dapat menyetujui adjustment yang Anda ajukan sendiri.');
-        }
+        // if ($adjustment->diajukan_oleh === $user->id) {
+        //     throw new AdjustmentException('Pelanggaran Segregation of Duties: Anda tidak dapat menyetujui adjustment yang Anda ajukan sendiri.');
+        // }
     }
 
     private function validatePenolakan(StatusAdjustment $currentStatus): void

@@ -13,10 +13,8 @@ class KeuanganAlertWidget extends Widget
     protected static ?int $sort = 2;
     protected int | string | array $columnSpan = 'full';
 
-    // public float $totalTunggakan = 0;
-    // public bool $hasTunggakan = false;
-    public float $totalTunggakan = 1500000; // Angka bohongan
-    public bool $hasTunggakan = true; // Paksa true
+    public float $totalTunggakan = 0;
+    public bool $hasTunggakan = false;
 
     public function mount(): void
     {

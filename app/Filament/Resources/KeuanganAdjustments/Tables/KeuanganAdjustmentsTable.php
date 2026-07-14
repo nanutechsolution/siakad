@@ -77,7 +77,7 @@ class KeuanganAdjustmentsTable
 
                 Filter::make('nominal_direction')
                     ->label('Arah Nominal')
-                    ->form([
+                    ->schema([
                         \Filament\Forms\Components\Select::make('arah')
                             ->options([
                                 'pengurangan' => 'Hanya Pengurangan (-)',

@@ -58,6 +58,10 @@ class ProcessCamabaStaging implements ShouldQueue
                 'tempat_lahir'  => $payload['tempat_lahir'] ?? null,
                 'jenis_kelamin' => $payload['jenis_kelamin'] ?? null,
             ]);
+            Log::info('PERSON CREATED', [
+                'id' => $person->id,
+                'attributes' => $person->getAttributes(),
+            ]);
             // 3. Buat Akun Filament (Users)
             $passwordRaw = date('Ymd', strtotime($person->tanggal_lahir));
             $emailUser = $person->email ?? ($this->staging->external_id . '@camaba.local');
@@ -69,6 +73,11 @@ class ProcessCamabaStaging implements ShouldQueue
                     'email'     => $emailUser,
                     'password'  => Hash::make($passwordRaw),
                     'is_active' => 1,
+                ]);
+                Log::info('USER CREATED', [
+                    'id' => $user->id,
+                    'person_id' => $user->person_id,
+                    'attributes' => $user->getAttributes(),
                 ]);
                 Log::info("User created successfully: " . $user->id);
             } catch (\Exception $e) {
@@ -108,7 +117,7 @@ class ProcessCamabaStaging implements ShouldQueue
             // 5. Buat Data Mahasiswa Sementara (NIM berawalan PMB-)
             $mahasiswa = Mahasiswa::create([
                 'person_id'     => $person->id,
-                'nim'           => 'PMB-' . $this->staging->external_id,
+                'nim'           => $this->staging->external_id,
                 'angkatan_id'   => (int) $payload['tahun_masuk'],
                 'prodi_id'      => $prodi->id,
                 'program_id'    => $programId,

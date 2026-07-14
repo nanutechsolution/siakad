@@ -37,7 +37,7 @@ class TagihanMahasiswa extends Model
         return [
             'total_tagihan' => 'decimal:2',
             'total_bayar' => 'decimal:2',
-            'sisa_tagihan' => 'decimal:2', // Virtual column in DB
+            'sisa_tagihan' => 'decimal:2', 
             'tenggat_waktu' => 'date',
         ];
     }
