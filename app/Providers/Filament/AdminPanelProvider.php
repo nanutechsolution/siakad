@@ -59,7 +59,6 @@ class AdminPanelProvider extends PanelProvider
                         ->icon($group->icon());
                 }, AppNavigationGroup::cases())
             )
-            ->spa()
             ->breadcrumbs(false)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
