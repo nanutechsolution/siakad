@@ -61,3 +61,22 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/bara/nilai/export', NilaiRekapExportController::class)
         ->name('bara.nilai.export');
 });
+
+
+Route::get('/test-login', function () {
+    auth()->loginUsingId('019f5f0d-ffb0-72a1-859d-2d841047a9c7');
+
+    return [
+        'auth' => auth()->check(),
+        'id' => auth()->id(),
+        'session' => session()->getId(),
+    ];
+});
+
+Route::get('/test-auth', function () {
+    return [
+        'auth' => auth()->check(),
+        'id' => auth()->id(),
+        'session' => session()->getId(),
+    ];
+});
