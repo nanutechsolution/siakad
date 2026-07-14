@@ -24,7 +24,7 @@ class LoginDosen extends PagesLogin
     protected function getUsernameFormComponent(): Component
     {
         return TextInput::make('username')
-            ->label('Username/NIM')
+            ->label('Username/NIDN/NUPTK')
             ->required()
             ->autocomplete('username')
             ->autofocus()
