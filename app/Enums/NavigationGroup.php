@@ -27,6 +27,8 @@ enum NavigationGroup: string
     case KEPEGAWAIAN = 'Kepegawaian';
 
     case SISTEM = 'Administrasi Sistem';
+    case INTEGRASI = 'Integrasi Sistem';
+    case MONITORING = 'Monitoring Sistem';
 
     public function icon(): string
     {
@@ -54,6 +56,8 @@ enum NavigationGroup: string
             self::KEPEGAWAIAN => 'heroicon-o-users',
 
             self::SISTEM => 'heroicon-o-cog-6-tooth',
+            self::INTEGRASI => 'heroicon-o-arrows-right-left',
+            self::MONITORING => 'heroicon-o-chart-bar',
         };
     }
 }

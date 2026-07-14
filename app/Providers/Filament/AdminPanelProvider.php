@@ -65,14 +65,14 @@ class AdminPanelProvider extends PanelProvider
             ->plugins([
                 FilamentSpatieLaravelBackupPlugin::make()
                     ->navigationIcon('heroicon-o-cpu-chip')
-                    ->navigationLabel('Backups')
-                    ->navigationGroup('Settings')
+                    ->navigationLabel('Backup & Database')
+                    ->navigationGroup('Backup & Database')
                     ->navigationGroup(AppNavigationGroup::SISTEM->value)
-                    ->navigationSort(3),
+                    ->navigationSort(100),
                 ActivityLogPlugin::make()
                     ->label('Log')
                     ->pluralLabel('Logs')
-                    ->navigationGroup(AppNavigationGroup::SISTEM->value),
+                    ->navigationGroup(AppNavigationGroup::MONITORING->value),
                 FilamentShieldPlugin::make()
                     ->navigationGroup(AppNavigationGroup::SISTEM->value)
                     ->navigationSort(99)
