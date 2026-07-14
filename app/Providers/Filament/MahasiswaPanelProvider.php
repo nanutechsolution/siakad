@@ -3,6 +3,8 @@
 namespace App\Providers\Filament;
 
 use App\Enums\MahasiswaNavigationGroup;
+use App\Filament\Mahasiswa\Pages\Auth\LoginMahasiswa;
+use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
@@ -28,7 +30,8 @@ class MahasiswaPanelProvider extends PanelProvider
         return $panel
             ->id('mahasiswa')
             ->path('mahasiswa')
-            ->login()
+            ->defaultThemeMode(ThemeMode::Light)
+            ->login(LoginMahasiswa::class)
             ->colors([
                 'primary' => Color::hex('#D9A441'),
                 'info'    => Color::hex('#2C3F8C'),

@@ -37,7 +37,7 @@ class RefRuangForm
                 Section::make('Konfigurasi Absensi Geospasial')
                     ->description('Gunakan koordinat GPS untuk validasi absensi mahasiswa.')
                     ->schema([
-                        Grid::make(3)->schema([
+                        Grid::make(2)->schema([
                             TextInput::make('latitude')
                                 ->numeric()
                                 ->step(0.00000001)

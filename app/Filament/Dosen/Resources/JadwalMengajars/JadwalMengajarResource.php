@@ -2,8 +2,6 @@
 
 namespace App\Filament\Dosen\Resources\JadwalMengajars;
 
-use App\Filament\Dosen\Resources\JadwalMengajars\Pages\CreateJadwalMengajar;
-use App\Filament\Dosen\Resources\JadwalMengajars\Pages\EditJadwalMengajar;
 use App\Filament\Dosen\Resources\JadwalMengajars\Pages\ListJadwalMengajars;
 use App\Filament\Dosen\Resources\JadwalMengajars\Pages\ViewJadwalMengajar;
 use App\Filament\Dosen\Resources\JadwalMengajars\RelationManagers\SesiPerkuliahanRelationManager;
@@ -11,14 +9,13 @@ use App\Filament\Dosen\Resources\JadwalMengajars\Schemas\JadwalMengajarForm;
 use App\Filament\Dosen\Resources\JadwalMengajars\Schemas\JadwalMengajarInfolist;
 use App\Filament\Dosen\Resources\JadwalMengajars\Tables\JadwalMengajarsTable;
 use App\Models\JadwalKuliah;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Model;
+use Override;
 use UnitEnum;
-
 class JadwalMengajarResource extends Resource
 {
     protected static ?string $model = JadwalKuliah::class;
@@ -74,6 +71,17 @@ class JadwalMengajarResource extends Resource
     public static function table(Table $table): Table
     {
         return JadwalMengajarsTable::configure($table);
+    }
+    #[Override]
+    public static function canView(Model $record): bool
+    {
+        return true;
+    }
+
+    #[Override]
+    public static function canViewAny(): bool
+    {
+        return true;
     }
 
     public static function canCreate(): bool

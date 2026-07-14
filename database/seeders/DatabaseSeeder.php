@@ -2,7 +2,6 @@
 
 namespace Database\Seeders;
 
-use App\Models\User;
 use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 use Illuminate\Database\Seeder;
 
@@ -15,11 +14,40 @@ class DatabaseSeeder extends Seeder
      */
     public function run(): void
     {
-        // User::factory(10)->create();
+        $this->call([
+            SkalaNilaiSeeder::class,
+            RefStatusVerifikasiPembayaranSeeder::class,
+            BankKampusSeeder::class,
+            FakultasProdiSeeder::class,
+            TahunAkademikSeeder::class,
+            AturanSksSeeder::class,
+            RefJabatanSeeder::class,
+            RefGelarSeeder::class,
+            SkalaNilaiSeeder::class,
+            KomponenBiayaSeeder::class,
+            ProgramKelasSeeder::class,
+            MasterMatakuliahTISeeder::class,
+            KurikulumTISeeder::class,
+            MasterMatakuliahPtiSeeder::class,
+            MasterMatakuliahTLSeeder::class,
+            MasterKurikulumPTISeeder::class,
+            MasterKurikulumTLSeeder::class,
+            KurikulumMataKuliahTLSeeder::class,
+            MasterMatakuliahArsSeeder::class,
+            MasterKurikulumArsSeeder::class,
+            KurikulumMataKuliahArsSeeder::class,
+            MasterMatakuliahBisnisDigitalSeeder::class,
+            KurikulumPTISeeder::class,
+            MasterMatakuliahK3Seeder::class,
+            MasterMatakuliahMISeeder::class,
+            KomponenNilaiSeeder::class,
+            RefRuangSeeder::class,
+            RealDosenSeeder::class,
+            RealMahasiswaSeeder::class,
+            RefStatusVerifikasiPembayaranSeeder::class,
+            MasterBeasiswaSeeder::class,
+            PaymentPolicySeeder::class,
 
-        User::factory()->create([
-            'name' => 'Test User',
-            'email' => 'test@example.com',
         ]);
     }
 }

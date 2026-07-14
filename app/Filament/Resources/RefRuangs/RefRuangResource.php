@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\RefRuangs;
 
 use App\Enums\NavigationGroup;
-use App\Filament\Resources\RefRuangs\Pages\CreateRefRuang;
-use App\Filament\Resources\RefRuangs\Pages\EditRefRuang;
 use App\Filament\Resources\RefRuangs\Pages\ListRefRuangs;
 use App\Filament\Resources\RefRuangs\Schemas\RefRuangForm;
 use App\Filament\Resources\RefRuangs\Tables\RefRuangsTable;
@@ -25,6 +23,7 @@ class RefRuangResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::MASTER->value;
 
     protected static ?string $modelLabel = 'Data Ruangan';
+    protected static ?string $slug = "ruangan-kelas";
 
     protected static ?string $pluralModelLabel = 'Data Ruangan';
 
@@ -49,8 +48,6 @@ class RefRuangResource extends Resource
     {
         return [
             'index' => ListRefRuangs::route('/'),
-            'create' => CreateRefRuang::route('/create'),
-            'edit' => EditRefRuang::route('/{record}/edit'),
         ];
     }
 }

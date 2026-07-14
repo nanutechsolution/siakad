@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Akademik\CetakKrsController;
+use App\Http\Controllers\Bara\NilaiRekapExportController;
 use App\Models\PembayaranMahasiswa;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
@@ -55,3 +56,8 @@ Route::middleware(['auth'])->group(function () {
 Route::post('/presensi/checkin', [\App\Http\Controllers\PresensiCheckinController::class, 'store'])
     ->middleware(['auth'])
     ->name('presensi.checkin');
+
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/bara/nilai/export', NilaiRekapExportController::class)
+        ->name('bara.nilai.export');
+});

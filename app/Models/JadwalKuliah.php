@@ -81,50 +81,52 @@ class JadwalKuliah extends Model
         return $this->belongsTo(MasterKurikulum::class, 'kurikulum_id');
     }
 
-    /**
-     * Scope untuk filter status nilai kelas
+     /**
+     * Scope inti untuk tabel Monitoring BARA: menambahkan kolom agregat
+     *   jumlah_mahasiswa, jumlah_sudah_input, jumlah_sudah_publish, jumlah_terkunci
+     * berbasis subquery ke krs_detail — cukup 1 query, tanpa N+1.
      */
+    public function scopeWithNilaiStats(Builder $query): Builder
+    {
+        return $query
+            ->withCount([
+                'krsDetail as jumlah_mahasiswa',
+                'krsDetail as jumlah_sudah_input' => fn (Builder $q) => $q->whereNotNull('nilai_huruf'),
+                'krsDetail as jumlah_sudah_publish' => fn (Builder $q) => $q->where('is_published', true),
+                'krsDetail as jumlah_terkunci' => fn (Builder $q) => $q->where('is_locked', true),
+            ]);
+    }
+
+    /** Dipanggil setelah withNilaiStats(); butuh kolom-kolom di atas sudah ter-load */
+    public function getStatusNilaiAttribute(): StatusNilaiKelas
+    {
+        return StatusNilaiKelas::fromCounts(
+            totalMhs: (int) ($this->jumlah_mahasiswa ?? $this->krsDetail()->count()),
+            sudahInput: (int) ($this->jumlah_sudah_input ?? $this->krsDetail()->whereNotNull('nilai_huruf')->count()),
+            sudahPublish: (int) ($this->jumlah_sudah_publish ?? $this->krsDetail()->where('is_published', true)->count()),
+            terkunci: (int) ($this->jumlah_terkunci ?? $this->krsDetail()->where('is_locked', true)->count()),
+        );
+    }
+
+    /** Filter helper dipakai oleh Filament table filter "Status Nilai" */
     public function scopeStatusNilai(Builder $query, StatusNilaiKelas $status): Builder
     {
         return match ($status) {
-            // TERKUNCI: Kelas punya data KRS, dan TIDAK ADA mahasiswa yang status locked-nya false (Semua locked)
-            StatusNilaiKelas::TERKUNCI => $query->has('krsDetails')
-                ->whereDoesntHave('krsDetails', fn($q) => $q->where('is_locked', false)),
-
-            // SUDAH_PUBLISH: Punya data KRS, TIDAK ADA yang belum publish, TAPI masih ada yang belum di-lock
-            StatusNilaiKelas::SUDAH_PUBLISH => $query->has('krsDetails')
-                ->whereDoesntHave('krsDetails', fn($q) => $q->where('is_published', false))
-                ->whereHas('krsDetails', fn($q) => $q->where('is_locked', false)),
-
-            // SUDAH_INPUT (DRAFT): Ada minimal 1 mahasiswa yang nilainya sudah diisi, TAPI masih ada yang belum di-publish
-            StatusNilaiKelas::SUDAH_INPUT => $query->whereHas('krsDetails', fn($q) => $q->whereNotNull('nilai_angka'))
-                ->whereHas('krsDetails', fn($q) => $q->where('is_published', false)),
-
-            // BELUM_INPUT: Kelas belum punya data KRS, ATAU semua data KRS nilai angkanya masih kosong/null
-            StatusNilaiKelas::BELUM_INPUT => $query->whereDoesntHave('krsDetails', fn($q) => $q->whereNotNull('nilai_angka')),
+            StatusNilaiKelas::BELUM_INPUT => $query->whereDoesntHave('krsDetail', fn ($q) => $q->whereNotNull('nilai_huruf')),
+            StatusNilaiKelas::SEBAGIAN_INPUT => $query
+                ->whereHas('krsDetail', fn ($q) => $q->whereNotNull('nilai_huruf'))
+                ->whereHas('krsDetail', fn ($q) => $q->whereNull('nilai_huruf')),
+            StatusNilaiKelas::SUDAH_INPUT => $query
+                ->whereDoesntHave('krsDetail', fn ($q) => $q->whereNull('nilai_huruf'))
+                ->whereDoesntHave('krsDetail', fn ($q) => $q->where('is_published', false))
+                ->has('krsDetail'),
+            StatusNilaiKelas::SUDAH_PUBLISH => $query
+                ->whereHas('krsDetail', fn ($q) => $q->where('is_published', true))
+                ->whereDoesntHave('krsDetail', fn ($q) => $q->where('is_locked', false)->where('is_published', false)),
+            StatusNilaiKelas::TERKUNCI => $query
+                ->has('krsDetail')
+                ->whereDoesntHave('krsDetail', fn ($q) => $q->where('is_locked', false)),
         };
-    }
-    public function scopeWithNilaiStats(Builder $query): void
-    {
-        $query->withCount([
-            'krsDetails as jumlah_mahasiswa', // Pastikan relasinya bernama krsDetails
-            'krsDetails as total_published' => fn($q) => $q->where('is_published', true),
-            'krsDetails as total_locked' => fn($q) => $q->where('is_locked', true),
-            'krsDetails as total_has_nilai' => fn($q) => $q->whereNotNull('nilai_angka'),
-        ]);
-    }
-
-    // Accessor dinamis untuk mendapatkan status kelas berdasarkan kalkulasi agregat krsDetails
-    public function getStatusNilaiAttribute(): StatusNilaiKelas
-    {
-        $totalMhs = $this->jumlah_mahasiswa ?? 0;
-
-        if ($totalMhs === 0) return StatusNilaiKelas::BELUM_INPUT;
-        if ($this->total_locked > 0 && $this->total_locked === $totalMhs) return StatusNilaiKelas::TERKUNCI;
-        if ($this->total_published > 0 && $this->total_published === $totalMhs) return StatusNilaiKelas::SUDAH_PUBLISH;
-        if ($this->total_has_nilai > 0) return StatusNilaiKelas::SUDAH_INPUT;
-
-        return StatusNilaiKelas::BELUM_INPUT;
     }
     /**
      * Relasi ke Mata Kuliah.
@@ -179,9 +181,11 @@ class JadwalKuliah extends Model
     {
         return $this->hasMany(PerkuliahanSesi::class, 'jadwal_kuliah_id');
     }
-    public function dosenPengampu(): HasMany
+    /** Dosen pengampu (bisa lebih dari satu, is_koordinator/is_penilai) */
+    public function dosenPengampu(): BelongsToMany
     {
-        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id');
+        return $this->belongsToMany(TrxDosen::class, 'jadwal_kuliah_dosen', 'jadwal_kuliah_id', 'dosen_id')
+            ->withPivot(['is_koordinator', 'is_penilai', 'rencana_tatap_muka']);
     }
     public function dosenPengampus(): HasMany
     {

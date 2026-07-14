@@ -2,12 +2,16 @@
 
 namespace App\Models;
 
+use App\Enums\StatusNilaiKelas;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class KrsDetail extends Model
 {
+    use LogsActivity;
     protected $table = 'krs_detail';
 
     protected $fillable = [
@@ -37,7 +41,24 @@ class KrsDetail extends Model
         'is_edom_filled' => 'boolean',
     ];
 
-
+    /**
+     * Log ke activity_log setiap kali nilai / status berubah.
+     * Sumber "waktu input", "dosen penginput", "waktu publish" bagi BARA
+     * — tanpa perlu kolom/tabel baru.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'nilai_angka',
+                'nilai_huruf',
+                'nilai_indeks',
+                'is_published',
+                'is_locked',
+            ])
+            ->logOnlyDirty()
+            ->useLogName('nilai');
+    }
     public function nilaiKomponen(): \Illuminate\Database\Eloquent\Relations\HasMany
     {
         return $this->hasMany(KrsDetailNilai::class, 'krs_detail_id');
@@ -62,6 +83,40 @@ class KrsDetail extends Model
     {
         return $this->belongsTo(MasterMataKuliah::class, 'mata_kuliah_id');
     }
+    /** Akses cepat ke mahasiswa lewat krs->mahasiswa */
+    public function mahasiswa(): \Illuminate\Database\Eloquent\Relations\HasOneThrough
+    {
+        return $this->hasOneThrough(
+            Mahasiswa::class,
+            Krs::class,
+            'id',            // krs.id
+            'id',            // mahasiswas.id
+            'krs_id',        // krs_detail.krs_id
+            'mahasiswa_id'   // krs.mahasiswa_id
+        );
+    }
+
+    public function statusNilai(): StatusNilaiKelas
+    {
+        if ($this->is_locked) {
+            return StatusNilaiKelas::TERKUNCI;
+        }
+        if ($this->is_published) {
+            return StatusNilaiKelas::SUDAH_PUBLISH;
+        }
+        if (filled($this->nilai_huruf)) {
+            return StatusNilaiKelas::SUDAH_INPUT;
+        }
+
+        return StatusNilaiKelas::BELUM_INPUT;
+    }
+    public function gradeRevisionLogs(): HasMany
+    {
+        return $this->hasMany(AkademikGradeRevisionLog::class, 'krs_detail_id')
+            ->orderByDesc('created_at');
+    }
+
+
     /**
      * Relasi ke detail nilai komponen mahasiswa.
      */

@@ -11,6 +11,8 @@ class AkademikGradeRevisionLog extends Model
 {
     protected $table = 'akademik_grade_revision_logs';
 
+    public $timestamps = true;
+    const UPDATED_AT = null;
     protected $fillable = [
         'krs_detail_id',
         'old_nilai_angka',
@@ -25,6 +27,7 @@ class AkademikGradeRevisionLog extends Model
     protected $casts = [
         'old_nilai_angka' => 'decimal:2',
         'new_nilai_angka' => 'decimal:2',
+        'created_at' => 'datetime',
     ];
 
     /**
@@ -34,7 +37,6 @@ class AkademikGradeRevisionLog extends Model
     {
         return $this->belongsTo(KrsDetail::class, 'krs_detail_id');
     }
-
     /**
      * User (dosen/admin) yang melakukan eksekusi revisi nilai ini.
      */

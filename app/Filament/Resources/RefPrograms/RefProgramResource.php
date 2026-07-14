@@ -3,16 +3,12 @@
 namespace App\Filament\Resources\RefPrograms;
 
 use App\Enums\NavigationGroup;
-use App\Filament\Resources\RefPrograms\Pages\CreateRefProgram;
-use App\Filament\Resources\RefPrograms\Pages\EditRefProgram;
 use App\Filament\Resources\RefPrograms\Pages\ListRefPrograms;
 use App\Filament\Resources\RefPrograms\Schemas\RefProgramForm;
 use App\Filament\Resources\RefPrograms\Tables\RefProgramsTable;
 use App\Models\RefProgram;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -29,6 +25,7 @@ class RefProgramResource extends Resource
     protected static ?string $modelLabel = 'Program';
 
     protected static ?string $pluralModelLabel = 'Program';
+    protected static ?string $slug = "program-kelas";
     public static function form(Schema $schema): Schema
     {
         return RefProgramForm::configure($schema);
@@ -50,8 +47,6 @@ class RefProgramResource extends Resource
     {
         return [
             'index' => ListRefPrograms::route('/'),
-            'create' => CreateRefProgram::route('/create'),
-            'edit' => EditRefProgram::route('/{record}/edit'),
         ];
     }
 

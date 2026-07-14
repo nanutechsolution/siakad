@@ -35,7 +35,7 @@ class RefFakultasForm
                             ->required()
                             ->maxLength(100)
                             ->columnSpanFull(),
-                    ]),
+                    ])->columnSpanFull(),
             ]);
     }
 }

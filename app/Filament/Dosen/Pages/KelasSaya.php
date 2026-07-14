@@ -44,14 +44,14 @@ class KelasSaya extends Page implements HasTable
                     ->label('Kode')
                     ->sortable()
                     ->copyable() // Dosen bisa copy kode MK sekali klik
-                    ->description(fn (JadwalKuliah $record) => "Kelas: {$record->kelas?->nama_kelas}"),
-                
+                    ->description(fn(JadwalKuliah $record) => "Kelas: {$record->kelas?->nama_kelas}"),
+
                 TextColumn::make('mataKuliah.nama_mk')
                     ->label('Mata Kuliah')
                     ->searchable()
                     ->sortable()
                     ->wrap(), // Membungkus teks panjang agar tidak kepotong kiri-kanan
-                
+
                 // Menggabungkan Hari, Jam, dan Ruang Kuliah agar ringkas tapi kaya info
                 TextColumn::make('jadwal_info')
                     ->label('Jadwal & Ruang')
@@ -60,14 +60,14 @@ class KelasSaya extends Page implements HasTable
                         $hari = $record->hari ?? '-';
                         $jam = $record->jam_mulai ? "{$record->jam_mulai} - {$record->jam_selesai}" : '';
                         $ruang = $record->ruang?->nama_ruang ?? $record->ruang_id ?? '';
-                        
+
                         return "{$hari} ({$jam})" . ($ruang ? " | R. {$ruang}" : '');
                     })
                     ->color('gray'),
 
                 TextColumn::make('krs_details_count')
                     ->label('Peserta')
-                    ->counts('krsDetails') 
+                    ->counts('krsDetails')
                     ->badge()
                     ->color('info'),
 
@@ -77,18 +77,18 @@ class KelasSaya extends Page implements HasTable
                     ->getStateUsing(function (JadwalKuliah $record) {
                         $total = $record->krsDetails()->count();
                         $published = $record->krsDetails()->where('is_published', true)->count();
-                        
+
                         return "{$published} / {$total} Mhs";
                     })
                     ->badge()
                     ->color(function (JadwalKuliah $record) {
                         $total = $record->krsDetails()->count();
                         $published = $record->krsDetails()->where('is_published', true)->count();
-                        
+
                         if ($total === 0) return 'gray';
                         return $published === $total ? 'success' : 'warning';
                     }),
-                
+
                 TextColumn::make('status_periode')
                     ->badge()
                     ->label('Status Input')
@@ -103,7 +103,6 @@ class KelasSaya extends Page implements HasTable
                 Action::make('input_nilai')
                     ->label('Input Nilai')
                     ->icon('heroicon-o-pencil-square')
-                    // Tombol berubah warna hijau jika sudah diisi semua, atau kuning jika belum lengkap
                     ->color(function (JadwalKuliah $record) {
                         $total = $record->krsDetails()->count();
                         $published = $record->krsDetails()->where('is_published', true)->count();

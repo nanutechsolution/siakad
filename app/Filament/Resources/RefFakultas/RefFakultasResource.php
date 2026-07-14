@@ -57,8 +57,6 @@ class RefFakultasResource extends Resource
     {
         return [
             'index' => ListRefFakultas::route('/'),
-            'create' => CreateRefFakultas::route('/create'),
-            'edit' => EditRefFakultas::route('/{record}/edit'),
         ];
     }
 

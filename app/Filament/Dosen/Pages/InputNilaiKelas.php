@@ -6,7 +6,6 @@ namespace App\Filament\Dosen\Pages;
 
 use App\Models\JadwalKuliah;
 use App\Models\KrsDetail;
-use App\Models\KrsDetailNilai;
 use App\Services\Dosen\GradeService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -23,6 +22,7 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
+use Override;
 
 class InputNilaiKelas extends Page implements HasTable
 {
@@ -39,6 +39,7 @@ class InputNilaiKelas extends Page implements HasTable
     public ?JadwalKuliah $record = null;
 
     public bool $isInputOpen = false;
+
 
     /**
      * Cache komponen nilai kelas ini supaya tidak query berulang
@@ -89,20 +90,13 @@ class InputNilaiKelas extends Page implements HasTable
             $columns[] = TextInputColumn::make('komp_' . $komponen->komponen_id)
                 ->label($komponen->komponen->nama_komponen . ' (' . $komponen->bobot_persen . '%)')
                 ->rules(['numeric', 'min:0', 'max:100'])
-
-                // 1. UBAH BARIS INI MENJADI FALSE UNTUK MEMAKSA BUKA INPUT
                 ->disabled(false)
-
                 ->getStateUsing(fn(KrsDetail $record) => $record->getNilaiKomponen((int) $komponen->komponen_id))
                 ->updateStateUsing(function (KrsDetail $record, $state) use ($komponen) {
-
-                    // 2. MATIKAN SEMENTARA PENGECEKAN GATE DI SINI JUGA AGAR BISA DISIMPAN
-                    /* if (! Gate::allows('inputNilaiDosen', $record)) {
-                Notification::make()->danger()->title('Nilai tidak bisa diubah')->send();
-                return;
-            } 
-            */
-
+                    if (!Gate::allows('inputNilaiDosen', $record)) {
+                        Notification::make()->danger()->title('Nilai tidak bisa diubah')->send();
+                        return;
+                    }
                     \App\Models\KrsDetailNilai::updateOrCreate(
                         ['krs_detail_id' => $record->id, 'komponen_id' => $komponen->komponen_id],
                         ['nilai_angka' => (float) $state]
@@ -147,7 +141,6 @@ class InputNilaiKelas extends Page implements HasTable
                         if (! Gate::allows('revisiNilaiDosen', $record)) {
                             abort(403);
                         }
-
                         $service->applyRevision(
                             krsDetail: $record,
                             nilaiAngkaBaru: (float) $data['new_nilai_angka'],
@@ -155,7 +148,6 @@ class InputNilaiKelas extends Page implements HasTable
                             nomorSkPerbaikan: $data['nomor_sk_perbaikan'] ?? null,
                             executedByUserId: (string) Auth::id(),
                         );
-
                         Notification::make()
                             ->success()
                             ->title('Revisi nilai tersimpan')
@@ -223,7 +215,11 @@ class InputNilaiKelas extends Page implements HasTable
                                 fputcsv($output, $header);
 
                                 $peserta = \App\Models\KrsDetail::query()
-                                    ->with(['krs.mahasiswa.person', 'detailNilai'])
+                                    ->with([
+                                        'krs.mahasiswa.person',
+                                        'detailNilai',
+                                        'jadwalKuliah'
+                                    ])
                                     ->where('jadwal_kuliah_id', $jadwal->id)
                                     ->where('status_ambil', '!=', 'K')
                                     ->get();

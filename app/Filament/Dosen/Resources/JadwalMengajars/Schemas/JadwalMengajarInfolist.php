@@ -3,6 +3,7 @@
 namespace App\Filament\Dosen\Resources\JadwalMengajars\Schemas;
 
 use App\Models\JadwalKuliah;
+use App\Models\TrxDosen;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -30,11 +31,18 @@ class JadwalMengajarInfolist
                     ->schema([
                         TextEntry::make('dosenPengampu')
                             ->label('')
-                            ->state(fn(JadwalKuliah $record) => $record->dosenPengampu()
-                                ->with('dosen.person')
-                                ->get()
-                                ->map(fn($d) => $d->dosen?->person?->nama_lengkap . ($d->is_koordinator ? ' (Koordinator)' : ''))
-                                ->implode(', ')),
+                            ->state(
+                                fn(JadwalKuliah $record) => $record->dosenPengampu()
+                                    ->with('person')
+                                    ->get()
+                                    ->map(
+                                        fn(TrxDosen $d) => ($d->person?->nama_lengkap ?? '-') .
+                                            ($d->pivot?->is_koordinator ? ' (Koordinator)' : '')
+                                    )
+                                    ->implode("\n")
+                            )
+                            ->columnSpanFull()
+                            ->wrap(),
                     ]),
             ]);
     }

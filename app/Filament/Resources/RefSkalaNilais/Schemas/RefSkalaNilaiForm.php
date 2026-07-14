@@ -16,22 +16,23 @@ class RefSkalaNilaiForm
             ->components([
                 Section::make('Informasi Skala Nilai')
                     ->schema([
-                        TextInput::make('huruf')
-                            ->label('Nilai Huruf')
-                            ->required()
-                            ->maxLength(2)
-                            ->placeholder('A'),
-
-                        TextInput::make('bobot_indeks')
-                            ->label('Bobot Indeks')
-                            ->required()
-                            ->numeric()
-                            ->minValue(0)
-                            ->maxValue(4)
-                            ->step(0.01),
-
                         Grid::make(2)
                             ->schema([
+                                TextInput::make('huruf')
+                                    ->label('Nilai Huruf')
+                                    ->required()
+                                    ->maxLength(2)
+                                    ->placeholder('A'),
+
+                                TextInput::make('bobot_indeks')
+                                    ->label('Bobot Indeks')
+                                    ->required()
+                                    ->numeric()
+                                    ->minValue(0)
+                                    ->maxValue(4)
+                                    ->step(0.01),
+
+
                                 TextInput::make('nilai_min')
                                     ->label('Nilai Minimum')
                                     ->required()
@@ -67,7 +68,7 @@ class RefSkalaNilaiForm
                             ->default(true)
                             ->onColor('success')
                             ->offColor('danger'),
-                    ])
+                    ])->columnSpanFull()
             ]);
     }
 }

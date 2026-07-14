@@ -43,7 +43,7 @@ class RefProgramForm
                             ->label('Program Aktif')
                             ->default(true)
                             ->onColor('success'),
-                    ])
+                    ])->columnSpanFull()
             ]);
     }
 }

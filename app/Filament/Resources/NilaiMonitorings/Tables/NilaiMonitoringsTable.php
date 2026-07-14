@@ -173,11 +173,8 @@ class NilaiMonitoringsTable
                             ->warning()
                             ->send();
                     }),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                ]),
-            ]);
+            ])->defaultSort('tahun_akademik_id', 'desc')
+            ->striped()
+            ->poll('60s');
     }
 }
