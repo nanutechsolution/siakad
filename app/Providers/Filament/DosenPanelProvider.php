@@ -38,7 +38,7 @@ class DosenPanelProvider extends PanelProvider
             ->brandName('Portal Dosen — UNMARIS')
             ->brandLogo(fn() => view('filament.dosen.logo'))
             ->brandLogoHeight('2.25rem')
-            ->favicon(asset('favicons/mahasiswa.svg'))
+            ->favicon(asset('favicons/logo-unmaris.svg'))
             ->discoverResources(in: app_path('Filament/Dosen/Resources'), for: 'App\Filament\Dosen\Resources')
             ->discoverPages(in: app_path('Filament/Dosen/Pages'), for: 'App\Filament\Dosen\Pages')
             ->pages([

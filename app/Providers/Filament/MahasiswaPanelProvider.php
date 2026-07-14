@@ -48,7 +48,7 @@ class MahasiswaPanelProvider extends PanelProvider
             ->brandName('Portal Mahasiswa — UNMARIS')
             ->brandLogo(fn() => view('filament.mahasiswa.logo'))
             ->brandLogoHeight('2.25rem')
-            ->favicon(asset('favicons/mahasiswa.svg'))
+            ->favicon(asset('favicons/logo-unmaris.svg'))
             ->discoverResources(in: app_path('Filament/Mahasiswa/Resources'), for: 'App\Filament\Mahasiswa\Resources')
             ->discoverPages(in: app_path('Filament/Mahasiswa/Pages'), for: 'App\Filament\Mahasiswa\Pages')
             ->pages([

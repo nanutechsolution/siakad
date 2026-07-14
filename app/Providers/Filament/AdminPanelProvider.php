@@ -33,7 +33,7 @@ class AdminPanelProvider extends PanelProvider
             ->id('admin')
             ->path('admin')
             ->brandLogoHeight('2.25rem')
-            ->favicon(asset('favicons/mahasiswa.svg'))
+            ->favicon(asset('favicons/logo-unmaris.svg'))
             ->brandName('SIAKAD — UNMARIS')
             ->brandLogo(fn() => view('filament.admin.logo'))
             ->viteTheme('resources/css/filament/admin/theme.css')
