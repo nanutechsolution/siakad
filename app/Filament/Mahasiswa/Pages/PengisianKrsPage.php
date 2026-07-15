@@ -11,7 +11,6 @@ use App\Services\Akademik\KrsValidationService;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -40,11 +39,28 @@ class PengisianKrsPage extends Page implements HasForms
     public ?int $activeKelasId = null;
     public function mount(): void
     {
+
+
         $this->mahasiswa = Mahasiswa::where('person_id', Auth::user()->person_id)->first();
         $this->activeTa = RefTahunAkademik::where('is_active', 1)->first();
 
         if (!$this->mahasiswa || !$this->activeTa) {
             $this->setIneligible('Data Mahasiswa atau Tahun Akademik aktif tidak ditemukan.');
+            return;
+        }
+
+        // Jalankan GATE 1 (Status Akademik) & GATE 2 (Keuangan)
+        $service = app(KrsValidationService::class);
+
+        $valStatus = $service->checkStatusMahasiswa($this->mahasiswa, $this->activeTa);
+        if (!$valStatus->passed) {
+            $this->setIneligible($valStatus->message);
+            return;
+        }
+
+        $valKeuangan = $service->checkKeuangan($this->mahasiswa, $this->activeTa, false);
+        if (!$valKeuangan->passed) {
+            $this->setIneligible($valKeuangan->message);
             return;
         }
         $this->activeKelasId = DB::table('mahasiswa_kelas')
@@ -75,20 +91,7 @@ class PengisianKrsPage extends Page implements HasForms
             return;
         }
 
-        // Jalankan GATE 1 (Status Akademik) & GATE 2 (Keuangan)
-        $service = app(KrsValidationService::class);
 
-        $valStatus = $service->checkStatusMahasiswa($this->mahasiswa, $this->activeTa);
-        if (!$valStatus->passed) {
-            $this->setIneligible($valStatus->message);
-            return;
-        }
-
-        $valKeuangan = $service->checkKeuangan($this->mahasiswa, $this->activeTa, false);
-        if (!$valKeuangan->passed) {
-            $this->setIneligible($valKeuangan->message);
-            return;
-        }
 
         $this->form->fill();
     }
@@ -103,7 +106,6 @@ class PengisianKrsPage extends Page implements HasForms
     {
         return $schema
             ->components([
-                // 1. KOMPONEN RINGKASAN KRS (Auto-update saat Checkbox diklik)
                 Placeholder::make('ringkasan_krs')
                     ->label('')
                     ->content(function (Get $get) {
