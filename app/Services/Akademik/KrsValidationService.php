@@ -37,7 +37,6 @@ class KrsValidationService
     /**
      * Gate 2: Status & Kontinuitas Mahasiswa (Gap Semester)
      */
-    public function checkStatusMahasiswa(Mahasiswa $mahasiswa, RefTahunAkademik $taTarget): KrsValidationResult
     /**
      * Gate 2: Status & Kontinuitas Mahasiswa (Gap Semester)
      */
