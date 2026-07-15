@@ -27,7 +27,7 @@ class LpmKuisionerKelompok extends Model
         return $this->belongsTo(RefTahunAkademik::class, 'tahun_akademik_id');
     }
 
-    public function pertanyaans(): HasMany
+    public function pertanyaan(): HasMany
     {
         return $this->hasMany(LpmKuisionerPertanyaan::class, 'kelompok_id');
     }

@@ -179,4 +179,9 @@ class Mahasiswa extends Model
             'id'
         );
     }
+
+    public function edomProgress()
+    {
+        return $this->hasMany(EdomProgress::class, 'mahasiswa_id');
+    }
 }

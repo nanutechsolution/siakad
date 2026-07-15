@@ -23,7 +23,7 @@
                 <span class="font-medium text-gray-900 dark:text-white">{{ $mahasiswa->angkatan_id }}</span>
 
                 <span class="text-gray-500">Total SKS Diambil:</span>
-                <span class="font-medium text-gray-900 dark:text-white">{{ $krs->krsDetails->sum('sks_snapshot') }} SKS</span>
+                <span class="font-medium text-gray-900 dark:text-white">{{ $krs->details->sum('sks_snapshot') }} SKS</span>
             </div>
         </div>
     </div>
@@ -90,7 +90,7 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-gray-200 dark:divide-white/10">
-                    @forelse($krs->krsDetails as $detail)
+                    @forelse($krs->details as $detail)
                     <tr>
                         <td class="px-4 py-3">{{ $detail->kode_mk_snapshot ?? $detail->mataKuliah?->kode_mk }}</td>
                         <td class="px-4 py-3 font-medium text-gray-900 dark:text-white">{{ $detail->nama_mk_snapshot ?? $detail->mataKuliah?->nama_mk }}</td>
@@ -129,22 +129,22 @@
     <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
         <div class="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-white/10 text-center">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Total MK</p>
-            <p class="text-2xl font-bold text-primary-600">{{ $krs->krsDetails->count() }}</p>
+            <p class="text-2xl font-bold text-primary-600">{{ $krs->details->count() }}</p>
         </div>
         <div class="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-white/10 text-center">
             <p class="text-xs text-gray-500 uppercase tracking-wider">Total SKS</p>
-            <p class="text-2xl font-bold text-primary-600">{{ $krs->krsDetails->sum('sks_snapshot') }}</p>
+            <p class="text-2xl font-bold text-primary-600">{{ $krs->details->sum('sks_snapshot') }}</p>
         </div>
         <div class="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-white/10 text-center">
             <p class="text-xs text-gray-500 uppercase tracking-wider">MK Wajib</p>
             <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                {{ $krs->krsDetails->filter(fn($d) => $d->mataKuliah?->sifat_mk === 'W')->count() }}
+                {{ $krs->details->filter(fn($d) => $d->mataKuliah?->sifat_mk === 'W')->count() }}
             </p>
         </div>
         <div class="bg-white dark:bg-gray-900 p-4 rounded-xl border border-gray-200 dark:border-white/10 text-center">
             <p class="text-xs text-gray-500 uppercase tracking-wider">MK Pilihan</p>
             <p class="text-2xl font-bold text-gray-900 dark:text-white">
-                {{ $krs->krsDetails->filter(fn($d) => $d->mataKuliah?->sifat_mk === 'P')->count() }}
+                {{ $krs->details->filter(fn($d) => $d->mataKuliah?->sifat_mk === 'P')->count() }}
             </p>
         </div>
     </div>

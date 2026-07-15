@@ -25,22 +25,16 @@ class SesiPerkuliahanRelationManager extends RelationManager
     protected static string $relationship = 'sesiPerkuliahan';
 
     protected static ?string $relatedResource = JadwalMengajarResource::class;
-    public function isReadOnly(): bool
+    public  function canCreate(): bool
     {
-        return false;
+        return true;
     }
-
     public function canViewAny(): bool
     {
         return true;
     }
 
     public function canView($record): bool
-    {
-        return true;
-    }
-
-    public function canCreate(): bool
     {
         return true;
     }
@@ -108,7 +102,7 @@ class SesiPerkuliahanRelationManager extends RelationManager
                     ->placeholder('-'),
             ])
             ->headerActions([
-                CreateAction::make()->label('Buat Rencana Sesi'),
+                CreateAction::make()->label('Buat Rencana Sesi')->authorize(true),
             ])
             ->recordActions([
                 EditAction::make()->visible(fn($record) => $record->status_sesi !== StatusSesiPerkuliahan::Selesai),
@@ -157,7 +151,9 @@ class SesiPerkuliahanRelationManager extends RelationManager
                     ->visible(fn(PerkuliahanSesi $record) => in_array($record->status_sesi, [
                         StatusSesiPerkuliahan::Dibuka,
                         StatusSesiPerkuliahan::Selesai,
+
                     ])),
+
             ])
             ->filters([])
             ->toolbarActions([
@@ -191,7 +187,7 @@ class SesiPerkuliahanRelationManager extends RelationManager
                     'perkuliahan_sesi_id' => $sesi->id,
                     'krs_detail_id' => $krsDetailId,
                 ],
-                ['status_kehadiran' => \App\Enums\StatusKehadiran::Alpa->value]
+                ['status_kehadiran' => \App\Enums\StatusKehadiranEnum::ALPA->value]
             );
         }
     }

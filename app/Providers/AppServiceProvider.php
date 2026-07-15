@@ -3,7 +3,9 @@
 namespace App\Providers;
 
 use App\Models\PembayaranMahasiswa;
+use App\Models\PerkuliahanSesi;
 use App\Observers\PembayaranMahasiswaObserver;
+use App\Observers\PerkuliahanSesiObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Policies\DosenJadwalKuliahPolicy;
@@ -45,6 +47,8 @@ class AppServiceProvider extends ServiceProvider
             'revisiNilaiDosen',
             [DosenNilaiPolicy::class, 'revisiNilai']
         );
+        PerkuliahanSesi::observe(PerkuliahanSesiObserver::class);
         PembayaranMahasiswa::observe(PembayaranMahasiswaObserver::class);
+        \App\Models\RefTahunAkademik::observe(\App\Observers\TahunAkademikObserver::class);
     }
 }

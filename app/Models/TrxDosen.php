@@ -138,7 +138,7 @@ class TrxDosen extends Model
     public function getNamaAttribute(): string
     {
         return $this->relationLoaded('person')
-            ? ($this->person?->display_name ?? '(Dosen tidak ditemukan)')
+            ? ($this->person?->nama_dengan_gelar ?? '(Dosen tidak ditemukan)')
             : ($this->person()->value('nama_lengkap') ?? '(Dosen tidak ditemukan)');
     }
 }

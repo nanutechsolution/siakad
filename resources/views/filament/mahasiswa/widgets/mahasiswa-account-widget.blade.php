@@ -2,7 +2,6 @@
     <x-filament::section>
         <div class="flex flex-col gap-6 md:flex-row md:items-center">
 
-            {{-- Avatar --}}
             <div class="flex justify-center md:justify-start">
                 <div
                     class="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary-600 text-xl font-bold text-white shadow-sm">

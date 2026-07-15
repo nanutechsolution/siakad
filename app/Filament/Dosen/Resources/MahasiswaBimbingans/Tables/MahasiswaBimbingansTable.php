@@ -97,7 +97,7 @@ class MahasiswaBimbingansTable
             ->modalContent(function (Model $record, KrsValidationService $validationService) {
                 $krs = $record->krs->first();
                 $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
-                $krs->loadMissing(['krsDetails.jadwalKuliah.mataKuliah', 'krsDetails.jadwalKuliah.dosenPengampus.dosen.person']);
+                $krs->loadMissing(['details.jadwalKuliah.mataKuliah', 'details.jadwalKuliah.dosenPengampus.dosen.person']);
                 $hasilValidasi = $validationService->runAllValidations($record, $krs, $activeTa);
                 return view('filament.dosen.components.review-krs-modal', [
                     'krs' => $krs,

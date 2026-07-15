@@ -167,6 +167,7 @@ class ProfilSaya extends Page implements HasForms
                         TextInput::make('no_hp')->tel()->required(),
                         FileUpload::make('photo_path')
                             ->image()
+                            ->disk('public')
                             ->directory('mahasiswa/foto')
                             ->label('Foto Profil'),
                     ]),

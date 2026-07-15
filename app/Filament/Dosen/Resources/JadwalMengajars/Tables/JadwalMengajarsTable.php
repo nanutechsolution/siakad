@@ -88,7 +88,7 @@ class JadwalMengajarsTable
             ->defaultSort('jam_mulai')
             ->striped()
             ->recordActions([
-                ViewAction::make(),
+                ViewAction::make()->authorize(true),
                 Action::make('rekapKehadiran')
                     ->label('Rekap Kehadiran')
                     ->icon('heroicon-o-clipboard-document-check')

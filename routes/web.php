@@ -14,6 +14,17 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/mahasiswa/photo/{person}', function ($person) {
+
+    $path = $person->photo_path;
+
+    if (!Storage::disk('private')->exists($path)) {
+        abort(404);
+    }
+
+    return Storage::disk('private')->response($path);
+})->name('mahasiswa.photo');
+
 Route::middleware(['auth'])->group(function () {
     Route::get('/dosen/nilai/print/{id}', function ($id) {
         $jadwal = \App\Models\JadwalKuliah::with(['mataKuliah', 'kelas', 'tahunAkademik'])->findOrFail($id);

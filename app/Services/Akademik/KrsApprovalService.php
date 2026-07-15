@@ -29,8 +29,8 @@ class KrsApprovalService
                 throw new Exception('KRS ini sudah disetujui sebelumnya.');
             }
 
-            $jadwalIds = $krsLocked->krsDetails()->pluck('jadwal_kuliah_id')->filter()->toArray();
-            $totalSks = $krsLocked->krsDetails()->sum('sks_snapshot');
+            $jadwalIds = $krsLocked->details()->pluck('jadwal_kuliah_id')->filter()->toArray();
+            $totalSks = $krsLocked->details()->sum('sks_snapshot');
 
             // 1. Lock Jadwal Kuliah untuk mencegah Bentrok Kuota
             if (!empty($jadwalIds)) {

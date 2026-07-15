@@ -16,7 +16,11 @@ CREATE TABLE `academic_history_logs` (
   `trigger_event` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`)
+  PRIMARY KEY (`id`),
+  KEY `idx_mhs_ta` (`mahasiswa_id`,`tahun_akademik_id`),
+  KEY `academic_history_logs_tahun_akademik_id_foreign` (`tahun_akademik_id`),
+  CONSTRAINT `academic_history_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `academic_history_logs_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `activity_log`;
@@ -302,7 +306,7 @@ CREATE TABLE `exports` (
   `processed_rows` int unsigned NOT NULL DEFAULT '0',
   `total_rows` int unsigned NOT NULL,
   `successful_rows` int unsigned NOT NULL DEFAULT '0',
-  `user_id` char(26) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `user_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -827,7 +831,6 @@ CREATE TABLE `krs_detail` (
   `nilai_indeks` decimal(3,2) NOT NULL DEFAULT '0.00',
   `is_published` tinyint(1) NOT NULL DEFAULT '0',
   `is_locked` tinyint(1) NOT NULL DEFAULT '0',
-  `is_edom_filled` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -1025,16 +1028,38 @@ DROP TABLE IF EXISTS `lpm_edom_jawaban`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `lpm_edom_jawaban` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `krs_detail_id` bigint unsigned NOT NULL,
+  `jadwal_kuliah_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
   `pertanyaan_id` bigint unsigned NOT NULL,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `jawaban_nilai` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Bisa skor angka atau isian teks/esai',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `lpm_edom_jawaban_krs_detail_id_foreign` (`krs_detail_id`),
   KEY `lpm_edom_jawaban_pertanyaan_id_foreign` (`pertanyaan_id`),
-  CONSTRAINT `lpm_edom_jawaban_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE RESTRICT,
+  KEY `idx_edom_pertanyaan` (`pertanyaan_id`),
+  KEY `idx_edom_jawaban_agregasi` (`dosen_id`,`jadwal_kuliah_id`,`pertanyaan_id`),
+  CONSTRAINT `lpm_edom_jawaban_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
   CONSTRAINT `lpm_edom_jawaban_pertanyaan_id_foreign` FOREIGN KEY (`pertanyaan_id`) REFERENCES `lpm_kuisioner_pertanyaan` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_edom_progress`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_edom_progress` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jadwal_kuliah_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `is_completed` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uq_mhs_jadwal_dosen_edom` (`mahasiswa_id`,`jadwal_kuliah_id`,`dosen_id`),
+  KEY `lpm_edom_progress_jadwal_kuliah_id_foreign` (`jadwal_kuliah_id`),
+  KEY `lpm_edom_progress_dosen_id_foreign` (`dosen_id`),
+  CONSTRAINT `lpm_edom_progress_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_edom_progress_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_edom_progress_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lpm_edom_saran`;
@@ -1042,13 +1067,16 @@ DROP TABLE IF EXISTS `lpm_edom_saran`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `lpm_edom_saran` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `krs_detail_id` bigint unsigned NOT NULL,
+  `jadwal_kuliah_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `catatan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
-  KEY `lpm_edom_saran_krs_detail_id_foreign` (`krs_detail_id`),
-  CONSTRAINT `lpm_edom_saran_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE CASCADE
+  KEY `lpm_edom_saran_dosen_id_foreign` (`dosen_id`),
+  KEY `idx_edom_saran_jadwal_dosen` (`jadwal_kuliah_id`,`dosen_id`),
+  CONSTRAINT `lpm_edom_saran_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_edom_saran_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lpm_iku_targets`;
@@ -1106,6 +1134,7 @@ CREATE TABLE `lpm_kuisioner_kelompok` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `tahun_akademik_id` bigint unsigned DEFAULT NULL,
   `nama_kelompok` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `kategori` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'EDOM',
   `urutan` int NOT NULL DEFAULT '1',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -1150,6 +1179,26 @@ CREATE TABLE `lpm_standars` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `lpm_standars_kode_versi_unique` (`kode_standar`,`versi`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_survey_jawaban`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_survey_jawaban` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pertanyaan_id` bigint unsigned NOT NULL,
+  `tahun_akademik_id` bigint unsigned NOT NULL,
+  `jawaban_nilai` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_survey_mhs_ta` (`mahasiswa_id`,`pertanyaan_id`,`tahun_akademik_id`),
+  KEY `lpm_survey_jawaban_pertanyaan_id_foreign` (`pertanyaan_id`),
+  KEY `lpm_survey_jawaban_tahun_akademik_id_foreign` (`tahun_akademik_id`),
+  CONSTRAINT `lpm_survey_jawaban_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_survey_jawaban_pertanyaan_id_foreign` FOREIGN KEY (`pertanyaan_id`) REFERENCES `lpm_kuisioner_pertanyaan` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_survey_jawaban_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lppm_luarans`;
@@ -1810,7 +1859,7 @@ CREATE TABLE `ref_prodi` (
   `jenjang` enum('D3','D4','S1','S2','S3','PROFESI') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `gelar_lulusan` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `format_nim` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'Pattern: {THN}=24, {TAHUN}=2024, {KODE}=KodeProdi, {NO:4}=0001',
-  `last_nim_seq` int NOT NULL DEFAULT '0',
+  `last_nim_seq` bigint unsigned NOT NULL,
   `id_feeder` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
   `created_at` timestamp NULL DEFAULT NULL,
@@ -2377,3 +2426,11 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (163,'2026_07_15_11
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (164,'2026_07_15_115107_create_dosen_riwayat_pendidikan_tables',40);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (165,'2026_07_15_115127_create_dosen_dokumen_table',40);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (166,'2026_07_15_115151_create_dosen_profile_change_requests_tables',40);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (167,'2026_07_15_205015_patch_evaluation_module_and_optimizations',41);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (168,'2026_07_15_220050_alter_user_id_on_exports_table',42);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (169,'2026_07_15_220127_add_foreign_keys_and_indexes_to_academic_history_logs_table',42);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (170,'2026_07_15_220146_add_index_to_lpm_edom_jawaban_table',42);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (171,'2026_07_15_221511_fix_lpm_edom_jawaban_unique_bug',43);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (172,'2026_07_15_221541_break_krs_detail_link_on_lpm_edom_saran',43);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (173,'2026_07_15_221814_add_dosen_id_to_lpm_edom_progress',44);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (174,'2026_07_15_221906_drop_is_edom_filled_from_krs_detail',45);

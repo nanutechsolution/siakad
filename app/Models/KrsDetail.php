@@ -142,7 +142,7 @@ class KrsDetail extends Model
         return $query->whereIn('status_ambil', self::STATUS_AMBIL_AKTIF);
     }
 
-    
+
     /**
      * Semua sesi perkuliahan milik jadwal_kuliah yang sama dengan baris KRS
      * ini -- dipakai sebagai PENYEBUT (denominator) resmi jumlah pertemuan,
@@ -162,6 +162,16 @@ class KrsDetail extends Model
             'id'                // Local key di jadwal_kuliah
         );
     }
+    public function edomJawabans(): HasMany
+    {
+        return $this->hasMany(LpmEdomJawaban::class, 'krs_detail_id');
+    }
 
-    
+    /**
+     * Mengecek apakah KRS Detail ini sudah dievaluasi untuk dosen tertentu.
+     */
+    public function isEvaluatedFor(string $dosenId): bool
+    {
+        return $this->edomJawabans()->where('dosen_id', $dosenId)->exists();
+    }
 }

@@ -127,4 +127,9 @@ class Krs extends Model
             KrsStatusEnum::DISETUJUI->value
         );
     }
+
+    public function scopeCurrentPeriod($query)
+    {
+        return $query->where('tahun_akademik_id', active_ta_id());
+    }
 }

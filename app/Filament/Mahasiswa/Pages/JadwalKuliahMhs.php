@@ -76,7 +76,7 @@ class JadwalKuliahMhs extends Page
             return collect();
         }
 
-        $jadwalKuliahIds = $krs->detail()
+        $jadwalKuliahIds = $krs->details()
             ->aktif()
             ->whereNotNull('jadwal_kuliah_id')
             ->pluck('jadwal_kuliah_id');
@@ -84,9 +84,8 @@ class JadwalKuliahMhs extends Page
         if ($jadwalKuliahIds->isEmpty()) {
             return collect();
         }
-
         return JadwalKuliah::query()
-            ->with(['mataKuliah', 'ruang', 'kelas', 'dosenPengampus.dosen.person'])
+            ->with(['mataKuliah', 'ruang', 'kelas', 'dosenPengampu.person'])
             ->whereIn('id', $jadwalKuliahIds)
             ->get()
             ->groupBy(fn(JadwalKuliah $jadwal) => $jadwal->hari ?? 'Belum Ditentukan')
@@ -121,7 +120,7 @@ class JadwalKuliahMhs extends Page
             return collect();
         }
 
-        return $krs->detail()
+        return $krs->details()
             ->aktif()
             ->whereNull('jadwal_kuliah_id')
             ->get();

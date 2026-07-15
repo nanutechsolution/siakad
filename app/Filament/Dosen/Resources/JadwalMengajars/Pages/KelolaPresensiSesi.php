@@ -3,6 +3,7 @@
 namespace App\Filament\Dosen\Resources\JadwalMengajars\Pages;
 
 use App\Enums\StatusKehadiran;
+use App\Enums\StatusKehadiranEnum;
 use App\Enums\StatusSesiPerkuliahan;
 use App\Filament\Dosen\Resources\JadwalMengajars\JadwalMengajarResource;
 use App\Models\PerkuliahanAbsensi;
@@ -29,7 +30,6 @@ class KelolaPresensiSesi extends Page implements HasTable
     public function mount(int|string $record, string $sesiId): void
     {
         $this->record = $this->resolveRecord($record);
-
         $this->sesi = PerkuliahanSesi::with('jadwalKuliah.mataKuliah')
             ->where('jadwal_kuliah_id', $this->record->id)
             ->findOrFail($sesiId);
@@ -63,7 +63,7 @@ class KelolaPresensiSesi extends Page implements HasTable
                     ->searchable(),
                 SelectColumn::make('status_kehadiran')
                     ->label('Status')
-                    ->options(collect(StatusKehadiran::cases())->mapWithKeys(
+                    ->options(collect(StatusKehadiranEnum::cases())->mapWithKeys(
                         fn($c) => [$c->value => $c->getLabel()]
                     ))
                     ->afterStateUpdated(function (PerkuliahanAbsensi $record, $state): void {

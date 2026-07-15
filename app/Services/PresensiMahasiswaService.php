@@ -2,7 +2,7 @@
 
 namespace App\Services;
 
-use App\Enums\StatusKehadiran;
+use App\Enums\StatusKehadiranEnum;
 use App\Enums\StatusSesiPerkuliahan;
 use App\Models\KrsDetail;
 use App\Models\PerkuliahanAbsensi;
@@ -50,14 +50,14 @@ class PresensiMahasiswaService
             ]);
         }
 
-        if ($absensi->status_kehadiran === StatusKehadiran::Hadir) {
+        if ($absensi->status_kehadiran === StatusKehadiranEnum::HADIR) {
             return $absensi;
         }
 
         $isDuplikat = $this->cekDuplikat($sesi->id, $absensi->id, $ipAddress, $deviceFingerprint);
 
         $absensi->update([
-            'status_kehadiran' => StatusKehadiran::Hadir->value,
+            'status_kehadiran' => StatusKehadiranEnum::HADIR->value,
             'waktu_check_in' => now(),
             'is_manual_update' => false,
             'ip_address' => $ipAddress,
@@ -80,7 +80,7 @@ class PresensiMahasiswaService
 
         return PerkuliahanAbsensi::where('perkuliahan_sesi_id', $sesiId)
             ->where('id', '!=', $absensiIdSaatIni)
-            ->where('status_kehadiran', StatusKehadiran::Hadir->value)
+            ->where('status_kehadiran', StatusKehadiranEnum::HADIR->value)
             ->where(function ($q) use ($ipAddress, $deviceFingerprint) {
                 if (filled($deviceFingerprint)) {
                     $q->orWhere('device_fingerprint', $deviceFingerprint);
@@ -95,7 +95,7 @@ class PresensiMahasiswaService
     protected function tandaiPasanganDuplikat(string $sesiId, ?string $ipAddress, ?string $deviceFingerprint): void
     {
         PerkuliahanAbsensi::where('perkuliahan_sesi_id', $sesiId)
-            ->where('status_kehadiran', StatusKehadiran::Hadir->value)
+            ->where('status_kehadiran', StatusKehadiranEnum::HADIR->value)
             ->where(function ($q) use ($ipAddress, $deviceFingerprint) {
                 if (filled($deviceFingerprint)) {
                     $q->orWhere('device_fingerprint', $deviceFingerprint);

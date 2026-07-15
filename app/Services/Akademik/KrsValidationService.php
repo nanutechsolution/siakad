@@ -401,9 +401,9 @@ class KrsValidationService
      */
     public function runAllValidations(Mahasiswa $mahasiswa, Krs $krs, RefTahunAkademik $ta): array
     {
-        $jadwalIds = $krs->krsDetails->pluck('jadwal_kuliah_id')->filter()->toArray();
-        $requestedSks = (int) $krs->krsDetails->sum('sks_snapshot');
-        $sksMengulang = (int) $krs->krsDetails->where('status_ambil', 'U')->sum('sks_snapshot');
+        $jadwalIds = $krs->details->pluck('jadwal_kuliah_id')->filter()->toArray();
+        $requestedSks = (int) $krs->details->sum('sks_snapshot');
+        $sksMengulang = (int) $krs->details->where('status_ambil', 'U')->sum('sks_snapshot');
 
         $hasDispensasiSks = DB::table('dispensasi_akademiks')
             ->where('mahasiswa_id', $mahasiswa->id)

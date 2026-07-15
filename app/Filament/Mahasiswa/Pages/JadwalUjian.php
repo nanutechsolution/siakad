@@ -147,9 +147,9 @@ class JadwalUjian extends Page implements HasTable
         $krsDetailIds = $this->currentMahasiswa()
             ->krs()
             ->berlaku()
-            ->with('detail:id,krs_id')
+            ->with('details:id,krs_id')
             ->get()
-            ->pluck('detail')
+            ->pluck('details')
             ->flatten()
             ->pluck('id');
 

@@ -199,10 +199,6 @@ class JadwalKuliah extends Model
         return $this->belongsToMany(TrxDosen::class, 'jadwal_kuliah_dosen', 'jadwal_kuliah_id', 'dosen_id')
             ->withPivot(['is_koordinator', 'is_penilai', 'rencana_tatap_muka']);
     }
-    public function dosenPengampus(): HasMany
-    {
-        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id', 'id');
-    }
     /**
      * Scope: hanya jadwal yang diampu oleh dosen tertentu.
      */
@@ -230,10 +226,7 @@ class JadwalKuliah extends Model
             ->where('is_penilai', 1)
             ->exists();
     }
-    public function dosenPengampuh(): HasMany
-    {
-        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id');
-    }
+
 
     /**
      * Mengecek apakah dosen ini terdaftar sebagai koordinator kelas.
@@ -262,13 +255,14 @@ class JadwalKuliah extends Model
     /** Nama dosen koordinator (atau dosen pertama jika tidak ada koordinator eksplisit). */
     public function getDosenLabelAttribute(): string
     {
-        if (! $this->relationLoaded('dosenPengampus') || $this->dosenPengampus->isEmpty()) {
+        if (! $this->relationLoaded('dosenPengampu') || $this->dosenPengampu->isEmpty()) {
             return 'Dosen belum ditentukan';
         }
 
-        return $this->dosenPengampus
-            ->sortByDesc('is_koordinator')
-            ->map(fn(JadwalKuliahDosen $d) => $d->dosen?->nama ?? '(Dosen tidak ditemukan)')
+        return $this->dosenPengampu
+            ->map(function (TrxDosen $dosen) {
+                return $dosen->nama ?? '(Dosen tidak ditemukan)';
+            })
             ->implode(', ');
     }
 }

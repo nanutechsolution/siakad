@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
@@ -17,6 +16,12 @@ class JadwalUjian extends Model
         'jam_mulai' => 'datetime:H:i',
         'jam_selesai' => 'datetime:H:i',
     ];
+
+    public function pengawas(): HasMany
+    {
+        // Hubungkan ke model JadwalUjianPengawas dengan foreign key 'jadwal_ujian_id'
+        return $this->hasMany(JadwalUjianPengawas::class, 'jadwal_ujian_id');
+    }
 
     public function jadwalKuliah(): BelongsTo
     {

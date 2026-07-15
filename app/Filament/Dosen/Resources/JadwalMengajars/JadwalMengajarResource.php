@@ -16,20 +16,16 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Override;
 use UnitEnum;
+
 class JadwalMengajarResource extends Resource
 {
     protected static ?string $model = JadwalKuliah::class;
 
-    // protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCalendarDays;
     protected static ?string $navigationLabel = 'Jadwal Mengajar';
     protected static ?string $modelLabel = 'Jadwal Mengajar';
-
     protected static ?string $pluralModelLabel = 'Jadwal Mengajar';
-
     protected static string|UnitEnum|null $navigationGroup = 'Perkuliahan';
-
     protected static ?int $navigationSort = 1;
-
     public static function getEloquentQuery(): Builder
     {
         $dosenId = static::currentDosenId();
@@ -86,12 +82,11 @@ class JadwalMengajarResource extends Resource
 
     public static function canCreate(): bool
     {
-        return false;
+        return true;
     }
-
     public static function canEdit($record): bool
     {
-        return false;
+        return true;
     }
 
     public static function canDelete($record): bool
