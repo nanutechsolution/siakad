@@ -86,7 +86,6 @@ class CamabaStagingsTable
             ])
             ->filters([
                 SelectFilter::make('status')
-                    ->close()
                     ->options([
                         'pending' => 'Menunggu',
                         'processing' => 'Diproses',
