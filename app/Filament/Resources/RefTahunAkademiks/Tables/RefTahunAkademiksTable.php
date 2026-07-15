@@ -16,6 +16,7 @@ class RefTahunAkademiksTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->defaultSort('kode_tahun', 'desc')
             ->columns([
                 TextColumn::make('kode_tahun')
                     ->label('Kode')
