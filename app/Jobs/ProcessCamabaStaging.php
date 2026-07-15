@@ -36,11 +36,12 @@ class ProcessCamabaStaging implements ShouldQueue
             DB::beginTransaction();
 
             // 1. Cari Relasi ID dari Database SIAKAD berdasarkan teks dari PMB
-            $prodi = RefProdi::where('kode_prodi_internal', $payload['kode_prodi'])
+            $prodi = RefProdi::where('nama_prodi', $payload['nama_prodi'])
+                ->orWhere('kode_prodi_internal', $payload['kode_prodi'] ?? '')
                 ->first();
 
             if (!$prodi) {
-                throw new \Exception("Prodi dengan nama '{$payload['kode_prodi']}' tidak ditemukan di SIAKAD.");
+                throw new \Exception("Prodi dengan nama '{$payload['nama_prodi']}' tidak ditemukan di SIAKAD.");
             }
 
             // Cari program (Reguler dll), default ke ID 1 jika tidak ketemu
