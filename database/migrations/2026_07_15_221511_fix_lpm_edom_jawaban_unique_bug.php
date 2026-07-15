@@ -11,19 +11,19 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::table('lpm_edom_jawaban', function (Blueprint $table) {
-            $table->dropUnique('unique_edom_jawaban_dosen');
+        // Schema::table('lpm_edom_jawaban', function (Blueprint $table) {
+        //     $table->dropUnique('unique_edom_jawaban_dosen');
 
-            // Index gabungan untuk agregasi IKD per dosen/kelas/pertanyaan (lihat sql/edom_reporting_queries.sql)
-            $table->index(['dosen_id', 'pertanyaan_id'], 'idx_edom_jawaban_agregasi');
-        });
+        //     // Index gabungan untuk agregasi IKD per dosen/kelas/pertanyaan (lihat sql/edom_reporting_queries.sql)
+        //     $table->index(['dosen_id', 'pertanyaan_id'], 'idx_edom_jawaban_agregasi');
+        // });
     }
 
     public function down(): void
     {
-        Schema::table('lpm_edom_jawaban', function (Blueprint $table) {
-            $table->dropIndex('idx_edom_jawaban_agregasi');
-            $table->unique(['pertanyaan_id', 'dosen_id'], 'unique_edom_jawaban_dosen');
-        });
+        // Schema::table('lpm_edom_jawaban', function (Blueprint $table) {
+        //     // $table->dropIndex('idx_edom_jawaban_agregasi');
+        //     // $table->unique(['pertanyaan_id', 'dosen_id'], 'unique_edom_jawaban_dosen');
+        // });
     }
 };
