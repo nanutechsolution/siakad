@@ -29,8 +29,11 @@ class CamabaStagingsTable
                     ->sortable(),
 
                 TextColumn::make('payload.nama_prodi')
-                    ->label('Prodi Tujuan')
+                    ->label('Prodi Diterima')
                     ->searchable(),
+
+                TextColumn::make('payload.tahun_masuk')
+                    ->label('Tahun Masuk'),
 
                 TextColumn::make('status')
                     ->label('Status')
@@ -40,7 +43,7 @@ class CamabaStagingsTable
                         'processing' => 'Diproses',
                         'processed' => 'Berhasil',
                         'failed' => 'Gagal',
-                        default => ucfirst($state),
+                        default => $state,
                     })
                     ->colors([
                         'warning' => 'pending',
@@ -49,32 +52,36 @@ class CamabaStagingsTable
                         'danger' => 'failed',
                     ]),
 
-                TextColumn::make('http_code')
-                    ->label('HTTP')
+                TextColumn::make('mahasiswa_id')
+                    ->label('Mahasiswa')
+                    ->formatStateUsing(
+                        fn($state) =>
+                        $state ? 'Sudah dibuat' : 'Belum'
+                    )
                     ->badge()
-                    ->color(fn($state) => match (true) {
-                        $state >= 200 && $state < 300 => 'success',
-                        $state >= 400 && $state < 500 => 'warning',
-                        $state >= 500 => 'danger',
-                        default => 'gray',
-                    }),
+                    ->colors([
+                        'success' => fn($state) => filled($state),
+                        'warning' => fn($state) => blank($state),
+                    ]),
 
-                TextColumn::make('error_message')
-                    ->label('Pesan Error')
+                TextColumn::make('error_log')
+                    ->label('Error Terakhir')
                     ->limit(50)
-                    ->wrap()
-                    ->tooltip(fn($record) => $record->error_message)
-                    ->placeholder('Tidak ada error'),
+                    ->tooltip(fn($record) => $record->error_log)
+                    ->placeholder('-'),
+
+                TextColumn::make('retry_count')
+                    ->label('Retry')
+                    ->badge(),
+
+                TextColumn::make('processed_at')
+                    ->label('Diproses')
+                    ->dateTime('d M Y H:i')
+                    ->placeholder('-'),
 
                 TextColumn::make('created_at')
                     ->label('Diterima')
-                    ->dateTime('d M Y H:i')
-                    ->sortable(),
-
-                TextColumn::make('updated_at')
-                    ->label('Update Terakhir')
-                    ->dateTime('d M Y H:i')
-                    ->sortable(),
+                    ->dateTime('d M Y H:i'),
             ])
             ->filters([
                 //
