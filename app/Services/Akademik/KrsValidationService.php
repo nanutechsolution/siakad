@@ -131,8 +131,6 @@ class KrsValidationService
 
         // 2. Cek Kebijakan Pembayaran Semester Berjalan
         $policy = DB::table('payment_policies')
-            ->where('tahun_akademik_id', $ta->id)
-            ->where('aktif', 1)
             ->where(function ($query) use ($mahasiswa) {
                 $query->where('prodi_id', $mahasiswa->prodi_id)
                     ->orWhereNull('prodi_id');
