@@ -131,6 +131,8 @@ class KrsValidationService
 
         // 2. Cek Kebijakan Pembayaran Semester Berjalan
         $policy = DB::table('payment_policies')
+            ->where('tahun_akademik_id', $ta->id)
+            ->where('aktif', 1)
             ->where(function ($query) use ($mahasiswa) {
                 $query->where('prodi_id', $mahasiswa->prodi_id)
                     ->orWhereNull('prodi_id');
@@ -142,12 +144,7 @@ class KrsValidationService
             // Prioritaskan kebijakan yang paling spesifik (bukan NULL) agar berada di urutan teratas
             ->orderByRaw('prodi_id IS NULL, program_kelas_id IS NULL')
             ->first();
-        dd(
-            DB::table('payment_policies')
-                ->where('tahun_akademik_id', $ta->id)
-                ->where('aktif', 1)
-                ->get()
-        );
+
         if (!$policy) {
             return KrsValidationResult::fail('GATE_KEUANGAN', 'Kebijakan pembayaran (Payment Policy) untuk prodi dan program ini belum dikonfigurasi. Hubungi bagian Keuangan.');
         }
