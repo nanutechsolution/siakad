@@ -34,7 +34,7 @@ class RiwayatKrsInfolist
 
                 Section::make('Daftar Mata Kuliah Diambil')
                     ->schema([
-                        RepeatableEntry::make('krsDetails')
+                        RepeatableEntry::make('details')
                             ->label('')
                             ->schema([
                                 TextEntry::make('kode_mk_snapshot')

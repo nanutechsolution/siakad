@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\StatusSesiPerkuliahan;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -56,6 +57,20 @@ class PerkuliahanSesi extends Model
         'token_generated_at' => 'datetime',
         'status_sesi' => \App\Enums\StatusSesiPerkuliahan::class,
     ];
+    public const STATUS_DIHITUNG = [
+        StatusSesiPerkuliahan::Selesai,
+    ];
+
+    public function scopeSelesai($query)
+    {
+        return $query->whereIn(
+            'status_sesi',
+            array_map(
+                fn($status) => $status->value,
+                self::STATUS_DIHITUNG
+            )
+        );
+    }
     protected static function boot(): void
     {
         parent::boot();

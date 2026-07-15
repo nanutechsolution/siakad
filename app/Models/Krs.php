@@ -50,6 +50,14 @@ class Krs extends Model
         'total_sks_diambil' => 'integer',
     ];
 
+    /**
+     * Status KRS yang dianggap "berlaku" (jadwal & presensi mahasiswa
+     * hanya sah dihitung dari sini). Sesuaikan dengan konstanta status_krs
+     * yang dipakai proses persetujuan KRS pada modul lain.
+     */
+    public const STATUS_BERLAKU = [
+        KrsStatusEnum::DISETUJUI,
+    ];
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -98,7 +106,7 @@ class Krs extends Model
         return $this->belongsTo(DispensasiAkademik::class, 'dispensasi_id');
     }
 
-    public function krsDetails(): HasMany
+    public function details(): HasMany
     {
         return $this->hasMany(KrsDetail::class, 'krs_id');
     }
@@ -110,5 +118,13 @@ class Krs extends Model
     public function dosenWaliSnapshot(): BelongsTo
     {
         return $this->belongsTo(TrxDosen::class, 'dosen_wali_id', 'id');
+    }
+
+    public function scopeBerlaku($query)
+    {
+        return $query->where(
+            'status_krs',
+            KrsStatusEnum::DISETUJUI->value
+        );
     }
 }

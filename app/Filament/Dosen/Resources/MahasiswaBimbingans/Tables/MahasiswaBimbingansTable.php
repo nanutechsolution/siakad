@@ -3,12 +3,9 @@
 namespace App\Filament\Dosen\Resources\MahasiswaBimbingans\Tables;
 
 use App\Enums\KrsStatusEnum;
-use App\Models\Krs;
 use App\Services\Akademik\KrsApprovalService;
 use App\Services\Akademik\KrsValidationService;
 use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -16,9 +13,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Database\Eloquent\Model;
-use Throwable;
 
 class MahasiswaBimbingansTable
 {

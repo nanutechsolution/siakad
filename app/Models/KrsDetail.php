@@ -6,6 +6,7 @@ use App\Enums\StatusNilaiKelas;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -40,6 +41,13 @@ class KrsDetail extends Model
         'is_locked' => 'boolean',
         'is_edom_filled' => 'boolean',
     ];
+
+    /**
+     * status_ambil yang berarti mata kuliah ini masih aktif diambil
+     * (bukan dibatalkan). Sesuaikan huruf kode ini dengan modul KRS Anda
+     * jika berbeda -- ini titik yang WAJIB dicek sebelum go-live.
+     */
+    public const STATUS_AMBIL_AKTIF = ['B']; // contoh: B = Baru/Berjalan
 
     /**
      * Log ke activity_log setiap kali nilai / status berubah.
@@ -128,4 +136,32 @@ class KrsDetail extends Model
     {
         return (float) $this->detailNilai->where('komponen_id', $komponenId)->first()?->nilai_angka ?? 0.00;
     }
+
+    public function scopeAktif($query)
+    {
+        return $query->whereIn('status_ambil', self::STATUS_AMBIL_AKTIF);
+    }
+
+    
+    /**
+     * Semua sesi perkuliahan milik jadwal_kuliah yang sama dengan baris KRS
+     * ini -- dipakai sebagai PENYEBUT (denominator) resmi jumlah pertemuan,
+     * terlepas dari apakah baris presensi untuk mahasiswa ini sudah dibuat
+     * atau belum. Ini sengaja dipisah dari relasi `absensi()` supaya sesi
+     * yang belum ada baris presensinya tetap ikut terhitung (dan otomatis
+     * dianggap belum hadir), bukan hilang dari perhitungan.
+     */
+    public function sesiKuliah(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            PerkuliahanSesi::class,
+            JadwalKuliah::class,
+            'id',               // FK di tabel jadwal_kuliah yg dituju
+            'jadwal_kuliah_id', // FK di tabel perkuliahan_sesi
+            'jadwal_kuliah_id', // Local key di krs_detail
+            'id'                // Local key di jadwal_kuliah
+        );
+    }
+
+    
 }

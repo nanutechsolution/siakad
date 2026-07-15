@@ -30,4 +30,9 @@ class MahasiswaKelas extends Model
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id', 'id');
     }
+
+     public function scopeAktif($query)
+    {
+        return $query->whereNull('tanggal_keluar');
+    }
 }

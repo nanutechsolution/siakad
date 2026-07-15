@@ -2,19 +2,19 @@
 
 namespace App\Filament\Mahasiswa\Pages;
 
+use App\Enums\MahasiswaNavigationGroup;
 use App\Services\PresensiMahasiswaService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
 use Illuminate\Validation\ValidationException;
+use UnitEnum;
 
 class AbsenKuliah extends Page
 {
-    protected static string|\BackedEnum|null $navigationIcon = Heroicon::OutlinedQrCode;
-
-    protected static ?string $navigationLabel = 'Absen Kuliah';
-
-    protected static ?string $title = 'Absen Kuliah';
+    protected static ?string $navigationLabel = 'Presensi Kuliah';
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::PERKULIAHAN->value;
+    protected static ?string $title = 'Presensi Kuliah';
 
     protected static ?int $navigationSort = 1;
 

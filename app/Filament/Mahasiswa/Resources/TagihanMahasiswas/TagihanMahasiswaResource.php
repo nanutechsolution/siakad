@@ -22,7 +22,7 @@ class TagihanMahasiswaResource extends Resource
 {
     protected static ?string $model = TagihanMahasiswa::class;
     protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KEUANGAN->value;
-    protected static ?string $navigationLabel = 'Informasi Tagihan';
+    protected static ?string $navigationLabel = 'Tagihan';
     protected static ?string $modelLabel = 'Tagihan';
     protected static ?string $pluralModelLabel = 'Daftar Tagihan';
     /**

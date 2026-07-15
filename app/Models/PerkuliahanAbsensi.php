@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use App\Enums\StatusKehadiran;
 use App\Enums\StatusKehadiranEnum;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -57,5 +56,10 @@ class PerkuliahanAbsensi extends Model
     public function krsDetail(): BelongsTo
     {
         return $this->belongsTo(KrsDetail::class, 'krs_detail_id');
+    }
+
+    public function getStatusLabelAttribute(): ?string
+    {
+        return $this->status_kehadiran?->getLabel();
     }
 }

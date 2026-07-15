@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mahasiswa\Pages;
 
+use App\Enums\NavigationGroup;
 use App\Models\KeuanganSaldo;
 use App\Models\KeuanganSaldoTransaction;
 use App\Models\Mahasiswa;
@@ -22,7 +23,7 @@ class SaldoMahasiswaPage extends Page implements HasForms, HasTable
     use InteractsWithForms;
     use InteractsWithTable;
     protected string $view = 'filament.mahasiswa.pages.saldo-mahasiswa-page';
-    protected static string|UnitEnum|null $navigationGroup = 'Keuangan';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
     protected static ?string $navigationLabel = 'Saldo Deposit';
     protected static ?string $title = 'Saldo Deposit Mahasiswa';
     public function getSaldoAttribute(): float

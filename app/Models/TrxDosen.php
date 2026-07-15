@@ -131,4 +131,14 @@ class TrxDosen extends Model
         return $this->hasMany(DosenDokumen::class, 'dosen_id');
     }
 
+    /**
+     * Nama dosen langsung tanpa perlu load relasi person secara eksplisit
+     * di tempat pemanggilan (tetap harus eager-load 'person' agar tidak N+1).
+     */
+    public function getNamaAttribute(): string
+    {
+        return $this->relationLoaded('person')
+            ? ($this->person?->display_name ?? '(Dosen tidak ditemukan)')
+            : ($this->person()->value('nama_lengkap') ?? '(Dosen tidak ditemukan)');
+    }
 }

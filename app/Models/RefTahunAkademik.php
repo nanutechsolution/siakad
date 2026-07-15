@@ -128,4 +128,10 @@ class RefTahunAkademik extends Model
         if ($this->isInputNilaiOpen()) return 'Terbuka';
         return 'Sudah Ditutup';
     }
+
+    
+    public function scopeAktif($query)
+    {
+        return $query->where('is_active', true);
+    }
 }

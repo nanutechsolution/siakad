@@ -49,7 +49,19 @@ class JadwalKuliah extends Model
     protected $casts = [
         'kuota_kelas' => 'integer',
         'isi_kelas' => 'integer',
+
         // Jam biarkan string agar kompatibel dengan format 'H:i' di Filament TimePicker
+    ];
+
+    /** Urutan hari untuk sorting tampilan jadwal mingguan (Senin dulu). */
+    public const URUTAN_HARI = [
+        'Senin' => 1,
+        'Selasa' => 2,
+        'Rabu' => 3,
+        'Kamis' => 4,
+        'Jumat' => 5,
+        'Sabtu' => 6,
+        'Minggu' => 7,
     ];
     protected static function boot(): void
     {
@@ -81,7 +93,7 @@ class JadwalKuliah extends Model
         return $this->belongsTo(MasterKurikulum::class, 'kurikulum_id');
     }
 
-     /**
+    /**
      * Scope inti untuk tabel Monitoring BARA: menambahkan kolom agregat
      *   jumlah_mahasiswa, jumlah_sudah_input, jumlah_sudah_publish, jumlah_terkunci
      * berbasis subquery ke krs_detail — cukup 1 query, tanpa N+1.
@@ -91,9 +103,9 @@ class JadwalKuliah extends Model
         return $query
             ->withCount([
                 'krsDetail as jumlah_mahasiswa',
-                'krsDetail as jumlah_sudah_input' => fn (Builder $q) => $q->whereNotNull('nilai_huruf'),
-                'krsDetail as jumlah_sudah_publish' => fn (Builder $q) => $q->where('is_published', true),
-                'krsDetail as jumlah_terkunci' => fn (Builder $q) => $q->where('is_locked', true),
+                'krsDetail as jumlah_sudah_input' => fn(Builder $q) => $q->whereNotNull('nilai_huruf'),
+                'krsDetail as jumlah_sudah_publish' => fn(Builder $q) => $q->where('is_published', true),
+                'krsDetail as jumlah_terkunci' => fn(Builder $q) => $q->where('is_locked', true),
             ]);
     }
 
@@ -112,20 +124,20 @@ class JadwalKuliah extends Model
     public function scopeStatusNilai(Builder $query, StatusNilaiKelas $status): Builder
     {
         return match ($status) {
-            StatusNilaiKelas::BELUM_INPUT => $query->whereDoesntHave('krsDetail', fn ($q) => $q->whereNotNull('nilai_huruf')),
+            StatusNilaiKelas::BELUM_INPUT => $query->whereDoesntHave('krsDetail', fn($q) => $q->whereNotNull('nilai_huruf')),
             StatusNilaiKelas::SEBAGIAN_INPUT => $query
-                ->whereHas('krsDetail', fn ($q) => $q->whereNotNull('nilai_huruf'))
-                ->whereHas('krsDetail', fn ($q) => $q->whereNull('nilai_huruf')),
+                ->whereHas('krsDetail', fn($q) => $q->whereNotNull('nilai_huruf'))
+                ->whereHas('krsDetail', fn($q) => $q->whereNull('nilai_huruf')),
             StatusNilaiKelas::SUDAH_INPUT => $query
-                ->whereDoesntHave('krsDetail', fn ($q) => $q->whereNull('nilai_huruf'))
-                ->whereDoesntHave('krsDetail', fn ($q) => $q->where('is_published', false))
+                ->whereDoesntHave('krsDetail', fn($q) => $q->whereNull('nilai_huruf'))
+                ->whereDoesntHave('krsDetail', fn($q) => $q->where('is_published', false))
                 ->has('krsDetail'),
             StatusNilaiKelas::SUDAH_PUBLISH => $query
-                ->whereHas('krsDetail', fn ($q) => $q->where('is_published', true))
-                ->whereDoesntHave('krsDetail', fn ($q) => $q->where('is_locked', false)->where('is_published', false)),
+                ->whereHas('krsDetail', fn($q) => $q->where('is_published', true))
+                ->whereDoesntHave('krsDetail', fn($q) => $q->where('is_locked', false)->where('is_published', false)),
             StatusNilaiKelas::TERKUNCI => $query
                 ->has('krsDetail')
-                ->whereDoesntHave('krsDetail', fn ($q) => $q->where('is_locked', false)),
+                ->whereDoesntHave('krsDetail', fn($q) => $q->where('is_locked', false)),
         };
     }
     /**
@@ -218,6 +230,10 @@ class JadwalKuliah extends Model
             ->where('is_penilai', 1)
             ->exists();
     }
+    public function dosenPengampuh(): HasMany
+    {
+        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id');
+    }
 
     /**
      * Mengecek apakah dosen ini terdaftar sebagai koordinator kelas.
@@ -230,5 +246,29 @@ class JadwalKuliah extends Model
             ->where('dosen_id', $dosenId)
             ->where('is_koordinator', 1) // Sesuaikan nama kolom ini jika berbeda di database Anda
             ->exists();
+    }
+
+    public function getJamLabelAttribute(): string
+    {
+        if (! $this->jam_mulai || ! $this->jam_selesai) {
+            return 'Jam belum ditentukan';
+        }
+
+        return substr($this->jam_mulai, 0, 5)
+            . ' - ' .
+            substr($this->jam_selesai, 0, 5);
+    }
+
+    /** Nama dosen koordinator (atau dosen pertama jika tidak ada koordinator eksplisit). */
+    public function getDosenLabelAttribute(): string
+    {
+        if (! $this->relationLoaded('dosenPengampus') || $this->dosenPengampus->isEmpty()) {
+            return 'Dosen belum ditentukan';
+        }
+
+        return $this->dosenPengampus
+            ->sortByDesc('is_koordinator')
+            ->map(fn(JadwalKuliahDosen $d) => $d->dosen?->nama ?? '(Dosen tidak ditemukan)')
+            ->implode(', ');
     }
 }

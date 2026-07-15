@@ -7,7 +7,7 @@ use Illuminate\Notifications\Notification;
 class KrsStatusNotification extends Notification
 {
     public function __construct(
-        public string $status,       
+        public string $status,
         public ?string $catatan = null,
         public ?string $tahunAkademik = null,
     ) {}
@@ -22,8 +22,8 @@ class KrsStatusNotification extends Notification
         return [
             'title' => $this->status === 'DISETUJUI' ? 'KRS Disetujui' : 'KRS Ditolak',
             'body' => $this->status === 'DISETUJUI'
-                ? 'KRS Anda untuk periode '.($this->tahunAkademik ?? '-').' telah disetujui oleh Dosen Wali.'
-                : 'KRS Anda untuk periode '.($this->tahunAkademik ?? '-').' ditolak. Catatan: '.($this->catatan ?: '-'),
+                ? 'KRS Anda untuk periode ' . ($this->tahunAkademik ?? '-') . ' telah disetujui oleh Dosen Wali.'
+                : 'KRS Anda untuk periode ' . ($this->tahunAkademik ?? '-') . ' ditolak. Catatan: ' . ($this->catatan ?: '-'),
             'status' => $this->status,
         ];
     }

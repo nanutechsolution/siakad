@@ -26,7 +26,7 @@ use Illuminate\Support\Str;
 class PengisianKrsPage extends Page implements HasForms
 {
     protected string $view = 'filament.mahasiswa.pages.pengisian-krs-page';
-    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::AKADEMIK->value;
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KRS->value;
     protected static ?string $navigationLabel = 'Isi KRS';
     protected static ?string $title = 'Pengisian Kartu Rencana Studi (KRS)';
     protected static ?int $navigationSort = 1;
@@ -273,7 +273,6 @@ class PengisianKrsPage extends Page implements HasForms
             ->whereIn('jadwal_kuliah.id', $jadwalIds)
             ->sum('master_mata_kuliahs.sks_default');
 
-        // GATE 3: SKS Maksimal (mode-aware, logic penuh di KrsValidationService)
         // GATE 3: SKS Maksimal — mode-aware (PAKET vs BEBAS), logic penuh ada di KrsValidationService
         $hasDispensasiSks = DB::table('dispensasi_akademiks')
             ->where('mahasiswa_id', $this->mahasiswa->id)

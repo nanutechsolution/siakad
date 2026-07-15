@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mahasiswa\Pages;
 
+use App\Enums\MahasiswaNavigationGroup;
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaBiodata;
 use App\Models\ProfileChangeRequest;
@@ -28,8 +29,7 @@ class ProfilSaya extends Page implements HasForms
 {
 
     use InteractsWithForms;
-
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-circle';
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::AKADEMIK->value;
     protected static ?string $navigationLabel = 'Profil Saya';
     protected static ?string $title = 'Profil Saya';
 

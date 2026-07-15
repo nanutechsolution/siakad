@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mahasiswa\Resources\RiwayatKrs;
 
+use App\Enums\MahasiswaNavigationGroup;
 use App\Filament\Mahasiswa\Resources\RiwayatKrs\Pages\CreateRiwayatKrs;
 use App\Filament\Mahasiswa\Resources\RiwayatKrs\Pages\EditRiwayatKrs;
 use App\Filament\Mahasiswa\Resources\RiwayatKrs\Pages\ListRiwayatKrs;
@@ -25,7 +26,7 @@ use UnitEnum;
 class RiwayatKrsResource extends Resource
 {
     protected static ?string $model = Krs::class;
-    protected static string|UnitEnum|null $navigationGroup = 'Akademik';
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KRS->value;
     protected static ?string $navigationLabel = 'Riwayat KRS';
     protected static ?string $modelLabel = 'Riwayat KRS';
     protected static ?string $slug = 'riwayat-krs';
