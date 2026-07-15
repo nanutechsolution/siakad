@@ -9,6 +9,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 
 class CamabaStagingsTable
@@ -84,7 +85,13 @@ class CamabaStagingsTable
                     ->dateTime('d M Y H:i'),
             ])
             ->filters([
-                //
+                SelectFilter::make('status')
+                    ->options([
+                        'pending' => 'Menunggu',
+                        'processing' => 'Diproses',
+                        'processed' => 'Berhasil',
+                        'failed' => 'Gagal',
+                    ]),
             ])
             ->recordActions([
                 EditAction::make(),
