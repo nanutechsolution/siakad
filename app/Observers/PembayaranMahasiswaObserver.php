@@ -25,7 +25,7 @@ class PembayaranMahasiswaObserver
                 $tagihan = $pembayaran->tagihan;
                 $mahasiswa = $tagihan->mahasiswa ?? null;
 
-                if ($mahasiswa && Str::startsWith($mahasiswa->nim, 'PMB-')) {
+                if ($mahasiswa && Str::startsWith($mahasiswa->nim, 'PMB')) {
 
                     try {
                         DB::beginTransaction();
