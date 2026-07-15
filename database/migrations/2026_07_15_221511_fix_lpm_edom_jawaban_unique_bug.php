@@ -15,7 +15,7 @@ return new class extends Migration
             $table->dropUnique('unique_edom_jawaban_dosen');
 
             // Index gabungan untuk agregasi IKD per dosen/kelas/pertanyaan (lihat sql/edom_reporting_queries.sql)
-            $table->index(['dosen_id', 'jadwal_kuliah_id', 'pertanyaan_id'], 'idx_edom_jawaban_agregasi');
+            $table->index(['dosen_id', 'pertanyaan_id'], 'idx_edom_jawaban_agregasi');
         });
     }
 
