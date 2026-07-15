@@ -28,6 +28,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
+
 class MahasiswasTable
 {
     public static function configure(Table $table): Table
@@ -85,9 +86,8 @@ class MahasiswasTable
                     ->label('Terbitkan Tagihan')
                     ->icon('heroicon-o-banknotes')
                     ->color('success')
-                    // Tombol ini HANYA MUNCUL jika NIM berawalan PMB-
-                    ->visible(fn($record) => Str::startsWith($record->nim, 'PMB-'))
-                    ->form([
+                    ->visible(fn($record) => Str::startsWith($record->nim, 'PMB'))
+                    ->schema([
                         Select::make('tahun_akademik_id')
                             ->label('Tahun Akademik')
                             ->options(RefTahunAkademik::where('is_active', 1)->pluck('nama_tahun', 'id'))
