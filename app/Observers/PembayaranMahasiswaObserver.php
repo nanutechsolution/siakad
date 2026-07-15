@@ -15,6 +15,7 @@ class PembayaranMahasiswaObserver
 {
     public function updated(PembayaranMahasiswa $pembayaran): void
     {
+        Log::info('Observer PembayaranMahasiswa dipanggil');
         if ($pembayaran->wasChanged('status_verifikasi_id')) {
 
             if ($pembayaran->status_verifikasi_id === StatusVerifikasiPembayaran::VERIFIED) {
