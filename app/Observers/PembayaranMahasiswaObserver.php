@@ -36,7 +36,6 @@ class PembayaranMahasiswaObserver
                         // LOGIKA DINAMIS PENENTUAN NOMOR URUT (SKENARIO A vs B)
                         // =========================================================================
 
-                        // TODO: Ganti ini dengan pemanggil settingan dinamis di sistem kamu
                         // Contoh: setting('reset_nim_tahunan') atau config('siakad.reset_nim_tahunan')
                         $kampusSettings = app(\App\Settings\KampusSettings::class);
                         $isResetPerTahun = $kampusSettings->reset_nim_tahunan;
@@ -44,7 +43,7 @@ class PembayaranMahasiswaObserver
                         if ($isResetPerTahun) {
                             $lastMahasiswa = Mahasiswa::where('prodi_id', $prodi->id)
                                 ->where('angkatan_id', $angkatanTahun)
-                                ->where('nim', 'NOT LIKE', 'PMB-%')
+                                ->where('nim', 'NOT LIKE', 'PMB%')
                                 ->orderBy('nim', 'desc')
                                 ->first();
 
