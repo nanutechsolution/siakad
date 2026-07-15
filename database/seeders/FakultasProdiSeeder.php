@@ -116,6 +116,7 @@ class FakultasProdiSeeder extends Seeder
                     'gelar_lulusan' => $p['gelar'],
                     'format_nim' => $p['format_nim'],
                     'is_active' => true,
+                    'last_nim_seq' => 0,
                     'is_paket' => true,
                 ]
             );

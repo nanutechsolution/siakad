@@ -48,7 +48,7 @@ class DatabaseSeeder extends Seeder
             RefStatusVerifikasiPembayaranSeeder::class,
             MasterBeasiswaSeeder::class,
             PaymentPolicySeeder::class,
-            BackupPermissionSeeder::class,
+            // BackupPermissionSeeder::class,
 
         ]);
     }
