@@ -38,33 +38,54 @@ class KrsValidationService
      * Gate 2: Status & Kontinuitas Mahasiswa (Gap Semester)
      */
     public function checkStatusMahasiswa(Mahasiswa $mahasiswa, RefTahunAkademik $taTarget): KrsValidationResult
-    {
-        // Cari semester aktif sebelumnya (Ganjil/Genap), abaikan semester pendek (3)
-        $previousTa = RefTahunAkademik::whereIn('semester', [1, 2])
+    /**
+     * Gate 2: Status & Kontinuitas Mahasiswa (Gap Semester)
+     */
+    public function checkStatusMahasiswa(
+        Mahasiswa $mahasiswa,
+        RefTahunAkademik $taTarget
+    ): KrsValidationResult {
+
+        // Cari semester reguler sebelumnya (abaikan semester pendek)
+        $previousTa = RefTahunAkademik::query()
+            ->whereIn('semester', [1, 2])
             ->where('tanggal_mulai', '<', $taTarget->tanggal_mulai)
-            ->orderBy('tanggal_mulai', 'desc')
+            ->orderByDesc('tanggal_mulai')
+            ->first();
+
+        // Jika belum ada semester sebelumnya (misalnya database baru)
+        if (! $previousTa) {
+            return KrsValidationResult::pass('GATE_KONTINUITAS');
+        }
+
+        // Apakah mahasiswa pernah memiliki riwayat akademik?
+        $hasAnyHistory = DB::table('riwayat_status_mahasiswas')
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->exists();
+
+        // Mahasiswa baru -> tidak perlu cek gap semester
+        if (! $hasAnyHistory) {
+            return KrsValidationResult::pass('GATE_KONTINUITAS');
+        }
+
+        // Ambil status pada semester reguler sebelumnya
+        $riwayatSebelumnya = DB::table('riwayat_status_mahasiswas')
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->where('tahun_akademik_id', $previousTa->id)
             ->first();
 
         $needsDispensasi = false;
         $reason = '';
 
-        if ($previousTa) {
-            $riwayatSebelumnya = DB::table('riwayat_status_mahasiswas')
-                ->where('mahasiswa_id', $mahasiswa->id)
-                ->where('tahun_akademik_id', $previousTa->id)
-                ->first();
-
-            if (!$riwayatSebelumnya) {
-                $needsDispensasi = true;
-                $reason = "Terdeteksi gap semester (tidak ada riwayat pada semester {$previousTa->nama_tahun}).";
-            } elseif ($riwayatSebelumnya->status_kuliah !== StatusKuliah::AKTIF->value) {
-                $needsDispensasi = true;
-                $reason = "Status mahasiswa pada semester {$previousTa->nama_tahun} bukan AKTIF.";
-            }
+        if (! $riwayatSebelumnya) {
+            $needsDispensasi = true;
+            $reason = "Terdeteksi gap semester (tidak ada riwayat pada semester {$previousTa->nama_tahun}).";
+        } elseif ($riwayatSebelumnya->status_kuliah !== StatusKuliah::AKTIF->value) {
+            $needsDispensasi = true;
+            $reason = "Status mahasiswa pada semester {$previousTa->nama_tahun} adalah {$riwayatSebelumnya->status_kuliah}, bukan AKTIF.";
         }
 
         if ($needsDispensasi) {
-            // Cek dispensasi jenis KRS yang mencakup tanggal mulai s/d tanggal selesai KRS di TA Target
             $hasDispensasi = DB::table('dispensasi_akademiks')
                 ->where('mahasiswa_id', $mahasiswa->id)
                 ->where('jenis', 'KRS')
@@ -73,8 +94,11 @@ class KrsValidationService
                 ->where('berlaku_sampai', '>=', $taTarget->tgl_mulai_krs)
                 ->exists();
 
-            if (!$hasDispensasi) {
-                return KrsValidationResult::fail('GATE_KONTINUITAS', $reason . ' Wajib memiliki dispensasi KRS yang masih berlaku untuk periode ini.');
+            if (! $hasDispensasi) {
+                return KrsValidationResult::fail(
+                    'GATE_KONTINUITAS',
+                    $reason . ' Wajib memiliki dispensasi KRS yang masih berlaku.'
+                );
             }
         }
 
@@ -137,7 +161,6 @@ class KrsValidationService
             return KrsValidationResult::fail('GATE_KEUANGAN', 'Terblokir: Tagihan untuk semester berjalan belum diterbitkan oleh bagian Keuangan.');
         }
 
-        // --- PERBAIKAN UTAMA DI SINI ---
         // Jika tagihan utama semester ini secara keseluruhan sudah berstatus LUNAS,
         // bypass pengecekan per komponen biaya dan langsung nyatakan lolos validasi.
         if (isset($tagihanSemesterIni->status_bayar) && strtoupper($tagihanSemesterIni->status_bayar) === 'LUNAS') {
