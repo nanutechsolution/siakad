@@ -5,31 +5,17 @@ namespace App\Enums;
 enum MahasiswaNavigationGroup: string
 {
     case AKADEMIK = 'Akademik';
-
     case PERKULIAHAN = 'Perkuliahan';
-
     case KRS = 'Kartu Rencana Studi';
-
     case NILAI = 'Nilai Akademik';
-
     case KEUANGAN = 'Keuangan';
-
     case TUGAS_AKHIR = 'Tugas Akhir';
-
     case MBKM = 'MBKM';
-
     case KEMAHASISWAAN = 'Kemahasiswaan';
-
     case DOKUMEN = 'Dokumen';
-
     case LAYANAN = 'Layanan Akademik';
-
     case NOTIFIKASI = 'Notifikasi';
-
     case PROFIL = 'Profil';
-
-
-
     public function icon(): string
     {
         return match ($this) {

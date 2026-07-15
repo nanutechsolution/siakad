@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Enums\MahasiswaNavigationGroup;
 use App\Filament\Mahasiswa\Pages\Auth\LoginMahasiswa;
+use App\Filament\Mahasiswa\Widgets\MahasiswaAccountWidget;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -67,7 +68,8 @@ class MahasiswaPanelProvider extends PanelProvider
             )
             ->discoverWidgets(in: app_path('Filament/Mahasiswa/Widgets'), for: 'App\Filament\Mahasiswa\Widgets')
             ->widgets([
-                AccountWidget::class,
+                // AccountWidget::class,
+                MahasiswaAccountWidget::class
             ])
             ->middleware([
                 EncryptCookies::class,

@@ -78,8 +78,18 @@ class MasterKurikulumForm
                                 ->label('Kurikulum Aktif')
                                 ->default(true)
                                 ->helperText('Hanya kurikulum aktif yang dapat digunakan pada saat setting mata kuliah mahasiswa.'),
-                        ]),
 
+                            Select::make('mode_krs')
+                                ->label('Mode Pengisian KRS')
+                                ->options([
+                                    'PAKET' => 'Paket (MK ditentukan otomatis per kelas)',
+                                    'BEBAS' => 'Bebas (Mahasiswa memilih MK sendiri, dibatasi IPS)',
+                                ])
+                                ->required()
+                                ->default('PAKET')
+                                ->native(false)
+                                ->helperText('PAKET: SKS mahasiswa tidak divalidasi berbasis IPS, hanya MK mengulang/lintas kelas yang dibatasi. BEBAS: seluruh SKS divalidasi berbasis aturan IPS (ref_aturan_sks).'),
+                        ]),
                     Section::make('Legalitas & Integrasi')
                         ->schema([
                             TextInput::make('no_sk_kurikulum')

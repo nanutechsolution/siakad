@@ -196,6 +196,135 @@ CREATE TABLE `dispensasi_akademiks` (
   CONSTRAINT `dispensasi_akademiks_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `dosen_biodata`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dosen_biodata` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `alamat_domisili` text COLLATE utf8mb4_unicode_ci,
+  `kode_pos` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `no_hp_kantor` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `bidang_keahlian` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `minat_penelitian` text COLLATE utf8mb4_unicode_ci,
+  `sinta_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `scopus_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `orcid_id` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `google_scholar_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `h_index_scopus` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `h_index_scholar` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `agama` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status_pernikahan` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `dosen_biodata_dosen_id_unique` (`dosen_id`),
+  CONSTRAINT `dosen_biodata_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `dosen_dokumen`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dosen_dokumen` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `ref_dokumen_dosen_id` bigint unsigned NOT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_file_asli` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `ukuran_kb` int unsigned DEFAULT NULL,
+  `status` enum('pending','approved','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reviewed_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reviewed_at` timestamp NULL DEFAULT NULL,
+  `rejection_note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `dosen_dokumen_dosen_id_ref_dokumen_dosen_id_unique` (`dosen_id`,`ref_dokumen_dosen_id`),
+  KEY `dosen_dokumen_ref_dokumen_dosen_id_foreign` (`ref_dokumen_dosen_id`),
+  KEY `dosen_dokumen_reviewed_by_foreign` (`reviewed_by`),
+  CONSTRAINT `dosen_dokumen_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `dosen_dokumen_ref_dokumen_dosen_id_foreign` FOREIGN KEY (`ref_dokumen_dosen_id`) REFERENCES `ref_dokumen_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `dosen_dokumen_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `dosen_profile_change_requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dosen_profile_change_requests` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `field_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `old_value` text COLLATE utf8mb4_unicode_ci,
+  `new_value` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` text COLLATE utf8mb4_unicode_ci,
+  `attachment_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('pending','approved','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reviewed_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reviewed_at` timestamp NULL DEFAULT NULL,
+  `rejection_note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `dosen_profile_change_requests_dosen_id_status_index` (`dosen_id`,`status`),
+  KEY `dosen_profile_change_requests_reviewed_by_foreign` (`reviewed_by`),
+  CONSTRAINT `dosen_profile_change_requests_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `dosen_profile_change_requests_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `dosen_riwayat_pendidikan`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dosen_riwayat_pendidikan` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jenjang` enum('D3','D4','S1','S2','S3','PROFESI') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nama_institusi` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `program_studi` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tahun_lulus` year DEFAULT NULL,
+  `judul_tugas_akhir` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_ijazah_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `dosen_riwayat_pendidikan_dosen_id_index` (`dosen_id`),
+  CONSTRAINT `dosen_riwayat_pendidikan_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `exports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `exports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `file_disk` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `exporter` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `processed_rows` int unsigned NOT NULL DEFAULT '0',
+  `total_rows` int unsigned NOT NULL,
+  `successful_rows` int unsigned NOT NULL DEFAULT '0',
+  `user_id` char(26) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `exports_user_id_foreign` (`user_id`),
+  CONSTRAINT `exports_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `failed_import_rows`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `failed_import_rows` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `data` json NOT NULL,
+  `import_id` bigint unsigned NOT NULL,
+  `validation_error` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `failed_import_rows_import_id_foreign` (`import_id`),
+  CONSTRAINT `failed_import_rows_import_id_foreign` FOREIGN KEY (`import_id`) REFERENCES `imports` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `failed_jobs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -209,6 +338,26 @@ CREATE TABLE `failed_jobs` (
   `failed_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `failed_jobs_uuid_unique` (`uuid`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `imports`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `imports` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `importer` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `processed_rows` int unsigned NOT NULL DEFAULT '0',
+  `total_rows` int unsigned NOT NULL,
+  `successful_rows` int unsigned NOT NULL DEFAULT '0',
+  `user_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `imports_user_id_foreign` (`user_id`),
+  CONSTRAINT `imports_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `jadwal_komponen_nilai`;
@@ -1117,6 +1266,41 @@ CREATE TABLE `lppm_usulans` (
   CONSTRAINT `lppm_usulans_skema_id_foreign` FOREIGN KEY (`skema_id`) REFERENCES `lppm_skemas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `mahasiswa_biodata`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `mahasiswa_biodata` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `alamat_ktp` text COLLATE utf8mb4_unicode_ci,
+  `alamat_domisili` text COLLATE utf8mb4_unicode_ci,
+  `kode_pos` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nama_ayah` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nik_ayah` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pendidikan_ayah` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pekerjaan_ayah` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `penghasilan_ayah` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nama_ibu` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nik_ibu` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pendidikan_ibu` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pekerjaan_ibu` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `penghasilan_ibu` varchar(30) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nama_wali` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `hubungan_wali` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `pekerjaan_wali` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `no_hp_wali` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `agama` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status_pernikahan` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `anak_ke` int unsigned DEFAULT NULL,
+  `jumlah_saudara` int unsigned DEFAULT NULL,
+  `no_kip` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `mahasiswa_biodata_mahasiswa_id_unique` (`mahasiswa_id`),
+  CONSTRAINT `mahasiswa_biodata_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `mahasiswa_kelas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -1178,6 +1362,7 @@ CREATE TABLE `master_kurikulums` (
   `tahun_mulai` int NOT NULL,
   `id_semester_mulai` varchar(10) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `mode_krs` enum('PAKET','BEBAS') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PAKET' COMMENT 'PAKET: MK ditentukan kurikulum via kelas, GATE SKS berbasis IPS di-skip. BEBAS: mahasiswa pilih sendiri, tunduk GATE SKS Maksimal berbasis IPS.',
   `jumlah_sks_lulus` int NOT NULL DEFAULT '144' COMMENT 'Total SKS minimal untuk lulus',
   `jumlah_sks_wajib` int NOT NULL DEFAULT '0',
   `jumlah_sks_pilihan` int NOT NULL DEFAULT '0',
@@ -1452,6 +1637,30 @@ CREATE TABLE `pmb_camaba_staging` (
   UNIQUE KEY `pmb_camaba_staging_external_id_unique` (`external_id`),
   KEY `pmb_camaba_staging_status_created_at_index` (`status`,`created_at`),
   KEY `pmb_camaba_staging_status_index` (`status`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `profile_change_requests`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `profile_change_requests` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `field_name` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `old_value` text COLLATE utf8mb4_unicode_ci,
+  `new_value` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `reason` text COLLATE utf8mb4_unicode_ci,
+  `attachment_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('pending','approved','rejected') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'pending',
+  `reviewed_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `reviewed_at` timestamp NULL DEFAULT NULL,
+  `rejection_note` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `profile_change_requests_mahasiswa_id_status_index` (`mahasiswa_id`,`status`),
+  KEY `profile_change_requests_reviewed_by_foreign` (`reviewed_by`),
+  CONSTRAINT `profile_change_requests_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `profile_change_requests_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ref_angkatan`;
@@ -2150,6 +2359,21 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (142,'2026_07_11_12
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (143,'2026_07_12_011906_alter_krs_and_create_krs_status_logs_table',27);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (144,'2026_07_12_205730_alter_ref_skala_nilai_precision',28);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (145,'2026_07_13_161719_add_security_columns_to_presensi_tables',29);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (146,'2022_12_14_083707_create_settings_table',30);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (147,'2026_07_13_175940_create_kampus_settings',30);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (148,'2026_07_14_120923_add_unique_kode_komponen_to_keuangan_komponen_biaya_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (149,'2022_12_14_083707_create_settings_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (150,'2026_07_13_175940_create_kampus_settings',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (151,'2026_07_14_120923_add_unique_kode_komponen_to_keuangan_komponen_biaya_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (152,'2026_07_14_152851_create_imports_table',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (153,'2026_07_14_152852_create_exports_table',31);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (154,'2026_07_14_152853_create_failed_import_rows_table',32);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (155,'2026_07_14_153418_alter_user_id_on_imports_table',33);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (156,'2026_07_14_212648_add_reset_nim_tahunan_to_kampus_settings',34);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (157,'2026_07_14_212811_add_neo_feeder_to_kampus_settings',35);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (158,'2026_07_14_212915_add_pro_settings_to_kampus_settings',36);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (159,'2026_07_14_222427_alter_last_nim_seq_in_ref_prodi',37);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (160,'2026_07_15_093210_add_mode_krs_to_master_kurikulums_table',38);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (161,'2026_07_15_110631_create_mahasiswa_biodata_tables',39);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (162,'2026_07_15_110719_profile_change_requests',39);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (163,'2026_07_15_115049_create_dosen_biodata',40);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (164,'2026_07_15_115107_create_dosen_riwayat_pendidikan_tables',40);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (165,'2026_07_15_115127_create_dosen_dokumen_table',40);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (166,'2026_07_15_115151_create_dosen_profile_change_requests_tables',40);

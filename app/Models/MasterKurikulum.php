@@ -66,4 +66,14 @@ class MasterKurikulum extends Model
     {
         return $this->hasMany(KurikulumKomponenNilai::class, 'kurikulum_id');
     }
+
+    public function isModePaket(): bool
+    {
+        return $this->mode_krs === 'PAKET';
+    }
+
+    public function isModeBebas(): bool
+    {
+        return $this->mode_krs === 'BEBAS';
+    }
 }

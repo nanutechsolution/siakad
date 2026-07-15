@@ -36,8 +36,11 @@ $logoFullPath = $kampus->logo_path ? storage_path('app/public/'.$kampus->logo_pa
 </div>
 @endif
 
-@if (!empty($infoBaris))
-<div style="text-align: center; margin-bottom: 12px; font-size: 9px; color: #4b5563;">
-    {{ implode(' &nbsp;|&nbsp; ', $infoBaris) }}
+<div style="text-align:center; font-size:9px; color:#4b5563;">
+    @foreach($infoBaris as $index => $item)
+        {{ $item }}
+        @if(!$loop->last)
+            <span style="padding:0 8px;">|</span>
+        @endif
+    @endforeach
 </div>
-@endif

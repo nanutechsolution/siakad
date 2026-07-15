@@ -32,6 +32,7 @@ class VerifikasiPembayaranResource extends Resource
      protected static ?string $slug = 'verifikasi-pembayaran';
     protected static ?int $navigationSort = 2;
 
+    
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::where('status_verifikasi_id', StatusVerifikasiPembayaran::PENDING)->count() ?: null;

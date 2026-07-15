@@ -3,8 +3,10 @@
 namespace App\Filament\Resources\JadwalKuliahs\Schemas;
 
 use App\Models\JadwalKuliah;
+use App\Models\Kelas;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -16,8 +18,10 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Closure;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class JadwalKuliahForm
 {
@@ -34,45 +38,27 @@ class JadwalKuliahForm
                                 ->required()
                                 ->searchable()
                                 ->preload()
+                                ->live()
                                 ->default(function () {
                                     return RefTahunAkademik::where('is_active', true)->first()?->id;
+                                })
+                                ->afterStateUpdated(function (Set $set) {
+                                    $set('mata_kuliah_id', null);
                                 }),
+
                             Select::make('kurikulum_id')
-                                ->label('Kurikulum (Opsional)')
+                                ->label('Kurikulum')
                                 ->relationship('kurikulum', 'nama_kurikulum')
-                                ->searchable()
                                 ->required()
+                                ->searchable()
                                 ->preload()
                                 ->live() // Menjadikan kolom ini reaktif saat nilainya berubah
                                 ->afterStateUpdated(function (Set $set) {
-                                    // Ketika kurikulum diganti, kosongkan pilihan mata kuliah sebelumnya
+                                    // Ketika kurikulum diganti, kosongkan pilihan mata kuliah & kelas sebelumnya
                                     $set('mata_kuliah_id', null);
                                     $set('kelas_id', null);
                                 }),
-                            Select::make('mata_kuliah_id')
-                                ->label('Mata Kuliah')
-                                ->relationship(
-                                    name: 'mataKuliah',
-                                    titleAttribute: 'nama_mk',
-                                    modifyQueryUsing: function (Builder $query, Get $get) {
-                                        $kurikulumId = $get('kurikulum_id');
 
-                                        // Jika kurikulum dipilih, filter mata kuliah yang terdaftar di kurikulum tersebut lewat relasi pivot
-                                        return $query->when(
-                                            $kurikulumId,
-                                            function ($q) use ($kurikulumId) {
-                                                // Pastikan di model MataKuliah Anda sudah mendefinisikan relasi 'kurikulums' (BelongsToMany)
-                                                return $q->whereHas('kurikulums', function ($pivotQuery) use ($kurikulumId) {
-                                                    $pivotQuery->where('master_kurikulums.id', $kurikulumId);
-                                                });
-                                            }
-                                        );
-                                    }
-                                )
-                                ->required()
-                                ->searchable()
-                                ->preload()
-                                ->key('mata_kuliah_by_kurikulum'),
                             Select::make('kelas_id')
                                 ->label('Kelas')
                                 ->relationship(
@@ -94,14 +80,98 @@ class JadwalKuliahForm
                                                     });
                                                 });
                                             }
-                                        );
+                                        )->orderBy('angkatan_id', 'desc')->orderBy('nama_kelas');
                                     }
                                 )
+                                ->getOptionLabelFromRecordUsing(fn(Kelas $record) => "{$record->nama_kelas} — Angkatan {$record->angkatan_id}")
                                 ->required()
                                 ->searchable()
                                 ->preload()
+                                ->live() // Menentukan filter semester untuk mata kuliah
+                                ->afterStateUpdated(function (Set $set) {
+                                    $set('mata_kuliah_id', null);
+                                })
                                 ->key('kelas_by_kurikulum_prodi'),
-                        ])->columns(2),
+
+                            // Info Panel: menampilkan hasil kalkulasi semester agar admin paham
+                            // kenapa daftar mata kuliah di bawah sudah terfilter otomatis.
+                            TextEntry::make('info_semester_kelas')
+                                ->label('Estimasi Semester Kelas')
+                                ->state(function (Get $get) {
+                                    $kelasId = $get('kelas_id');
+                                    $tahunAkademikId = $get('tahun_akademik_id');
+
+                                    if (!$kelasId || !$tahunAkademikId) {
+                                        return new HtmlString(
+                                            '<span class="text-sm text-gray-400 italic">Pilih Tahun Akademik dan Kelas untuk melihat estimasi semester paket.</span>'
+                                        );
+                                    }
+
+                                    $kelas = Kelas::find($kelasId);
+                                    $semester = self::calculateSemesterKelas($kelasId, $tahunAkademikId);
+
+                                    if (!$kelas || $semester === null) {
+                                        return new HtmlString(
+                                            '<span class="text-sm text-danger-600 font-semibold">Gagal menghitung semester — periksa data Kelas/Tahun Akademik.</span>'
+                                        );
+                                    }
+
+                                    return new HtmlString(
+                                        "<span class=\"inline-flex items-center gap-1.5 text-sm font-bold text-primary-700 bg-primary-50 border border-primary-200 px-3 py-1.5 rounded-lg\">"
+                                            . "Kelas <b>{$kelas->nama_kelas}</b> (Angkatan {$kelas->angkatan_id}) &rarr; Semester Paket <b>{$semester}</b>"
+                                            . "</span>"
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Select::make('mata_kuliah_id')
+                                ->label('Mata Kuliah')
+                                ->relationship(
+                                    name: 'mataKuliah',
+                                    titleAttribute: 'nama_mk',
+                                    modifyQueryUsing: function (Builder $query, Get $get) {
+                                        $kurikulumId = $get('kurikulum_id');
+                                        $kelasId = $get('kelas_id');
+                                        $tahunAkademikId = $get('tahun_akademik_id');
+
+                                        // Belum ada kurikulum dipilih -> jangan tampilkan apapun
+                                        if (!$kurikulumId) {
+                                            return $query->whereRaw('1 = 0');
+                                        }
+
+                                        $semesterTarget = self::calculateSemesterKelas($kelasId, $tahunAkademikId);
+
+                                        // Pastikan di model MataKuliah sudah ada relasi 'kurikulums' (BelongsToMany
+                                        // via pivot kurikulum_mata_kuliah, dengan kolom semester_paket).
+                                        return $query->whereHas('kurikulums', function ($pivotQuery) use ($kurikulumId, $semesterTarget) {
+                                            $pivotQuery->where('master_kurikulums.id', $kurikulumId);
+
+                                            if ($semesterTarget !== null) {
+                                                $pivotQuery->where('kurikulum_mata_kuliah.semester_paket', $semesterTarget);
+                                            }
+                                        })->orderBy('kode_mk');
+                                    }
+                                )
+                                ->getOptionLabelFromRecordUsing(fn($record) => "{$record->kode_mk} — {$record->nama_mk} ({$record->sks_default} SKS)")
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->live()
+                                ->key('mata_kuliah_by_kurikulum_kelas_semester')
+                                ->helperText(function (Get $get) {
+                                    if (!$get('kurikulum_id')) {
+                                        return 'Pilih Kurikulum terlebih dahulu.';
+                                    }
+
+                                    $semester = self::calculateSemesterKelas($get('kelas_id'), $get('tahun_akademik_id'));
+
+                                    if ($semester === null) {
+                                        return 'Pilih Kelas untuk memfilter mata kuliah sesuai semester paket kelas tersebut. Menampilkan seluruh MK kurikulum untuk sementara.';
+                                    }
+
+                                    return "Menampilkan mata kuliah Semester {$semester} sesuai paket kurikulum kelas ini.";
+                                }),
+                        ])->columnSpanFull(),
 
                     Section::make('Waktu & Tempat')
                         ->schema([
@@ -120,13 +190,19 @@ class JadwalKuliahForm
 
                             TimePicker::make('jam_mulai')
                                 ->label('Jam Mulai')
-                                ->required()
-                                ->seconds(false),
+                                ->native(false)
+                                ->seconds(false)
+                                ->format('H:i')
+                                ->displayFormat('H:i')
+                                ->required(),
 
                             TimePicker::make('jam_selesai')
                                 ->label('Jam Selesai')
-                                ->required()
+                                ->native(false)
                                 ->seconds(false)
+                                ->format('H:i')
+                                ->displayFormat('H:i')
+                                ->required()
                                 ->after('jam_mulai')
                                 ->rules(
                                     [
@@ -266,5 +342,30 @@ class JadwalKuliahForm
                         ]),
                 ]),
             ]);
+    }
+
+    /**
+     * Hitung semester paket kelas berdasarkan Angkatan Kelas vs Tahun Akademik target.
+     * Formula identik dengan yang dipakai di PengisianKrsPage (mahasiswa side) agar konsisten.
+     */
+    private static function calculateSemesterKelas(?int $kelasId, ?int $tahunAkademikId): ?int
+    {
+        if (!$kelasId || !$tahunAkademikId) {
+            return null;
+        }
+
+        $kelas = Kelas::find($kelasId);
+        $ta = RefTahunAkademik::find($tahunAkademikId);
+
+        if (!$kelas || !$ta || !$ta->kode_tahun) {
+            return null;
+        }
+
+        $tahunAngkatan = (int) $kelas->angkatan_id;
+        $tahunTa = (int) substr($ta->kode_tahun, 0, 4);
+
+        $semester = (($tahunTa - $tahunAngkatan) * 2) + ($ta->semester == 1 ? 1 : 2);
+
+        return $semester > 0 ? $semester : 1;
     }
 }

@@ -21,7 +21,8 @@ class RefDokumenDosen extends Model
      *
      * @var array<string>|bool
      */
-    protected $guarded = ['id'];
+    protected $fillable = ['kode', 'nama_dokumen', 'allowed_types', 'max_size_kb', 'is_active'];
+
 
     /**
      * Get the attributes that should be cast.

@@ -116,4 +116,19 @@ class TrxDosen extends Model
     {
         return $this->hasMany(KelasDosenWali::class, 'dosen_id', 'id');
     }
+    public function biodata()
+    {
+        return $this->hasOne(DosenBiodata::class, 'dosen_id');
+    }
+
+    public function riwayatPendidikan()
+    {
+        return $this->hasMany(DosenRiwayatPendidikan::class, 'dosen_id');
+    }
+
+    public function dokumen()
+    {
+        return $this->hasMany(DosenDokumen::class, 'dosen_id');
+    }
+
 }

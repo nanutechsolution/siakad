@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Mahasiswa extends Model
@@ -163,5 +164,19 @@ class Mahasiswa extends Model
     public function akunUser(): ?\App\Models\User
     {
         return \App\Models\User::where('person_id', $this->person_id)->first();
+    }
+
+    public function isKrsPaket(): bool
+    {
+        return ($this->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
+    }
+
+    public function biodata(): HasOne
+    {
+        return $this->hasOne(
+            MahasiswaBiodata::class,
+            'mahasiswa_id',
+            'id'
+        );
     }
 }

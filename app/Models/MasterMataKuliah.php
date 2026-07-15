@@ -64,13 +64,22 @@ class MasterMataKuliah extends Model
         return $this->hasMany(KurikulumMataKuliah::class, 'mata_kuliah_id');
     }
 
-    public function kurikulums(): BelongsToMany
+    // public function kurikulums(): BelongsToMany
+    // {
+    //     return $this->belongsToMany(
+    //         MasterKurikulum::class,          // Ganti dengan class model Kurikulum Anda (misal MasterKurikulum::class)
+    //         'kurikulum_mata_kuliah',   // Nama tabel pivot sesuai skema Anda
+    //         'mata_kuliah_id',          // Foreign key di tabel pivot ke tabel ini
+    //         'kurikulum_id'             // Foreign key di tabel pivot ke tabel kurikulum
+    //     );
+    // }
+    public function kurikulums(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
     {
         return $this->belongsToMany(
-            MasterKurikulum::class,          // Ganti dengan class model Kurikulum Anda (misal MasterKurikulum::class)
-            'kurikulum_mata_kuliah',   // Nama tabel pivot sesuai skema Anda
-            'mata_kuliah_id',          // Foreign key di tabel pivot ke tabel ini
-            'kurikulum_id'             // Foreign key di tabel pivot ke tabel kurikulum
-        );
+            MasterKurikulum::class,
+            'kurikulum_mata_kuliah',
+            'mata_kuliah_id',
+            'kurikulum_id'
+        )->withPivot(['semester_paket', 'sks_tatap_muka', 'sks_praktek', 'sks_lapangan', 'sifat_mk']);
     }
 }

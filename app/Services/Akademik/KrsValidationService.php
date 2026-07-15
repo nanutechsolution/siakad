@@ -185,12 +185,54 @@ class KrsValidationService
     /**
      * Gate 4: SKS Maksimal
      */
-    public function checkSksMaksimal(Mahasiswa $mahasiswa, int $requestedSks, bool $hasDispensasi = false): KrsValidationResult
-    {
+    /**
+     * Gate 4: SKS Maksimal (mode-aware: PAKET vs BEBAS)
+     */
+    public function checkSksMaksimal(
+        Mahasiswa $mahasiswa,
+        int $requestedSks,
+        bool $hasDispensasi = false,
+        int $sksMengulang = 0
+    ): KrsValidationResult {
         if ($hasDispensasi) {
             return KrsValidationResult::pass('GATE_SKS', 'Validasi SKS dilewati karena terdapat dispensasi aktif.');
         }
 
+        $modeKrs = $mahasiswa->kurikulum?->mode_krs ?? 'PAKET';
+
+        if ($modeKrs === 'PAKET') {
+            return $this->checkSksMaksimalModePaket($sksMengulang);
+        }
+
+        return $this->checkSksMaksimalModeBebas($mahasiswa, $requestedSks);
+    }
+
+    /**
+     * Skema Paket: SKS inti (jadwal_kuliah_ids dari kelas mahasiswa) sudah dikunci
+     * oleh kurikulum saat MK paket per semester didesain (kurikulum_mata_kuliah.semester_paket),
+     * sehingga TIDAK dievaluasi ulang berbasis IPS. Hanya MK mengulang/lintas kelas yang
+     * dibatasi dengan sanity-cap tetap agar tidak disalahgunakan untuk menumpuk beban.
+     */
+    private function checkSksMaksimalModePaket(int $sksMengulang): KrsValidationResult
+    {
+        $sanityCapMengulang = 12; // Kebijakan akademik: maks 12 SKS tambahan mengulang/lintas kelas per semester
+
+        if ($sksMengulang > $sanityCapMengulang) {
+            return KrsValidationResult::fail(
+                'GATE_SKS',
+                "Total SKS mengulang/lintas kelas ({$sksMengulang} SKS) melebihi batas maksimal {$sanityCapMengulang} SKS untuk skema paket. Hubungi Admin Prodi untuk dispensasi."
+            );
+        }
+
+        return KrsValidationResult::pass('GATE_SKS', 'Skema Paket: SKS inti dikunci kurikulum, tidak dievaluasi berbasis IPS.');
+    }
+
+    /**
+     * Skema Bebas: logic asli berbasis IPS/riwayat, dipertahankan persis untuk
+     * mahasiswa/prodi yang suatu saat pindah ke mode KRS Bebas.
+     */
+    private function checkSksMaksimalModeBebas(Mahasiswa $mahasiswa, int $requestedSks): KrsValidationResult
+    {
         $latestRiwayat = DB::table('riwayat_status_mahasiswas')
             ->where('mahasiswa_id', $mahasiswa->id)
             ->orderBy('tahun_akademik_id', 'desc')
@@ -226,7 +268,6 @@ class KrsValidationService
 
         return KrsValidationResult::pass('GATE_SKS');
     }
-
     /**
      * Gate 5: Prasyarat Mata Kuliah
      */
@@ -361,13 +402,22 @@ class KrsValidationService
     public function runAllValidations(Mahasiswa $mahasiswa, Krs $krs, RefTahunAkademik $ta): array
     {
         $jadwalIds = $krs->krsDetails->pluck('jadwal_kuliah_id')->filter()->toArray();
-        $requestedSks = $krs->krsDetails->sum('sks_snapshot');
+        $requestedSks = (int) $krs->krsDetails->sum('sks_snapshot');
+        $sksMengulang = (int) $krs->krsDetails->where('status_ambil', 'U')->sum('sks_snapshot');
+
+        $hasDispensasiSks = DB::table('dispensasi_akademiks')
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->where('jenis', 'KRS')
+            ->where('status', 'AKTIF')
+            ->where('berlaku_mulai', '<=', $ta->tgl_selesai_krs)
+            ->where('berlaku_sampai', '>=', $ta->tgl_mulai_krs)
+            ->exists();
 
         return [
             $this->checkPeriode($ta),
             $this->checkStatusMahasiswa($mahasiswa, $ta),
             $this->checkKeuangan($mahasiswa, $ta),
-            $this->checkSksMaksimal($mahasiswa, (int) $requestedSks),
+            $this->checkSksMaksimal($mahasiswa, $requestedSks, $hasDispensasiSks, $sksMengulang),
             $this->checkPrasyarat($mahasiswa, $jadwalIds),
             $this->checkDuplikasiDanBentrok($jadwalIds),
             $this->checkKuotaKelas($jadwalIds),

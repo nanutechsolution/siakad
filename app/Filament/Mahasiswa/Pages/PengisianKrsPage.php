@@ -8,10 +8,10 @@ use App\Models\Krs;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Services\Akademik\KrsValidationService;
-use BackedEnum;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -130,10 +130,26 @@ class PengisianKrsPage extends Page implements HasForms
                                             'jadwal' => $jadwal,
                                             'isLintasKelas' => false,
                                             'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
-                                            
+
                                         ])->render())
                                     ]);
                             })
+                            // Mode PAKET: seluruh MK paket kelas otomatis terpilih & terkunci.
+                            // Mahasiswa tidak bisa membatalkan salah satu MK paket secara sepihak.
+                            ->default(function () {
+                                if (!$this->mahasiswa || !$this->activeTa || !$this->activeKelasId) return [];
+                                if (($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET') return [];
+
+                                return JadwalKuliah::where('tahun_akademik_id', $this->activeTa->id)
+                                    ->where('kelas_id', $this->activeKelasId)
+                                    ->pluck('id')
+                                    ->toArray();
+                            })
+                            ->disabled(fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET')
+                            ->dehydrated(true) // wajib true agar value tetap terkirim meski disabled
+                            ->helperText(fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
+                                ? 'Mata kuliah paket sudah otomatis dipilih sesuai kurikulum kelas Anda dan tidak dapat diubah sendiri. Hubungi Admin Prodi jika ada kesalahan penawaran.'
+                                : null)
                             ->live() // Memanggil ulang Ringkasan KRS secara reaktif saat ada klik
                             ->columns(1)
                             ->required()
@@ -193,26 +209,40 @@ class PengisianKrsPage extends Page implements HasForms
                 ->sum('master_mata_kuliahs.sks_default');
         }
 
-        // Mengambil IP Semester terakhir mahasiswa untuk tampilan informatif[cite: 2]
-        $ips = DB::table('riwayat_status_mahasiswas')
-            ->where('mahasiswa_id', $this->mahasiswa->id)
-            ->orderByDesc('tahun_akademik_id')
-            ->value('ips') ?? 0;
-
-        // Mengambil SKS Maksimal berdasarkan IP Semester terakhir dari tabel referensi[cite: 2]
-        $maxSks = DB::table('ref_aturan_sks')
-            ->where('min_ips', '<=', $ips)
-            ->where('max_ips', '>=', $ips)
-            ->value('max_sks') ?? 24; // Fallback 24 jika belum ada aturan
-
         // Estimasi Semester Mahasiswa (misal dihitung dari Tahun Masuk vs Tahun Aktif)
         $tahunAngkatan = $this->mahasiswa->angkatan_id ?? date('Y');
         $tahunSekarang = substr($this->activeTa->kode_tahun, 0, 4);
         $semesterMhs = (($tahunSekarang - $tahunAngkatan) * 2) + ($this->activeTa->semester == 1 ? 1 : 2);
+        $semesterMhs = $semesterMhs > 0 ? $semesterMhs : 1;
+
+        $modeKrs = $this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET';
+
+        if ($modeKrs === 'PAKET') {
+            // Mode Paket: batas SKS = total SKS paket kurikulum di semester berjalan,
+            // BUKAN hasil lookup IPS. IPS tidak relevan ditampilkan di sini.
+            $ips = null;
+            $maxSks = (int) DB::table('kurikulum_mata_kuliah')
+                ->where('kurikulum_id', $this->mahasiswa->kurikulum_id)
+                ->where('semester_paket', $semesterMhs)
+                ->selectRaw('SUM(sks_tatap_muka + sks_praktek + sks_lapangan) as total_sks')
+                ->value('total_sks') ?? $totalSks;
+        } else {
+            // Mode Bebas: batas SKS berbasis IPS semester terakhir, seperti semula.
+            $ips = DB::table('riwayat_status_mahasiswas')
+                ->where('mahasiswa_id', $this->mahasiswa->id)
+                ->orderByDesc('tahun_akademik_id')
+                ->value('ips') ?? 0;
+
+            $maxSks = DB::table('ref_aturan_sks')
+                ->where('min_ips', '<=', $ips)
+                ->where('max_ips', '>=', $ips)
+                ->value('max_sks') ?? 24; // Fallback 24 jika belum ada aturan
+        }
 
         return [
             'activeTa' => $this->activeTa,
-            'semesterMhs' => $semesterMhs > 0 ? $semesterMhs : 1,
+            'semesterMhs' => $semesterMhs,
+            'modeKrs' => $modeKrs,
             'ips' => $ips,
             'maxSks' => $maxSks,
             'totalSks' => $totalSks,
@@ -243,7 +273,8 @@ class PengisianKrsPage extends Page implements HasForms
             ->whereIn('jadwal_kuliah.id', $jadwalIds)
             ->sum('master_mata_kuliahs.sks_default');
 
-        // GATE 3: SKS Maksimal
+        // GATE 3: SKS Maksimal (mode-aware, logic penuh di KrsValidationService)
+        // GATE 3: SKS Maksimal — mode-aware (PAKET vs BEBAS), logic penuh ada di KrsValidationService
         $hasDispensasiSks = DB::table('dispensasi_akademiks')
             ->where('mahasiswa_id', $this->mahasiswa->id)
             ->where('jenis', 'KRS')
@@ -252,7 +283,12 @@ class PengisianKrsPage extends Page implements HasForms
             ->where('berlaku_sampai', '>=', $this->activeTa->tgl_mulai_krs)
             ->exists();
 
-        $valSks = $service->checkSksMaksimal($this->mahasiswa, $totalSksDiambil, $hasDispensasiSks);
+        $totalSksMengulang = (int) DB::table('jadwal_kuliah')
+            ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
+            ->whereIn('jadwal_kuliah.id', $jadwalMengulang)
+            ->sum('master_mata_kuliahs.sks_default');
+
+        $valSks = $service->checkSksMaksimal($this->mahasiswa, $totalSksDiambil, $hasDispensasiSks, $totalSksMengulang);
         if (!$valSks->passed) {
             Notification::make()->danger()->title('Batas SKS Terlampaui')->body($valSks->message)->send();
             return;
@@ -290,16 +326,19 @@ class PengisianKrsPage extends Page implements HasForms
             ]);
 
             // 2. Insert Details KRS (Tabel ini menggunakan AUTO INCREMENT, maka id TIDAK dikirimkan)
+            // status_ambil: 'B' = Baru/Paket, 'U' = Mengulang/Lintas Kelas — wajib dibedakan
+            // agar GATE_SKS mode paket bisa menghitung sksMengulang dengan benar di kemudian hari.
             $detailInserts = [];
             foreach ($jadwalIds as $jId) {
                 $jadwal = JadwalKuliah::with('mataKuliah')->find($jId);
+                $statusAmbil = in_array($jId, $jadwalMengulang, true) ? 'U' : 'B';
 
                 $detailInserts[] = [
                     'krs_id'           => $krsId,
                     'jadwal_kuliah_id' => $jId,
                     'mata_kuliah_id'   => $jadwal->mata_kuliah_id,
                     'sks_snapshot'     => $jadwal->mataKuliah->sks_default,
-                    'status_ambil'     => 'B',
+                    'status_ambil'     => $statusAmbil,
                     'created_at'       => now(),
                     'updated_at'       => now(),
                 ];
