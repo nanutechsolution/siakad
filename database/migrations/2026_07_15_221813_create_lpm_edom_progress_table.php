@@ -1,0 +1,46 @@
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    /**
+     * Run the migrations.
+     */
+    public function up(): void
+    {
+        Schema::create('lpm_edom_progress', function (Blueprint $table) {
+
+            $table->id();
+
+            $table->uuid('mahasiswa_id');
+
+            $table->uuid('jadwal_kuliah_id');
+
+            $table->uuid('dosen_id')
+                ->nullable();
+
+            $table->boolean('is_completed')
+                ->default(true);
+
+            $table->timestamps();
+
+
+            $table->unique([
+                'mahasiswa_id',
+                'jadwal_kuliah_id',
+                'dosen_id'
+            ], 'uq_mhs_jadwal_dosen_edom');
+        });
+    }
+
+    /**
+     * Reverse the migrations.
+     */
+    public function down(): void
+    {
+        Schema::dropIfExists('lpm_edom_progress');
+    }
+};
