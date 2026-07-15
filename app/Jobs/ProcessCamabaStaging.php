@@ -36,7 +36,7 @@ class ProcessCamabaStaging implements ShouldQueue
             DB::beginTransaction();
 
             // 1. Cari Relasi ID dari Database SIAKAD berdasarkan teks dari PMB
-            $prodi = RefProdi::where('kode_internal', $payload['kode_prodi'])
+            $prodi = RefProdi::where('kode_prodi_internal', $payload['kode_prodi'])
                 ->first();
 
             if (!$prodi) {
