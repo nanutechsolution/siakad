@@ -82,7 +82,7 @@ class PaymentPolicyChecker
 
     private function cariPolicyApplicable(Mahasiswa $mahasiswa, TagihanMahasiswa $tagihan): ?PaymentPolicy
     {
-        return DB::table('payment_policies')
+        return PaymentPolicy::query()
             ->where('tahun_akademik_id', $tagihan->tahun_akademik_id)
             ->where('aktif', 1)
             ->where(function ($q) use ($mahasiswa) {
