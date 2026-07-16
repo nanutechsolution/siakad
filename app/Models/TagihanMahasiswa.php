@@ -37,7 +37,7 @@ class TagihanMahasiswa extends Model
         return [
             'total_tagihan' => 'decimal:2',
             'total_bayar' => 'decimal:2',
-            'sisa_tagihan' => 'decimal:2', 
+            'sisa_tagihan' => 'decimal:2',
             'tenggat_waktu' => 'date',
         ];
     }
@@ -78,14 +78,6 @@ class TagihanMahasiswa extends Model
     {
         return $this->hasMany(PembayaranMahasiswa::class, 'tagihan_id');
     }
-    /**
-     * Get the payments made against this bill.
-     */
-    public function pembayarans(): HasMany
-    {
-        return $this->hasMany(PembayaranMahasiswa::class, 'tagihan_id');
-    }
-
     /**
      * Get the adjustments associated with this bill.
      */

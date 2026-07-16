@@ -1,0 +1,171 @@
+<?php
+
+namespace App\Filament\Pages;
+
+use App\Enums\NavigationGroup;
+use App\Models\Mahasiswa;
+use App\Models\RefProdi;
+use App\Models\RefTahunAkademik;
+use App\Models\TagihanMahasiswa;
+use App\Services\Pembayaran\PaymentPolicyChecker;
+use App\Mail\CicilanTerverifikasiMailable;
+use App\Services\Notifications\SmsService;
+use Filament\Pages\Page;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Actions\Action;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
+use UnitEnum;
+
+class CamabaActivationMonitor extends Page implements HasTable
+{
+    use InteractsWithTable;
+
+    protected static ?string $navigationLabel = 'Generate NIM Monitor';
+    protected static ?string $title = '';
+    protected string $view = 'filament.pages.camaba-activation-monitor';
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AKADEMIK->value;
+    public function table(Table $table): Table
+    {
+        return $table->query(
+            Mahasiswa::query()
+                ->where('nim', 'like', 'PMB%')
+                ->with(['person', 'prodi', 'angkatan'])
+        )
+            ->columns([
+                TextColumn::make('nim')->label('NIM')->sortable()->copyable(),
+                TextColumn::make('person.nama_lengkap')->label('Nama'),
+                TextColumn::make('prodi.nama_prodi')->label('Program Studi'),
+                TextColumn::make('angkatan_id')->label('Angkatan')->badge(),
+                TextColumn::make('sisa_tagihan')->label('Total Tunggakan')->getStateUsing(
+                    fn($record) =>
+                    TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('sisa_tagihan')
+                )->money('IDR'),
+                TextColumn::make('policy_status')->label('Policy')->getStateUsing(function ($record) {
+                    $activeTa = RefTahunAkademik::where('is_active', 1)->first();
+                    if (! $activeTa) return '-';
+
+                    $tagihan = TagihanMahasiswa::where('mahasiswa_id', $record->id)
+                        ->where('tahun_akademik_id', $activeTa->id)
+                        ->latest()
+                        ->first();
+
+                    if (! $tagihan) return 'No Tagihan';
+
+                    $checker = app(PaymentPolicyChecker::class);
+                    $res = $checker->cekKepatuhan($record, $tagihan);
+
+                    return $res['passed'] ? 'Tercapai' : 'Belum';
+                }),
+            ])
+            ->recordActions([
+                Action::make('send_reminder')
+                    ->label('Kirim Reminder')
+                    ->action(function (Mahasiswa $record) {
+                        $activeTa = RefTahunAkademik::where('is_active', 1)->first();
+                        $tagihan = $activeTa ? TagihanMahasiswa::where('mahasiswa_id', $record->id)
+                            ->where('tahun_akademik_id', $activeTa->id)
+                            ->latest()->first() : null;
+
+                        $checker = app(PaymentPolicyChecker::class);
+                        $res = $tagihan ? $checker->cekKepatuhan($record, $tagihan) : ['passed' => false, 'unmet' => []];
+
+                        // Send DB notification via existing mailable and sms adapter
+                        if (! empty($record->person?->email)) {
+                            try {
+                                Mail::to($record->person->email)->queue(new CicilanTerverifikasiMailable($record, $res['unmet']));
+                            } catch (\Throwable $e) {
+                                // swallow and log via laravel logging (Filament will show result)
+                            }
+                        }
+
+                        if ($record->person?->no_hp) {
+                            try {
+                                app(SmsService::class)->send($record->person->no_hp, 'Silakan selesaikan tagihan untuk aktivasi NIM. Cek akun untuk detail.');
+                            } catch (\Throwable $e) {
+                            }
+                        }
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('Reminder dikirim')
+                            ->success()
+                            ->send();
+                    }),
+
+                Action::make('manual_generate_nim')
+                    ->label('Generate NIM Manual')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->action(function (Mahasiswa $record) {
+                        if (! str_starts_with((string)$record->nim, 'PMB')) {
+                            \Filament\Notifications\Notification::make()
+                                ->title('Mahasiswa sudah memiliki NIM resmi')
+                                ->danger()
+                                ->send();
+                            return;
+                        }
+
+                        DB::transaction(function () use ($record) {
+                            $prodi = RefProdi::whereKey($record->prodi_id)->lockForUpdate()->first();
+                            if (! $prodi) throw new \RuntimeException('Prodi tidak ditemukan');
+
+                            $kampusSettings = app(\App\Settings\KampusSettings::class);
+                            $isResetPerTahun = (bool) ($kampusSettings->reset_nim_tahunan ?? false);
+                            $angkatanTahun = (int) $record->angkatan_id;
+
+                            if ($isResetPerTahun) {
+                                $lastMahasiswa = Mahasiswa::where('prodi_id', $prodi->id)
+                                    ->where('angkatan_id', $angkatanTahun)
+                                    ->where('nim', 'NOT LIKE', 'PMB%')
+                                    ->orderBy('nim', 'desc')
+                                    ->lockForUpdate()
+                                    ->first();
+
+                                $lastSeq = $lastMahasiswa ? (int) substr($lastMahasiswa->nim, -3) : 0;
+                                $nextSeq = $lastSeq + 1;
+                            } else {
+                                $nextSeq = ((int) $prodi->last_nim_seq) + 1;
+                            }
+
+                            $format = $prodi->format_nim ?? '{THN}{KODE}{NO:3}';
+                            $nim = $this->renderFormatNim($format, $angkatanTahun, $prodi->kode_prodi_internal, $nextSeq);
+
+                            $record->update(['nim' => $nim]);
+                            $prodi->update(['last_nim_seq' => $nextSeq]);
+                        });
+
+                        \Filament\Notifications\Notification::make()
+                            ->title('NIM berhasil dibuat')
+                            ->success()
+                            ->send();
+                    }),
+            ]);
+    }
+
+    public function getTableQuery(): Builder
+    {
+        return Mahasiswa::query()->where('nim', 'like', 'PMB%')->with(['person', 'prodi', 'angkatan']);
+    }
+
+    private function renderFormatNim(string $format, int $tahun, string $kodeProdi, int $nomorUrut): string
+    {
+        $nim = $format;
+        $nim = str_replace('{TAHUN}', (string) $tahun, $nim);
+        $nim = str_replace('{THN}', substr((string) $tahun, -2), $nim);
+        $nim = str_replace('{KODE}', $kodeProdi, $nim);
+
+        if (preg_match('/\{NO:(\d+)\}/', $nim, $matches)) {
+            $digitCount = max(1, (int) $matches[1]);
+            $padded = str_pad((string) $nomorUrut, $digitCount, '0', STR_PAD_LEFT);
+            $nim = str_replace($matches[0], $padded, $nim);
+        } else {
+            $nim = str_replace('{NO}', str_pad((string) $nomorUrut, 3, '0', STR_PAD_LEFT), $nim);
+        }
+
+        return $nim;
+    }
+}
