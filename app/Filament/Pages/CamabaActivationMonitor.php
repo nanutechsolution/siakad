@@ -141,7 +141,23 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ->badge()
                     ->alignCenter(),
                 TextColumn::make('total_tagihan')
-                    ->money('IDR'),
+                    ->label('Total Tagihan')
+                    ->state(function ($record) {
+                        $query = TagihanMahasiswa::where('mahasiswa_id', $record->id);
+
+                        if (! $query->exists()) {
+                            return 'Belum Diterbitkan Tagihan';
+                        }
+
+                        return $query->sum('total_tagihan');
+                    })
+                    ->formatStateUsing(
+                        fn($state) => is_numeric($state)
+                            ? 'Rp ' . number_format($state, 0, ',', '.')
+                            : $state
+                    )
+                    ->badge()
+                    ->color(fn($state) => is_numeric($state) ? 'success' : 'gray'),
                 TextColumn::make('total_bayar')
                     ->money('IDR'),
                 TextColumn::make('sisa_tagihan')
