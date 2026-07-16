@@ -17,12 +17,11 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
-use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
-use Override;
 use UnitEnum;
 
 class CamabaActivationMonitor extends Page implements HasTable
@@ -200,10 +199,99 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ->sortable(),
             ])
             ->filters([
+
+                SelectFilter::make('angkatan_id')
+                    ->label('Angkatan')
+                    ->relationship('angkatan', 'nama_angkatan')
+                    ->searchable()
+                    ->preload(),
+
                 SelectFilter::make('prodi')
+                    ->label('Program Studi')
                     ->relationship('prodi', 'nama_prodi')
                     ->searchable()
                     ->preload(),
+
+                SelectFilter::make('status_tagihan')
+                    ->label('Status Tagihan')
+                    ->options([
+                        'belum' => 'Belum Diterbitkan',
+                        'belum_bayar' => 'Belum Bayar',
+                        'cicil' => 'Cicilan',
+                        'lunas' => 'Lunas',
+                    ])
+                    ->query(function (Builder $query, array $data) {
+
+                        $value = $data['value'] ?? null;
+
+                        if (!$value) {
+                            return;
+                        }
+
+                        match ($value) {
+
+                            'belum' => $query->whereDoesntHave('tagihans'),
+
+                            'belum_bayar' => $query->whereHas(
+                                'tagihans',
+                                fn($q) =>
+                                $q->where('status_bayar', 'BELUM')
+                            ),
+
+                            'cicil' => $query->whereHas(
+                                'tagihans',
+                                fn($q) =>
+                                $q->where('status_bayar', 'CICIL')
+                            ),
+
+                            'lunas' => $query->whereHas(
+                                'tagihans',
+                                fn($q) =>
+                                $q->where('status_bayar', 'LUNAS')
+                            ),
+
+                            default => null,
+                        };
+                    }),
+
+                SelectFilter::make('kelayakan')
+                    ->label('Kelayakan Generate NIM')
+                    ->options([
+                        'siap' => 'Memenuhi Persyaratan',
+                        'belum' => 'Belum Memenuhi Persyaratan',
+                    ]),
+
+                Filter::make('memiliki_tunggakan')
+                    ->label('Masih Memiliki Tunggakan')
+                    ->query(
+                        fn(Builder $query) =>
+                        $query->whereHas(
+                            'tagihans',
+                            fn($q) =>
+                            $q->where('sisa_tagihan', '>', 0)
+                        )
+                    ),
+
+                Filter::make('tanpa_tagihan')
+                    ->label('Belum Diterbitkan Tagihan')
+                    ->query(
+                        fn(Builder $query) =>
+                        $query->whereDoesntHave('tagihans')
+                    ),
+
+                Filter::make('sudah_generate')
+                    ->label('NIM Sudah Digenerate')
+                    ->query(
+                        fn(Builder $query) =>
+                        $query->where('nim', 'not like', 'PMB%')
+                    ),
+
+                Filter::make('belum_generate')
+                    ->label('NIM Belum Digenerate')
+                    ->query(
+                        fn(Builder $query) =>
+                        $query->where('nim', 'like', 'PMB%')
+                    ),
 
             ])
             ->recordActions([
