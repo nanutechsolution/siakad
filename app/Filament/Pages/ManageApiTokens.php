@@ -27,7 +27,7 @@ class ManageApiTokens extends Page
                 ->icon('heroicon-o-plus')
                 ->action(function () {
                     // Cari user khusus sistem yang tadi dibuat
-                    $user = User::where('name', 'Integrasi PMB')->first();
+                    $user = User::where('username', 'superadmin')->first();
 
                     if (!$user) {
                         Notification::make()->title('User Integrasi PMB belum dibuat!')->danger()->send();
