@@ -106,7 +106,7 @@ class CamabaActivationMonitor extends Page implements HasTable
             ->sum('sisa_tagihan');
     }
 
-    public function configure(Table $table): Table
+    public function table(Table $table): Table
     {
         return $table->query(
             Mahasiswa::query()
