@@ -111,7 +111,9 @@ class CamabaActivationMonitor extends Page implements HasTable
         return $table->query(
             Mahasiswa::query()
                 ->where('nim', 'like', 'PMB%')
-                ->with(['person', 'prodi', 'angkatan'])
+                ->with(['person', 'prodi'])
+                ->withSum('tagihans as total_tagihan', 'total_tagihan')
+                ->withSum('tagihans as total_bayar', 'total_bayar')
         )
             ->heading('Daftar Calon Mahasiswa')
             ->columns([
@@ -138,18 +140,10 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ->label('Angkatan')
                     ->badge()
                     ->alignCenter(),
-
-                TextColumn::make('nominal_tagihan')
-                    ->label('Total Tagihan')
-                    ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('total_tagihan'))
-                    ->money('IDR')
-                    ->sortable(),
-
-                TextColumn::make('total_bayar')
-                    ->label('Sudah Dibayar')
-                    ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('nominal_bayar'))
+                TextColumn::make('total_tagihan')
                     ->money('IDR'),
-
+                TextColumn::make('total_bayar')
+                    ->money('IDR'),
                 TextColumn::make('sisa_tagihan')
                     ->label('Sisa')
                     ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('sisa_tagihan'))
