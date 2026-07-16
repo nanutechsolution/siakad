@@ -193,10 +193,10 @@ class GeneratorTagihan extends Page implements HasSchemas
                 ->label('Generate Tagihan Sekarang🚀')
                 ->color('primary')
                 ->requiresConfirmation()
-                ->modalHeading('Bentar-bentar, yakin nih? 🤔')
-                ->modalDescription('Lu mau nge-generate tagihan buat mahasiswa sekarang? Pastiin skema tarif sama angkatannya udah bener ya, biar gak ada yang ngambek pas tagihannya muncul! 💸')
-                ->modalSubmitActionLabel('Yoi, sikat aja! 🔥')
-                ->modalCancelActionLabel('Bentar, cek lagi 🛑')
+                ->modalHeading('Konfirmasi Proses Generate Tagihan')
+                ->modalDescription('Proses ini akan menghasilkan tagihan mahasiswa sesuai skema tarif yang berlaku. Pastikan data tahun akademik, angkatan, program studi, dan komponen biaya telah dikonfigurasi dengan benar. Setelah proses dijalankan, tagihan akan diterbitkan kepada mahasiswa yang memenuhi kriteria.')
+                ->modalSubmitActionLabel('Lanjutkan')
+                ->modalCancelActionLabel('Batal')
                 ->modalSubmitAction(fn($action) => $action->color('success'))
                 ->action(fn(TagihanService $service) => $this->prosesGenerateTagihan($service)),
         ];
