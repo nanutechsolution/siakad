@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatusRisikoAkademikEnum;
+use App\Models\Concerns\HasStudentProfileRelations;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -14,7 +15,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 
 class Mahasiswa extends Model
 {
-    use HasFactory, HasUuids, SoftDeletes;
+    use HasFactory, HasUuids, SoftDeletes, HasStudentProfileRelations;
 
     /**
      * The table associated with the model.

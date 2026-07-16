@@ -205,9 +205,6 @@ class KrsValidationService
     }
 
     /**
-     * Gate 4: SKS Maksimal
-     */
-    /**
      * Gate 4: SKS Maksimal (mode-aware: PAKET vs BEBAS)
      */
     public function checkSksMaksimal(

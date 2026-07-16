@@ -6,6 +6,7 @@ use App\Models\PmbCamabaStaging;
 use App\Models\RefPerson;
 use App\Models\User;
 use App\Models\Mahasiswa;
+use App\Models\MahasiswaBiodata;
 use App\Models\RefAngkatan;
 use App\Models\RefProdi;
 use App\Models\RefProgram;
@@ -85,29 +86,6 @@ class ProcessCamabaStaging implements ShouldQueue
                 throw $e; // Ini akan memicu rollback dan muncul di log error
             }
 
-            // 4. Susun Data Tambahan (Orang Tua & Sekolah)
-            $dataTambahan = [
-                'agama'             => $payload['agama'] ?? null,
-                'alamat'            => $payload['alamat'] ?? null,
-                'asal_sekolah'      => $payload['asal_sekolah'] ?? null,
-                'nisn'              => $payload['nisn'] ?? null,
-                'tahun_lulus'       => $payload['tahun_lulus'] ?? null,
-                'jalur_pendaftaran' => $payload['jalur_pendaftaran'] ?? null,
-                'orang_tua' => [
-                    'ayah' => [
-                        'nama'       => $payload['nama_ayah'] ?? null,
-                        'nik'        => $payload['nik_ayah'] ?? null,
-                        'pekerjaan'  => $payload['pekerjaan_ayah'] ?? null,
-                        'pendidikan' => $payload['pendidikan_ayah'] ?? null,
-                    ],
-                    'ibu' => [
-                        'nama'       => $payload['nama_ibu'] ?? null,
-                        'nik'        => $payload['nik_ibu'] ?? null,
-                        'pekerjaan'  => $payload['pekerjaan_ibu'] ?? null,
-                        'pendidikan' => $payload['pendidikan_ibu'] ?? null,
-                    ]
-                ]
-            ];
             // 4.5. Pastikan Tahun Angkatan Tersedia di Database
             $angkatanTahun = (int) $payload['tahun_masuk'];
             RefAngkatan::firstOrCreate(
@@ -121,9 +99,20 @@ class ProcessCamabaStaging implements ShouldQueue
                 'angkatan_id'   => (int) $payload['tahun_masuk'],
                 'prodi_id'      => $prodi->id,
                 'program_id'    => $programId,
-                'data_tambahan' => $dataTambahan,
             ]);
-
+            MahasiswaBiodata::create([
+                'mahasiswa_id' => $mahasiswa->id,
+                'alamat_ktp' => $payload['alamat'] ?? null,
+                'agama' => $payload['agama'] ?? null,
+                'nama_ayah' => $payload['nama_ayah'] ?? null,
+                'nik_ayah' => $payload['nik_ayah'] ?? null,
+                'pendidikan_ayah' => $payload['pendidikan_ayah'] ?? null,
+                'pekerjaan_ayah' => $payload['pekerjaan_ayah'] ?? null,
+                'nama_ibu' => $payload['nama_ibu'] ?? null,
+                'nik_ibu' => $payload['nik_ibu'] ?? null,
+                'pendidikan_ibu' => $payload['pendidikan_ibu'] ?? null,
+                'pekerjaan_ibu' => $payload['pekerjaan_ibu'] ?? null,
+            ]);
             // 6. Tandai Sukses
             $this->staging->update([
                 'status'       => 'processed',

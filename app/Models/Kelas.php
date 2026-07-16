@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Kelas extends Model
 {
@@ -96,5 +97,11 @@ class Kelas extends Model
         return $this->belongsToMany(\App\Models\TrxDosen::class, 'kelas_dosen_wali', 'kelas_id', 'dosen_id')
             ->withPivot('is_primary')
             ->withTimestamps();
+    }
+
+    public function dosenWaliUtama(): HasOne
+    {
+        return $this->hasOne(\App\Models\KelasDosenWali::class, 'kelas_id')
+            ->where('is_primary', true);
     }
 }

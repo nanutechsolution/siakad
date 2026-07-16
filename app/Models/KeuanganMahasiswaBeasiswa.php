@@ -41,6 +41,7 @@ class KeuanganMahasiswaBeasiswa extends Model
         return $this->belongsTo(\App\Models\Mahasiswa::class, 'mahasiswa_id');
     }
 
+   
     public function beasiswa(): BelongsTo
     {
         return $this->belongsTo(KeuanganMasterBeasiswa::class, 'beasiswa_id');

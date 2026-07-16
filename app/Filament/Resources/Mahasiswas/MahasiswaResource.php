@@ -34,12 +34,32 @@ class MahasiswaResource extends Resource
     }
     protected static ?string $recordTitleAttribute = 'nim';
 
-    // Global search mendukung NIM dan Nama Person melalui relasi
     public static function getGloballySearchableAttributes(): array
     {
         return ['nim', 'person.nama_lengkap', 'person.nik'];
     }
-
+    public static function getEloquentQuery(): Builder
+    {
+        return Mahasiswa::query()
+            ->with([
+                'person',
+                'biodata',
+                'prodi.fakultas',
+                'program',
+                'kurikulum',
+                'angkatan',
+                // Akademik
+                'kelasAktif.kelas.dosenWaliUtama.dosen.person',
+                'riwayatStatus.tahunAkademik',
+                // KRS
+                'krs.tahunAkademik',
+                'krs.details.mataKuliah',
+                // Keuangan
+                'tagihan',
+                'dispensasiAkademik',
+                'beasiswa.beasiswa',
+            ]);
+    }
     public static function form(Schema $schema): Schema
     {
         return MahasiswaForm::configure($schema);

@@ -4,7 +4,7 @@
         "Read more about it at https://getcomposer.org/doc/01-basic-usage.md#installing-dependencies",
         "This file is @generated automatically"
     ],
-    "content-hash": "b19e660d378531419e7f4e43fa55d1bf",
+    "content-hash": "a48b86da4f9aa3bb67e3db0eef659b64",
     "packages": [
         {
             "name": "alizharb/filament-activity-log",
@@ -13139,6 +13139,85 @@
                 "source": "https://github.com/mockery/mockery"
             },
             "time": "2024-05-16T03:13:13+00:00"
+        },
+        {
+            "name": "mrpunyapal/laravel-extended-commands",
+            "version": "1.5.0",
+            "source": {
+                "type": "git",
+                "url": "https://github.com/MrPunyapal/laravel-extended-commands.git",
+                "reference": "592f005a0671e3ec9ac84ad248b2fc940a57174b"
+            },
+            "dist": {
+                "type": "zip",
+                "url": "https://api.github.com/repos/MrPunyapal/laravel-extended-commands/zipball/592f005a0671e3ec9ac84ad248b2fc940a57174b",
+                "reference": "592f005a0671e3ec9ac84ad248b2fc940a57174b",
+                "shasum": ""
+            },
+            "require": {
+                "illuminate/contracts": "^11.0||^12.0||^13.0",
+                "php": "^8.3|^8.4|^8.5",
+                "spatie/laravel-package-tools": "^1.16"
+            },
+            "require-dev": {
+                "larastan/larastan": "^2.9||^3.0",
+                "laravel/pint": "^1.14",
+                "mrpunyapal/rector-pest": "^0.1.0",
+                "nunomaduro/collision": "^8.1.1||^7.10.0",
+                "orchestra/testbench": "^11.0.0||^10.0.0||^9.0.0||^8.22.0",
+                "pestphp/pest": "^3.0||^4.0",
+                "pestphp/pest-plugin-arch": "^3.0||^4.0",
+                "pestphp/pest-plugin-laravel": "^3.0||^4.0",
+                "phpstan/extension-installer": "^1.3||^2.0",
+                "phpstan/phpstan-deprecation-rules": "^1.1||^2.0",
+                "phpstan/phpstan-phpunit": "^1.3||^2.0",
+                "rector/rector": "^2.2"
+            },
+            "type": "library",
+            "extra": {
+                "laravel": {
+                    "providers": [
+                        "MrPunyapal\\LaravelExtendedCommands\\LaravelExtendedCommandsServiceProvider"
+                    ]
+                }
+            },
+            "autoload": {
+                "psr-4": {
+                    "MrPunyapal\\LaravelExtendedCommands\\": "src/"
+                }
+            },
+            "notification-url": "https://packagist.org/downloads/",
+            "license": [
+                "MIT"
+            ],
+            "authors": [
+                {
+                    "name": "Punyapal Shah",
+                    "email": "mrpunyapal@gmail.com",
+                    "role": "Developer"
+                }
+            ],
+            "description": "This package will have some commands which are not available in laravel.",
+            "homepage": "https://github.com/mrpunyapal/laravel-extended-commands",
+            "keywords": [
+                "Make commands",
+                "Punyapal Shah",
+                "dev",
+                "laravel",
+                "laravel-extended-commands",
+                "make Builder"
+            ],
+            "support": {
+                "issues": "https://github.com/MrPunyapal/laravel-extended-commands/issues",
+                "source": "https://github.com/MrPunyapal/laravel-extended-commands/tree/1.5.0"
+            },
+            "funding": [
+                {
+                    "url": "https://github.com/MrPunyapal",
+                    "type": "github"
+                }
+            ],
+            "time": "2026-05-03T14:13:48+00:00"
         },
         {
             "name": "myclabs/deep-copy",

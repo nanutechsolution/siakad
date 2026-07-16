@@ -4,13 +4,14 @@ namespace App\Filament\Resources\Mahasiswas\Schemas;
 
 use App\Models\Mahasiswa;
 use Filament\Forms\Components\KeyValue;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 
 class MahasiswaForm
 {
@@ -31,10 +32,22 @@ class MahasiswaForm
                                     ->required()
                                     ->createOptionForm([
                                         TextInput::make('nama_lengkap')
-                                            ->required(),
+                                            ->required()
+                                            ->maxLength(255),
                                         TextInput::make('nik')
+                                            ->label('NIK')
                                             ->numeric()
+                                            ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true)
+                                            ->maxLength(255)
                                             ->required(),
+                                        TextInput::make('email')
+                                            ->email()
+                                            ->maxLength(255)
+                                            ->nullable(),
+                                        TextInput::make('no_hp')
+                                            ->tel()
+                                            ->maxLength(20)
+                                            ->nullable(),
                                     ]),
 
                                 TextInput::make('nim')
@@ -42,6 +55,7 @@ class MahasiswaForm
                                     ->required()
                                     ->unique(ignoreRecord: true)
                                     ->maxLength(20)
+                                    ->helperText('Format NIM mengikuti pola pada Program Studi (ref_prodi.format_nim). Pastikan tidak duplikat.')
                                     ->columnSpanFull(),
                             ]),
 
@@ -54,7 +68,14 @@ class MahasiswaForm
                                             ->relationship('prodi', 'nama_prodi')
                                             ->searchable()
                                             ->preload()
-                                            ->required(),
+                                            ->required()
+                                            ->live()
+                                            ->afterStateUpdated(function (callable $set): void {
+                                                // kurikulum terikat ke prodi (master_kurikulums.prodi_id),
+                                                // reset pilihan lama agar tidak salah pasang kurikulum
+                                                // milik prodi lain saat prodi diganti.
+                                                $set('kurikulum_id', null);
+                                            }),
 
                                         Select::make('angkatan_id')
                                             ->label('Tahun Angkatan')
@@ -72,10 +93,20 @@ class MahasiswaForm
 
                                         Select::make('kurikulum_id')
                                             ->label('Kurikulum Berlaku')
-                                            ->relationship('kurikulum', 'nama_kurikulum')
+                                            ->relationship(
+                                                name: 'kurikulum',
+                                                titleAttribute: 'nama_kurikulum',
+                                                modifyQueryUsing: fn (Builder $query, callable $get) => $query
+                                                    ->when(
+                                                        filled($get('prodi_id')),
+                                                        fn (Builder $query) => $query->where('prodi_id', $get('prodi_id')),
+                                                    ),
+                                            )
                                             ->searchable()
                                             ->preload()
-                                            ->nullable(),
+                                            ->nullable()
+                                            ->disabled(fn (callable $get) => blank($get('prodi_id')))
+                                            ->helperText('Pilih Program Studi terlebih dahulu. Daftar kurikulum otomatis terfilter sesuai prodi (master_kurikulums.prodi_id).'),
                                     ]),
                             ]),
                     ])->columnSpan(['lg' => 2]),
@@ -90,17 +121,25 @@ class MahasiswaForm
                                     ->nullable()
                                     ->helperText('UUID dari PDDikti. Jangan diubah manual jika tidak yakin.'),
 
-                                TextEntry::make('last_synced_at')
+                                Placeholder::make('last_synced_at')
                                     ->label('Terakhir Sinkronisasi')
-                                    ->state(fn(?Mahasiswa $record): string => $record?->last_synced_at ? $record->last_synced_at->format('d M Y, H:i') : 'Belum pernah sinkron'),
+                                    ->content(fn (?Mahasiswa $record): string => $record?->last_synced_at
+                                        ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
+                                        : 'Belum pernah sinkron'),
                             ]),
 
-                        Section::make('Data Ekstra')
+                        Section::make('Data Tambahan')
+                            ->description('Metadata bebas (JSON) di luar kolom baku, mis. kebutuhan lokal kampus yang belum punya kolom sendiri.')
+                            ->collapsible()
+                            ->collapsed()
                             ->schema([
                                 KeyValue::make('data_tambahan')
-                                    ->label('Atribut Tambahan (JSON)')
-                                    ->keyLabel('Nama Atribut')
-                                    ->valueLabel('Nilai'),
+                                    ->label('')
+                                    ->keyLabel('Key')
+                                    ->valueLabel('Value')
+                                    ->reorderable()
+                                    ->addActionLabel('Tambah Data')
+                                    ->nullable(),
                             ]),
                     ])->columnSpan(['lg' => 1]),
             ])
