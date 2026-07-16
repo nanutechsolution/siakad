@@ -30,51 +30,59 @@
         <div class="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
 
             <x-filament::section compact>
-
-                <p class="text-sm text-gray-500">
-                    Total Camaba
-                </p>
-
+                <p class="text-sm text-gray-500">Total Calon Mahasiswa</p>
                 <p class="mt-2 text-3xl font-bold">
                     {{ number_format($totalCamaba) }}
                 </p>
-
             </x-filament::section>
 
             <x-filament::section compact>
-
-                <p class="text-sm text-gray-500">
-                    Siap Generate
-                </p>
-
+                <p class="text-sm text-gray-500">Memenuhi Persyaratan</p>
                 <p class="mt-2 text-3xl font-bold text-success-600">
                     {{ number_format($siapGenerate) }}
                 </p>
-
             </x-filament::section>
 
             <x-filament::section compact>
-
-                <p class="text-sm text-gray-500">
-                    Belum Memenuhi
-                </p>
-
+                <p class="text-sm text-gray-500">Belum Memenuhi Persyaratan</p>
                 <p class="mt-2 text-3xl font-bold text-warning-600">
                     {{ number_format($belumSiap) }}
                 </p>
-
             </x-filament::section>
 
             <x-filament::section compact>
-
-                <p class="text-sm text-gray-500">
-                    Total Tunggakan
+                <p class="text-sm text-gray-500">Belum Diterbitkan Tagihan</p>
+                <p class="mt-2 text-3xl font-bold text-gray-600">
+                    {{ number_format($belumDitagihkan) }}
                 </p>
+            </x-filament::section>
 
+            <x-filament::section compact>
+                <p class="text-sm text-gray-500">Belum Bayar</p>
+                <p class="mt-2 text-3xl font-bold text-danger-600">
+                    {{ number_format($belumBayar) }}
+                </p>
+            </x-filament::section>
+
+            <x-filament::section compact>
+                <p class="text-sm text-gray-500">Cicilan</p>
+                <p class="mt-2 text-3xl font-bold text-warning-600">
+                    {{ number_format($cicilan) }}
+                </p>
+            </x-filament::section>
+
+            <x-filament::section compact>
+                <p class="text-sm text-gray-500">Lunas</p>
+                <p class="mt-2 text-3xl font-bold text-success-600">
+                    {{ number_format($lunas) }}
+                </p>
+            </x-filament::section>
+
+            <x-filament::section compact>
+                <p class="text-sm text-gray-500">Total Tunggakan</p>
                 <p class="mt-2 text-xl font-bold text-danger-600">
                     Rp {{ number_format($totalTunggakan, 0, ',', '.') }}
                 </p>
-
             </x-filament::section>
 
         </div>

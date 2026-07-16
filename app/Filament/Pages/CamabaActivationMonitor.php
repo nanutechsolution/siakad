@@ -43,6 +43,14 @@ class CamabaActivationMonitor extends Page implements HasTable
 
     public float $totalTunggakan = 0;
 
+    public int $belumDitagihkan = 0;
+
+    public int $belumBayar = 0;
+
+    public int $cicilan = 0;
+
+    public int $lunas = 0;
+
     public ?RefTahunAkademik $tahunAkademikAktif = null;
 
     public function mount(): void
@@ -59,7 +67,10 @@ class CamabaActivationMonitor extends Page implements HasTable
             ->get();
 
         $this->totalCamaba = $camaba->count();
-
+        $this->belumDitagihkan = 0;
+        $this->belumBayar = 0;
+        $this->cicilan = 0;
+        $this->lunas = 0;
         $checker = app(PaymentPolicyChecker::class);
 
         $siap = 0;
@@ -80,9 +91,16 @@ class CamabaActivationMonitor extends Page implements HasTable
                 ->first();
 
             if (! $tagihan) {
+                $this->belumDitagihkan++;
                 $belum++;
                 continue;
             }
+
+            match ($tagihan->status_bayar) {
+                'BELUM' => $this->belumBayar++,
+                'CICIL' => $this->cicilan++,
+                'LUNAS' => $this->lunas++,
+            };
 
             $result = $checker->cekKepatuhan($mahasiswa, $tagihan);
 
@@ -199,12 +217,6 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ->sortable(),
             ])
             ->filters([
-
-                SelectFilter::make('angkatan_id')
-                    ->label('Angkatan')
-                    ->relationship('angkatan', 'nama_angkatan')
-                    ->searchable()
-                    ->preload(),
 
                 SelectFilter::make('prodi')
                     ->label('Program Studi')
