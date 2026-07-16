@@ -17,6 +17,7 @@ use Filament\Tables\Table;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
@@ -105,7 +106,7 @@ class CamabaActivationMonitor extends Page implements HasTable
             ->sum('sisa_tagihan');
     }
 
-    public function table(Table $table): Table
+    public function configure(Table $table): Table
     {
         return $table->query(
             Mahasiswa::query()
@@ -138,6 +139,13 @@ class CamabaActivationMonitor extends Page implements HasTable
 
                     return $res['passed'] ? 'Tercapai' : 'Belum';
                 }),
+            ])
+            ->filters([
+                SelectFilter::make('prodi')
+                    ->relationship('prodi', 'nama_prodi')
+                    ->searchable()
+                    ->preload(),
+
             ])
             ->recordActions([
 
