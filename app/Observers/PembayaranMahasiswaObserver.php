@@ -259,7 +259,7 @@ class PembayaranMahasiswaObserver
                 Action::make('lihat_tagihan')
                     ->label('Lihat Tagihan')
                     ->color('primary')
-                    ->url(url('/mahasiswa/tagihan'), shouldOpenInNewTab: false),
+                    ->url(url('/mahasiswa/tagihan-mahasiswas'), shouldOpenInNewTab: false),
             ])
             ->sendToDatabase($user);
 
