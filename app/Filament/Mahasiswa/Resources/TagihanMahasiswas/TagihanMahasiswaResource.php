@@ -38,7 +38,7 @@ class TagihanMahasiswaResource extends Resource
         return parent::getEloquentQuery()
             ->with([
                 'details',
-                'pembayarans',
+                'pembayaran',
                 'tahunAkademik',
             ])
             ->where('mahasiswa_id', $mahasiswa?->id ?? 0);
