@@ -115,30 +115,79 @@ class CamabaActivationMonitor extends Page implements HasTable
         )
             ->heading('Daftar Calon Mahasiswa')
             ->columns([
-                TextColumn::make('nim')->label('NIM')->sortable()->copyable(),
-                TextColumn::make('person.nama_lengkap')->label('Nama'),
-                TextColumn::make('prodi.nama_prodi')->label('Program Studi'),
-                TextColumn::make('angkatan_id')->label('Angkatan')->badge(),
-                TextColumn::make('sisa_tagihan')->label('Total Tunggakan')->getStateUsing(
-                    fn($record) =>
-                    TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('sisa_tagihan')
-                )->money('IDR'),
-                TextColumn::make('policy_status')->label('Policy')->getStateUsing(function ($record) {
-                    $activeTa = RefTahunAkademik::where('is_active', 1)->first();
-                    if (! $activeTa) return '-';
+                TextColumn::make('nim')
+                    ->label('NIM PMB')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->weight('bold'),
 
-                    $tagihan = TagihanMahasiswa::where('mahasiswa_id', $record->id)
-                        ->where('tahun_akademik_id', $activeTa->id)
-                        ->latest()
-                        ->first();
+                TextColumn::make('person.nama_lengkap')
+                    ->label('Mahasiswa')
+                    ->description(fn($record) => $record->person?->email)
+                    ->searchable()
+                    ->sortable(),
 
-                    if (! $tagihan) return 'No Tagihan';
+                TextColumn::make('prodi.nama_prodi')
+                    ->label('Program Studi')
+                    ->badge()
+                    ->searchable()
+                    ->sortable(),
 
-                    $checker = app(PaymentPolicyChecker::class);
-                    $res = $checker->cekKepatuhan($record, $tagihan);
+                TextColumn::make('angkatan_id')
+                    ->label('Angkatan')
+                    ->badge()
+                    ->alignCenter(),
 
-                    return $res['passed'] ? 'Tercapai' : 'Belum';
-                }),
+                TextColumn::make('nominal_tagihan')
+                    ->label('Total Tagihan')
+                    ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('total_tagihan'))
+                    ->money('IDR')
+                    ->sortable(),
+
+                TextColumn::make('total_bayar')
+                    ->label('Sudah Dibayar')
+                    ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('nominal_bayar'))
+                    ->money('IDR'),
+
+                TextColumn::make('sisa_tagihan')
+                    ->label('Sisa')
+                    ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('sisa_tagihan'))
+                    ->money('IDR')
+                    ->color(fn($state) => $state > 0 ? 'danger' : 'success')
+                    ->sortable(),
+
+                TextColumn::make('progress')
+                    ->label('Progress')
+                    ->state(function ($record) {
+                        $checker = app(PaymentPolicyChecker::class);
+                        $ta = RefTahunAkademik::where('is_active', true)->first();
+                        if (!$ta) {
+                            return 'Tidak ada TA aktif';
+                        }
+                        $tagihan = TagihanMahasiswa::where('mahasiswa_id', $record->id)
+                            ->where('tahun_akademik_id', $ta->id)
+                            ->latest()
+                            ->first();
+
+                        if (!$tagihan) {
+                            return 'Belum ada tagihan';
+                        }
+                        return $checker->cekKepatuhan($record, $tagihan)['passed']
+                            ? 'Siap Generate'
+                            : 'Belum Memenuhi';
+                    })
+                    ->badge()
+                    ->color(fn($state) => match ($state) {
+                        'Siap Generate' => 'success',
+                        'Belum Memenuhi' => 'warning',
+                        default => 'gray',
+                    }),
+
+                TextColumn::make('updated_at')
+                    ->label('Update')
+                    ->since()
+                    ->sortable(),
             ])
             ->filters([
                 SelectFilter::make('prodi')
