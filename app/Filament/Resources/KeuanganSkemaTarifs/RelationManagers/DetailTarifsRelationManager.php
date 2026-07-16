@@ -20,7 +20,7 @@ use Filament\Tables\Table;
 
 class DetailTarifsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'detailTarifs';
+    protected static string $relationship = '   ';
 
     public function form(Schema $schema): Schema
     {

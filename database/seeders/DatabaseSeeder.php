@@ -49,6 +49,8 @@ class DatabaseSeeder extends Seeder
             MasterBeasiswaSeeder::class,
             PaymentPolicySeeder::class,
             // BackupPermissionSeeder::class,
+            KeuanganSkemaTarifSeeder::class,
+            KeuanganDetailTarifSPPSeeder::class,
 
         ]);
     }
