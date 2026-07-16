@@ -8,6 +8,9 @@ use App\Models\PembayaranMahasiswa;
 use App\Models\RefProdi;
 use App\Services\Pembayaran\PaymentPolicyChecker;
 use App\Services\Pembayaran\PembayaranAllocationService;
+use App\Mail\CicilanTerverifikasiMailable;
+use App\Services\Notifications\SmsService;
+use Illuminate\Support\Facades\Mail;
 use App\Settings\KampusSettings;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -74,8 +77,8 @@ class PembayaranMahasiswaObserver
                 'mahasiswa_id' => $mahasiswa->id,
                 'unmet' => $compliance['unmet'],
             ]);
-            // TODO: Kirim notifikasi "Pembayaran terverifikasi, 
-            //       selesaikan cicilan untuk aktivasi NIM"
+            // Kirim notifikasi ke akun mahasiswa supaya tahu cicilan sudah diverifikasi
+            $this->kirimNotifikasiCicilanTerverifikasi($mahasiswa, $compliance['unmet']);
             return;
         }
         try {
@@ -218,5 +221,66 @@ class PembayaranMahasiswaObserver
                     ->url(url('/mahasiswa/reauth?nim=' . $nimBaru), shouldOpenInNewTab: false),
             ])
             ->sendToDatabase($user);
+    }
+
+    /**
+     * Kirim notifikasi ketika cicilan terverifikasi tetapi belum memenuhi payment policy.
+     * Menyertakan ringkasan komponen yang belum terpenuhi agar mahasiswa tahu berapa yang perlu dilunasi.
+     */
+    private function kirimNotifikasiCicilanTerverifikasi(Mahasiswa $mahasiswa, array $unmet): void
+    {
+        $user = $mahasiswa->akunUser();
+
+        if (! $user) {
+            Log::warning('Gagal kirim notifikasi cicilan: mahasiswa tidak punya akun User', [
+                'mahasiswa_id' => $mahasiswa->id,
+            ]);
+            return;
+        }
+
+        $summary = collect($unmet)->map(function ($u) {
+            $nama = $u['nama'] ?? 'Komponen biaya';
+            $terbayar = isset($u['terbayar']) ? number_format((float)$u['terbayar'], 0, ',', '.') : '0';
+            $target = isset($u['target']) ? number_format((float)$u['target'], 0, ',', '.') : '0';
+            return "{$nama}: Rp {$terbayar} / Rp {$target}";
+        })->implode('\n');
+
+        $body = "Cicilan Anda telah diverifikasi, tetapi belum memenuhi syarat pembayaran untuk aktivasi NIM.\n\n" .
+            "Rincian yang belum terpenuhi:\n" . $summary .
+            "\n\nSilakan selesaikan cicilan sesuai instruksi pembayaran agar NIM dapat diaktifkan.";
+
+        // 1) Send database notification (Filament)
+        Notification::make()
+            ->title('Cicilan Diverifikasi — Lengkapi Pembayaran untuk Aktivasi NIM')
+            ->body($body)
+            ->icon('heroicon-o-bell')
+            ->persistent()
+            ->actions([
+                Action::make('lihat_tagihan')
+                    ->label('Lihat Tagihan')
+                    ->color('primary')
+                    ->url(url('/mahasiswa/tagihan'), shouldOpenInNewTab: false),
+            ])
+            ->sendToDatabase($user);
+
+        // 2) Send Email (Mailable)
+        if (! empty($user->email)) {
+            try {
+                Mail::to($user->email)
+                    ->send(new CicilanTerverifikasiMailable($mahasiswa, $unmet));
+            } catch (\Throwable $e) {
+                Log::error('Gagal kirim email cicilan terverifikasi', ['error' => $e->getMessage(), 'mahasiswa_id' => $mahasiswa->id]);
+            }
+        }
+
+        // 3) Send SMS (adapter)
+        $phone = $mahasiswa->person?->no_hp ?? null;
+        if ($phone) {
+            try {
+                app(SmsService::class)->send($phone, $body);
+            } catch (\Throwable $e) {
+                Log::error('Gagal kirim SMS cicilan terverifikasi', ['error' => $e->getMessage(), 'mahasiswa_id' => $mahasiswa->id]);
+            }
+        }
     }
 }
