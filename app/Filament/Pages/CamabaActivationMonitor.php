@@ -271,8 +271,54 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ->options([
                         'siap' => 'Memenuhi Persyaratan',
                         'belum' => 'Belum Memenuhi Persyaratan',
-                    ]),
+                    ])
+                    ->query(function (Builder $query, array $data) {
 
+                        $value = $data['value'] ?? null;
+
+                        if (!$value) {
+                            return;
+                        }
+
+                        $ta = RefTahunAkademik::where('is_active', true)->first();
+
+                        if (!$ta) {
+                            return;
+                        }
+
+                        $checker = app(PaymentPolicyChecker::class);
+
+                        $ids = Mahasiswa::query()
+                            ->where('nim', 'like', 'PMB%')
+                            ->whereHas('tagihans', function ($q) use ($ta) {
+                                $q->where('tahun_akademik_id', $ta->id);
+                            })
+                            ->get()
+                            ->filter(function ($mahasiswa) use ($checker, $ta, $value) {
+
+                                $tagihan = TagihanMahasiswa::where('mahasiswa_id', $mahasiswa->id)
+                                    ->where('tahun_akademik_id', $ta->id)
+                                    ->latest()
+                                    ->first();
+
+                                if (!$tagihan) {
+                                    return false;
+                                }
+
+                                $passed = $checker->cekKepatuhan(
+                                    $mahasiswa,
+                                    $tagihan
+                                )['passed'];
+
+                                return $value === 'siap'
+                                    ? $passed
+                                    : ! $passed;
+                            })
+                            ->pluck('id');
+
+
+                        $query->whereIn('id', $ids);
+                    }),
                 Filter::make('memiliki_tunggakan')
                     ->label('Masih Memiliki Tunggakan')
                     ->query(
