@@ -10,6 +10,8 @@ use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Models\JadwalKuliah;
 use App\Models\Krs;
+use App\Models\TagihanMahasiswa;
+use App\Services\Pembayaran\PaymentPolicyChecker;
 use Illuminate\Support\Facades\DB;
 
 class KrsValidationService
@@ -103,18 +105,13 @@ class KrsValidationService
 
         return KrsValidationResult::pass('GATE_KONTINUITAS');
     }
-
-    /**
-     * Gate 3: Keuangan
-     */
     public function checkKeuangan(Mahasiswa $mahasiswa, RefTahunAkademik $ta, bool $isOverride = false): KrsValidationResult
     {
         if ($isOverride) {
             return KrsValidationResult::pass('GATE_KEUANGAN', 'Override manual validasi keuangan aktif.');
         }
 
-        // 1. Cek Tunggakan dari Semester-Semester Sebelumnya
-        // Menjumlahkan sisa tagihan di mana tahun akademik BUKAN tahun akademik yang sedang diproses
+        // 1. Cek tunggakan semester lalu
         $tunggakanLalu = DB::table('tagihan_mahasiswas')
             ->where('mahasiswa_id', $mahasiswa->id)
             ->where('tahun_akademik_id', '!=', $ta->id)
@@ -123,86 +120,132 @@ class KrsValidationService
             ->sum(DB::raw('total_tagihan - total_bayar'));
 
         if ($tunggakanLalu > 0) {
-            return KrsValidationResult::fail(
-                'GATE_KEUANGAN',
-                "Terblokir: Mahasiswa memiliki tunggakan pembayaran dari semester sebelumnya sebesar Rp " . number_format((float)$tunggakanLalu, 0, ',', '.') . ". Wajib dilunasi sebelum mengisi KRS."
-            );
+            return KrsValidationResult::fail('GATE_KEUANGAN', "Terblokir: Tunggakan semester lalu Rp " . number_format((float)$tunggakanLalu, 0, ',', '.'));
         }
 
-        // 2. Cek Kebijakan Pembayaran Semester Berjalan
-        $policy = DB::table('payment_policies')
-            ->where('tahun_akademik_id', $ta->id)
-            ->where('aktif', 1)
-            ->where(function ($query) use ($mahasiswa) {
-                $query->where('prodi_id', $mahasiswa->prodi_id)
-                    ->orWhereNull('prodi_id');
-            })
-            ->where(function ($query) use ($mahasiswa) {
-                $query->where('program_kelas_id', $mahasiswa->program_id)
-                    ->orWhereNull('program_kelas_id');
-            })
-            // Prioritaskan kebijakan yang paling spesifik (bukan NULL) agar berada di urutan teratas
-            ->orderByRaw('prodi_id IS NULL, program_kelas_id IS NULL')
-            ->first();
-
-        if (!$policy) {
-            return KrsValidationResult::fail('GATE_KEUANGAN', 'Kebijakan pembayaran (Payment Policy) untuk prodi dan program ini belum dikonfigurasi. Hubungi bagian Keuangan.');
-        }
-
-        // 3. Cek Apakah Tagihan Semester Berjalan SUDAH Diterbitkan
-        $tagihanSemesterIni = DB::table('tagihan_mahasiswas')
+        // 2. Ambil tagihan semester ini
+        $tagihan = DB::table('tagihan_mahasiswas')
             ->where('mahasiswa_id', $mahasiswa->id)
             ->where('tahun_akademik_id', $ta->id)
             ->whereNull('deleted_at')
             ->first();
 
-        if (!$tagihanSemesterIni) {
-            return KrsValidationResult::fail('GATE_KEUANGAN', 'Terblokir: Tagihan untuk semester berjalan belum diterbitkan oleh bagian Keuangan.');
+        if (!$tagihan) {
+            return KrsValidationResult::fail('GATE_KEUANGAN', 'Tagihan semester ini belum diterbitkan.');
         }
 
-        // Jika tagihan utama semester ini secara keseluruhan sudah berstatus LUNAS,
-        // bypass pengecekan per komponen biaya dan langsung nyatakan lolos validasi.
-        if (isset($tagihanSemesterIni->status_bayar) && strtoupper($tagihanSemesterIni->status_bayar) === 'LUNAS') {
-            return KrsValidationResult::pass('GATE_KEUANGAN');
-        }
-        // ------------------------------
+        // 3. ✅ DELEGASI ke PaymentPolicyChecker (single source of truth)
+        $tagihanModel = TagihanMahasiswa::find($tagihan->id);
+        $compliance = app(PaymentPolicyChecker::class)->cekKepatuhan($mahasiswa, $tagihanModel);
 
-        // 4. Evaluasi Rincian Pembayaran sesuai Payment Policy (Hanya dijalankan jika BELUM LUNAS)
-        $policyDetails = DB::table('payment_policy_details')
-            ->where('payment_policy_id', $policy->id)
-            ->where('wajib', 1)
-            ->get();
-
-        foreach ($policyDetails as $detail) {
-            $realisasi = DB::table('tagihan_mahasiswas_details')
-                ->where('tagihan_id', $tagihanSemesterIni->id)
-                ->where('komponen_biaya_id', $detail->komponen_biaya_id)
-                ->select('nominal_tagihan', 'nominal_terbayar')
-                ->first();
-
-            // Jika kebijakan mengatakan wajib, tapi di tagihan mahasiswa tidak ada rincian komponen tersebut
-            if (!$realisasi) {
-                return KrsValidationResult::fail('GATE_KEUANGAN', 'Rincian komponen biaya wajib belum dimasukkan ke dalam tagihan mahasiswa ini.');
-            }
-
-            $nominalTerbayar = (float) $realisasi->nominal_terbayar;
-            $nominalTagihan = (float) $realisasi->nominal_tagihan;
-
-            $minimumSesuaiPersen = $nominalTagihan * ((float) $detail->minimal_persen / 100);
-            $minimumNominal = (float) $detail->minimal_nominal;
-
-            $targetBayar = $minimumNominal > 0 ? $minimumNominal : $minimumSesuaiPersen;
-
-            if ($nominalTerbayar < $targetBayar) {
-                return KrsValidationResult::fail(
-                    'GATE_KEUANGAN',
-                    "Syarat pembayaran komponen belum terpenuhi. Minimal harus dibayar: Rp " . number_format($targetBayar, 0, ',', '.') . " | Telah dibayar: Rp " . number_format($nominalTerbayar, 0, ',', '.')
-                );
-            }
+        if (!$compliance['passed']) {
+            $detailMsg = collect($compliance['unmet'])
+                ->map(fn($u) => "{$u['nama']}: Rp " . number_format($u['terbayar'], 0, ',', '.') . " / Rp " . number_format($u['target'], 0, ',', '.'))
+                ->implode('; ');
+            return KrsValidationResult::fail('GATE_KEUANGAN', "Belum memenuhi policy: {$detailMsg}");
         }
 
         return KrsValidationResult::pass('GATE_KEUANGAN');
     }
+    /**
+     * Gate 3: Keuangan
+     */
+    // public function checkKeuangan(Mahasiswa $mahasiswa, RefTahunAkademik $ta, bool $isOverride = false): KrsValidationResult
+    // {
+    //     if ($isOverride) {
+    //         return KrsValidationResult::pass('GATE_KEUANGAN', 'Override manual validasi keuangan aktif.');
+    //     }
+
+    //     // 1. Cek Tunggakan dari Semester-Semester Sebelumnya
+    //     // Menjumlahkan sisa tagihan di mana tahun akademik BUKAN tahun akademik yang sedang diproses
+    //     $tunggakanLalu = DB::table('tagihan_mahasiswas')
+    //         ->where('mahasiswa_id', $mahasiswa->id)
+    //         ->where('tahun_akademik_id', '!=', $ta->id)
+    //         ->where('status_bayar', '!=', 'LUNAS')
+    //         ->whereNull('deleted_at')
+    //         ->sum(DB::raw('total_tagihan - total_bayar'));
+
+    //     if ($tunggakanLalu > 0) {
+    //         return KrsValidationResult::fail(
+    //             'GATE_KEUANGAN',
+    //             "Terblokir: Mahasiswa memiliki tunggakan pembayaran dari semester sebelumnya sebesar Rp " . number_format((float)$tunggakanLalu, 0, ',', '.') . ". Wajib dilunasi sebelum mengisi KRS."
+    //         );
+    //     }
+
+    //     // 2. Cek Kebijakan Pembayaran Semester Berjalan
+    //     $policy = DB::table('payment_policies')
+    //         ->where('tahun_akademik_id', $ta->id)
+    //         ->where('aktif', 1)
+    //         ->where(function ($query) use ($mahasiswa) {
+    //             $query->where('prodi_id', $mahasiswa->prodi_id)
+    //                 ->orWhereNull('prodi_id');
+    //         })
+    //         ->where(function ($query) use ($mahasiswa) {
+    //             $query->where('program_kelas_id', $mahasiswa->program_id)
+    //                 ->orWhereNull('program_kelas_id');
+    //         })
+    //         // Prioritaskan kebijakan yang paling spesifik (bukan NULL) agar berada di urutan teratas
+    //         ->orderByRaw('prodi_id IS NULL, program_kelas_id IS NULL')
+    //         ->first();
+
+    //     if (!$policy) {
+    //         return KrsValidationResult::fail('GATE_KEUANGAN', 'Kebijakan pembayaran (Payment Policy) untuk prodi dan program ini belum dikonfigurasi. Hubungi bagian Keuangan.');
+    //     }
+
+    //     // 3. Cek Apakah Tagihan Semester Berjalan SUDAH Diterbitkan
+    //     $tagihanSemesterIni = DB::table('tagihan_mahasiswas')
+    //         ->where('mahasiswa_id', $mahasiswa->id)
+    //         ->where('tahun_akademik_id', $ta->id)
+    //         ->whereNull('deleted_at')
+    //         ->first();
+
+    //     if (!$tagihanSemesterIni) {
+    //         return KrsValidationResult::fail('GATE_KEUANGAN', 'Terblokir: Tagihan untuk semester berjalan belum diterbitkan oleh bagian Keuangan.');
+    //     }
+
+    //     // Jika tagihan utama semester ini secara keseluruhan sudah berstatus LUNAS,
+    //     // bypass pengecekan per komponen biaya dan langsung nyatakan lolos validasi.
+    //     if (isset($tagihanSemesterIni->status_bayar) && strtoupper($tagihanSemesterIni->status_bayar) === 'LUNAS') {
+    //         return KrsValidationResult::pass('GATE_KEUANGAN');
+    //     }
+    //     // ------------------------------
+
+    //     // 4. Evaluasi Rincian Pembayaran sesuai Payment Policy (Hanya dijalankan jika BELUM LUNAS)
+    //     $policyDetails = DB::table('payment_policy_details')
+    //         ->where('payment_policy_id', $policy->id)
+    //         ->where('wajib', 1)
+    //         ->get();
+
+    //     foreach ($policyDetails as $detail) {
+    //         $realisasi = DB::table('tagihan_mahasiswas_details')
+    //             ->where('tagihan_id', $tagihanSemesterIni->id)
+    //             ->where('komponen_biaya_id', $detail->komponen_biaya_id)
+    //             ->select('nominal_tagihan', 'nominal_terbayar')
+    //             ->first();
+
+    //         // Jika kebijakan mengatakan wajib, tapi di tagihan mahasiswa tidak ada rincian komponen tersebut
+    //         if (!$realisasi) {
+    //             return KrsValidationResult::fail('GATE_KEUANGAN', 'Rincian komponen biaya wajib belum dimasukkan ke dalam tagihan mahasiswa ini.');
+    //         }
+
+    //         $nominalTerbayar = (float) $realisasi->nominal_terbayar;
+    //         $nominalTagihan = (float) $realisasi->nominal_tagihan;
+
+    //         $minimumSesuaiPersen = $nominalTagihan * ((float) $detail->minimal_persen / 100);
+    //         $minimumNominal = (float) $detail->minimal_nominal;
+
+    //         $targetBayar = $minimumNominal > 0 ? $minimumNominal : $minimumSesuaiPersen;
+
+    //         if ($nominalTerbayar < $targetBayar) {
+    //             return KrsValidationResult::fail(
+    //                 'GATE_KEUANGAN',
+    //                 "Syarat pembayaran komponen belum terpenuhi. Minimal harus dibayar: Rp " . number_format($targetBayar, 0, ',', '.') . " | Telah dibayar: Rp " . number_format($nominalTerbayar, 0, ',', '.')
+    //             );
+    //         }
+    //     }
+
+    //     return KrsValidationResult::pass('GATE_KEUANGAN');
+    // }
 
     /**
      * Gate 4: SKS Maksimal (mode-aware: PAKET vs BEBAS)

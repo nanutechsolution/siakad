@@ -6,6 +6,7 @@ use App\Enums\StatusVerifikasiPembayaran;
 use App\Models\Mahasiswa;
 use App\Models\PembayaranMahasiswa;
 use App\Models\RefProdi;
+use App\Services\Pembayaran\PaymentPolicyChecker;
 use App\Services\Pembayaran\PembayaranAllocationService;
 use App\Settings\KampusSettings;
 use Filament\Actions\Action;
@@ -18,6 +19,7 @@ class PembayaranMahasiswaObserver
 {
     public function __construct(
         private readonly PembayaranAllocationService $allocationService,
+        private readonly PaymentPolicyChecker $policyChecker,
     ) {}
 
     public function updated(PembayaranMahasiswa $pembayaran): void
@@ -65,7 +67,17 @@ class PembayaranMahasiswaObserver
             // Bukan Camaba, observer tidak relevan
             return;
         }
+        $compliance = $this->policyChecker->cekKepatuhan($mahasiswa, $tagihan);
 
+        if (!$compliance['passed']) {
+            Log::info('Observer: NIM belum di-generate, policy belum terpenuhi', [
+                'mahasiswa_id' => $mahasiswa->id,
+                'unmet' => $compliance['unmet'],
+            ]);
+            // TODO: Kirim notifikasi "Pembayaran terverifikasi, 
+            //       selesaikan cicilan untuk aktivasi NIM"
+            return;
+        }
         try {
             $nimBaru = DB::transaction(function () use ($mahasiswa) {
                 return $this->generateNimUntukCamaba($mahasiswa);
