@@ -52,7 +52,7 @@ class DispensasiAkademikForm
                             ->label('Alasan Dispensasi')
                             ->required()
                             ->columnSpanFull(),
-                    ])
+                    ])->columnSpanFull()
                     ->disabled(fn(?DispensasiAkademik $record) => $record && $record->status !== 'DRAFT'), // Kunci form jika bukan DRAFT
             ]);
     }
