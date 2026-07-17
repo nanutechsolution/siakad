@@ -15,7 +15,6 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
-use Filament\Support\Enums\TextSize;
 
 class MahasiswaInfolist
 {
@@ -186,7 +185,7 @@ class MahasiswaInfolist
                         TextEntry::make('angkatan_id')->label('Angkatan')->badge()->color('gray'),
                         TextEntry::make('semester_berjalan')
                             ->label('Semester Aktif')
-                            ->state(fn($record) => 'Semester ' . $record->semester_berjalan)
+                            ->state(fn (Mahasiswa $record) => "Semester {$record->semester_berjalan}")
                     ]),
             ]);
     }
@@ -556,14 +555,18 @@ class MahasiswaInfolist
                         TextEntry::make('person_id')->label('ID Person')->copyable(),
                         TextEntry::make('created_at')
                             ->label('Dibuat Pada')
-                            ->state(fn(?string $s) => static::tanggalIndonesia($s, 'd F Y, H:i') . ' WITA'),
+                            ->formatStateUsing(
+                                fn(?string $state) => static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA'
+                            ),
                         TextEntry::make('updated_at')
                             ->label('Diperbarui Pada')
-                            ->state(fn(?string $s) => static::tanggalIndonesia($s, 'd F Y, H:i') . ' WITA'),
+                            ->formatStateUsing(
+                                fn(?string $state) => static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA'
+                            ),
                         TextEntry::make('deleted_at')
                             ->label('Status Hapus')
                             ->badge()
-                            ->state(fn(?string $s) => $s ? 'Dihapus (Soft Delete)' : 'Aktif')
+                            ->formatStateUsing(fn(?string $state) =>  $state ? 'Dihapus (Soft Delete)' : 'Aktif')
                             ->color(fn(?string $s) => $s ? 'danger' : 'success'),
                     ]),
 
