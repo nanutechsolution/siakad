@@ -68,7 +68,7 @@ class FakultasProdiSeeder extends Seeder
                 'fakultas_id' => $fe->id,
                 'kode_internal' => 'K3',
                 'kode_dikti' => '13242',
-                'nama' => 'Keselamatan dan Kesehatan Kerja (K3)',
+                'nama' => 'Keselamatan dan Kesehatan Kerja',
                 'jenjang' => 'S1',
                 'gelar' => 'S.KKK',
                 'format_nim' => '{THN}13242{NO:3}'
