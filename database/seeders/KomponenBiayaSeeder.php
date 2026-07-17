@@ -105,6 +105,12 @@ class KomponenBiayaSeeder extends Seeder
                 'tipe_biaya' => 'INSIDENTAL',
                 'urutan_prioritas' => 999,
             ],
+            [
+                'kode_komponen' => 'MIGRASI_HUTANG',
+                'nama_komponen' => 'Tagihan Migrasi Pra-SIAKAD',
+                'tipe_biaya' => 'INSIDENTAL',
+                'urutan_prioritas' => 2,
+            ],
         ];
 
         foreach ($komponen as $item) {

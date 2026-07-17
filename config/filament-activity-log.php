@@ -1,6 +1,7 @@
 <?php
 
 declare(strict_types=1);
+
 use AlizHarb\ActivityLog\Pages\UserActivitiesPage;
 use AlizHarb\ActivityLog\Resources\ActivityLogs\ActivityLogResource;
 use AlizHarb\ActivityLog\Widgets\ActivityChartWidget;
@@ -217,27 +218,18 @@ return [
     |
     */
     'permissions' => [
-        'enabled' => false,
+        'enabled' => true,
 
-        /**
-         * Custom invokable authorizer class for accessing the activity log.
-         *
-         * If set, this takes precedence over the 'enabled' setting and permission checks.
-         * This invokable receives the authenticated user and should return a boolean.
-         *
-         * Example: 'App\Support\ActivityLogAuthorization' (class with __invoke(User $user): bool)
-         */
         'custom_authorization' => null,
 
-        'view_any' => 'view_any_activity',
-        'view' => 'view_activity',
-        'create' => 'create_activity',
-        'update' => 'update_activity',
-        'delete' => 'delete_activity',
-        'restore' => 'restore_activity',
-        'force_delete' => 'force_delete_activity',
+        'view_any' => 'ViewAny:Activity',
+        'view' => 'View:Activity',
+        'create' => 'Create:Activity',
+        'update' => 'Update:Activity',
+        'delete' => 'Delete:Activity',
+        'restore' => 'Restore:Activity',
+        'force_delete' => 'ForceDelete:Activity',
     ],
-
     /*
     |--------------------------------------------------------------------------
     | Pages Settings

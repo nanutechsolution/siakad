@@ -8,6 +8,7 @@ use App\Models\PembayaranMahasiswa;
 use App\Models\TagihanMahasiswa;
 use App\Models\TagihanMahasiswaDetail;
 use App\Models\TagihanNonReguler;
+use App\Models\TagihanNonRegulerDetail;
 
 class PembayaranAllocationService
 {
@@ -91,35 +92,6 @@ class PembayaranAllocationService
             );
         }
     }
-    // public function alokasikan(PembayaranMahasiswa $pembayaran): void
-    // {
-
-    //     $tagihan = TagihanMahasiswa::whereKey($pembayaran->tagihan_id)
-    //         ->lockForUpdate()
-    //         ->firstOrFail();
-
-    //     $sisaSebelumAlokasi = bcsub((string) $tagihan->total_tagihan, (string) $tagihan->total_bayar, 2);
-    //     $nominalBayar = (string) $pembayaran->nominal_bayar;
-
-    //     $lebihDariSisa = bccomp($nominalBayar, $sisaSebelumAlokasi, 2) === 1;
-
-    //     $dialokasikanKeTagihan = $lebihDariSisa ? $sisaSebelumAlokasi : $nominalBayar;
-    //     $kelebihan = $lebihDariSisa ? bcsub($nominalBayar, $sisaSebelumAlokasi, 2) : '0.00';
-
-    //     $totalBayarBaru = bcadd((string) $tagihan->total_bayar, $dialokasikanKeTagihan, 2);
-
-    //     $tagihan->total_bayar = $totalBayarBaru;
-    //     $tagihan->status_bayar = $this->tentukanStatusBayar((string) $tagihan->total_tagihan, $totalBayarBaru);
-    //     $tagihan->save();
-
-    //     if (bccomp($dialokasikanKeTagihan, '0.00', 2) === 1) {
-    //         $this->alokasikanKeDetailKomponen($tagihan->id, $dialokasikanKeTagihan);
-    //     }
-
-    //     if (bccomp($kelebihan, '0.00', 2) === 1) {
-    //         $this->catatKelebihanKeSaldo($pembayaran, $tagihan, $kelebihan);
-    //     }
-    // }
     /**
      * Membagi dana alokasi tagihan ke komponen biaya detail berdasarkan urutan prioritas (FIFO).
      */
@@ -161,6 +133,46 @@ class PembayaranAllocationService
             $sisaDana = bcsub($sisaDana, $alokasiKomponen, 2);
         }
     }
+
+    /**
+     * Sama persis logikanya dengan alokasikanKeDetailKomponen() di atas,
+     * hanya beda tabel target: tagihan_non_reguler_details, dan
+     * nominal_tagihan di sini BUKAN generated column (lihat
+     * TagihanNonRegulerService) — tapi nilainya sudah selalu diisi
+     * eksplisit (nominal_dasar - nominal_diskon) saat tagihan dibuat,
+     * jadi bisa dibaca langsung sama seperti kolom generated.
+     */
+    private function alokasikanKeDetailKomponenNonReguler(string $tagihanId, string $danaAlokasi): void
+    {
+        $details = TagihanNonRegulerDetail::where('tagihan_id', $tagihanId)
+            ->join('keuangan_komponen_biaya', 'tagihan_non_reguler_details.komponen_biaya_id', '=', 'keuangan_komponen_biaya.id')
+            ->select('tagihan_non_reguler_details.*')
+            ->orderBy('keuangan_komponen_biaya.urutan_prioritas', 'asc')
+            ->lockForUpdate()
+            ->get();
+
+        $sisaDana = $danaAlokasi;
+
+        foreach ($details as $detail) {
+            if (bccomp($sisaDana, '0.00', 2) <= 0) {
+                break;
+            }
+
+            $sisaTunggakanKomponen = bcsub((string) $detail->nominal_tagihan, (string) $detail->nominal_terbayar, 2);
+
+            if (bccomp($sisaTunggakanKomponen, '0.00', 2) <= 0) {
+                continue;
+            }
+
+            $alokasiKomponen = bccomp($sisaDana, $sisaTunggakanKomponen, 2) === 1 ? $sisaTunggakanKomponen : $sisaDana;
+
+            $detail->nominal_terbayar = bcadd((string) $detail->nominal_terbayar, $alokasiKomponen, 2);
+            $detail->save();
+
+            $sisaDana = bcsub($sisaDana, $alokasiKomponen, 2);
+        }
+    }
+
     private function tentukanStatusBayar(string $totalTagihan, string $totalBayar): string
     {
         if (bccomp($totalBayar, $totalTagihan, 2) >= 0) {
@@ -170,7 +182,13 @@ class PembayaranAllocationService
         return bccomp($totalBayar, '0.00', 2) === 1 ? 'CICIL' : 'BELUM';
     }
 
-    private function catatKelebihanKeSaldo(PembayaranMahasiswa $pembayaran, TagihanMahasiswa $tagihan, string $kelebihan): void
+    /**
+     * Dipakai untuk KEDUA jenis tagihan — tanda tangannya sekarang
+     * menerima union type, bukan cuma TagihanMahasiswa, karena
+     * TagihanNonReguler punya kolom mahasiswa_id & kode_transaksi yang
+     * sama-sama dipakai di sini.
+     */
+    private function catatKelebihanKeSaldo(PembayaranMahasiswa $pembayaran, TagihanMahasiswa|TagihanNonReguler $tagihan, string $kelebihan): void
     {
         $saldo = KeuanganSaldo::where('mahasiswa_id', $tagihan->mahasiswa_id)
             ->lockForUpdate()
@@ -197,16 +215,40 @@ class PembayaranAllocationService
         ]);
     }
 
+    /**
+     * Sekarang perilakunya sama dengan alokasikanTagihanMahasiswa():
+     * cap ke sisa tagihan, alokasikan ke detail komponen FIFO berdasar
+     * urutan_prioritas, dan kelebihan bayar dicatat ke keuangan_saldos —
+     * bukan lagi menambah total_bayar tanpa batas seperti versi stub
+     * sebelumnya.
+     */
     private function alokasikanTagihanNonReguler(
         PembayaranMahasiswa $pembayaran,
         TagihanNonReguler $tagihan
     ): void {
         $tagihan->refresh();
 
-        // contoh:
+        $sisaSebelumAlokasi = bcsub(
+            (string) $tagihan->total_tagihan,
+            (string) $tagihan->total_bayar,
+            2
+        );
+
+        $nominalBayar = (string) $pembayaran->nominal_bayar;
+
+        $lebihDariSisa = bccomp($nominalBayar, $sisaSebelumAlokasi, 2) === 1;
+
+        $dialokasikanKeTagihan = $lebihDariSisa
+            ? $sisaSebelumAlokasi
+            : $nominalBayar;
+
+        $kelebihan = $lebihDariSisa
+            ? bcsub($nominalBayar, $sisaSebelumAlokasi, 2)
+            : '0.00';
+
         $totalBayarBaru = bcadd(
             (string) $tagihan->total_bayar,
-            (string) $pembayaran->nominal_bayar,
+            $dialokasikanKeTagihan,
             2
         );
 
@@ -218,5 +260,20 @@ class PembayaranAllocationService
         );
 
         $tagihan->save();
+
+        if (bccomp($dialokasikanKeTagihan, '0.00', 2) === 1) {
+            $this->alokasikanKeDetailKomponenNonReguler(
+                $tagihan->id,
+                $dialokasikanKeTagihan
+            );
+        }
+
+        if (bccomp($kelebihan, '0.00', 2) === 1) {
+            $this->catatKelebihanKeSaldo(
+                $pembayaran,
+                $tagihan,
+                $kelebihan
+            );
+        }
     }
 }

@@ -16,6 +16,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\InteractsWithFormActions;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
 use Filament\Schemas\Contracts\HasSchemas;
 use Filament\Schemas\Schema;
@@ -68,140 +69,141 @@ class GeneratorTagihanNonReguler extends Page implements HasSchemas
     {
         return $schema
             ->components([
-
-                Select::make('mahasiswa_id')
-                    ->label('Mahasiswa')
-                    ->searchable()
-                    ->getSearchResultsUsing(function (string $search): array {
-
-                        return Mahasiswa::query()
-                            ->join(
-                                'ref_person',
-                                'mahasiswas.person_id',
-                                '=',
-                                'ref_person.id'
-                            )
-                            ->where('mahasiswas.nim', 'like', "%{$search}%")
-                            ->orWhere(
-                                'ref_person.nama_lengkap',
-                                'like',
-                                "%{$search}%"
-                            )
-                            ->select(
-                                'mahasiswas.id',
-                                'mahasiswas.nim',
-                                'ref_person.nama_lengkap'
-                            )
-                            ->limit(50)
-                            ->get()
-                            ->mapWithKeys(fn($mhs) => [
-                                $mhs->id =>
-                                "{$mhs->nim} - {$mhs->nama_lengkap}"
-                            ])
-                            ->toArray();
-                    })
-                    ->getOptionLabelUsing(function ($value): ?string {
-
-                        $mhs = Mahasiswa::query()
-                            ->join(
-                                'ref_person',
-                                'mahasiswas.person_id',
-                                '=',
-                                'ref_person.id'
-                            )
-                            ->where('mahasiswas.id', $value)
-                            ->select(
-                                'mahasiswas.id',
-                                'mahasiswas.nim',
-                                'ref_person.nama_lengkap'
-                            )
-                            ->first();
-
-
-                        return $mhs
-                            ? "{$mhs->nim} - {$mhs->nama_lengkap}"
-                            : null;
-                    })
-                    ->required(),
-
-
-
-                Textarea::make('deskripsi')
-                    ->label('Deskripsi Tagihan')
-                    ->placeholder(
-                        'Contoh: Tagihan Sidang Skripsi Juli 2026'
-                    )
-                    ->required()
-                    ->rows(3),
-
-
-
-                DatePicker::make('tenggat_waktu')
-                    ->label('Tenggat Pembayaran')
-                    ->native(false)
-                    ->minDate(now()),
-
-
-
-                Repeater::make('items')
-                    ->label('Komponen Biaya')
-
+                Section::make('Parameter Generate Tagihan')
+                    ->description('Pilih kriteria mahasiswa yang akan dibuatkan tagihan.')
                     ->schema([
-
-                        Select::make('komponen_biaya_id')
-                            ->label('Komponen')
-
-                            ->options(
-                                KeuanganKomponenBiaya::query()
-                                    ->where('is_active', true)
-                                    ->whereIn(
-                                        'tipe_biaya',
-                                        [
-                                            'SEKALI',
-                                            'INSIDENTAL'
-                                        ]
-                                    )
-                                    ->orderBy('nama_komponen')
-                                    ->pluck(
-                                        'nama_komponen',
-                                        'id'
-                                    )
-                            )
-
+                        Select::make('mahasiswa_id')
+                            ->label('Mahasiswa')
                             ->searchable()
+                            ->getSearchResultsUsing(function (string $search): array {
+
+                                return Mahasiswa::query()
+                                    ->join(
+                                        'ref_person',
+                                        'mahasiswas.person_id',
+                                        '=',
+                                        'ref_person.id'
+                                    )
+                                    ->where('mahasiswas.nim', 'like', "%{$search}%")
+                                    ->orWhere(
+                                        'ref_person.nama_lengkap',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->select(
+                                        'mahasiswas.id',
+                                        'mahasiswas.nim',
+                                        'ref_person.nama_lengkap'
+                                    )
+                                    ->limit(50)
+                                    ->get()
+                                    ->mapWithKeys(fn($mhs) => [
+                                        $mhs->id =>
+                                        "{$mhs->nim} - {$mhs->nama_lengkap}"
+                                    ])
+                                    ->toArray();
+                            })
+                            ->getOptionLabelUsing(function ($value): ?string {
+
+                                $mhs = Mahasiswa::query()
+                                    ->join(
+                                        'ref_person',
+                                        'mahasiswas.person_id',
+                                        '=',
+                                        'ref_person.id'
+                                    )
+                                    ->where('mahasiswas.id', $value)
+                                    ->select(
+                                        'mahasiswas.id',
+                                        'mahasiswas.nim',
+                                        'ref_person.nama_lengkap'
+                                    )
+                                    ->first();
+
+
+                                return $mhs
+                                    ? "{$mhs->nim} - {$mhs->nama_lengkap}"
+                                    : null;
+                            })
+                            ->required(),
+
+
+
+                        Textarea::make('deskripsi')
+                            ->label('Deskripsi Tagihan')
+                            ->placeholder(
+                                'Contoh: Tagihan Sidang Skripsi Juli 2026'
+                            )
                             ->required()
-                            ->distinct(),
+                            ->rows(3),
 
 
 
-                        TextInput::make('nominal_dasar')
-                            ->label('Nominal')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->required()
-                            ->minValue(0),
+                        DatePicker::make('tenggat_waktu')
+                            ->label('Tenggat Pembayaran')
+                            ->native(false)
+                            ->minDate(now()),
 
 
 
-                        TextInput::make('nominal_diskon')
-                            ->label('Diskon')
-                            ->numeric()
-                            ->prefix('Rp')
-                            ->default(0)
-                            ->minValue(0),
+                        Repeater::make('items')
+                            ->label('Komponen Biaya')
 
+                            ->schema([
+
+                                Select::make('komponen_biaya_id')
+                                    ->label('Komponen')
+
+                                    ->options(
+                                        KeuanganKomponenBiaya::query()
+                                            ->where('is_active', true)
+                                            ->whereIn(
+                                                'tipe_biaya',
+                                                [
+                                                    'SEKALI',
+                                                    'INSIDENTAL'
+                                                ]
+                                            )
+                                            ->orderBy('nama_komponen')
+                                            ->pluck(
+                                                'nama_komponen',
+                                                'id'
+                                            )
+                                    )
+
+                                    ->searchable()
+                                    ->required()
+                                    ->distinct(),
+
+
+
+                                TextInput::make('nominal_dasar')
+                                    ->label('Nominal')
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->required()
+                                    ->minValue(0),
+
+
+
+                                TextInput::make('nominal_diskon')
+                                    ->label('Diskon')
+                                    ->numeric()
+                                    ->prefix('Rp')
+                                    ->default(0)
+                                    ->minValue(0),
+
+                            ])
+
+                            ->columns(3)
+                            ->minItems(1)
+                            ->addActionLabel(
+                                'Tambah Komponen'
+                            )
+                            ->required(),
                     ])
-
-                    ->columns(3)
-                    ->minItems(1)
-                    ->addActionLabel(
-                        'Tambah Komponen'
-                    )
-                    ->required(),
-
-
+                    ->columns(1),
             ])
-
             ->statePath('data');
     }
 

@@ -10,6 +10,7 @@ use App\Models\TagihanMahasiswa;
 use App\Services\Pembayaran\PaymentPolicyChecker;
 use App\Mail\CicilanTerverifikasiMailable;
 use App\Services\Notifications\SmsService;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -26,10 +27,10 @@ use UnitEnum;
 
 class CamabaActivationMonitor extends Page implements HasTable
 {
-    use InteractsWithTable;
+    use InteractsWithTable, HasPageShield;
 
     protected static ?string $navigationLabel = 'Generate NIM Monitor';
-    protected static ?string $title = '';
+    protected static ?string $title = 'Generator NIM';
     protected string $view = 'filament.pages.camaba-activation-monitor';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AKADEMIK->value;
 

@@ -93,14 +93,12 @@ class CamabaStagingsTable
                     ]),
             ])
             ->recordActions([
-                EditAction::make(),
                 Action::make('reprocess')
                     ->label('Proses Ulang')
                     ->icon('heroicon-o-arrow-path')
                     ->color('warning')
                     ->requiresConfirmation()
                     ->action(function (PmbCamabaStaging $record) {
-                        // Panggil kembali job proses kamu di sini
                         \App\Jobs\ProcessCamabaStaging::dispatch($record);
                         \Filament\Notifications\Notification::make()
                             ->title('Data sedang diproses ulang')

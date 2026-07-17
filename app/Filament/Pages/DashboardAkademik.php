@@ -24,6 +24,7 @@ class DashboardAkademik extends BaseDashboard
     protected static string $routePath = '/dashboard-akademik';
 
     protected static ?string $navigationLabel = 'Dashboard Akademik';
+    protected static ?string $title = 'Dashboard Akademik';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::DASHBOARD->value;
     protected static ?int $navigationSort = 1;
 

@@ -8,5 +8,4 @@
             </x-filament::button>
         </div>
     </form>
-
 </x-filament-panels::page>

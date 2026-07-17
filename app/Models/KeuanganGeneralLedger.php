@@ -2,56 +2,60 @@
 
 namespace App\Models;
 
+use App\Enums\TipeTransaksiLedger;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use RuntimeException;
 
 class KeuanganGeneralLedger extends Model
 {
-    use HasFactory, HasUuids;
+    use HasUuids;
+
+    protected $table = 'keuangan_general_ledgers';
 
     /**
-     * The table associated with the model.
-     *
-     * @var string
-     */
-    protected $table = 'keuangan_general_ledgers';
-    /**
-     * Indicates if the model should be timestamped.
-     * (Table only has created_at)
-     *
-     * @var bool
+     * Tabel ini cuma punya kolom created_at (tidak ada updated_at),
+     * sesuai desain buku besar yang append-only.
      */
     public $timestamps = false;
 
-    /**
-     * The attributes that aren't mass assignable.
-     *
-     * @var array<string>|bool
-     */
-    protected $guarded = ['id'];
+    protected $fillable = [
+        'mahasiswa_id',
+        'referensi_dokumen',
+        'tipe_transaksi',
+        'debit',
+        'kredit',
+        'saldo_berjalan',
+        'keterangan',
+    ];
 
-    /**
-     * Get the attributes that should be cast.
-     *
-     * @return array<string, string>
-     */
-    protected function casts(): array
-    {
-        return [
-            'debit' => 'decimal:2',
-            'kredit' => 'decimal:2',
-            'saldo_berjalan' => 'decimal:2',
-            'created_at' => 'datetime',
-        ];
-    }
+    protected $casts = [
+        'tipe_transaksi' => TipeTransaksiLedger::class,
+        'debit' => 'decimal:2',
+        'kredit' => 'decimal:2',
+        'saldo_berjalan' => 'decimal:2',
+        'created_at' => 'datetime',
+    ];
 
-    /**
-     * Get the student associated with this ledger entry.
-     */
     public function mahasiswa(): BelongsTo
     {
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');
+    }
+
+    protected static function boot(): void
+    {
+        parent::boot();
+
+        // Ledger WAJIB append-only: baris lama tidak boleh diubah atau
+        // dihapus. Koreksi harus berupa entri ADJUSTMENT baru lewat
+        // LedgerService, bukan mengedit riwayat.
+        static::updating(function () {
+            throw new RuntimeException('keuangan_general_ledgers bersifat append-only — tidak boleh di-update.');
+        });
+
+        static::deleting(function () {
+            throw new RuntimeException('keuangan_general_ledgers bersifat append-only — tidak boleh dihapus.');
+        });
     }
 }

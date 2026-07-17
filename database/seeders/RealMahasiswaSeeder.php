@@ -195,14 +195,7 @@ class RealMahasiswaSeeder extends Seeder
                         'angkatan_id' => $angkatan,
                         'prodi_id' => $prodiId,
                         'program_id' => 1,
-                        // 'program_kelas_id' => $kelasRegulerId,
-                        // 'dosen_wali_id' => null,
-                        'data_tambahan' => [
-                            'agama' => $agama,
-                            'alamat_detail' => ['jalan' => $alamat],
-                            'jalur_masuk' => $jenisDaftar,
-                            'tgl_masuk' => $tglMasuk
-                        ]
+
                     ]);
                     RiwayatStatusMahasiswa::create([
                         'mahasiswa_id' => $mhs->id,
@@ -210,8 +203,6 @@ class RealMahasiswaSeeder extends Seeder
                         'status_kuliah' => 'A',
                     ]);
 
-                    // app(AssignMahasiswaToKelasService::class)
-                    //     ->handle($mhs, $prodiId, $angkatan, $kelasRegulerId);
                     // --- Buat User Login ---
                     if (!User::where('username', $nim)->exists()) {
                         $user = User::create([

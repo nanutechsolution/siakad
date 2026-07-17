@@ -62,7 +62,6 @@ class VerifikasiPembayaransTable
                             ->modalCancelActionLabel('Tutup')
                             ->modalContent(function ($record) {
                                 $disk = 'public';
-
                                 if (!Storage::disk($disk)->exists($record->bukti_bayar_path)) {
                                     return new HtmlString('
                         <div class="text-center p-6 text-danger-600 dark:text-danger-400 font-medium">
@@ -70,7 +69,6 @@ class VerifikasiPembayaransTable
                         </div>
                     ');
                                 }
-
                                 $mimeType = Storage::disk($disk)
                                     ->mimeType($record->bukti_bayar_path);
 

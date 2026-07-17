@@ -9,9 +9,9 @@ use App\Models\RefTahunAkademik;
 use App\Services\TagihanService;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Concerns\InteractsWithFormActions;
 use Filament\Pages\Page;
@@ -32,7 +32,7 @@ class GeneratorTagihan extends Page implements HasSchemas
     use InteractsWithFormActions;
     use RestrictsFileUploadsToSchemaComponents;
 
-    protected static ?string $navigationLabel = 'Generator Tagihan';
+    protected static ?string $navigationLabel = 'Generator Tagihan Reguler';
     protected static ?string $title = 'Generator Tagihan Mahasiswa';
     protected static ?int $navigationSort = 3;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
@@ -122,10 +122,10 @@ class GeneratorTagihan extends Page implements HasSchemas
                             ->visible(fn(Get $get) => $get('tipe_target') === 'spesifik')
                             ->required(fn(Get $get) => $get('tipe_target') === 'spesifik'),
 
-                        Placeholder::make('info_kalkulasi')
+                        TextEntry::make('info_kalkulasi')
                             ->label('Informasi Target')
                             ->columnSpanFull()
-                            ->content(function (Get $get) {
+                            ->state(function (Get $get) {
                                 $tipeTarget = $get('tipe_target');
                                 $tahunAkademikId = $get('tahun_akademik_id');
                                 $prodiId = $get('prodi_id');

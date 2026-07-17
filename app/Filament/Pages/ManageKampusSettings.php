@@ -5,6 +5,7 @@ namespace App\Filament\Pages;
 use App\Enums\NavigationGroup;
 use App\Settings\KampusSettings as SettingsKampusSettings;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -17,6 +18,7 @@ use UnitEnum;
 
 class ManageKampusSettings extends SettingsPage
 {
+    use HasPageShield;
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedCog6Tooth;
     protected static ?string $navigationLabel = 'Identitas Kampus';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::SISTEM->value;

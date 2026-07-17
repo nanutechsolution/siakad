@@ -121,6 +121,7 @@ class TagihanMahasiswasTable
                             FileUpload::make('file_bukti')
                                 ->label('Upload Foto/Scan Bukti Transfer')
                                 ->image()
+                                ->disk('public')
                                 ->maxSize(2048)
                                 ->directory('bukti-pembayaran-mahasiswa')
                                 ->required(),
@@ -134,6 +135,7 @@ class TagihanMahasiswasTable
                             // 1. Rangkai data mentah menjadi payload seragam
                             $payload = [
                                 'tagihan_id'          => $record->id,
+                                'tagihan_type' => 'tagihan_mahasiswa',
                                 'nominal_bayar'       => $data['nominal_bayar'],
                                 'tanggal_bayar'       => $data['waktu_transfer'],
                                 'bukti_bayar_path'    => $data['file_bukti'],

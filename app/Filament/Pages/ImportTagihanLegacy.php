@@ -18,17 +18,20 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\HtmlString; // Tambahkan ini untuk merender HTML
 use UnitEnum;
-Use Illuminate\Support\Str;
+use Illuminate\Support\Str;
 
 class ImportTagihanLegacy extends Page implements HasForms
 {
     use InteractsWithForms, HasPageShield;
+
     protected string $view = 'filament.pages.import-tagihan-legacy';
     protected static string|UnitEnum|NULL $navigationGroup = NavigationGroup::KEUANGAN->value;
     protected static ?string $navigationLabel = 'Import Tagihan Lama';
     protected static ?string $title = 'Import Tagihan (Pra-SIAKAD)';
     protected static ?int $navigationSort = 99;
+
     public ?array $data = [];
 
     public function mount(): void
@@ -75,7 +78,6 @@ class ImportTagihanLegacy extends Page implements HasForms
                     $callback = function () use ($columns) {
                         $file = fopen('php://output', 'w');
                         fputcsv($file, $columns);
-                        // Contoh baris
                         fputcsv($file, ['20230001', '20231', 'SPP', '2500000', '1000000', 'Tunggakan SPP Ganjil 2023']);
                         fclose($file);
                     };
@@ -116,7 +118,6 @@ class ImportTagihanLegacy extends Page implements HasForms
             while (($row = fgetcsv($file)) !== false) {
                 $baris++;
 
-                // Lewati baris kosong
                 if (empty(array_filter($row))) continue;
 
                 $nim = $row[0] ?? null;
@@ -129,16 +130,20 @@ class ImportTagihanLegacy extends Page implements HasForms
                 // 1. Validasi Master Data
                 $mahasiswa = Mahasiswa::where('nim', $nim)->first();
                 $ta = RefTahunAkademik::where('kode_tahun', $kodeTahun)->first();
-                // Asumsi tabel komponen punya field 'nama_komponen' yang unik untuk identifikasi, atau sesuaikan jika ada kode spesifik
-                $komponen = KeuanganKomponenBiaya::where('nama_komponen', $kodeKomponen)->first();
+                $komponen = KeuanganKomponenBiaya::where('kode_komponen', $kodeKomponen)->first();
 
                 if (!$mahasiswa || !$ta || !$komponen) {
                     $gagal++;
-                    $errors[] = "Baris {$baris}: NIM/Tahun/Komponen tidak valid.";
+                    $alasan = [];
+                    if (!$mahasiswa) $alasan[] = "NIM '$nim' tidak ditemukan";
+                    if (!$ta) $alasan[] = "TA '$kodeTahun' tidak ditemukan";
+                    if (!$komponen) $alasan[] = "Komponen '$kodeKomponen' tidak ditemukan";
+
+                    $errors[] = "Baris {$baris}: " . implode(', ', $alasan);
                     continue;
                 }
 
-                // 2. Cari atau Buat Header Tagihan (Berdasarkan TA)
+                // 2. Cari atau Buat Header Tagihan
                 $tagihan = DB::table('tagihan_mahasiswas')
                     ->where('mahasiswa_id', $mahasiswa->id)
                     ->where('tahun_akademik_id', $ta->id)
@@ -162,7 +167,6 @@ class ImportTagihanLegacy extends Page implements HasForms
                         'updated_at' => now(),
                     ]);
                 } else {
-                    // Update header yang sudah ada
                     $newTotalTagihan = $tagihan->total_tagihan + $nominalTagihan;
                     $newTotalBayar = $tagihan->total_bayar + $nominalTerbayar;
 
@@ -174,7 +178,7 @@ class ImportTagihanLegacy extends Page implements HasForms
                     ]);
                 }
 
-                // 3. Insert Detail Tagihan (Hapus duplikasi komponen jika sudah ada agar aman di-reimport)
+                // 3. Insert Detail Tagihan
                 DB::table('tagihan_mahasiswas_details')
                     ->where('tagihan_id', $tagihanId)
                     ->where('komponen_biaya_id', $komponen->id)
@@ -191,14 +195,14 @@ class ImportTagihanLegacy extends Page implements HasForms
                     'updated_at' => now(),
                 ]);
 
-                // 4. Catat ke General Ledger untuk Audit Keuangan (Debit = Hutang bertambah)
+                // 4. Catat ke General Ledger
                 DB::table('keuangan_general_ledgers')->insert([
                     'id' => Str::uuid()->toString(),
                     'mahasiswa_id' => $mahasiswa->id,
                     'referensi_dokumen' => 'INV-LEGACY-' . $nim . '-' . $ta->kode_tahun,
                     'tipe_transaksi' => 'TAGIHAN',
                     'debit' => $nominalTagihan,
-                    'kredit' => $nominalTerbayar, // Langsung potong jika ada pembayaran
+                    'kredit' => $nominalTerbayar,
                     'saldo_berjalan' => $nominalTagihan - $nominalTerbayar,
                     'keterangan' => $deskripsi,
                     'created_at' => now(),
@@ -209,17 +213,45 @@ class ImportTagihanLegacy extends Page implements HasForms
 
             DB::commit();
 
-            Notification::make()
-                ->success()
-                ->title('Import Selesai')
-                ->body("Berhasil: {$berhasil} baris. Gagal: {$gagal} baris.")
-                ->send();
+            $pesanBody = "<strong>Berhasil:</strong> {$berhasil} baris.<br><strong>Gagal:</strong> {$gagal} baris.";
 
-            // Bersihkan form
+            if ($gagal > 0 && !empty($errors)) {
+                $pesanBody .= "<br><br><strong>Detail Error:</strong><ul style='margin-left: 1.5rem; list-style-type: disc; margin-top: 0.5rem;'>";
+
+                $tampilkanError = array_slice($errors, 0, 10);
+                foreach ($tampilkanError as $err) {
+                    $pesanBody .= "<li>{$err}</li>";
+                }
+
+                if (count($errors) > 10) {
+                    $sisa = count($errors) - 10;
+                    $pesanBody .= "<li><em>...dan {$sisa} baris error lainnya.</em></li>";
+                }
+                $pesanBody .= "</ul>";
+
+                Notification::make()
+                    ->warning()
+                    ->title('Import Selesai dengan Catatan')
+                    ->body(new HtmlString($pesanBody)) // Menggunakan HtmlString
+                    ->persistent()
+                    ->send();
+            } else {
+                Notification::make()
+                    ->success()
+                    ->title('Import Sukses Sepenuhnya')
+                    ->body(new HtmlString($pesanBody)) // Menggunakan HtmlString
+                    ->send();
+            }
+
             $this->form->fill();
         } catch (\Exception $e) {
             DB::rollBack();
-            Notification::make()->danger()->title('Import Gagal')->body('Terjadi kesalahan sistem: ' . $e->getMessage())->send();
+            Notification::make()
+                ->danger()
+                ->title('Import Gagal Total')
+                ->body('Terjadi kesalahan sistem: ' . $e->getMessage())
+                ->persistent()
+                ->send();
         } finally {
             fclose($file);
         }

@@ -10,7 +10,6 @@ use App\Filament\Resources\VerifikasiPembayarans\Pages\ListVerifikasiPembayarans
 use App\Filament\Resources\VerifikasiPembayarans\Schemas\VerifikasiPembayaranForm;
 use App\Filament\Resources\VerifikasiPembayarans\Tables\VerifikasiPembayaransTable;
 use App\Models\PembayaranMahasiswa;
-use App\Models\VerifikasiPembayaran;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;

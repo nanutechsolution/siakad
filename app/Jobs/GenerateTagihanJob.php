@@ -9,6 +9,7 @@ use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Models\User;
 use App\Services\Keuangan\BeasiswaDiskonService;
+use App\Services\Keuangan\LedgerService;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -51,7 +52,7 @@ class GenerateTagihanJob implements ShouldQueue
         $this->userId = $userId;
     }
 
-    public function handle(): void
+    public function handle(LedgerService $ledger): void
     {
         $tahunAkademikId = $this->data['tahun_akademik_id'];
         $tahunAkademik = RefTahunAkademik::find($tahunAkademikId);
@@ -100,6 +101,7 @@ class GenerateTagihanJob implements ShouldQueue
             $tahunAkademik,
             $namaTahun,
             $beasiswaService,
+            $ledger,
             &$successCount,
             &$failedCount,
             &$skippedCount,
@@ -216,7 +218,22 @@ class GenerateTagihanJob implements ShouldQueue
                 if (!empty($detailTagihanToInsert)) {
                     DB::table('tagihan_mahasiswas_details')->insert($detailTagihanToInsert);
                 }
-
+                // Catat ke buku besar SEBELUM commit, supaya tagihan dan
+                // entri ledger-nya atomic (satu-satunya kegagalan yang bisa
+                // terjadi di sini akan ikut kena DB::rollBack() di bawah,
+                // bukan meninggalkan tagihan tanpa jejak ledger).
+                //
+                // TIDAK memanggil recordBeasiswa() di sini — diskon
+                // beasiswa sudah baked-in ke $totalTagihanBersih lewat
+                // nominal_diskon di atas (BeasiswaDiskonService), jadi
+                // mencatatnya lagi sebagai entri ADJUSTMENT terpisah akan
+                // dobel hitung.
+                $ledger->recordTagihan(
+                    mahasiswaId: $mhs->id,
+                    nominal: number_format($totalTagihanBersih, 2, '.', ''),
+                    referensiDokumen: "tagihan-mahasiswa:{$tagihanId}",
+                    keterangan: "Tagihan Biaya Kuliah Mahasiswa NIM {$mhs->nim} - {$namaTahun}",
+                );
                 DB::commit();
                 $successCount++;
             } catch (\Illuminate\Database\QueryException $e) {

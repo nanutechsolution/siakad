@@ -77,11 +77,6 @@ class NilaiMonitoringResource extends Resource
     }
 
     #[Override]
-    public static function canView(Model $record): bool
-    {
-        return parent::canView($record);
-    }
-    #[Override]
     public static function canDelete(Model $record): bool
     {
         return false;

@@ -9,10 +9,8 @@ use App\Filament\Resources\Users\Pages\ListUsers;
 use App\Filament\Resources\Users\Schemas\UserForm;
 use App\Filament\Resources\Users\Tables\UsersTable;
 use App\Models\User;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
@@ -24,7 +22,8 @@ class UserResource extends Resource
 
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::SISTEM->value;
     protected static ?string $modelLabel = 'Pengguna Sistem';
-    protected static ?string $pluralModelLabel = 'Pengguna Sistem';
+    protected static ?string $pluralModelLabel = 'User';
+    protected static ?string $title = 'Data User';
     protected static ?string $recordTitleAttribute = 'username';
     protected static ?int $navigationSort = 1;
 

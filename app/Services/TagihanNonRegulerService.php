@@ -6,11 +6,16 @@ use App\Models\KeuanganKomponenBiaya;
 use App\Models\Mahasiswa;
 use App\Models\TagihanNonReguler;
 use App\Models\TagihanNonRegulerDetail;
+use App\Services\Keuangan\LedgerService;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 
 class TagihanNonRegulerService
 {
+    public function __construct(
+        private readonly LedgerService $ledger,
+    ) {}
+
     /**
      * Tipe komponen biaya yang boleh dipakai untuk tagihan non reguler.
      * Sengaja di-hardcode di sini (bukan cuma di form Filament) supaya
@@ -41,7 +46,7 @@ class TagihanNonRegulerService
             $kodeTransaksi = $this->buatKodeTransaksi();
 
             $totalTagihan = collect($items)->sum(
-                fn (array $item) => $item['nominal_dasar'] - ($item['nominal_diskon'] ?? 0)
+                fn(array $item) => $item['nominal_dasar'] - ($item['nominal_diskon'] ?? 0)
             );
 
             $tagihan = TagihanNonReguler::create([
@@ -76,6 +81,13 @@ class TagihanNonRegulerService
                     'nominal_terbayar' => 0,
                 ]);
             }
+
+            $this->ledger->recordTagihan(
+                mahasiswaId: $mahasiswa->id,
+                nominal: (string) $totalTagihan,
+                referensiDokumen: "tagihan-non-reguler:{$tagihan->id}",
+                keterangan: "Tagihan Non Reguler {$kodeTransaksi} - {$data['deskripsi']}",
+            );
 
             return $tagihan->fresh('details');
         });
@@ -143,7 +155,7 @@ class TagihanNonRegulerService
      */
     private function buatKodeTransaksi(): string
     {
-        $prefix = 'INV-NR-'.now()->format('Ym');
+        $prefix = 'INV-NR-' . now()->format('Ym');
 
         $last = TagihanNonReguler::query()
             ->withTrashed()

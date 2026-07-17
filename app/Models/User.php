@@ -108,10 +108,9 @@ class User extends Authenticatable implements FilamentUser
             'super_admin',
             'admin',
             'admin_bauk',
+            'admin_prodi'
         ]);
     }
-
-
 
     /*
     |--------------------------------------------------------------------------

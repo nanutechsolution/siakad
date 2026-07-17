@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Notifications\Notification;
 use Filament\Pages\Dashboard as BaseDashboard;
 
@@ -28,7 +29,7 @@ use Filament\Pages\Dashboard as BaseDashboard;
 class Dashboard extends BaseDashboard
 {
     protected static bool $shouldRegisterNavigation = false;
-
+    protected static ?string $title = 'Dashboard Utama';
     /**
      * Daftar kandidat dashboard, urut dari prioritas tertinggi.
      * Tambahkan class dashboard baru di sini kalau nanti dibuat lagi
@@ -40,7 +41,6 @@ class Dashboard extends BaseDashboard
         DashboardAkademik::class,
         DashboardKeuangan::class,
     ];
-
     public function mount(): void
     {
         foreach (static::$candidateDashboards as $dashboard) {
@@ -50,7 +50,6 @@ class Dashboard extends BaseDashboard
                 return;
             }
         }
-
         Notification::make()
             ->warning()
             ->title('Belum ada dashboard yang dapat diakses')

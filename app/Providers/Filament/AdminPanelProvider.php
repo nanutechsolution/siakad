@@ -56,9 +56,7 @@ class AdminPanelProvider extends PanelProvider
                         ->icon($group->icon());
                 }, AppNavigationGroup::cases())
             )
-            ->pages([
-                Dashboard::class,
-            ])
+            ->pages([])
             ->breadcrumbs(false)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->widgets([])
@@ -68,6 +66,7 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationLabel('Backup & Database')
                     ->navigationGroup('Backup & Database')
                     ->navigationGroup(AppNavigationGroup::SISTEM->value)
+                    ->authorize(fn(): bool => auth()->user()->username === 'superadmin')
                     ->navigationSort(100),
                 ActivityLogPlugin::make()
                     ->label('Log')
@@ -77,6 +76,7 @@ class AdminPanelProvider extends PanelProvider
                     ->navigationGroup(AppNavigationGroup::SISTEM->value)
                     ->navigationSort(99)
                     ->navigationIcon(false)
+                    ->navigationLabel("Hak Akses")
                     ->activeNavigationIcon(false)
                     ->gridColumns([
                         'default' => 1,

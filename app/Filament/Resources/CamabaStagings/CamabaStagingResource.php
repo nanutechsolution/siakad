@@ -14,6 +14,8 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
+use Override;
 use UnitEnum;
 
 class CamabaStagingResource extends Resource
@@ -22,8 +24,8 @@ class CamabaStagingResource extends Resource
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
     protected static string|UnitEnum|null $navigationGroup =  NavigationGroup::INTEGRASI->value;
-    protected static ?string $modelLabel = 'Log Kiriman PMB';      
-    protected static ?string $pluralModelLabel = 'Log Kiriman PMB'; 
+    protected static ?string $modelLabel = 'Log Kiriman PMB';
+    protected static ?string $pluralModelLabel = 'Log Kiriman PMB';
     public static function form(Schema $schema): Schema
     {
         return CamabaStagingForm::configure($schema);
@@ -33,7 +35,22 @@ class CamabaStagingResource extends Resource
     {
         return CamabaStagingsTable::configure($table);
     }
+    #[Override]
+    public static function canCreate(): bool
+    {
+        return false;
+    }
 
+    #[Override]
+    public static function canView(Model $record): bool
+    {
+        return false;
+    }
+    #[Override]
+    public static function canEdit(Model $record): bool
+    {
+        return false;
+    }
     public static function getRelations(): array
     {
         return [
@@ -45,8 +62,6 @@ class CamabaStagingResource extends Resource
     {
         return [
             'index' => ListCamabaStagings::route('/'),
-            'create' => CreateCamabaStaging::route('/create'),
-            'edit' => EditCamabaStaging::route('/{record}/edit'),
         ];
     }
 }

@@ -4,6 +4,7 @@ namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
 use App\Models\User;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -11,6 +12,7 @@ use UnitEnum;
 
 class ManageApiTokens extends Page
 {
+    use HasPageShield;
     protected string $view = 'filament.pages.manage-api-tokens';
     protected static ?string $navigationLabel = 'Integrasi API';
     protected static ?string $modelLabel = 'Integrasi API';

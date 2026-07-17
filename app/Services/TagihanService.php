@@ -23,8 +23,6 @@ class TagihanService
                 'mode'   => 'queue',
                 'message' => 'Proses pembuatan tagihan telah dimasukkan ke antrean sistem. Silakan tunggu beberapa saat.'
             ];
-            
-
         } catch (\Exception $e) {
             return [
                 'status' => 'error',

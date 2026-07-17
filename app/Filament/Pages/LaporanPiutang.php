@@ -20,7 +20,7 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Table;
-use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
 use UnitEnum;
@@ -51,6 +51,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
             'tahun_akademik_id' => $activeTahunAkademikId ? (string) $activeTahunAkademikId : null,
             'prodi_id' => null,
             'angkatan' => null,
+            'jenis_tagihan' => null,
         ];
 
         $this->form->fill($this->filterData);
@@ -63,9 +64,10 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
                 Section::make('Filter Laporan Piutang')
                     ->collapsed(false)
                     ->schema([
-                        Grid::make(3)->schema([
+                        Grid::make(4)->schema([
                             Select::make('tahun_akademik_id')
                                 ->label('Tahun Akademik')
+                                ->helperText('Hanya berlaku untuk tagihan semester')
                                 ->options(DB::table('ref_tahun_akademik')->orderBy('kode_tahun', 'desc')->pluck('nama_tahun', 'id'))
                                 ->searchable(),
 
@@ -78,6 +80,14 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
                                 ->label('Angkatan')
                                 ->options(DB::table('ref_angkatan')->orderBy('id_tahun', 'desc')->pluck('id_tahun', 'id_tahun'))
                                 ->searchable(),
+
+                            Select::make('jenis_tagihan')
+                                ->label('Jenis Tagihan')
+                                ->options([
+                                    'SEMESTER' => 'Semester',
+                                    'NON_REGULER' => 'Non Reguler',
+                                ])
+                                ->placeholder('Semua Jenis'),
                         ]),
                     ]),
             ])
@@ -104,20 +114,32 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records(fn(int $page, int $recordsPerPage): LengthAwarePaginator => $this->paginatedPiutang($page, $recordsPerPage))
+            ->records(fn (int $page, int $recordsPerPage): LengthAwarePaginator => app(LaporanPiutangService::class)
+                ->getPiutang($this->filterData, $this->getTableSearch(), $page, $recordsPerPage))
             ->columns([
                 TextColumn::make('nim')
                     ->label('NIM')
-                    ->searchable()
                     ->weight('bold'),
 
                 TextColumn::make('nama_mahasiswa')
                     ->label('Nama Mahasiswa')
-                    ->searchable()
                     ->wrap(),
+
                 TextColumn::make('nama_prodi')
                     ->label('Prodi & Angkatan')
-                    ->formatStateUsing(fn(string $state, array $record) => "{$state} ({$record['angkatan']})"),
+                    ->formatStateUsing(fn (string $state, array $record) => "{$state} ({$record['angkatan']})"),
+
+                TextColumn::make('jenis_tagihan')
+                    ->label('Jenis')
+                    ->badge()
+                    ->formatStateUsing(fn (string $state) => $state === 'SEMESTER' ? 'Semester' : 'Non Reguler')
+                    ->color(fn (string $state) => $state === 'SEMESTER' ? 'info' : 'warning'),
+
+                TextColumn::make('deskripsi')
+                    ->label('Keterangan')
+                    ->limit(40)
+                    ->tooltip(fn (?string $state) => $state)
+                    ->wrap(),
 
                 TextColumn::make('total_tagihan')
                     ->label('Total Tagihan')
@@ -142,7 +164,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
                         if (is_null($state)) return 'Tidak ada tenggat';
                         return $state > 0 ? "{$state} Hari" : 'Belum Jatuh Tempo';
                     })
-                    ->color(fn($state) => $state > 0 ? 'danger' : 'success')
+                    ->color(fn ($state) => $state > 0 ? 'danger' : 'success')
                     ->alignCenter(),
             ])
             ->headerActions([
@@ -158,32 +180,16 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
                     ->color('danger')
                     ->action('exportPdf'),
             ])
+            ->searchable()
             ->emptyStateHeading('Tidak ada data piutang')
             ->emptyStateDescription('Semua mahasiswa pada filter ini telah melunasi tagihannya.')
             ->paginated([10, 25, 50, 100]);
     }
 
-    protected function paginatedPiutang(int $page, int $recordsPerPage): LengthAwarePaginator
-    {
-        $records = app(LaporanPiutangService::class)->getPiutang($this->filterData)
-            ->map(function ($row) {
-                // PERBAIKAN: Casting paksa setiap baris stdClass menjadi array 
-                // agar diterima oleh internal engine Filament Tables
-                return (array) $row;
-            });
-        $paged = $records->forPage($page, $recordsPerPage)->values();
-
-        return new LengthAwarePaginator(
-            items: $paged,
-            total: $records->count(),
-            perPage: $recordsPerPage,
-            currentPage: $page,
-        );
-    }
-
     public function exportExcel()
     {
-        $data = app(LaporanPiutangService::class)->getPiutang($this->filterData);
+        $data = app(LaporanPiutangService::class)
+            ->getPiutangUntukExport($this->filterData, $this->getTableSearch());
 
         return Excel::download(
             new LaporanPiutangExport($data->toArray()),
@@ -193,16 +199,17 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
 
     public function exportPdf()
     {
-        $data = app(LaporanPiutangService::class)->getPiutang($this->filterData);
+        $data = app(LaporanPiutangService::class)
+            ->getPiutangUntukExport($this->filterData, $this->getTableSearch());
 
         $pdf = Pdf::loadView('pdf.laporan-piutang', [
             'data' => $data,
             'filters' => $this->filterData,
-            'total_keseluruhan' => $data->sum('sisa_tagihan')
+            'total_keseluruhan' => $data->sum('sisa_tagihan'),
         ])->setPaper('a4', 'landscape');
 
         return response()->streamDownload(
-            fn() => print($pdf->output()),
+            fn () => print($pdf->output()),
             'Laporan_Piutang_UNMARIS_' . now()->format('Ymd_His') . '.pdf'
         );
     }

@@ -6,12 +6,14 @@ use App\Enums\StatusVerifikasiPembayaran;
 use App\Events\PembayaranTerverifikasi;
 use App\Exceptions\Pembayaran\PembayaranSudahDiprosesException;
 use App\Models\PembayaranMahasiswa;
+use App\Services\Keuangan\LedgerService;
 use Illuminate\Support\Facades\DB;
 
 class PembayaranVerificationService
 {
     public function __construct(
         private readonly PembayaranAllocationService $allocationService,
+        private readonly LedgerService $ledger,
     ) {}
 
     public function verifikasi(PembayaranMahasiswa $pembayaran, string $verifikatorUserId): PembayaranMahasiswa
@@ -30,6 +32,27 @@ class PembayaranVerificationService
             $this->allocationService->alokasikan($pembayaran);
 
             $pembayaran->refresh();
+            $pembayaran->loadMissing('tagihan');
+            // Catat ke buku besar SETELAH alokasi berhasil (bukan sebelumnya),
+            // supaya kalau alokasi gagal (mis. jenis tagihan tidak dikenali),
+            // seluruh transaksi rollback termasuk yang di sini — tidak ada
+            // entri PEMBAYARAN yang "menggantung" tanpa alokasi nyata.
+            //
+            // Nominal yang dicatat = nominal_bayar PENUH, bukan cuma bagian
+            // yang terserap ke tagihan. Kalau ada kelebihan bayar, kelebihan
+            // itu tetap "uang yang diterima dari mahasiswa" — piutang tetap
+            // berkurang sejumlah itu, dan saldo_berjalan yang jadi negatif
+            // justru benar secara akuntansi (artinya kampus sekarang punya
+            // kewajiban saldo/kredit ke mahasiswa, cerminan dari
+            // keuangan_saldos yang diisi PembayaranAllocationService).
+            $tagihan = $pembayaran->tagihan;
+
+            $this->ledger->recordPembayaran(
+                mahasiswaId: $tagihan->mahasiswa_id,
+                nominal: (string) $pembayaran->nominal_bayar,
+                referensiDokumen: "pembayaran:{$pembayaran->id}",
+                keterangan: "Pembayaran diverifikasi untuk {$tagihan->kode_transaksi}",
+            );
 
             event(new PembayaranTerverifikasi($pembayaran));
 
