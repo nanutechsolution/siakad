@@ -21,7 +21,7 @@ class RealMahasiswaSeeder extends Seeder
     public function run(): void
     {
         $this->command->info('🚀 Memulai import SEMUA data Mahasiswa Real dari CSV...');
-        $limit = 3000; // jumlah maksimal mahasiswa yang mau diimport
+        $limit = 30; // jumlah maksimal mahasiswa yang mau diimport
         $startAngkatan = 2022; // angkatan minimal yang mau diimport
         $csvPath = database_path('csv/mahasiswa_real.csv');
 
@@ -71,7 +71,7 @@ class RealMahasiswaSeeder extends Seeder
         $progress = new ProgressBar($this->command->getOutput(), $totalRows);
         $progress->setFormat(" %cur t%/%max% [%bar%] %percent:3s%% | %message%");
         $progress->start();
-        $limit = 3000;
+        $limit = 30;
         DB::beginTransaction();
         try {
             // Looping sekarang membaca sampai baris terakhir CSV tanpa batasan
@@ -197,11 +197,29 @@ class RealMahasiswaSeeder extends Seeder
                         'program_id' => 1,
 
                     ]);
-                    RiwayatStatusMahasiswa::create([
-                        'mahasiswa_id' => $mhs->id,
-                        'tahun_akademik_id' => $taAktifId,
-                        'status_kuliah' => 'A',
-                    ]);
+                    // --- PASANG BLOK KODE RIWAYAT DI SINI ---
+                    $tahunSekarang = (int) date('Y');
+
+                    for ($thn = $angkatan; $thn <= $tahunSekarang; $thn++) {
+                        // Cari ID untuk Semester Ganjil
+                        $taGanjil = \App\Models\RefTahunAkademik::where('kode_tahun', $thn . '1')->first();
+                        if ($taGanjil) {
+                            \App\Models\RiwayatStatusMahasiswa::updateOrCreate(
+                                ['mahasiswa_id' => $mhs->id, 'tahun_akademik_id' => $taGanjil->id],
+                                ['status_kuliah' => 'A', 'created_at' => now(), 'updated_at' => now()]
+                            );
+                        }
+
+                        // Cari ID untuk Semester Genap
+                        $taGenap = \App\Models\RefTahunAkademik::where('kode_tahun', $thn . '2')->first();
+                        if ($taGenap) {
+                            \App\Models\RiwayatStatusMahasiswa::updateOrCreate(
+                                ['mahasiswa_id' => $mhs->id, 'tahun_akademik_id' => $taGenap->id],
+                                ['status_kuliah' => 'A', 'created_at' => now(), 'updated_at' => now()]
+                            );
+                        }
+                    }
+                    // --- AKHIR PASANG BLOK KODE ---
 
                     // --- Buat User Login ---
                     if (!User::where('username', $nim)->exists()) {
