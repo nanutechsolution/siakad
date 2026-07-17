@@ -42,7 +42,6 @@ class MahasiswaInfolist
             ]);
     }
 
-
     /*
     |--------------------------------------------------------------------
     | HEADER — RINGKASAN IDENTITAS
@@ -79,8 +78,8 @@ class MahasiswaInfolist
                                 TextEntry::make('statusTerakhir.status_kuliah')
                                     ->label('Status Mahasiswa')
                                     ->badge()
-                                    ->formatStateUsing(fn(?string $state) => Mahasiswa::labelStatusKuliah($state))
-                                    ->color(fn(?string $state) => Mahasiswa::warnaStatusKuliah($state)),
+                                    ->formatStateUsing(fn($state) => Mahasiswa::labelStatusKuliah($state))
+                                    ->color(fn($state) => Mahasiswa::warnaStatusKuliah($state)),
 
                                 TextEntry::make('nim')
                                     ->label('NIM')
@@ -111,7 +110,7 @@ class MahasiswaInfolist
                                 TextEntry::make('semester_berjalan')
                                     ->label('Semester Aktif')
                                     ->icon('heroicon-o-clock')
-                                    ->formatStateUsing(fn(int $state) => "Semester {$state}"),
+                                    ->formatStateUsing(fn($state) => "Semester {$state}"),
                             ]),
                     ]),
             ]);
@@ -131,11 +130,11 @@ class MahasiswaInfolist
                 Grid::make(['default' => 2, 'sm' => 3, 'lg' => 8])
                     ->schema([
                         static::statCard('statusTerakhir.ipk', 'IPK', 'heroicon-o-trophy', 'warning', fn($state) => number_format((float) $state, 2)),
-                        static::statCard('statusTerakhir.ips', 'IPS Terakhir', 'heroicon-o-chart-bar', 'info', fn($s) => number_format((float) $s, 2)),
+                        static::statCard('statusTerakhir.ips', 'IPS Terakhir', 'heroicon-o-chart-bar', 'info', fn($state) => number_format((float) $state, 2)),
                         static::statCard('total_sks_lulus', 'Total SKS Lulus', 'heroicon-o-check-badge', 'success'),
                         static::statCard('total_sks_diambil', 'Total SKS Diambil', 'heroicon-o-book-open', 'gray'),
                         static::statCard('semester_berjalan', 'Semester Aktif', 'heroicon-o-clock', 'primary'),
-                        static::statCard('statusTerakhir.status_kuliah', 'Status', 'heroicon-o-shield-check', 'success', fn($s) => Mahasiswa::labelStatusKuliah($s)),
+                        static::statCard('statusTerakhir.status_kuliah', 'Status', 'heroicon-o-shield-check', 'success', fn($state) => Mahasiswa::labelStatusKuliah($state)),
                         static::statCard('total_krs', 'Total KRS', 'heroicon-o-document-text', 'gray'),
                         static::statCard('total_mata_kuliah', 'Total Mata Kuliah', 'heroicon-o-book-open', 'gray'),
                     ]),
@@ -185,7 +184,7 @@ class MahasiswaInfolist
                         TextEntry::make('angkatan_id')->label('Angkatan')->badge()->color('gray'),
                         TextEntry::make('semester_berjalan')
                             ->label('Semester Aktif')
-                            ->state(fn(Mahasiswa $record) => "Semester {$record->semester_berjalan}")
+                            ->state(fn($record) => 'Semester ' . $record->semester_berjalan)
                     ]),
             ]);
     }
@@ -207,11 +206,11 @@ class MahasiswaInfolist
                         TextEntry::make('person.nik')->label('NIK')->copyable()->placeholder('-'),
                         TextEntry::make('person.jenis_kelamin')
                             ->label('Jenis Kelamin')
-                            ->formatStateUsing(fn(?string $s) => $s === 'L' ? 'Laki-laki' : ($s === 'P' ? 'Perempuan' : '-')),
+                            ->formatStateUsing(fn($state) => $state === 'L' ? 'Laki-laki' : ($state === 'P' ? 'Perempuan' : '-')),
                         TextEntry::make('person.tempat_lahir')->label('Tempat Lahir')->placeholder('-'),
                         TextEntry::make('person.tanggal_lahir')
                             ->label('Tanggal Lahir')
-                            ->formatStateUsing(fn(?string $s) => static::tanggalIndonesia($s)),
+                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state)),
                         TextEntry::make('biodata.agama')->label('Agama')->placeholder('-'),
                         TextEntry::make('person.email')->label('Email')->copyable()->icon('heroicon-o-envelope')->placeholder('-'),
                         TextEntry::make('person.no_hp')->label('Nomor HP')->copyable()->icon('heroicon-o-phone')->placeholder('-'),
@@ -301,7 +300,7 @@ class MahasiswaInfolist
                                 TextEntry::make('tahunAkademik.nama_tahun')->label('Tahun Akademik'),
                                 TextEntry::make('tahunAkademik.semester')
                                     ->label('Semester')
-                                    ->formatStateUsing(fn(?int $s) => match ($s) {
+                                    ->formatStateUsing(fn($state) => match ($state) {
                                         1 => 'Ganjil',
                                         2 => 'Genap',
                                         3 => 'Pendek',
@@ -310,11 +309,11 @@ class MahasiswaInfolist
                                 TextEntry::make('status_kuliah')
                                     ->label('Status')
                                     ->badge()
-                                    ->formatStateUsing(fn(?string $s) => Mahasiswa::labelStatusKuliah($s))
-                                    ->color(fn(?string $s) => Mahasiswa::warnaStatusKuliah($s)),
+                                    ->formatStateUsing(fn($state) => Mahasiswa::labelStatusKuliah($state))
+                                    ->color(fn($state) => Mahasiswa::warnaStatusKuliah($state)),
                                 TextEntry::make('sks_semester')->label('SKS Semester'),
-                                TextEntry::make('ips')->label('IPS')->formatStateUsing(fn($s) => number_format((float) $s, 2)),
-                                TextEntry::make('ipk')->label('IPK')->formatStateUsing(fn($s) => number_format((float) $s, 2)),
+                                TextEntry::make('ips')->label('IPS')->formatStateUsing(fn($state) => number_format((float) $state, 2)),
+                                TextEntry::make('ipk')->label('IPK')->formatStateUsing(fn($state) => number_format((float) $state, 2)),
                             ]),
                     ])
                     ->contained(false),
@@ -340,12 +339,12 @@ class MahasiswaInfolist
                                 TextEntry::make('tahunAkademik.nama_tahun')->label('Tahun Akademik'),
                                 TextEntry::make('details')
                                     ->label('Jumlah Mata Kuliah')
-                                    ->formatStateUsing(fn($s, $record) => $record->details->count() . ' MK'),
+                                    ->formatStateUsing(fn($state, $record) => $record->details->count() . ' MK'),
                                 TextEntry::make('total_sks_diambil')->label('Total SKS'),
                                 TextEntry::make('status_krs')
                                     ->label('Status Approval')
                                     ->badge()
-                                    ->color(fn(string $s) => match ($s) {
+                                    ->color(fn($state) => match ($state) {
                                         'DRAFT' => 'gray',
                                         'DIAJUKAN' => 'warning',
                                         'DISETUJUI' => 'success',
@@ -377,9 +376,9 @@ class MahasiswaInfolist
                             ->schema([
                                 TextEntry::make('nama_mk_snapshot')->label('Mata Kuliah'),
                                 TextEntry::make('sks_snapshot')->label('SKS'),
-                                TextEntry::make('nilai_angka')->label('Nilai Angka')->formatStateUsing(fn($s) => number_format((float) $s, 2)),
+                                TextEntry::make('nilai_angka')->label('Nilai Angka')->formatStateUsing(fn($state) => number_format((float) $state, 2)),
                                 TextEntry::make('nilai_huruf')->label('Nilai Huruf')->badge()->placeholder('-'),
-                                TextEntry::make('nilai_indeks')->label('Bobot')->formatStateUsing(fn($s) => number_format((float) $s, 2)),
+                                TextEntry::make('nilai_indeks')->label('Bobot')->formatStateUsing(fn($state) => number_format((float) $state, 2)),
                             ]),
                     ])
                     ->contained(false),
@@ -402,11 +401,11 @@ class MahasiswaInfolist
                     ->schema([
                         TextEntry::make('ringkasan_presensi.persentase')
                             ->label('Persentase Kehadiran')
-                            ->formatStateUsing(fn($s) => number_format((float) $s, 1) . '%')
+                            ->formatStateUsing(fn($state) => number_format((float) $state, 1) . '%')
                             ->badge()
-                            ->color(fn($s) => match (true) {
-                                $s >= 80 => 'success',
-                                $s >= 60 => 'warning',
+                            ->color(fn($state) => match (true) {
+                                $state >= 80 => 'success',
+                                $state >= 60 => 'warning',
                                 default => 'danger',
                             }),
                         TextEntry::make('ringkasan_presensi.hadir')->label('Hadir')->badge()->color('success'),
@@ -441,7 +440,7 @@ class MahasiswaInfolist
                         TextEntry::make('ringkasan_keuangan.sisa_tagihan')
                             ->label('Sisa Tagihan')
                             ->money('IDR', locale: 'id')
-                            ->color(fn($s) => $s > 0 ? 'danger' : 'success'),
+                            ->color(fn($state) => $state > 0 ? 'danger' : 'success'),
                         TextEntry::make('saldo.saldo')
                             ->label('Saldo Dompet Kampus')
                             ->money('IDR', locale: 'id')
@@ -459,14 +458,14 @@ class MahasiswaInfolist
                                         TextEntry::make('jenis')->label('Jenis'),
                                         TextEntry::make('berlaku_mulai')
                                             ->label('Berlaku Mulai')
-                                            ->formatStateUsing(fn($s) => static::tanggalIndonesia($s)),
+                                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state)),
                                         TextEntry::make('berlaku_sampai')
                                             ->label('Berlaku Sampai')
-                                            ->formatStateUsing(fn($s) => static::tanggalIndonesia($s)),
+                                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state)),
                                         TextEntry::make('status')
                                             ->label('Status')
                                             ->badge()
-                                            ->color(fn(string $s) => match ($s) {
+                                            ->color(fn($state) => match ($state) {
                                                 'AKTIF' => 'success',
                                                 'DRAFT' => 'gray',
                                                 'EXPIRED' => 'gray',
@@ -493,8 +492,8 @@ class MahasiswaInfolist
                                         TextEntry::make('is_active')
                                             ->label('Status')
                                             ->badge()
-                                            ->formatStateUsing(fn(bool $s) => $s ? 'Aktif' : 'Tidak Aktif')
-                                            ->color(fn(bool $s) => $s ? 'success' : 'gray'),
+                                            ->formatStateUsing(fn($state) => $state ? 'Aktif' : 'Tidak Aktif')
+                                            ->color(fn($state) => $state ? 'success' : 'gray'),
                                     ]),
                             ])
                             ->contained(false)
@@ -507,10 +506,6 @@ class MahasiswaInfolist
     |--------------------------------------------------------------------
     | TAB 9 — FEEDER PDDIKTI
     |--------------------------------------------------------------------
-    | Catatan: schema saat ini hanya menyimpan id_pd_feeder & last_synced_at
-    | pada tabel mahasiswas. Tidak ada kolom log error sinkronisasi, jadi
-    | field "Error Terakhir" pada brief awal tidak dibuat — tambahkan bila
-    | tabel/kolom log sinkronisasi feeder sudah tersedia.
     */
 
     protected static function tabFeederPddikti(): Tab
@@ -528,11 +523,11 @@ class MahasiswaInfolist
                         TextEntry::make('last_synced_at')
                             ->label('Status Sinkronisasi')
                             ->badge()
-                            ->formatStateUsing(fn(?string $s) => $s ? 'Tersinkron' : 'Belum Tersinkron')
-                            ->color(fn(?string $s) => $s ? 'success' : 'gray'),
+                            ->formatStateUsing(fn($state) => $state ? 'Tersinkron' : 'Belum Tersinkron')
+                            ->color(fn($state) => $state ? 'success' : 'gray'),
                         TextEntry::make('last_synced_at')
                             ->label('Terakhir Sinkron')
-                            ->formatStateUsing(fn(?string $s) => $s ? static::tanggalIndonesia($s, 'd F Y, H:i') . ' WITA' : '-'),
+                            ->formatStateUsing(fn($state) => $state ? static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA' : '-'),
                     ]),
             ]);
     }
@@ -555,41 +550,18 @@ class MahasiswaInfolist
                         TextEntry::make('person_id')->label('ID Person')->copyable(),
                         TextEntry::make('created_at')
                             ->label('Dibuat Pada')
-                            ->formatStateUsing(
-                                fn(?string $state) => static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA'
-                            ),
+                            ->state(fn($state) => static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA'),
                         TextEntry::make('updated_at')
                             ->label('Diperbarui Pada')
-                            ->formatStateUsing(
-                                fn(?string $state) => static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA'
-                            ),
+                            ->state(fn($state) => static::tanggalIndonesia($state, 'd F Y, H:i') . ' WITA'),
                         TextEntry::make('deleted_at')
                             ->label('Status Hapus')
                             ->badge()
-                            ->formatStateUsing(fn(?string $state) =>  $state ? 'Dihapus (Soft Delete)' : 'Aktif')
-                            ->color(fn(?string $s) => $s ? 'danger' : 'success'),
+                            ->state(fn($state) => $state ? 'Dihapus (Soft Delete)' : 'Aktif')
+                            ->color(fn($state) => $state ? 'danger' : 'success'),
                     ]),
-
             ]);
     }
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
     /*
     |--------------------------------------------------------------------
