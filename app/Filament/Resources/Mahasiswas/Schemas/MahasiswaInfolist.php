@@ -130,7 +130,7 @@ class MahasiswaInfolist
             ->schema([
                 Grid::make(['default' => 2, 'sm' => 3, 'lg' => 8])
                     ->schema([
-                        static::statCard('statusTerakhir.ipk', 'IPK', 'heroicon-o-trophy', 'warning', fn($s) => number_format((float) $s, 2)),
+                        static::statCard('statusTerakhir.ipk', 'IPK', 'heroicon-o-trophy', 'warning', fn($state) => number_format((float) $state, 2)),
                         static::statCard('statusTerakhir.ips', 'IPS Terakhir', 'heroicon-o-chart-bar', 'info', fn($s) => number_format((float) $s, 2)),
                         static::statCard('total_sks_lulus', 'Total SKS Lulus', 'heroicon-o-check-badge', 'success'),
                         static::statCard('total_sks_diambil', 'Total SKS Diambil', 'heroicon-o-book-open', 'gray'),
@@ -174,8 +174,8 @@ class MahasiswaInfolist
                         TextEntry::make('statusTerakhir.status_kuliah')
                             ->label('Status Mahasiswa')
                             ->badge()
-                            ->formatStateUsing(fn(?string $s) => Mahasiswa::labelStatusKuliah($s))
-                            ->color(fn(?string $s) => Mahasiswa::warnaStatusKuliah($s)),
+                            ->formatStateUsing(fn($state) => Mahasiswa::labelStatusKuliah($state))
+                            ->color(fn($state) => Mahasiswa::warnaStatusKuliah($state)),
                         TextEntry::make('program.nama_program')->label('Program')->placeholder('-'),
                         TextEntry::make('prodi.nama_prodi')->label('Program Studi'),
                         TextEntry::make('prodi.fakultas.nama_fakultas')->label('Fakultas'),
@@ -185,7 +185,7 @@ class MahasiswaInfolist
                         TextEntry::make('angkatan_id')->label('Angkatan')->badge()->color('gray'),
                         TextEntry::make('semester_berjalan')
                             ->label('Semester Aktif')
-                            ->state(fn (Mahasiswa $record) => "Semester {$record->semester_berjalan}")
+                            ->state(fn(Mahasiswa $record) => "Semester {$record->semester_berjalan}")
                     ]),
             ]);
     }
