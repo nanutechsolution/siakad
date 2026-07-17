@@ -65,8 +65,7 @@ class TrxDosenForm
                                 ->label('Data Tambahan')
                                 ->keyLabel('Field')
                                 ->valueLabel('Nilai')
-                                ->addActionLabel('Tambah Data')
-                                ->columnSpanFull(),
+                                ->addActionLabel('Tambah Data'),
                         ]
                     ),
             ]);
