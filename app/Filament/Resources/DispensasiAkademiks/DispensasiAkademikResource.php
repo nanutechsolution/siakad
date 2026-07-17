@@ -2,8 +2,6 @@
 
 namespace App\Filament\Resources\DispensasiAkademiks;
 
-use App\Filament\Resources\DispensasiAkademiks\Pages\CreateDispensasiAkademik;
-use App\Filament\Resources\DispensasiAkademiks\Pages\EditDispensasiAkademik;
 use App\Filament\Resources\DispensasiAkademiks\Pages\ListDispensasiAkademiks;
 use App\Filament\Resources\DispensasiAkademiks\Schemas\DispensasiAkademikForm;
 use App\Filament\Resources\DispensasiAkademiks\Tables\DispensasiAkademiksTable;
@@ -11,7 +9,6 @@ use App\Models\DispensasiAkademik;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -44,8 +41,6 @@ class DispensasiAkademikResource extends Resource
     {
         return [
             'index' => ListDispensasiAkademiks::route('/'),
-            'create' => CreateDispensasiAkademik::route('/create'),
-            'edit' => EditDispensasiAkademik::route('/{record}/edit'),
         ];
     }
 }
