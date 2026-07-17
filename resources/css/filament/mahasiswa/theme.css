@@ -216,3 +216,115 @@
     margin-inline: auto;
     padding-inline: 2rem;
 }
+
+
+
+
+
+/* ============================================
+   SIAKAD COMPONENT SYSTEM
+============================================ */
+
+.siakad-panel-primary {
+    border-radius: 1rem;
+    border: 1px solid rgba(217, 164, 65, .25);
+    background:
+        linear-gradient(135deg,
+            rgba(217, 164, 65, .08),
+            transparent);
+}
+
+
+.fi-section {
+    border-radius: 1rem !important;
+    border-color: rgba(217, 164, 65, .18) !important;
+    overflow: hidden;
+}
+
+
+.fi-section-header {
+    background:
+        linear-gradient(90deg,
+            rgba(217, 164, 65, .06),
+            transparent);
+}
+
+
+.fi-section-header-heading {
+    font-family: var(--font-display);
+    letter-spacing: -0.02em;
+}
+
+
+.fi-section-header-description {
+    font-size: .85rem;
+}
+
+/* ============================================
+   SIAKAD SUMMARY CARD
+============================================ */
+
+.siakad-summary-card {
+
+    @apply rounded-2xl
+    border
+    border-horizon-500/20
+    bg-white
+    p-5
+    shadow-sm
+    transition-all
+    duration-200;
+
+}
+
+
+.dark .siakad-summary-card {
+
+    @apply bg-[#131B2E];
+
+}
+
+
+.siakad-summary-card:hover {
+
+    transform: translateY(-3px);
+
+    box-shadow:
+        0 15px 30px rgba(0,0,0,.08);
+
+}
+
+
+
+.siakad-summary-label {
+
+    @apply flex
+    items-center
+    gap-2
+    text-sm
+    text-gray-500
+    dark:text-gray-400;
+
+}
+
+
+
+.siakad-summary-icon {
+
+    @apply h-4
+    w-4
+    text-horizon-500;
+
+}
+
+
+
+.siakad-summary-value {
+
+    @apply mt-3
+    text-base
+    font-semibold
+    text-gray-900
+    dark:text-white;
+
+}

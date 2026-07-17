@@ -53,7 +53,6 @@ class KrsValidationService
             ->where('tanggal_mulai', '<', $taTarget->tanggal_mulai)
             ->orderByDesc('tanggal_mulai')
             ->first();
-
         // Jika belum ada semester sebelumnya (misalnya database baru)
         if (! $previousTa) {
             return KrsValidationResult::pass('GATE_KONTINUITAS');

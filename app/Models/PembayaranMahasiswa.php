@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
@@ -53,12 +54,23 @@ class PembayaranMahasiswa extends Model
             ->logOnlyDirty()
             ->useLogName('pembayaran_keuangan');
     }
+    // /**
+    //  * Get the bill this payment is applied to.
+    //  */
+    // public function tagihan(): BelongsTo
+    // {
+    //     return $this->belongsTo(TagihanMahasiswa::class, 'tagihan_id');
+    // }
     /**
-     * Get the bill this payment is applied to.
+     * Polymorphic ke TagihanMahasiswa ATAU TagihanNonReguler.
+     * Wajib pakai morph map (lihat AppServiceProvider) supaya kolom
+     * tagihan_type stabil terhadap perubahan namespace di masa depan,
+     * dan supaya PembayaranIntakeService::pastikanTagihanValid() bisa
+     * me-resolve class dari alias-nya.
      */
-    public function tagihan(): BelongsTo
+    public function tagihan(): MorphTo
     {
-        return $this->belongsTo(TagihanMahasiswa::class, 'tagihan_id');
+        return $this->morphTo();
     }
     public function isPending(): bool
     {
@@ -80,6 +92,11 @@ class PembayaranMahasiswa extends Model
      * Get the user who verified this payment.
      */
     public function verifier(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'verified_by');
+    }
+
+    public function verifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'verified_by');
     }

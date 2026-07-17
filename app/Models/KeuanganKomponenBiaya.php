@@ -53,4 +53,13 @@ class KeuanganKomponenBiaya extends Model
     {
         return $this->hasMany(KeuanganDetailTarif::class, 'komponen_biaya_id');
     }
+
+
+    public function tagihanNonRegulerDetails()
+    {
+        return $this->hasMany(
+            TagihanNonRegulerDetail::class,
+            'komponen_biaya_id'
+        );
+    }
 }

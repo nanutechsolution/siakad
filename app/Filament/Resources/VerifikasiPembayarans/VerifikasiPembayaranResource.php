@@ -29,10 +29,10 @@ class VerifikasiPembayaranResource extends Resource
     protected static ?string $navigationLabel = 'Verifikasi Pembayaran';
     protected static ?string $modelLabel = 'Pembayaran Masuk';
     protected static ?string $pluralModelLabel = 'Verifikasi Pembayaran Masuk';
-     protected static ?string $slug = 'verifikasi-pembayaran';
+    protected static ?string $slug = 'verifikasi-pembayaran';
     protected static ?int $navigationSort = 2;
 
-    
+
     public static function getNavigationBadge(): ?string
     {
         return static::getModel()::where('status_verifikasi_id', StatusVerifikasiPembayaran::PENDING)->count() ?: null;
@@ -77,8 +77,6 @@ class VerifikasiPembayaranResource extends Resource
     {
         return [
             'index' => ListVerifikasiPembayarans::route('/'),
-            'create' => CreateVerifikasiPembayaran::route('/create'),
-            'edit' => EditVerifikasiPembayaran::route('/{record}/edit'),
         ];
     }
 }

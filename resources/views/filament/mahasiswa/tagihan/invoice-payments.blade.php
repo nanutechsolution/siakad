@@ -1,7 +1,7 @@
 @php
 $record = $getRecord();
 
-$payments = $record->pembayarans()
+$payments = $record->pembayaran()
 ->orderByDesc('tanggal_bayar')
 ->get();
 @endphp

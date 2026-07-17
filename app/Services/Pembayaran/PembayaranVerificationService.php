@@ -14,13 +14,12 @@ class PembayaranVerificationService
         private readonly PembayaranAllocationService $allocationService,
     ) {}
 
-    public function verifikasi(string $pembayaranId, string $verifikatorUserId): PembayaranMahasiswa
+    public function verifikasi(PembayaranMahasiswa $pembayaran, string $verifikatorUserId): PembayaranMahasiswa
     {
-        return DB::transaction(function () use ($pembayaranId, $verifikatorUserId) {
-            $pembayaran = PembayaranMahasiswa::whereKey($pembayaranId)
+        return DB::transaction(function () use ($pembayaran, $verifikatorUserId) {
+            $pembayaran = PembayaranMahasiswa::whereKey($pembayaran->getKey())
                 ->lockForUpdate()
                 ->firstOrFail();
-
             $this->pastikanMasihPending($pembayaran);
 
             $pembayaran->status_verifikasi_id = StatusVerifikasiPembayaran::VERIFIED;
@@ -59,6 +58,7 @@ class PembayaranVerificationService
 
     private function pastikanMasihPending(PembayaranMahasiswa $pembayaran): void
     {
+
         if ($pembayaran->status_verifikasi_id !== StatusVerifikasiPembayaran::PENDING) {
             throw new PembayaranSudahDiprosesException($pembayaran);
         }

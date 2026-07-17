@@ -185,4 +185,12 @@ class Mahasiswa extends Model
     {
         return $this->hasMany(EdomProgress::class, 'mahasiswa_id');
     }
+
+    public function tagihanNonRegulers()
+    {
+        return $this->hasMany(
+            TagihanNonReguler::class,
+            'mahasiswa_id'
+        );
+    }
 }

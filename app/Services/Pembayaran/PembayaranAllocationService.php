@@ -7,6 +7,7 @@ use App\Models\KeuanganSaldoTransaction;
 use App\Models\PembayaranMahasiswa;
 use App\Models\TagihanMahasiswa;
 use App\Models\TagihanMahasiswaDetail;
+use App\Models\TagihanNonReguler;
 
 class PembayaranAllocationService
 {
@@ -18,34 +19,107 @@ class PembayaranAllocationService
      * PembayaranVerificationService::verifikasi() — tidak untuk dipanggil
      * langsung dari Filament Action atau controller channel manapun.
      */
+
     public function alokasikan(PembayaranMahasiswa $pembayaran): void
     {
-        $tagihan = TagihanMahasiswa::whereKey($pembayaran->tagihan_id)
-            ->lockForUpdate()
-            ->firstOrFail();
+        $pembayaran->load('tagihan');
 
-        $sisaSebelumAlokasi = bcsub((string) $tagihan->total_tagihan, (string) $tagihan->total_bayar, 2);
+        $tagihan = $pembayaran->tagihan;
+
+        if ($tagihan instanceof TagihanMahasiswa) {
+            $this->alokasikanTagihanMahasiswa($pembayaran, $tagihan);
+            return;
+        }
+
+        if ($tagihan instanceof TagihanNonReguler) {
+            $this->alokasikanTagihanNonReguler($pembayaran, $tagihan);
+            return;
+        }
+
+        throw new \RuntimeException('Jenis tagihan tidak dikenali.');
+    }
+
+    private function alokasikanTagihanMahasiswa(
+        PembayaranMahasiswa $pembayaran,
+        TagihanMahasiswa $tagihan
+    ): void {
+        $sisaSebelumAlokasi = bcsub(
+            (string) $tagihan->total_tagihan,
+            (string) $tagihan->total_bayar,
+            2
+        );
+
         $nominalBayar = (string) $pembayaran->nominal_bayar;
 
         $lebihDariSisa = bccomp($nominalBayar, $sisaSebelumAlokasi, 2) === 1;
 
-        $dialokasikanKeTagihan = $lebihDariSisa ? $sisaSebelumAlokasi : $nominalBayar;
-        $kelebihan = $lebihDariSisa ? bcsub($nominalBayar, $sisaSebelumAlokasi, 2) : '0.00';
+        $dialokasikanKeTagihan = $lebihDariSisa
+            ? $sisaSebelumAlokasi
+            : $nominalBayar;
 
-        $totalBayarBaru = bcadd((string) $tagihan->total_bayar, $dialokasikanKeTagihan, 2);
+        $kelebihan = $lebihDariSisa
+            ? bcsub($nominalBayar, $sisaSebelumAlokasi, 2)
+            : '0.00';
+
+        $totalBayarBaru = bcadd(
+            (string) $tagihan->total_bayar,
+            $dialokasikanKeTagihan,
+            2
+        );
 
         $tagihan->total_bayar = $totalBayarBaru;
-        $tagihan->status_bayar = $this->tentukanStatusBayar((string) $tagihan->total_tagihan, $totalBayarBaru);
+
+        $tagihan->status_bayar = $this->tentukanStatusBayar(
+            (string) $tagihan->total_tagihan,
+            $totalBayarBaru
+        );
+
         $tagihan->save();
 
         if (bccomp($dialokasikanKeTagihan, '0.00', 2) === 1) {
-            $this->alokasikanKeDetailKomponen($tagihan->id, $dialokasikanKeTagihan);
+            $this->alokasikanKeDetailKomponen(
+                $tagihan->id,
+                $dialokasikanKeTagihan
+            );
         }
 
         if (bccomp($kelebihan, '0.00', 2) === 1) {
-            $this->catatKelebihanKeSaldo($pembayaran, $tagihan, $kelebihan);
+            $this->catatKelebihanKeSaldo(
+                $pembayaran,
+                $tagihan,
+                $kelebihan
+            );
         }
     }
+    // public function alokasikan(PembayaranMahasiswa $pembayaran): void
+    // {
+
+    //     $tagihan = TagihanMahasiswa::whereKey($pembayaran->tagihan_id)
+    //         ->lockForUpdate()
+    //         ->firstOrFail();
+
+    //     $sisaSebelumAlokasi = bcsub((string) $tagihan->total_tagihan, (string) $tagihan->total_bayar, 2);
+    //     $nominalBayar = (string) $pembayaran->nominal_bayar;
+
+    //     $lebihDariSisa = bccomp($nominalBayar, $sisaSebelumAlokasi, 2) === 1;
+
+    //     $dialokasikanKeTagihan = $lebihDariSisa ? $sisaSebelumAlokasi : $nominalBayar;
+    //     $kelebihan = $lebihDariSisa ? bcsub($nominalBayar, $sisaSebelumAlokasi, 2) : '0.00';
+
+    //     $totalBayarBaru = bcadd((string) $tagihan->total_bayar, $dialokasikanKeTagihan, 2);
+
+    //     $tagihan->total_bayar = $totalBayarBaru;
+    //     $tagihan->status_bayar = $this->tentukanStatusBayar((string) $tagihan->total_tagihan, $totalBayarBaru);
+    //     $tagihan->save();
+
+    //     if (bccomp($dialokasikanKeTagihan, '0.00', 2) === 1) {
+    //         $this->alokasikanKeDetailKomponen($tagihan->id, $dialokasikanKeTagihan);
+    //     }
+
+    //     if (bccomp($kelebihan, '0.00', 2) === 1) {
+    //         $this->catatKelebihanKeSaldo($pembayaran, $tagihan, $kelebihan);
+    //     }
+    // }
     /**
      * Membagi dana alokasi tagihan ke komponen biaya detail berdasarkan urutan prioritas (FIFO).
      */
@@ -121,5 +195,28 @@ class PembayaranAllocationService
             'referensi_id' => $pembayaran->id,
             'keterangan' => 'Kelebihan pembayaran dari invoice ' . $tagihan->kode_transaksi,
         ]);
+    }
+
+    private function alokasikanTagihanNonReguler(
+        PembayaranMahasiswa $pembayaran,
+        TagihanNonReguler $tagihan
+    ): void {
+        $tagihan->refresh();
+
+        // contoh:
+        $totalBayarBaru = bcadd(
+            (string) $tagihan->total_bayar,
+            (string) $pembayaran->nominal_bayar,
+            2
+        );
+
+        $tagihan->total_bayar = $totalBayarBaru;
+
+        $tagihan->status_bayar = $this->tentukanStatusBayar(
+            (string) $tagihan->total_tagihan,
+            $totalBayarBaru
+        );
+
+        $tagihan->save();
     }
 }

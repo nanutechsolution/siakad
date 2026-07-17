@@ -9,13 +9,13 @@ use App\Models\PaymentPolicy;
 use App\Models\TagihanMahasiswa;
 use App\Models\TagihanMahasiswaDetail;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 /**
  * Mengecek apakah pembayaran mahasiswa sudah memenuhi Payment Policy
  * untuk komponen biaya yang wajib (mis. SPP minimal 50%).
  *
  * Dipakai oleh:
- *  - PembayaranMahasiswaObserver (gate generate NIM)
  *  - KrsValidationService::checkKeuangan() (gate KRS)
  */
 class PaymentPolicyChecker
@@ -48,6 +48,12 @@ class PaymentPolicyChecker
                 ->where('komponen_biaya_id', $detail->komponen_biaya_id)
                 ->first();
 
+            Log::info('CHECK POLICY', [
+                'policy_id' => $policy->id,
+                'tagihan_id' => $tagihan->id,
+                'komponen_policy' => $detail->komponen_biaya_id,
+                'realisasi' => $realisasi?->toArray(),
+            ]);
             if (!$realisasi) {
                 $unmet[] = [
                     'nama' => $detail->komponenBiaya?->nama_komponen ?? 'Unknown',

@@ -22,9 +22,9 @@ class TagihanMahasiswaResource extends Resource
 {
     protected static ?string $model = TagihanMahasiswa::class;
     protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KEUANGAN->value;
-    protected static ?string $navigationLabel = 'Tagihan';
-    protected static ?string $modelLabel = 'Tagihan';
-    protected static ?string $pluralModelLabel = 'Daftar Tagihan';
+    protected static ?string $navigationLabel = 'Tagihan Semester';
+    protected static ?string $modelLabel = 'Tagihan Semester';
+    protected static ?string $pluralModelLabel = 'Daftar Tagihan Semester';
     /**
      * Memotong query dari hulu agar mahasiswa HANYA bisa melihat tagihan miliknya sendiri.
      */
@@ -75,8 +75,6 @@ class TagihanMahasiswaResource extends Resource
 
     public static function canViewAny(): bool
     {
-        // Bypass sementara untuk testing. 
-        // Jika dengan ini berhasil, berarti memang masalah ada di settingan Permission/Role di Filament Shield.
         return true;
     }
     public static function getRecordRouteBindingEloquentQuery(): Builder

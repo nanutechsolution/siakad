@@ -17,6 +17,7 @@ final readonly class PembayaranIntakeData
 {
     public function __construct(
         public string $tagihanId,
+        public string $tagihanType,
         public string $nominalBayar,
         public Carbon $tanggalBayar,
         public MetodePembayaran $metodePembayaran,
@@ -27,6 +28,7 @@ final readonly class PembayaranIntakeData
 
     public static function make(
         string $tagihanId,
+        string $tagihanType,
         int|float|string $nominalBayar,
         Carbon $tanggalBayar,
         MetodePembayaran $metodePembayaran,
@@ -36,6 +38,7 @@ final readonly class PembayaranIntakeData
     ): self {
         return new self(
             tagihanId: $tagihanId,
+            tagihanType: $tagihanType,
             nominalBayar: number_format((float) $nominalBayar, 2, '.', ''),
             tanggalBayar: $tanggalBayar,
             metodePembayaran: $metodePembayaran,

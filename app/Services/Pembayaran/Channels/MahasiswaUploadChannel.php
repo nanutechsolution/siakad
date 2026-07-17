@@ -14,11 +14,18 @@ class MahasiswaUploadChannel implements PaymentChannelInterface
         private readonly PembayaranIntakeService $intakeService
     ) {}
 
+    /**
+     * $payload berasal dari array $data yang dihasilkan oleh Filament
+     * Form (Action). Sekarang WAJIB menyertakan 'tagihan_type' (morph
+     * alias, mis. 'tagihan_mahasiswa' atau 'tagihan_non_reguler') supaya
+     * channel ini tetap satu pintu untuk kedua jenis tagihan — tanpa ini
+     * PembayaranIntakeService::pastikanTagihanValid() akan menolak.
+     */
     public function process(array $payload): PembayaranMahasiswa
     {
-        // $payload berasal dari array $data yang dihasilkan oleh Filament Form (Action)
         $dto = PembayaranIntakeData::make(
             tagihanId: $payload['tagihan_id'],
+            tagihanType: $payload['tagihan_type'],
             nominalBayar: $payload['nominal_bayar'],
             tanggalBayar: Carbon::parse($payload['tanggal_bayar']),
             metodePembayaran: MetodePembayaran::MANUAL, // Khusus Mahasiswa Upload

@@ -2,14 +2,21 @@
 
 namespace App\Providers;
 
+use App\Events\PembayaranTerverifikasi;
+use App\Listeners\Pembayaran\GenerateNimListener;
+use App\Listeners\Pembayaran\KirimNotifikasiPembayaranListener;
 use App\Models\PembayaranMahasiswa;
 use App\Models\PerkuliahanSesi;
-use App\Observers\PembayaranMahasiswaObserver;
+use App\Models\TagihanMahasiswa;
+use App\Models\TagihanNonReguler;
+use App\Models\User;
 use App\Observers\PerkuliahanSesiObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Policies\DosenJadwalKuliahPolicy;
 use App\Policies\DosenNilaiPolicy;
+use Illuminate\Database\Eloquent\Relations\Relation;
+use Illuminate\Support\Facades\Event;
 
 class AppServiceProvider extends ServiceProvider
 {
@@ -48,7 +55,12 @@ class AppServiceProvider extends ServiceProvider
             [DosenNilaiPolicy::class, 'revisiNilai']
         );
         PerkuliahanSesi::observe(PerkuliahanSesiObserver::class);
-        PembayaranMahasiswa::observe(PembayaranMahasiswaObserver::class);
         \App\Models\RefTahunAkademik::observe(\App\Observers\TahunAkademikObserver::class);
+        Relation::enforceMorphMap([
+            'user'                  => User::class,
+            'tagihan_mahasiswa'     => TagihanMahasiswa::class,
+            'tagihan_non_reguler'   => TagihanNonReguler::class,
+            'pembayaran_mahasiswa'  => PembayaranMahasiswa::class,
+        ]);
     }
 }
