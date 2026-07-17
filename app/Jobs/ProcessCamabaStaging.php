@@ -51,7 +51,11 @@ class ProcessCamabaStaging implements ShouldQueue
 
             // 2. Buat Record di ref_person
             $person = RefPerson::create([
-                'nama_lengkap'  => $payload['nama_lengkap'],
+                'nama_lengkap' => mb_convert_case(
+                    trim($payload['nama_lengkap']),
+                    MB_CASE_TITLE,
+                    'UTF-8'
+                ),
                 'nik'           => $payload['nik'],
                 'email'         => $payload['email'] ?? null,
                 'no_hp'         => $payload['nomor_hp'] ?? null,
