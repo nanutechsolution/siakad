@@ -49,6 +49,9 @@ class AdminPanelProvider extends PanelProvider
             ->collapsibleNavigationGroups(true)
             ->collapsedSidebarWidth(false)
             ->sidebarCollapsibleOnDesktop(true)
+            ->pages([
+                Dashboard::class
+            ])
             ->navigationGroups(
                 // Me-render otomatis seluruh Navigation Group dari Enum
                 array_map(function ($group) {

@@ -6,7 +6,6 @@ use App\Enums\NavigationGroup;
 use App\Filament\Widgets\KeuanganOverview;
 use App\Filament\Widgets\KeuanganPendingVerifikasiList;
 use App\Filament\Widgets\KeuanganTrendChart;
-use App\Filament\Widgets\LaporanKeuanganStatsWidget;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Dashboard as BaseDashboard;
 use UnitEnum;
@@ -26,9 +25,7 @@ class DashboardKeuangan extends BaseDashboard
         return [
             KeuanganOverview::class,
             KeuanganTrendChart::class,
-            BukuBesarMahasiswa::class,
             KeuanganPendingVerifikasiList::class,
-            LaporanKeuanganStatsWidget::class,
         ];
     }
 
