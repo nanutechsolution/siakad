@@ -23,8 +23,8 @@ class RefJabatanSeeder extends Seeder
             ['kode_jabatan' => 'WR3', 'nama_jabatan' => 'Wakil Rektor III (Kemahasiswaan & Kerjasama)', 'jenis' => 'STRUKTURAL'],
             ['kode_jabatan' => 'DEKAN', 'nama_jabatan' => 'Dekan Fakultas', 'jenis' => 'STRUKTURAL'],
             ['kode_jabatan' => 'KAPRODI', 'nama_jabatan' => 'Ketua Program Studi', 'jenis' => 'STRUKTURAL'],
-            ['kode_jabatan' => 'BARA', 'nama_jabatan' => 'BAUK', 'jenis' => 'STRUKTURAL'],
-            ['kode_jabatan' => 'BAUK', 'nama_jabatan' => 'BAuk', 'jenis' => 'STRUKTURAL'],
+            ['kode_jabatan' => 'BARA', 'nama_jabatan' => 'BARA', 'jenis' => 'STRUKTURAL'],
+            ['kode_jabatan' => 'BAUK', 'nama_jabatan' => 'BAUK', 'jenis' => 'STRUKTURAL'],
 
             // Fungsional
             ['kode_jabatan' => 'DOSEN', 'nama_jabatan' => 'Dosen', 'jenis' => 'FUNGSIONAL'],

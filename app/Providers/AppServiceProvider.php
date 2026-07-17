@@ -67,6 +67,7 @@ class AppServiceProvider extends ServiceProvider
             'keuangan_beasiswa_detail' => KeuanganBeasiswaDetail::class,
             'keuangan_mahasiswa_beasiswa' => KeuanganMahasiswaBeasiswa::class,
             'trx_person_jabatan' => TrxPersonJabatan::class,
+            'dispensasi_akademik' => \App\Models\DispensasiAkademik::class,
         ]);
     }
 }
