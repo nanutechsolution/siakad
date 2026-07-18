@@ -14,6 +14,7 @@ use Illuminate\Foundation\Bus\Dispatchable;
 use Illuminate\Queue\InteractsWithQueue;
 use Illuminate\Queue\SerializesModels;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
@@ -51,10 +52,11 @@ class ExportSinkronisasiPreviewJob implements ShouldQueue
         $totalRows = 0;
 
         try {
-            $absolutePath = storage_path('app/' . $relativePath);
-            if (! is_dir(dirname($absolutePath))) {
-                mkdir(dirname($absolutePath), recursive: true);
-            }
+            $filesystem = Storage::disk($disk);
+
+            $filesystem->makeDirectory('exports');
+
+            $absolutePath = $filesystem->path($relativePath);
 
             $handle = fopen($absolutePath, 'w');
             fputcsv($handle, ['kategori', 'nim', 'nama', 'komponen', 'nominal_existing', 'nominal_baru']);
