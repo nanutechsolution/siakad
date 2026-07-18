@@ -12,6 +12,7 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Textarea;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
@@ -42,21 +43,21 @@ class KeuanganAdjustmentForm
                             ->disabled(fn(?Model $record): bool => $record !== null && $record->status !== StatusAdjustment::DRAFT),
 
                         Grid::make(3)->schema([
-                            Placeholder::make('info_total_tagihan')
+                            TextEntry::make('info_total_tagihan')
                                 ->label('Total Tagihan Saat Ini')
-                                ->content(function (Get $get) {
+                                ->state(function (Get $get) {
                                     $tagihan = TagihanMahasiswa::find($get('tagihan_id'));
                                     return $tagihan ? 'Rp ' . number_format((float) $tagihan->total_tagihan, 2, ',', '.') : '-';
                                 }),
-                            Placeholder::make('info_total_bayar')
+                            TextEntry::make('info_total_bayar')
                                 ->label('Total Telah Dibayar')
-                                ->content(function (Get $get) {
+                                ->state(function (Get $get) {
                                     $tagihan = TagihanMahasiswa::find($get('tagihan_id'));
                                     return $tagihan ? 'Rp ' . number_format((float) $tagihan->total_bayar, 2, ',', '.') : '-';
                                 }),
-                            Placeholder::make('info_status_bayar')
+                            TextEntry::make('info_status_bayar')
                                 ->label('Status Pembayaran')
-                                ->content(function (Get $get) {
+                                ->state(function (Get $get) {
                                     $tagihan = TagihanMahasiswa::find($get('tagihan_id'));
                                     return $tagihan ? $tagihan->status_bayar : '-';
                                 }),
