@@ -135,7 +135,6 @@ class RealDosenSeeder extends Seeder
                     'is_active' => true,
                     'nidn' => $nidn,    // Kosong jika null
                     'nuptk' => $nuptk,  // Kosong jika null
-                    'data_tambahan' => ['agama' => $agama]
                 ]);
 
                 // 7. Buat User Login
