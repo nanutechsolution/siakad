@@ -272,6 +272,6 @@ class SinkronisasiTagihanService
 
                 $callback($mhs, (object) (array) $skemaTarif, $detailSkema, (object) (array) $tagihan, $detailExisting);
             }
-        }, column: 'mahasiswas.id');
+        }, column: 'id');
     }
 }

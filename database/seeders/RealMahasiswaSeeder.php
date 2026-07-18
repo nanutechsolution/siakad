@@ -63,13 +63,9 @@ class RealMahasiswaSeeder extends Seeder
                 'is_active' => true
             ]
         );
-        $kelasRegulerId = $kelasReguler->id;
-
-        $taAktifId = SistemHelper::idTahunAktif();
-
         // Progress bar menggunakan total baris asli dari file CSV
         $progress = new ProgressBar($this->command->getOutput(), $totalRows);
-        $progress->setFormat(" %cur t%/%max% [%bar%] %percent:3s%% | %message%");
+        $progress->setFormat(" %curt%/%max% [%bar%] %percent:3s%% | %message%");
         $progress->start();
         $limit = 30;
         DB::beginTransaction();
