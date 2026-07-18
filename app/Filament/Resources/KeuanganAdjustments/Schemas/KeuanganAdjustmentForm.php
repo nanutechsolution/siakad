@@ -73,6 +73,7 @@ class KeuanganAdjustmentForm
                                 }),
                             TextEntry::make('info_status_bayar')
                                 ->label('Status Pembayaran')
+                                ->badge()
                                 ->state(function (Get $get) {
                                     $tagihan = TagihanMahasiswa::find($get('tagihan_id'));
                                     return $tagihan ? $tagihan->status_bayar : '-';
