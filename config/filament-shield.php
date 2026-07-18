@@ -247,16 +247,6 @@ return [
 
         /*
     |--------------------------------------------------------------------------
-    | PMB
-    |--------------------------------------------------------------------------
-    */
-        'approve_camaba'          => 'Approve Calon Mahasiswa',
-        'verifikasi_berkas_pmb'   => 'Verifikasi Berkas PMB',
-        'luluskan_camaba'         => 'Luluskan Calon Mahasiswa',
-        'sinkron_pmb'            => 'Sinkronisasi PMB',
-
-        /*
-    |--------------------------------------------------------------------------
     | Akademik
     |--------------------------------------------------------------------------
     */
@@ -355,27 +345,12 @@ return [
         'approve_mutasi_pegawai' => 'Approve Mutasi Pegawai',
         'approve_jabatan'        => 'Approve Jabatan Pegawai',
 
-        /*
-    |--------------------------------------------------------------------------
-    | Sistem
-    |--------------------------------------------------------------------------
-    */
-
-        'manage_setting'         => 'Kelola Pengaturan Sistem',
-        'manage_master_data'     => 'Kelola Master Data',
-
-        'lihat_audit_log'        => 'Lihat Audit Log',
-        'export_data'            => 'Export Data',
-        'import_data'            => 'Import Data',
 
         /*
     |--------------------------------------------------------------------------
     | Beasiswa
     |--------------------------------------------------------------------------
     */
-        'buka_pendaftaran_beasiswa'     => 'Buka Pendaftaran Beasiswa',
-        'tutup_pendaftaran_beasiswa'    => 'Tutup Pendaftaran Beasiswa',
-
         'verifikasi_berkas_beasiswa'    => 'Verifikasi Berkas Beasiswa',
         'approve_beasiswa'              => 'Approve Beasiswa',
         'tolak_beasiswa'                => 'Tolak Beasiswa',
@@ -412,16 +387,16 @@ return [
         'CancelKeuanganAdjustment'   => 'Cancel Keuangan Adjustment',
         'PrintKeuanganAdjustment'    => 'Print Keuangan Adjustment',
         'ExportKeuanganAdjustment'   => 'Export Keuangan Adjustment',
-      /*
+        /*
 |--------------------------------------------------------------------------
 | Penilaian / Komponen Nilai
 |--------------------------------------------------------------------------
 */
-'CreateKomponenNilai' => 'Tambah Komponen Nilai',
-'ViewKomponenNilai' => 'Lihat Komponen Nilai',
-'UpdateKomponenNilai' => 'Ubah Komponen Nilai',
-'DeleteKomponenNilai' => 'Hapus Komponen Nilai',
-'ManageKomponenNilai' => 'Kelola Komponen Nilai',
+        'CreateKomponenNilai' => 'Tambah Komponen Nilai',
+        'ViewKomponenNilai' => 'Lihat Komponen Nilai',
+        'UpdateKomponenNilai' => 'Ubah Komponen Nilai',
+        'DeleteKomponenNilai' => 'Hapus Komponen Nilai',
+        'ManageKomponenNilai' => 'Kelola Komponen Nilai',
     ],
     /*
     |--------------------------------------------------------------------------

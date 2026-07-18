@@ -14,22 +14,29 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class CreateKrs extends CreateRecord
 {
     protected static string $resource = KrsResource::class;
     protected static bool $canCreateAnother = false;
 
-    /**
-     * Memastikan validasi di backend tidak bisa ditembus 
-     * meski UI checkbox diakali oleh Admin/Pengguna.
-     */
     protected function beforeCreate(): void
     {
         $data = $this->form->getState();
         $mahasiswa = Mahasiswa::find($data['mahasiswa_id'] ?? null);
         $ta = RefTahunAkademik::find($data['tahun_akademik_id'] ?? null);
-        $jadwalIds = $data['jadwal_kuliah_ids'] ?? [];
+
+        // PERBAIKAN: Ambil dan gabungkan kedua jenis jadwal untuk divalidasi
+        $jadwalUtama = $data['jadwal_kuliah_ids'] ?? [];
+        $jadwalMengulang = $data['jadwal_mengulang_ids'] ?? [];
+        $jadwalIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
+
+        // Validasi jika admin tidak menceklis apa-apa sama sekali
+        if (empty($jadwalIds)) {
+            Notification::make()->warning()->title('Peringatan')->body('Pilih minimal satu kelas/jadwal.')->send();
+            $this->halt();
+        }
 
         if ($mahasiswa && $ta) {
             $service = app(KrsValidationService::class);
@@ -48,17 +55,18 @@ class CreateKrs extends CreateRecord
                 $this->halt();
             }
 
-            // Hitung total SKS yang dicentang admin untuk validasi selanjutnya
-            $totalSksDiambil = 0;
-            if (!empty($jadwalIds)) {
-                $totalSksDiambil = (int) DB::table('jadwal_kuliah')
-                    ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
-                    ->whereIn('jadwal_kuliah.id', $jadwalIds)
-                    ->sum('master_mata_kuliahs.sks_default');
-            }
+            // Hitung total SKS (Semua) dan SKS Mengulang
+            $totalSksDiambil = (int) DB::table('jadwal_kuliah')
+                ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
+                ->whereIn('jadwal_kuliah.id', $jadwalIds)
+                ->sum('master_mata_kuliahs.sks_default');
+
+            $totalSksMengulang = (int) DB::table('jadwal_kuliah')
+                ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
+                ->whereIn('jadwal_kuliah.id', $jadwalMengulang)
+                ->sum('master_mata_kuliahs.sks_default');
 
             // 3. Gate SKS Maksimal
-            // Cek apakah mahasiswa punya dispensasi aktif untuk bypass limit SKS
             $hasDispensasiSks = DB::table('dispensasi_akademiks')
                 ->where('mahasiswa_id', $mahasiswa->id)
                 ->where('jenis', 'KRS')
@@ -67,20 +75,21 @@ class CreateKrs extends CreateRecord
                 ->where('berlaku_sampai', '>=', $ta->tgl_mulai_krs)
                 ->exists();
 
-            $valSks = $service->checkSksMaksimal($mahasiswa, $totalSksDiambil, $hasDispensasiSks);
+            // Sesuai dengan parameter service Anda di halaman mahasiswa
+            $valSks = $service->checkSksMaksimal($mahasiswa, $totalSksDiambil, $hasDispensasiSks, $totalSksMengulang);
             if (!$valSks->passed) {
                 Notification::make()->danger()->title('Batas SKS Terlampaui')->body($valSks->message)->send();
                 $this->halt();
             }
 
-            // 4. Gate Duplikasi & Bentrok Jadwal
+            // 4. Gate Duplikasi & Bentrok Jadwal (Pakai $jadwalIds gabungan)
             $valJadwal = $service->checkDuplikasiDanBentrok($jadwalIds);
             if (!$valJadwal->passed) {
                 Notification::make()->danger()->title('Jadwal Bentrok')->body($valJadwal->message)->send();
                 $this->halt();
             }
 
-            // 5. Gate Kuota Kelas
+            // 5. Gate Kuota Kelas (Pakai $jadwalIds gabungan)
             $valKuota = $service->checkKuotaKelas($jadwalIds);
             if (!$valKuota->passed) {
                 Notification::make()->danger()->title('Kapasitas Kelas Penuh')->body($valKuota->message)->send();
@@ -91,38 +100,58 @@ class CreateKrs extends CreateRecord
 
     protected function handleRecordCreation(array $data): Model
     {
-        $mahasiswa = Mahasiswa::find($data['mahasiswa_id']);
+        // 1. Pisahkan array jadwal dari data utama
+        $jadwalUtama = $data['jadwal_kuliah_ids'] ?? [];
+        $jadwalMengulang = $data['jadwal_mengulang_ids'] ?? [];
 
-        return DB::transaction(function () use ($data, $mahasiswa) {
-            // 1. Buat Header KRS
-            $krs = static::getModel()::create([
-                'mahasiswa_id' => $data['mahasiswa_id'],
-                'tahun_akademik_id' => $data['tahun_akademik_id'],
-                'status_krs' => $data['status_krs'],
-                'dosen_wali_id' => $mahasiswa->dosen_wali_id ?? null,
-                'is_paket_snapshot' => $mahasiswa->prodi->is_paket ?? 1,
-            ]);
+        // Hapus array tersebut agar tidak ikut di-insert ke tabel KRS
+        unset($data['jadwal_kuliah_ids'], $data['jadwal_mengulang_ids'], $data['is_eligible'], $data['validation_msg'], $data['active_kelas_id'], $data['mode_krs'], $data['prodi_id']);
 
-            // 2. Insert KrsDetail (Observer akan menghitung ulang isi_kelas dan total_sks)
-            if (!empty($data['jadwal_kuliah_ids'])) {
-                foreach ($data['jadwal_kuliah_ids'] as $jadwalId) {
-                    $jadwal = JadwalKuliah::with('mataKuliah')->find($jadwalId);
+        // Kembalikan hasil dari DB::transaction langsung ke variabel $record
+        $record = DB::transaction(function () use ($data, $jadwalUtama, $jadwalMengulang) {
+            // Gabungkan ID jadwal tanpa duplikat
+            $jadwalIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
 
-                    if ($jadwal && $jadwal->mataKuliah) {
-                        KrsDetail::create([
-                            'krs_id' => $krs->id,
-                            'jadwal_kuliah_id' => $jadwal->id,
-                            'mata_kuliah_id' => $jadwal->mata_kuliah_id,
-                            'kode_mk_snapshot' => $jadwal->mataKuliah->kode_mk,
-                            'nama_mk_snapshot' => $jadwal->mataKuliah->nama_mk,
-                            'sks_snapshot' => $jadwal->mataKuliah->sks_default,
-                            'status_ambil' => 'B',
-                        ]);
-                    }
-                }
+            // Hitung total SKS
+            $totalSksDiambil = (int) DB::table('jadwal_kuliah')
+                ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
+                ->whereIn('jadwal_kuliah.id', $jadwalIds)
+                ->sum('master_mata_kuliahs.sks_default');
+
+            // Buat ID KRS
+            $data['id'] = Str::uuid()->toString();
+            $data['total_sks_diambil'] = $totalSksDiambil;
+            $data['diajukan_at'] = now();
+
+            // 2. Insert Header KRS menggunakan metode model Filament
+            $createdRecord = static::getModel()::create($data);
+
+            // 3. Insert Details KRS
+            $detailInserts = [];
+            foreach ($jadwalIds as $jId) {
+                $mataKuliahId = DB::table('jadwal_kuliah')->where('id', $jId)->value('mata_kuliah_id');
+                $sks = DB::table('master_mata_kuliahs')->where('id', $mataKuliahId)->value('sks_default');
+                $statusAmbil = in_array($jId, $jadwalMengulang, true) ? 'U' : 'B';
+
+                $detailInserts[] = [
+                    'krs_id'           => $createdRecord->id,
+                    'jadwal_kuliah_id' => $jId,
+                    'mata_kuliah_id'   => $mataKuliahId,
+                    'sks_snapshot'     => $sks,
+                    'status_ambil'     => $statusAmbil,
+                    'created_at'       => now(),
+                    'updated_at'       => now(),
+                ];
             }
 
-            return $krs;
+            if (!empty($detailInserts)) {
+                DB::table('krs_detail')->insert($detailInserts);
+            }
+
+            // Kembalikan model yang terbuat agar menjadi hasil dari DB::transaction
+            return $createdRecord;
         });
+        // Sekarang Intelephense tahu ini pasti mengembalikan Model
+        return $record;
     }
 }

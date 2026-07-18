@@ -85,3 +85,8 @@ Route::get('/mahasiswa/reauth', function () {
     return redirect('/mahasiswa/login')
         ->with('status', 'NIM Anda sudah aktif! Silakan login kembali menggunakan NIM: ' . request('nim'));
 })->middleware('web');
+
+
+use App\Http\Controllers\PdfController;
+
+Route::get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])->name('khs.cetak');

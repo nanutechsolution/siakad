@@ -57,6 +57,9 @@ class DosenWaliRelationManager extends RelationManager
             ])
             ->headerActions([
                 AttachAction::make()
+                    ->icon('heroicon-o-plus')
+                    ->color('primary')
+                    ->label("Tambah Dosen Wali")
                     ->schema(fn($action) => [
                         $action->getRecordSelect(),
                         Toggle::make('is_primary')->default(true),

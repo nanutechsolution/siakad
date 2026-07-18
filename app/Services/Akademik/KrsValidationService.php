@@ -8,7 +8,6 @@ use App\DTOs\KrsValidationResult;
 use App\Enums\StatusKuliah;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
-use App\Models\JadwalKuliah;
 use App\Models\Krs;
 use App\Models\TagihanMahasiswa;
 use App\Services\Pembayaran\PaymentPolicyChecker;

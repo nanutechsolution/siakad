@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Kelas\Tables;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Kelas;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -62,7 +63,7 @@ class KelasTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(DB::table('ref_prodi')->pluck('nama_prodi', 'id')),
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user())),
 
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')

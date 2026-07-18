@@ -9,14 +9,15 @@ use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Services\Akademik\KrsValidationService;
 use Filament\Actions\Action as ActionsAction;
-use Filament\Forms\Components\Actions\Action;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Schemas\Components\Actions;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
 
 class KrsForm
@@ -42,7 +43,7 @@ class KrsForm
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function(callable $set, callable $get) {
-                                    self::validateKontinuitas($set, $get);
+                                    self::fetchMahasiswaData($set, $get);
                                 }),
 
                             Select::make('tahun_akademik_id')
@@ -51,29 +52,33 @@ class KrsForm
                                 ->required()
                                 ->live()
                                 ->afterStateUpdated(function(callable $set, callable $get) {
-                                    self::validateKontinuitas($set, $get);
+                                    self::fetchMahasiswaData($set, $get);
                                 }),
 
                             Select::make('status_krs')
                                 ->label('Status Awal')
                                 ->options([
                                     'DRAFT' => 'Draft',
+                                    'DIAJUKAN' => 'Diajukan',
                                     'DISETUJUI' => 'Langsung Disetujui (Bypass)',
                                 ])
-                                ->default('DRAFT')
+                                ->default('DISETUJUI')
                                 ->required(),
 
-                            // State tersembunyi untuk menyimpan hasil validasi service
+                            // State tersembunyi untuk menyimpan metadata
                             Hidden::make('is_eligible')->default(true),
                             Hidden::make('validation_msg')->default(null),
+                            Hidden::make('active_kelas_id'),
+                            Hidden::make('mode_krs')->default('PAKET'),
+                            Hidden::make('prodi_id'),
 
                             // Alert Peringatan UI
                             Placeholder::make('peringatan_kontinuitas')
                                 ->label('Status Validasi Akademik')
                                 ->visible(fn (callable $get) => $get('is_eligible') === false)
                                 ->content(fn (callable $get) => new HtmlString(
-                                    '<div class="p-4 mb-4 text-sm text-danger-800 rounded-lg bg-danger-50 dark:bg-gray-800 dark:text-danger-400" role="alert">' .
-                                    '<span class="font-bold">Terblokir:</span> ' . $get('validation_msg') .
+                                    '<div class="p-4 mb-4 text-sm text-danger-800 rounded-lg bg-danger-50" role="alert">' .
+                                    '<span class="font-bold">Perhatian:</span> ' . $get('validation_msg') .
                                     '</div>'
                                 )),
 
@@ -89,70 +94,118 @@ class KrsForm
                         ]),
 
                     Wizard\Step::make('Mata Kuliah')
-                        ->description('Pilih Kelas yang Lolos Prasyarat')
+                        ->description('Pilih Kelas Utama & Mengulang')
                         ->schema([
-                            CheckboxList::make('jadwal_kuliah_ids')
-                                ->label('Jadwal Kuliah Tersedia')
-                                ->options(function (callable $get) {
-                                    $mahasiswaId = $get('mahasiswa_id');
-                                    $taId = $get('tahun_akademik_id');
+                            // 1. KELAS PAKET / UTAMA
+                            Section::make('Mata Kuliah Paket (Kelas Utama)')
+                                ->description('Mata kuliah yang ditawarkan untuk kelas mahasiswa saat ini.')
+                                ->schema([
+                                    CheckboxList::make('jadwal_kuliah_ids')
+                                        ->label('')
+                                        ->options(function (callable $get) {
+                                            $taId = $get('tahun_akademik_id');
+                                            $kelasId = $get('active_kelas_id');
 
-                                    if (!$mahasiswaId || !$taId || $get('is_eligible') === false) {
-                                        return [];
-                                    }
+                                            if (!$taId || !$kelasId) return [];
 
-                                    $mahasiswa = Mahasiswa::find($mahasiswaId);
-                                    if (!$mahasiswa) return [];
+                                            return JadwalKuliah::with(['mataKuliah', 'kelas'])
+                                                ->where('tahun_akademik_id', $taId)
+                                                ->where('kelas_id', $kelasId)
+                                                ->get()
+                                                ->mapWithKeys(fn($jadwal) => [
+                                                    $jadwal->id => "{$jadwal->mataKuliah->kode_mk} - {$jadwal->mataKuliah->nama_mk} ({$jadwal->mataKuliah->sks_default} SKS) | Kuota: {$jadwal->isi_kelas}/{$jadwal->kuota_kelas}"
+                                                ]);
+                                        })
+                                        ->default(function (callable $get) {
+                                            if ($get('mode_krs') !== 'PAKET') return [];
+                                            
+                                            return JadwalKuliah::where('tahun_akademik_id', $get('tahun_akademik_id'))
+                                                ->where('kelas_id', $get('active_kelas_id'))
+                                                ->pluck('id')
+                                                ->toArray();
+                                        })
+                                        ->disabled(fn(callable $get) => $get('mode_krs') === 'PAKET')
+                                        ->dehydrated(true)
+                                        ->helperText(fn(callable $get) => $get('mode_krs') === 'PAKET' 
+                                            ? 'Mode PAKET: Kelas otomatis terpilih sesuai kurikulum mahasiswa.' 
+                                            : null)
+                                        ->columns(1)
+                                        ->searchable(),
+                                ]),
 
-                                    $jadwals = JadwalKuliah::with(['mataKuliah', 'kelas'])
-                                        ->where('tahun_akademik_id', $taId)
-                                        ->get();
+                            // 2. KELAS MENGULANG / LINTAS KELAS
+                            Section::make('Mata Kuliah Mengulang / Lintas Kelas (Opsional)')
+                                ->description('Pilih kelas dari angkatan/prodi lain untuk mengulang.')
+                                ->schema([
+                                    CheckboxList::make('jadwal_mengulang_ids')
+                                        ->label('')
+                                        ->options(function (callable $get) {
+                                            $taId = $get('tahun_akademik_id');
+                                            $kelasId = $get('active_kelas_id');
+                                            $prodiId = $get('prodi_id');
 
-                                    $service = app(KrsValidationService::class);
-                                    $eligibleOptions = [];
+                                            if (!$taId || !$prodiId) return [];
 
-                                    foreach ($jadwals as $jadwal) {
-                                        $checkPrasyarat = $service->checkPrasyarat($mahasiswa, [$jadwal->id]);
-
-                                        if ($checkPrasyarat->passed) {
-                                            $label = "{$jadwal->mataKuliah->kode_mk} - {$jadwal->mataKuliah->nama_mk} ({$jadwal->mataKuliah->sks_default} SKS) | Kelas: {$jadwal->kelas->nama_kelas} | Kuota: {$jadwal->isi_kelas}/{$jadwal->kuota_kelas}";
-                                            $eligibleOptions[$jadwal->id] = $label;
-                                        }
-                                    }
-
-                                    return $eligibleOptions;
-                                })
-                                ->columns(1)
-                                ->bulkToggleable()
-                                ->searchable(),
+                                            return JadwalKuliah::with(['mataKuliah', 'kelas'])
+                                                ->where('tahun_akademik_id', $taId)
+                                                ->whereHas('kelas', fn($q) => $q->where('prodi_id', $prodiId))
+                                                ->where('kelas_id', '!=', $kelasId)
+                                                ->get()
+                                                ->mapWithKeys(fn($jadwal) => [
+                                                    $jadwal->id => "{$jadwal->mataKuliah->kode_mk} - {$jadwal->mataKuliah->nama_mk} ({$jadwal->mataKuliah->sks_default} SKS) | Kelas: {$jadwal->kelas->nama_kelas} | Kuota: {$jadwal->isi_kelas}/{$jadwal->kuota_kelas}"
+                                                ]);
+                                        })
+                                        ->columns(1)
+                                        ->searchable(),
+                                ])->collapsed(),
                         ]),
                 ])->columnSpanFull()
             ]);
     }
 
-    private static function validateKontinuitas(callable $set, callable $get): void
+    private static function fetchMahasiswaData(callable $set, callable $get): void
     {
-        // Reset checkbox jadwal jika identitas berubah
+        // Reset checkbox
         $set('jadwal_kuliah_ids', []);
+        $set('jadwal_mengulang_ids', []);
         
         $mahasiswaId = $get('mahasiswa_id');
         $taId = $get('tahun_akademik_id');
 
-        if ($mahasiswaId && $taId) {
-            $mahasiswa = Mahasiswa::find($mahasiswaId);
-            $ta = RefTahunAkademik::find($taId);
+        if ($mahasiswaId) {
+            $mahasiswa = Mahasiswa::with('kurikulum')->find($mahasiswaId);
+            
+            // Set metadata dasar mahasiswa
+            $set('prodi_id', $mahasiswa->prodi_id ?? null);
+            $set('mode_krs', $mahasiswa->kurikulum->mode_krs ?? 'PAKET');
+            
+            // Cari kelas aktif mahasiswa
+            $activeKelasId = DB::table('mahasiswa_kelas')
+                ->where('mahasiswa_id', $mahasiswaId)
+                ->whereNull('tanggal_keluar')
+                ->value('kelas_id');
+                
+            $set('active_kelas_id', $activeKelasId);
 
-            if ($mahasiswa && $ta) {
-                $service = app(KrsValidationService::class);
-                $result = $service->checkStatusMahasiswa($mahasiswa, $ta);
-
-                $set('is_eligible', $result->passed);
-                $set('validation_msg', $result->message);
-                return;
+            // Validasi kelayakan jika TA juga sudah dipilih
+            if ($taId) {
+                $ta = RefTahunAkademik::find($taId);
+                if ($ta) {
+                    $service = app(KrsValidationService::class);
+                    // Kita hanya set false jika admin perlu tahu ada tunggakan/status tidak aktif.
+                    // Namun di admin, biasanya admin bisa mem-bypass ini.
+                    $result = $service->checkStatusMahasiswa($mahasiswa, $ta);
+                    
+                    if (!$result->passed) {
+                        $set('is_eligible', false);
+                        $set('validation_msg', $result->message . ' (Admin dapat mengabaikan peringatan ini).');
+                    } else {
+                        // Jika lolos checkStatus, opsional bisa cek keuangan juga disini
+                        $set('is_eligible', true);
+                        $set('validation_msg', null);
+                    }
+                }
             }
         }
-
-        $set('is_eligible', true);
-        $set('validation_msg', null);
     }
 }

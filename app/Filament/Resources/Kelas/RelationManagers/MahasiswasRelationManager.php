@@ -75,7 +75,7 @@ class MahasiswasRelationManager extends RelationManager
                     ->label('Plotting Mahasiswa')
                     ->icon('heroicon-o-plus')
                     ->color('primary')
-                    ->form([
+                    ->schema([
                         Select::make('mahasiswa_id')
                             ->label('Pilih Mahasiswa')
                             ->options(

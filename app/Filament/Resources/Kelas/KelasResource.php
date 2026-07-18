@@ -11,11 +11,10 @@ use App\Filament\Resources\Kelas\RelationManagers\MahasiswasRelationManager;
 use App\Filament\Resources\Kelas\Schemas\KelasForm;
 use App\Filament\Resources\Kelas\Tables\KelasTable;
 use App\Models\Kelas;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class KelasResource extends Resource
@@ -27,6 +26,10 @@ class KelasResource extends Resource
     protected static ?string $pluralModelLabel = 'Daftar Kelas';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::PERKULIAHAN->value;
     protected static ?int $navigationSort = 1;
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     public static function form(Schema $schema): Schema
     {
         return KelasForm::configure($schema);

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Kelas\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Kelas;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -40,7 +41,7 @@ class KelasForm
                         Select::make('prodi_id')
                             ->label('Program Studi')
                             ->required()
-                            ->options(DB::table('ref_prodi')->where('is_active', 1)->pluck('nama_prodi', 'id'))
+                            ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                             ->searchable()
                             ->preload(),
 
@@ -65,6 +66,6 @@ class KelasForm
                             ->minValue(1)
                             ->required(),
                     ])->columns(2),
-            ]);
+            ])->columns(1);
     }
 }
