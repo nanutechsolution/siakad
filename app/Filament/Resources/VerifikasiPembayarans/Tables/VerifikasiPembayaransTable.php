@@ -142,12 +142,17 @@ class VerifikasiPembayaransTable
                         ->label('Terima Pembayaran')
                         ->icon('heroicon-o-check-circle')
                         ->color('success')
-                        ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING)
+                        ->visible(
+                            fn($record) =>
+                            $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING
+                                && auth()->user()->can('ApprovePembayaran')
+                        )
                         ->requiresConfirmation()
                         ->modalHeading('Setujui Pembayaran?')
                         ->modalDescription('Tindakan ini akan mengesahkan pembayaran, mendistribusikan alokasi biaya, dan memperbarui saldo mahasiswa jika ada sisa bayar. Tindakan ini tidak bisa diurungkan.')
                         // Hapus ->form() catatan_admin karena method verifikasi() di Service tidak menerimanya
                         ->action(function (PembayaranMahasiswa $record) {
+                            abort_unless(auth()->user()->can('ApprovePembayaran'), 403);
                             try {
 
                                 // Panggil method verifikasi() dengan meneruskan ID Pembayaran dan ID Admin yang login
@@ -175,7 +180,11 @@ class VerifikasiPembayaransTable
                         ->label('Tolak Pembayaran')
                         ->icon('heroicon-o-x-circle')
                         ->color('danger')
-                        ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING)
+                        ->visible(
+                            fn($record) =>
+                            $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING
+                                && auth()->user()->can('TolakPembayaran')
+                        )
                         ->requiresConfirmation()
                         ->modalHeading('Tolak Bukti Pembayaran')
                         ->modalDescription('Berikan alasan yang jelas kepada mahasiswa mengapa bukti pembayaran ini ditolak (misal: gambar buram, nominal kurang).')
@@ -187,6 +196,7 @@ class VerifikasiPembayaransTable
                                 ->rows(3),
                         ])
                         ->action(function (PembayaranMahasiswa $record, array $data) {
+                            abort_unless(auth()->user()->can('TolakPembayaran'), 403);
                             try {
                                 // Panggil method tolak() dengan ID, User ID, dan Catatan
                                 app(PembayaranVerificationService::class)->tolak(

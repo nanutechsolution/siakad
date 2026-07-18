@@ -190,6 +190,7 @@ class GeneratorTagihan extends Page implements HasSchemas
         return [
             Action::make('generate_tagihan')
                 ->formId('form-generator-tagihan')
+                ->disabled(fn() => ! auth()->user()->can('GenerateTagihan'))
                 ->label('Generate Tagihan Sekarang🚀')
                 ->color('primary')
                 ->requiresConfirmation()
@@ -198,7 +199,10 @@ class GeneratorTagihan extends Page implements HasSchemas
                 ->modalSubmitActionLabel('Lanjutkan')
                 ->modalCancelActionLabel('Batal')
                 ->modalSubmitAction(fn($action) => $action->color('success'))
-                ->action(fn(TagihanService $service) => $this->prosesGenerateTagihan($service)),
+                ->action(function (TagihanService $service) {
+                    abort_unless(auth()->user()->can('GenerateTagihan'), 403);
+                    $this->prosesGenerateTagihan($service);
+                })
         ];
     }
 

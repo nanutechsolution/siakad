@@ -51,29 +51,21 @@ class KurikulumMataKuliah extends Model implements HasScopeStrategy
             ScopeStrategy::GLOBAL,
             ScopeStrategy::FAKULTAS,
             ScopeStrategy::PRODI,
-            ScopeStrategy::DOSEN_WALI,
-            ScopeStrategy::OWNERSHIP_MAHASISWA,
         ];
     }
     public static function getFakultasScopeColumn(): ?string
     {
-        return 'prodi.fakultas_id'; // dot-path -> whereHas('prodi', ...)
+        return 'kurikulum.prodi.fakultas_id'; // 2 level: kurikulum_mata_kuliah -> master_kurikulums -> ref_prodi
     }
 
     public static function getProdiScopeColumn(): ?string
     {
-        return 'prodi_id';
+        return 'kurikulum.prodi_id';
     }
 
     public static function applyOwnershipScope(Builder $query, User $user, ScopeStrategy $strategy): Builder
     {
-        return match ($strategy) {
-            ScopeStrategy::OWNERSHIP_MAHASISWA => $query->where('person_id', $user->person_id),
-            ScopeStrategy::DOSEN_WALI => $query->whereHas('kelas.dosenWali', function (Builder $q) use ($user) {
-                $q->whereHas('dosen', fn(Builder $d) => $d->where('person_id', $user->person_id));
-            }),
-            default => throw new \LogicException("Mahasiswa tidak mendukung strategy {$strategy->value}"),
-        };
+        throw new \LogicException('KurikulumMataKuliah tidak mendukung strategy ownership.');
     }
     /**
      * Relasi ke Master Kurikulum.

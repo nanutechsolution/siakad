@@ -2,7 +2,7 @@
 
 namespace App\Filament\Pages;
 
-use App\Domain\Authorization\Services\DataVisibilityResolver;
+use App\Domain\Authorization\Services\FormResolver;
 use App\Enums\NavigationGroup;
 use App\Filament\Widgets\MonitoringKrs\KrsApprovalPieChart;
 use App\Filament\Widgets\MonitoringKrs\KrsProgressPerProdiChart;
@@ -26,11 +26,14 @@ use UnitEnum;
 class MonitoringKrs extends Page
 {
     use HasFiltersForm;
+    use HasPageShield;
+
     protected string $view = 'filament.pages.monitoring-krs';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AKADEMIK->value;
     protected static ?string $navigationLabel = 'Monitoring KRS';
     protected static ?string $title = 'Monitoring KRS';
     protected static ?int $navigationSort = 10;
+
     public function filtersForm(Schema $schema): Schema
     {
         return $schema->components([
@@ -42,7 +45,7 @@ class MonitoringKrs extends Page
                     Grid::make([
                         'default' => 1,
                         'md' => 2,
-                        'xl' => 3, // Menggunakan 3 kolom agar lebih luas dan tidak sesak
+                        'xl' => 3,
                     ])->schema([
                         Group::make([
                             Select::make('tahun_akademik_id')
@@ -56,24 +59,22 @@ class MonitoringKrs extends Page
                                 ->live(),
                         ]),
 
-                        // Group 2: Organisasi
+                        // Group 2: Organisasi. Options SEKARANG discope ke
+                        // accessibleFakultasIds()/accessibleProdiIds() user lewat
+                        // FormResolver -- sebelumnya RefFakultas::query()->pluck(...)
+                        // menampilkan SEMUA fakultas/prodi ke siapa pun, termasuk yang
+                        // di luar hak akses mereka.
                         Group::make([
                             Select::make('fakultas_id')
                                 ->label('Fakultas')
-                                ->options(\App\Models\RefFakultas::query()->pluck('nama_fakultas', 'id')) // Pastikan model benar
+                                ->options(fn() => app(FormResolver::class)->fakultasOptions(auth()->user()))
                                 ->live()
-                                ->searchable(),
+                                ->searchable()
+                                ->afterStateUpdated(fn($set) => $set('prodi_id', null)),
                             Select::make('prodi_id')
                                 ->label('Program Studi')
-                                ->options(function (callable $get) {
-                                    $fakultasId = $get('fakultas_id');
-                                    $query = \App\Models\RefProdi::query();
-                                    if ($fakultasId) {
-                                        $query->where('fakultas_id', $fakultasId);
-                                    }
-
-                                    return $query->pluck('nama_prodi', 'id');
-                                })
+                                ->options(fn(callable $get) => app(FormResolver::class)
+                                    ->prodiOptionsForFakultas(auth()->user(), $get('fakultas_id')))
                                 ->live()
                                 ->searchable(),
                         ]),

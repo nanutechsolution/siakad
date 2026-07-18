@@ -3,7 +3,7 @@
 namespace App\Filament\Widgets\MonitoringKrs;
 
 use App\Enums\KrsStatusEnum;
-use App\Models\Krs;
+use App\Filament\Widgets\MonitoringKrs\Concerns\ScopedMonitoringQueries;
 use App\Models\RefTahunAkademik;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -11,6 +11,7 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 class KrsApprovalPieChart extends ChartWidget
 {
     use InteractsWithPageFilters;
+    use ScopedMonitoringQueries;
 
     protected ?string $heading = 'Status Approval KRS';
 
@@ -35,22 +36,8 @@ class KrsApprovalPieChart extends ChartWidget
             ];
         }
 
-        $counts = Krs::query()
+        $counts = $this->scopedKrsQuery()
             ->where('tahun_akademik_id', $taId)
-            ->when(
-                $this->pageFilters['prodi_id'] ?? null,
-                fn ($q, $v) => $q->whereHas(
-                    'mahasiswa',
-                    fn ($qq) => $qq->where('prodi_id', $v)
-                )
-            )
-            ->when(
-                $this->pageFilters['fakultas_id'] ?? null,
-                fn ($q, $v) => $q->whereHas(
-                    'mahasiswa.prodi',
-                    fn ($qq) => $qq->where('fakultas_id', $v)
-                )
-            )
             ->selectRaw('status_krs, COUNT(*) as total')
             ->groupBy('status_krs')
             ->pluck('total', 'status_krs')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\KurikulumMataKuliahs\Tables;
 
+use App\Domain\Authorization\Services\OrganizationResolver;
 use App\Models\KurikulumMataKuliah;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -56,7 +57,14 @@ class KurikulumMataKuliahsTable
             ->filters([
                 SelectFilter::make('kurikulum_id')
                     ->label('Filter Kurikulum')
-                    ->relationship('kurikulum', 'nama_kurikulum')
+                    ->relationship(
+                        name: 'kurikulum',
+                        titleAttribute: 'nama_kurikulum',
+                        modifyQueryUsing: fn($query) => $query->whereIn(
+                            'prodi_id',
+                            app(OrganizationResolver::class)->accessibleProdiIds(auth()->user()),
+                        ),
+                    )
                     ->searchable()
                     ->preload(),
 

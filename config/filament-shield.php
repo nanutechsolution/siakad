@@ -280,6 +280,7 @@ return [
         'update_nilai_diskon'    => 'Update Nilai Diskon',
         'beri_dispensasi'        => 'Beri Dispensasi',
         'hapus_dispensasi'       => 'Hapus Dispensasi',
+        'SinkronisasiTagihan'       => 'Sinkronisasi Tagihan',
 
         /*
     |--------------------------------------------------------------------------

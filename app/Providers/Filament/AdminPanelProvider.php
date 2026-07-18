@@ -24,6 +24,8 @@ use App\Http\Middleware\EnsureOrganizationContext;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
 use Filament\Navigation\NavigationGroup;
+use Filament\View\PanelsRenderHook;
+use Illuminate\Support\Facades\Blade;
 use ShuvroRoy\FilamentSpatieLaravelBackup\FilamentSpatieLaravelBackupPlugin;
 
 class AdminPanelProvider extends PanelProvider
@@ -33,6 +35,10 @@ class AdminPanelProvider extends PanelProvider
         return $panel
             ->default()
             ->defaultThemeMode(ThemeMode::Light)
+            ->renderHook(
+                PanelsRenderHook::TOPBAR_LOGO_AFTER,
+                fn() => Blade::render('<x-active-academic-year />'),
+            )
             ->id('admin')
             ->path('admin')
             ->brandLogoHeight('2.25rem')
@@ -53,7 +59,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop(true)
             ->pages([
                 // Dashboard::class
-                 PilihKonteksKerja::class,
+                PilihKonteksKerja::class,
             ])
             ->navigationGroups(
                 // Me-render otomatis seluruh Navigation Group dari Enum

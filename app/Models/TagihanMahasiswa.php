@@ -102,4 +102,8 @@ class TagihanMahasiswa extends Model
             round(($this->total_bayar / $this->total_tagihan) * 100)
         );
     }
+    public function sinkronisasiReviewItems(): HasMany
+    {
+        return $this->hasMany(SinkronisasiReviewItem::class, 'tagihan_id');
+    }
 }

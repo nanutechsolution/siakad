@@ -4,17 +4,22 @@ declare(strict_types=1);
 
 namespace App\Models;
 
+use App\Domain\Authorization\Contracts\HasScopeStrategy;
+use App\Domain\Authorization\Enums\ScopeStrategy;
 use App\Enums\KrsStatusEnum;
+use App\Models\Concerns\VisibleToUser;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use LogicException;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
-class Krs extends Model
+class Krs extends Model implements HasScopeStrategy
 {
-    use HasUuids, LogsActivity;
+    use HasUuids, LogsActivity, VisibleToUser;
 
     protected $table = 'krs';
 
@@ -131,5 +136,54 @@ class Krs extends Model
     public function scopeCurrentPeriod($query)
     {
         return $query->where('tahun_akademik_id', active_ta_id());
+    }
+
+
+
+    /*
+    |--------------------------------------------------------------------------
+    | HasScopeStrategy (App\Domain\Authorization)
+    |--------------------------------------------------------------------------
+    */
+
+    public static function getSupportedScopeStrategies(): array
+    {
+        return [
+            ScopeStrategy::GLOBAL,
+            ScopeStrategy::FAKULTAS,
+            ScopeStrategy::PRODI,
+            ScopeStrategy::DOSEN_WALI,
+            ScopeStrategy::OWNERSHIP_MAHASISWA,
+        ];
+    }
+
+    public static function getFakultasScopeColumn(): ?string
+    {
+        return 'mahasiswa.prodi.fakultas_id';
+    }
+
+    public static function getProdiScopeColumn(): ?string
+    {
+        return 'mahasiswa.prodi_id';
+    }
+
+    public static function applyOwnershipScope(Builder $query, User $user, ScopeStrategy $strategy): Builder
+    {
+        return match ($strategy) {
+            // Mahasiswa hanya lihat KRS miliknya sendiri.
+            ScopeStrategy::OWNERSHIP_MAHASISWA => $query->whereHas(
+                'mahasiswa',
+                fn(Builder $q) => $q->where('person_id', $user->person_id),
+            ),
+            // Dosen Wali hanya lihat KRS yang dosen_wali_id-nya adalah dirinya.
+            // Dipakai dosen_wali_id langsung (bukan lewat kelas_dosen_wali) karena
+            // kolom ini yang benar-benar menentukan siapa yang berwenang approve/
+            // reject KRS tersebut -- lihat KrsPolicy::approve().
+            ScopeStrategy::DOSEN_WALI => $query->whereHas(
+                'dosenWali',
+                fn(Builder $q) => $q->where('person_id', $user->person_id),
+            ),
+            default => throw new LogicException("Krs tidak mendukung strategy {$strategy->value}"),
+        };
     }
 }

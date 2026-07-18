@@ -126,7 +126,6 @@ class User extends Authenticatable implements FilamentUser
         return $this->dosen()->exists();
     }
 
-
     public function isMahasiswa(): bool
     {
         return $this->mahasiswa()->exists();
@@ -149,13 +148,9 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-
         return match ($panel->getId()) {
-
-
             'mahasiswa' =>
             $this->isMahasiswa(),
-
 
             'dosen' =>
             $this->isDosen(),

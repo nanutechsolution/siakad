@@ -2,6 +2,9 @@
 
 namespace App\Filament\Resources\KurikulumMataKuliahs\Schemas;
 
+use App\Domain\Authorization\Services\OrganizationResolver;
+use App\Models\KurikulumMataKuliah;
+use App\Models\MasterKurikulum;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -9,7 +12,9 @@ use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
+use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Model;
 
 class KurikulumMataKuliahForm
 {
@@ -22,21 +27,45 @@ class KurikulumMataKuliahForm
                         ->schema([
                             Select::make('kurikulum_id')
                                 ->label('Kurikulum')
-                                ->relationship('kurikulum', 'nama_kurikulum')
-                                ->required()
-                                ->searchable()
-                                ->preload(),
-
-                            Select::make('mata_kuliah_id')
-                                ->label('Mata Kuliah')
-                                ->relationship('mataKuliah', 'nama_mk')
+                                ->relationship(
+                                    name: 'kurikulum',
+                                    titleAttribute: 'nama_kurikulum',
+                                    modifyQueryUsing: fn($query) => $query->whereIn(
+                                        'prodi_id',
+                                        app(OrganizationResolver::class)->accessibleProdiIds(auth()->user()),
+                                    ),
+                                )
                                 ->required()
                                 ->searchable()
                                 ->preload()
-                                ->unique(
-                                    modifyRuleUsing: function (Get $get, $rule) {
-                                        return $rule->where('kurikulum_id', $get('kurikulum_id'));
+                                ->live()
+                                // Kurikulum berganti -> pilihan MK lama (dari kurikulum sebelumnya)
+                                // tidak valid lagi, reset supaya tidak submit kombinasi salah.
+                                ->afterStateUpdated(fn(Set $set) => $set('mata_kuliah_id', null)),
+                            Select::make('mata_kuliah_id')
+                                ->label('Mata Kuliah')
+                                ->relationship(
+                                    name: 'mataKuliah',
+                                    titleAttribute: 'nama_mk',
+                                    modifyQueryUsing: function ($query, Get $get) {
+                                        $kurikulumId = $get('kurikulum_id');
+
+                                        if ($kurikulumId === null) {
+                                            return $query->whereRaw('1 = 0');
+                                        }
+
+                                        $prodiId = MasterKurikulum::find($kurikulumId)?->prodi_id;
+
+                                        return $query->where('prodi_id', $prodiId);
                                     },
+                                )
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->disabled(fn(Get $get): bool => blank($get('kurikulum_id')))
+                                ->unique(
+                                    ignoreRecord: true, // WAJIB, tanpa ini edit record yang sama selalu gagal validasi
+                                    modifyRuleUsing: fn(Get $get, $rule) => $rule->where('kurikulum_id', $get('kurikulum_id')),
                                 )
                                 ->helperText('Satu mata kuliah hanya bisa dipetakan sekali dalam satu kurikulum yang sama.'),
 
@@ -71,25 +100,21 @@ class KurikulumMataKuliahForm
                                 ->schema([
                                     Select::make('prasyarat_kurikulum_mk_id')
                                         ->label('Pilih MK Prasyarat')
-                                        // Ubah type-hint di sini menjadi Model yang umum atau sesuai dengan model Repeater Anda
-                                        ->options(function (Get $get, ?\Illuminate\Database\Eloquent\Model $record) {
-
-                                            // 1. Ambil ID kurikulum dari form utama (naik 2 level ke atas)
+                                        ->options(function (Get $get, ?Model $record) {
+                                            // Naik 2 level ke field kurikulum_id di form utama.
                                             $kurikulumId = $get('../../kurikulum_id');
-
-                                            // 2. Jika sedang edit, $record akan berisi data dari baris Repeater tersebut
-                                            // Kita ambil kurikulum_mk_id dari model KurikulumMkPrasyarat
                                             $currentId = $record?->kurikulum_mk_id;
 
                                             if (!$kurikulumId) {
                                                 return [];
                                             }
 
-                                            $query = \App\Models\KurikulumMataKuliah::query()
+                                            // Sudah otomatis aman lintas-prodi karena kurikulum_id
+                                            // di atas sudah discope ke prodi yang boleh diakses user.
+                                            $query = KurikulumMataKuliah::query()
                                                 ->where('kurikulum_id', $kurikulumId)
                                                 ->with('mataKuliah');
 
-                                            // Hindari memilih mata kuliah yang sama dengan yang sedang diedit
                                             if ($currentId) {
                                                 $query->where('id', '!=', $currentId);
                                             }

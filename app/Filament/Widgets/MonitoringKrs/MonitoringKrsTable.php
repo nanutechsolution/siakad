@@ -4,6 +4,7 @@ namespace App\Filament\Widgets\MonitoringKrs;
 
 use App\Enums\KrsStatusEnum;
 use App\Exports\MonitoringKrsExport;
+use App\Filament\Widgets\MonitoringKrs\Concerns\ScopedMonitoringQueries;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use Filament\Actions\Action;
@@ -21,6 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class MonitoringKrsTable extends BaseWidget
 {
     use InteractsWithPageFilters;
+    use ScopedMonitoringQueries;
 
     protected int|string|array $columnSpan = 'full';
 
@@ -35,16 +37,19 @@ class MonitoringKrsTable extends BaseWidget
                 TextColumn::make('prodi.nama_prodi')->label('Program Studi')->sortable(),
                 TextColumn::make('angkatan_id')->label('Angkatan')->sortable(),
                 TextColumn::make('semester_berjalan')->label('Semester')->state(
-                    fn(Mahasiswa $record) => $this->hitungSemester($record)
+                    fn (Mahasiswa $record) => $this->hitungSemester($record)
                 ),
-                TextColumn::make('krs_current.total_sks_diambil')->label('Jumlah SKS')->default('-'),
-                TextColumn::make('krs_current.status_krs')
+                // FIX: relasi bernama krsCurrent() (camelCase, sesuai with() di
+                // buildQuery() & konvensi Laravel), bukan krs_current. Sebelumnya
+                // 3 kolom di bawah ini + kolom Dosen Wali selalu tampil kosong.
+                TextColumn::make('krsCurrent.total_sks_diambil')->label('Jumlah SKS')->default('-'),
+                TextColumn::make('krsCurrent.status_krs')
                     ->label('Status KRS')
                     ->badge()
-                    ->formatStateUsing(fn(?string $state) => $state ? KrsStatusEnum::from($state)->getLabel() : 'Belum KRS')
-                    ->color(fn(?string $state) => $state ? KrsStatusEnum::from($state)->getColor() : 'gray'),
+                    ->formatStateUsing(fn (?string $state) => $state ? KrsStatusEnum::from($state)->getLabel() : 'Belum KRS')
+                    ->color(fn (?string $state) => $state ? KrsStatusEnum::from($state)->getColor() : 'gray'),
                 TextColumn::make('status_approval')->label('Status Approval')->state(function (Mahasiswa $record) {
-                    $status = $record->krs_current?->status_krs;
+                    $status = $record->krsCurrent?->status_krs;
 
                     return match ($status) {
                         'DIAJUKAN' => 'Menunggu Approval',
@@ -54,26 +59,28 @@ class MonitoringKrsTable extends BaseWidget
                     };
                 }),
                 TextColumn::make('dosen_wali_nama')->label('Dosen Wali')->state(
-                    fn(Mahasiswa $record) => $record->krs_current?->dosenWali?->person?->nama_lengkap
+                    fn (Mahasiswa $record) => $record->krsCurrent?->dosenWali?->person?->nama_lengkap
                         ?? $record->kelasAktif?->dosenWali?->person?->nama_lengkap
                         ?? '—'
                 ),
-                TextColumn::make('krs_current.updated_at')->label('Last Update')->dateTime('d M Y H:i')->default('-'),
+                TextColumn::make('krsCurrent.updated_at')->label('Last Update')->dateTime('d M Y H:i')->default('-'),
             ])
             ->filters([
-                // Filter tambahan spesifik tabel (di luar filter global halaman) bisa ditambah di sini
-                // jika suatu saat dibutuhkan filter yang tidak relevan untuk chart/stats.
+                //
             ])
             ->headerActions([
                 Action::make('export')
                     ->label('Export Laporan')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->visible(fn() => auth()->user()->can('export_monitoring_krs'))
+                    ->visible(fn () => auth()->user()->can('export_monitoring_krs'))
                     ->action(function () {
                         $taId = $this->pageFilters['tahun_akademik_id']
                             ?? RefTahunAkademik::query()->where('is_active', true)->value('id');
 
+                        // buildQuery() sudah scoped -> export tidak akan pernah
+                        // memuat data di luar hak akses user, sekalipun izin
+                        // export_monitoring_krs diberikan ke role selain admin pusat.
                         return Excel::download(
                             new MonitoringKrsExport($this->buildQuery(), (int) $taId),
                             'monitoring-krs-' . now()->format('Ymd-His') . '.xlsx'
@@ -90,23 +97,22 @@ class MonitoringKrsTable extends BaseWidget
         $taId = $this->pageFilters['tahun_akademik_id']
             ?? RefTahunAkademik::query()->where('is_active', true)->value('id');
 
-        return Mahasiswa::query()
+        // scopedMahasiswaQuery() sudah menangani visibleTo($user) + prodi_id +
+        // fakultas_id -> tidak perlu ->when(prodi_id)/->when(fakultas_id) manual lagi.
+        return $this->scopedMahasiswaQuery()
             ->with(['person', 'prodi', 'krsCurrent.dosenWali.person', 'kelasAktif.dosenWali.person'])
-            ->when($this->pageFilters['prodi_id'] ?? null, fn($q, $v) => $q->where('prodi_id', $v))
-            ->when($this->pageFilters['fakultas_id'] ?? null, fn($q, $v) => $q
-                ->whereHas('prodi', fn($qq) => $qq->where('fakultas_id', $v)))
-            ->when($this->pageFilters['angkatan_id'] ?? null, fn($q, $v) => $q->where('angkatan_id', $v))
-            ->when($taId, fn($q) => $q->whereHas('riwayatStatus', fn($qq) => $qq
+            ->when($this->pageFilters['angkatan_id'] ?? null, fn ($q, $v) => $q->where('angkatan_id', $v))
+            ->when($taId, fn ($q) => $q->whereHas('riwayatStatus', fn ($qq) => $qq
                 ->where('tahun_akademik_id', $taId)
                 ->where('status_kuliah', 'A')))
             ->when($this->pageFilters['status_krs'] ?? null, function ($q, $status) use ($taId) {
                 if ($status === 'BELUM_KRS') {
-                    return $q->whereDoesntHave('krs', fn($qq) => $qq
+                    return $q->whereDoesntHave('krs', fn ($qq) => $qq
                         ->where('tahun_akademik_id', $taId)
                         ->whereIn('status_krs', ['DIAJUKAN', 'DISETUJUI', 'DITOLAK']));
                 }
 
-                return $q->whereHas('krs', fn($qq) => $qq
+                return $q->whereHas('krs', fn ($qq) => $qq
                     ->where('tahun_akademik_id', $taId)
                     ->where('status_krs', $status));
             });

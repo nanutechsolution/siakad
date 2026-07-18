@@ -4,9 +4,7 @@ namespace App\Filament\Widgets\MonitoringKrs;
 
 use App\Enums\KrsStatusEnum;
 use App\Enums\StatusKuliah;
-use App\Enums\StatusKuliahEnum;
-use App\Models\Krs;
-use App\Models\Mahasiswa;
+use App\Filament\Widgets\MonitoringKrs\Concerns\ScopedMonitoringQueries;
 use App\Models\RefTahunAkademik;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -16,6 +14,7 @@ use Illuminate\Support\Facades\Cache;
 class KrsStatsOverview extends BaseWidget
 {
     use InteractsWithPageFilters;
+    use ScopedMonitoringQueries;
 
     protected function getStats(): array
     {
@@ -73,22 +72,21 @@ class KrsStatsOverview extends BaseWidget
         $ttl = now()->addMinutes((int) config('monitoring-krs.cache_ttl_minutes', 3));
         $cacheKey = "monitoring-krs:stats:{$user->id}:{$taId}:" . md5(json_encode($this->pageFilters));
 
-        return Cache::remember($cacheKey, $ttl, function () use ($user, $taId) {
-            $baseMahasiswa = Mahasiswa::query()
-                ->whereHas('riwayatStatus', fn($q) => $q
+        return Cache::remember($cacheKey, $ttl, function () use ($taId) {
+            // scopedMahasiswaQuery() sudah menerapkan visibleTo($user) + filter
+            // prodi_id/fakultas_id pilihan user -- baseline, bukan opsional.
+            $baseMahasiswa = $this->scopedMahasiswaQuery()
+                ->whereHas('riwayatStatus', fn ($q) => $q
                     ->where('tahun_akademik_id', $taId)
                     ->where('status_kuliah', StatusKuliah::AKTIF->value))
-                ->when($this->pageFilters['prodi_id'] ?? null, fn($q, $v) => $q->where('prodi_id', $v))
-                ->when($this->pageFilters['fakultas_id'] ?? null, fn($q, $v) => $q
-                    ->whereHas('prodi', fn($qq) => $qq->where('fakultas_id', $v)))
-                ->when($this->pageFilters['angkatan_id'] ?? null, fn($q, $v) => $q->where('angkatan_id', $v));
+                ->when($this->pageFilters['angkatan_id'] ?? null, fn ($q, $v) => $q->where('angkatan_id', $v));
 
             $mahasiswaAktif = (clone $baseMahasiswa)->count();
             $wajibKrs = $mahasiswaAktif; // asumsi: semua mahasiswa Aktif wajib isi KRS
 
             $mahasiswaIds = (clone $baseMahasiswa)->pluck('id');
 
-            $statusCounts = Krs::query()
+            $statusCounts = $this->scopedKrsQuery()
                 ->where('tahun_akademik_id', $taId)
                 ->whereIn('mahasiswa_id', $mahasiswaIds)
                 ->selectRaw('status_krs, COUNT(*) as total')

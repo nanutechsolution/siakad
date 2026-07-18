@@ -653,6 +653,7 @@ CREATE TABLE `keuangan_general_ledgers` (
   `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_ledger_referensi_tipe` (`referensi_dokumen`,`tipe_transaksi`),
   KEY `keuangan_general_ledgers_mahasiswa_id_created_at_index` (`mahasiswa_id`,`created_at`),
   KEY `keuangan_general_ledgers_referensi_dokumen_index` (`referensi_dokumen`),
   CONSTRAINT `keuangan_general_ledgers_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT
@@ -1555,6 +1556,7 @@ CREATE TABLE `pembayaran_mahasiswas` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `idempotency_key` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tagihan_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tagihan_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nominal_bayar` decimal(19,2) NOT NULL,
   `tanggal_bayar` datetime NOT NULL,
   `metode_pembayaran` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'MANUAL',
@@ -1572,8 +1574,8 @@ CREATE TABLE `pembayaran_mahasiswas` (
   KEY `pembayaran_mahasiswas_tagihan_id_foreign` (`tagihan_id`),
   KEY `pembayaran_mahasiswas_status_verifikasi_id_index` (`status_verifikasi_id`),
   KEY `pembayaran_mahasiswas_verified_by_foreign` (`verified_by`),
+  KEY `pembayaran_mahasiswas_tagihan_type_id_index` (`tagihan_type`,`tagihan_id`),
   CONSTRAINT `pembayaran_mahasiswas_status_verifikasi_id_foreign` FOREIGN KEY (`status_verifikasi_id`) REFERENCES `ref_status_verifikasi_pembayaran` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
-  CONSTRAINT `pembayaran_mahasiswas_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_mahasiswas` (`id`),
   CONSTRAINT `pembayaran_mahasiswas_verified_by_foreign` FOREIGN KEY (`verified_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2137,9 +2139,9 @@ DROP TABLE IF EXISTS `tagihan_non_reguler_details`;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `tagihan_non_reguler_details` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `tagihan_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tagihan_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `komponen_biaya_id` bigint unsigned NOT NULL,
-  `nama_komponen_snapshot` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_komponen_snapshot` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nominal_dasar` decimal(19,2) NOT NULL,
   `nominal_diskon` decimal(19,2) NOT NULL DEFAULT '0.00',
   `nominal_tagihan` decimal(19,2) NOT NULL,
@@ -2147,6 +2149,7 @@ CREATE TABLE `tagihan_non_reguler_details` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `unik_tagihan_nr_komponen` (`tagihan_id`,`komponen_biaya_id`),
   KEY `tagihan_non_reguler_details_tagihan_id_foreign` (`tagihan_id`),
   KEY `tagihan_non_reguler_details_komponen_biaya_id_index` (`komponen_biaya_id`),
   CONSTRAINT `tagihan_non_reguler_details_komponen_biaya_id_foreign` FOREIGN KEY (`komponen_biaya_id`) REFERENCES `keuangan_komponen_biaya` (`id`) ON DELETE RESTRICT,
@@ -2157,17 +2160,17 @@ DROP TABLE IF EXISTS `tagihan_non_regulers`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `tagihan_non_regulers` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `kode_transaksi` varchar(60) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `deskripsi` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mahasiswa_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `kode_transaksi` varchar(60) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deskripsi` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `total_tagihan` decimal(19,2) NOT NULL,
   `total_bayar` decimal(19,2) NOT NULL DEFAULT '0.00',
-  `status_bayar` enum('BELUM','CICIL','LUNAS') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'BELUM',
-  `referensi_type` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `referensi_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status_bayar` enum('BELUM','CICIL','LUNAS') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'BELUM',
+  `referensi_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `referensi_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tenggat_waktu` date DEFAULT NULL,
-  `created_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -2192,7 +2195,6 @@ CREATE TABLE `trx_dosen` (
   `nidn` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `nuptk` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
-  `data_tambahan` json DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -2502,12 +2504,16 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (184,'2026_07_16_00
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (185,'2026_07_16_002853_add_foreign_keys_to_trx_person_jabatan_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (186,'2026_07_16_002853_add_foreign_keys_to_trx_person_role_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (187,'2026_07_16_002853_add_foreign_keys_to_users_table',1);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (192,'2026_07_16_002854_create_kampus_settings',2);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (193,'2026_07_16_002855_add_reset_nim_tahunan_to_kampus_settings',2);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (194,'2026_07_16_002856_add_neo_feeder_to_kampus_settings',2);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (195,'2026_07_16_002857_add_pro_settings_to_kampus_settings',2);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (196,'2026_07_16_131621_drop_data_tambahan_from_mahasiswas_table',2);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (197,'2026_07_17_111802_add_unique_constraint_to_tagihan_mahasiswas_table',3);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (199,'2026_07_17_112416_add_jenis_tagihan_to_tagihan_mahasiswas_table',4);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (200,'2026_07_17_113112_create_tagihan_non_regulers_table',5);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (201,'2026_07_17_113118_create_tagihan_non_reguler_details_table',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (202,'2026_07_16_002854_create_kampus_settings',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (203,'2026_07_16_002855_add_reset_nim_tahunan_to_kampus_settings',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (204,'2026_07_16_002856_add_neo_feeder_to_kampus_settings',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (205,'2026_07_16_002857_add_pro_settings_to_kampus_settings',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (206,'2026_07_17_121843_add_unique_index_optional_tagihan_non_reguler_details',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (207,'2026_07_17_123857_make_pembayaran_mahasiswas_tagihan_polymorphic',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (208,'2026_07_17_171235_add_unique_index_optional_keuangan_general_ledgers',6);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (209,'2026_07_18_104738_drop_data_tambahan_from_trx_dosen_table',7);

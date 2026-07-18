@@ -12,10 +12,11 @@ use App\Models\KurikulumMataKuliah;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class KurikulumMataKuliahResource extends Resource
 {
-    
+
     protected static ?string $model = KurikulumMataKuliah::class;
 
     protected static ?string $slug = 'master-akademik/kurikulum-mata-kuliah';
@@ -35,10 +36,10 @@ class KurikulumMataKuliahResource extends Resource
     {
         return KurikulumMataKuliahsTable::configure($table);
     }
-    // public static function getEloquentQuery(): Builder
-    // {
-    //     return parent::getEloquentQuery()->visibleTo(auth()->user());
-    // }
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     public static function getRelations(): array
     {
         return [

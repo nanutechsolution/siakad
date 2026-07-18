@@ -2,74 +2,137 @@
 
 declare(strict_types=1);
 
+/**
+ * CUSTOM POLICY -- JANGAN generate ulang lewat `php artisan shield:generate`
+ * TANPA flag --ignore-existing-policies. File ini pernah tertimpa total oleh
+ * Shield sebelumnya (18 Juli 2026) -- method approve()/reject()/cancel() dan
+ * seluruh scope check DataVisibilityResolver hilang, harus di-restore manual.
+ *
+ * Command yang aman ke depannya:
+ *     php artisan shield:generate --all --ignore-existing-policies
+ */
+
 namespace App\Policies;
 
-use Illuminate\Foundation\Auth\User as AuthUser;
+use App\Domain\Authorization\Services\DataVisibilityResolver;
+use App\Enums\KrsStatusEnum;
 use App\Models\Krs;
+use App\Models\User;
+use App\Policies\Concerns\AuthorizesViaScope;
 use Illuminate\Auth\Access\HandlesAuthorization;
 
 class KrsPolicy
 {
+    use AuthorizesViaScope;
     use HandlesAuthorization;
-    
-    public function viewAny(AuthUser $authUser): bool
+
+    public function __construct(DataVisibilityResolver $visibility)
     {
-        return $authUser->can('ViewAny:Krs');
+        $this->visibility = $visibility;
     }
 
-    public function view(AuthUser $authUser, Krs $krs): bool
+    /*
+    |--------------------------------------------------------------------------
+    | Gate level modul (hasil Shield: permission "Xxx:Krs") -- tidak butuh
+    | record spesifik, jadi cukup permission check.
+    |--------------------------------------------------------------------------
+    */
+
+    public function viewAny(User $user): bool
     {
-        return $authUser->can('View:Krs');
+        return $user->can('ViewAny:Krs');
     }
 
-    public function create(AuthUser $authUser): bool
+    public function create(User $user): bool
     {
-        return $authUser->can('Create:Krs');
+        return $user->can('Create:Krs');
     }
 
-    public function update(AuthUser $authUser, Krs $krs): bool
+    public function deleteAny(User $user): bool
     {
-        return $authUser->can('Update:Krs');
+        return $user->can('DeleteAny:Krs');
     }
 
-    public function delete(AuthUser $authUser, Krs $krs): bool
+    public function restoreAny(User $user): bool
     {
-        return $authUser->can('Delete:Krs');
+        return $user->can('RestoreAny:Krs');
     }
 
-    public function deleteAny(AuthUser $authUser): bool
+    public function forceDeleteAny(User $user): bool
     {
-        return $authUser->can('DeleteAny:Krs');
+        return $user->can('ForceDeleteAny:Krs');
     }
 
-    public function restore(AuthUser $authUser, Krs $krs): bool
+    public function reorder(User $user): bool
     {
-        return $authUser->can('Restore:Krs');
+        return $user->can('Reorder:Krs');
     }
 
-    public function forceDelete(AuthUser $authUser, Krs $krs): bool
+    /*
+    |--------------------------------------------------------------------------
+    | Gate per-record -- permission Shield DAN scope organisasi (isRecordAccessible)
+    | harus dua-duanya lolos. Ini yang hilang saat Shield menimpa file lama.
+    |--------------------------------------------------------------------------
+    */
+
+    public function view(User $user, Krs $krs): bool
     {
-        return $authUser->can('ForceDelete:Krs');
+        return $user->can('View:Krs') && $this->isRecordAccessible($user, $krs);
     }
 
-    public function forceDeleteAny(AuthUser $authUser): bool
+    public function update(User $user, Krs $krs): bool
     {
-        return $authUser->can('ForceDeleteAny:Krs');
+        // Mahasiswa hanya boleh ubah KRS miliknya sendiri selagi masih DRAFT.
+        if ($user->isMahasiswa()) {
+            return $this->isRecordAccessible($user, $krs) && $krs->status_krs === KrsStatusEnum::DRAFT;
+        }
+
+        return $user->can('Update:Krs') && $this->isRecordAccessible($user, $krs);
     }
 
-    public function restoreAny(AuthUser $authUser): bool
+    public function delete(User $user, Krs $krs): bool
     {
-        return $authUser->can('RestoreAny:Krs');
+        return $user->can('Delete:Krs') && $this->isRecordAccessible($user, $krs);
     }
 
-    public function replicate(AuthUser $authUser, Krs $krs): bool
+    public function restore(User $user, Krs $krs): bool
     {
-        return $authUser->can('Replicate:Krs');
+        return $user->can('Restore:Krs') && $this->isRecordAccessible($user, $krs);
     }
 
-    public function reorder(AuthUser $authUser): bool
+    public function forceDelete(User $user, Krs $krs): bool
     {
-        return $authUser->can('Reorder:Krs');
+        return $user->can('ForceDelete:Krs') && $this->isRecordAccessible($user, $krs);
     }
 
+    public function replicate(User $user, Krs $krs): bool
+    {
+        return $user->can('Replicate:Krs') && $this->isRecordAccessible($user, $krs);
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Aksi domain-spesifik (approve/reject/cancel) -- BUKAN gate standar
+    | Filament, Shield TIDAK generate permission untuk ini secara otomatis.
+    | Tetap pakai role check manual seperti sebelumnya.
+    |--------------------------------------------------------------------------
+    */
+
+    public function approve(User $user, Krs $krs): bool
+    {
+        return $this->isRecordAccessible($user, $krs)
+            && $krs->status_krs === KrsStatusEnum::DIAJUKAN
+            && $user->hasAnyRole(['Dosen Wali', 'Admin Prodi', 'Kaprodi', 'BAAK', 'super_admin']);
+    }
+
+    public function reject(User $user, Krs $krs): bool
+    {
+        return $this->approve($user, $krs);
+    }
+
+    public function cancel(User $user, Krs $krs): bool
+    {
+        return $this->isRecordAccessible($user, $krs)
+            && $user->hasAnyRole(['super_admin', 'BAAK', 'Admin Prodi', 'Kaprodi']);
+    }
 }

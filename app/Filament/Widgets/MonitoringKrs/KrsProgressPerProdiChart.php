@@ -4,6 +4,7 @@ namespace App\Filament\Widgets\MonitoringKrs;
 
 use App\Enums\KrsStatusEnum;
 use App\Enums\StatusKuliah;
+use App\Filament\Widgets\MonitoringKrs\Concerns\ScopedMonitoringQueries;
 use App\Models\Krs;
 use App\Models\Mahasiswa;
 use App\Models\RefProdi;
@@ -14,6 +15,7 @@ use Filament\Widgets\Concerns\InteractsWithPageFilters;
 class KrsProgressPerProdiChart extends ChartWidget
 {
     use InteractsWithPageFilters;
+    use ScopedMonitoringQueries;
 
     protected ?string $heading = 'Progress KRS per Program Studi';
 
@@ -38,19 +40,12 @@ class KrsProgressPerProdiChart extends ChartWidget
             ];
         }
 
-        $rows = RefProdi::query()
-            ->when(
-                $this->pageFilters['prodi_id'] ?? null,
-                fn ($q, $v) => $q->where('id', $v)
-            )
-            ->when(
-                $this->pageFilters['fakultas_id'] ?? null,
-                fn ($q, $v) => $q->where('fakultas_id', $v)
-            )
-            ->where('is_active', true)
-            ->get(['id', 'nama_prodi'])
+        // scopedProdiForChart() membatasi daftar prodi ke accessibleProdiIds()
+        // user -- sebelumnya RefProdi::query()->where('is_active', true) tanpa
+        // batasan ini menampilkan progress SEMUA prodi ke siapa pun yang buka
+        // dashboard, termasuk prodi di luar hak akses mereka.
+        $rows = $this->scopedProdiForChart()
             ->map(function (RefProdi $prodi) use ($taId) {
-
                 $wajib = Mahasiswa::query()
                     ->where('prodi_id', $prodi->id)
                     ->whereHas('riwayatStatus', function ($q) use ($taId) {

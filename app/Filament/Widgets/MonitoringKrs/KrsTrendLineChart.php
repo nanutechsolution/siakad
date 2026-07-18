@@ -2,7 +2,7 @@
 
 namespace App\Filament\Widgets\MonitoringKrs;
 
-use App\Models\KrsStatusLog;
+use App\Filament\Widgets\MonitoringKrs\Concerns\ScopedMonitoringQueries;
 use App\Models\RefTahunAkademik;
 use Filament\Widgets\ChartWidget;
 use Filament\Widgets\Concerns\InteractsWithPageFilters;
@@ -11,10 +11,11 @@ use Illuminate\Support\Facades\Cache;
 class KrsTrendLineChart extends ChartWidget
 {
     use InteractsWithPageFilters;
+    use ScopedMonitoringQueries;
 
-    protected  ?string $heading = 'Trend Pengisian KRS (30 Hari Terakhir)';
+    protected ?string $heading = 'Trend Pengisian KRS (30 Hari Terakhir)';
 
-    protected  ?string $maxHeight = '320px';
+    protected ?string $maxHeight = '320px';
 
     protected function getType(): string
     {
@@ -23,8 +24,10 @@ class KrsTrendLineChart extends ChartWidget
 
     /**
      * Sumber data: krs_status_logs.aksi = 'DIAJUKAN', dikelompokkan per tanggal.
-     * KrsStatusLog sendiri tidak implement HasScopeStrategy (log, bukan data
-     * master), jadi scope diterapkan lewat whereHas('krs', fn ($q) => $q->visibleTo($user)).
+     * Scope diterapkan lewat scopedKrsStatusLogQuery() (whereHas('krs', fn
+     * ($q) => $q->visibleTo($user)...)) -- catatan di versi sebelumnya
+     * menyebutkan hal ini tapi kodenya belum benar-benar memanggilnya;
+     * sekarang benar-benar diterapkan.
      */
     protected function getData(): array
     {
@@ -39,29 +42,13 @@ class KrsTrendLineChart extends ChartWidget
         $ttl = now()->addMinutes((int) config('monitoring-krs.cache_ttl_minutes', 3));
         $cacheKey = "monitoring-krs:chart-trend:{$user->id}:{$taId}:" . md5(json_encode($this->pageFilters));
 
-        $daily = Cache::remember($cacheKey, $ttl, function () use ($user, $taId) {
+        $daily = Cache::remember($cacheKey, $ttl, function () use ($taId) {
             $from = now()->subDays(29)->startOfDay();
 
-            $rows = KrsStatusLog::query()
+            $rows = $this->scopedKrsStatusLogQuery()
+                ->whereHas('krs', fn ($q) => $q->where('tahun_akademik_id', $taId))
                 ->where('aksi', 'DIAJUKAN')
                 ->where('created_at', '>=', $from)
-                ->whereHas('krs', function ($q) use ($taId) {
-                    $q->where('tahun_akademik_id', $taId)
-                        ->when(
-                            $this->pageFilters['prodi_id'] ?? null,
-                            fn($qq, $v) => $qq->whereHas(
-                                'mahasiswa',
-                                fn($qqq) => $qqq->where('prodi_id', $v)
-                            )
-                        )
-                        ->when(
-                            $this->pageFilters['fakultas_id'] ?? null,
-                            fn($qq, $v) => $qq->whereHas(
-                                'mahasiswa.prodi',
-                                fn($qqq) => $qqq->where('fakultas_id', $v)
-                            )
-                        );
-                })
                 ->selectRaw('DATE(created_at) as tanggal, COUNT(*) as total')
                 ->groupBy('tanggal')
                 ->pluck('total', 'tanggal');
