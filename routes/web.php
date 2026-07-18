@@ -90,3 +90,11 @@ Route::get('/mahasiswa/reauth', function () {
 use App\Http\Controllers\PdfController;
 
 Route::get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])->name('khs.cetak');
+
+
+use App\Http\Controllers\SinkronisasiExportDownloadController;
+
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/sinkronisasi/export/{export}/download', SinkronisasiExportDownloadController::class)
+        ->name('sinkronisasi.export.download');
+});
