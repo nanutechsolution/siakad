@@ -21,7 +21,6 @@ final class RoleSeeder extends Seeder
     private const GUARD = 'web';
 
     private const ROLES = [
-        'Super Admin',
         'BAAK',
         'Admin Akademik',
         'Admin Fakultas',

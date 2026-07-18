@@ -1,9 +1,5 @@
 <x-filament-panels::page>
     {{ $this->form }}
-    <x-filament::actions
-        :actions="$this->getFormActions()"
-        alignment="start" />
-
     @if($mahasiswaInfo)
     <x-filament::fieldset>
         <x-slot name="label">

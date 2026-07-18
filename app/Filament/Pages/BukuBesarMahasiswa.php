@@ -86,16 +86,6 @@ class BukuBesarMahasiswa extends Page implements HasSchemas, HasTable
             ->statePath('filterData');
     }
 
-    protected function getFormActions(): array
-    {
-        return [
-            Action::make('filter')
-                ->label('Tampilkan Buku Besar')
-                ->color('primary')
-                ->icon('heroicon-m-magnifying-glass')
-                ->action('applyFilter'),
-        ];
-    }
 
     public function applyFilter(): void
     {
