@@ -10,6 +10,7 @@ use App\Models\KelasDosenWali;
 use App\Models\KeuanganBeasiswaDetail;
 use App\Models\KeuanganMahasiswaBeasiswa;
 use App\Models\KeuanganSaldo;
+use App\Models\KeuanganSaldoTransaction;
 use App\Models\Mahasiswa;
 use App\Models\PembayaranMahasiswa;
 use App\Models\PerkuliahanSesi;
@@ -78,7 +79,8 @@ class AppServiceProvider extends ServiceProvider
             'trx_person_jabatan' => TrxPersonJabatan::class,
             'dispensasi_akademik' => \App\Models\DispensasiAkademik::class,
             'keuangan_adjustment' => \App\Models\KeuanganAdjustment::class,
-             'keuangan_saldo'      => KeuanganSaldo::class,
+            'keuangan_saldo'      => KeuanganSaldo::class,
+            'keuangan_saldo_transaction'   => KeuanganSaldoTransaction::class,
         ]);
     }
 }
