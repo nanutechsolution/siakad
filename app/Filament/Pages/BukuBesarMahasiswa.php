@@ -32,7 +32,7 @@ class BukuBesarMahasiswa extends Page implements HasSchemas, HasTable
     protected string $view = 'filament.pages.buku-besar-mahasiswa';
     protected static ?string $navigationLabel = 'Buku Besar';
     protected static ?string $title = 'Buku Besar Mahasiswa';
-    protected static ?int $navigationSort = 101;
+    protected static ?int $navigationSort = 12;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
 
     public ?array $filterData = [];

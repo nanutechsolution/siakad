@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\BankKampuses;
 
 use App\Enums\NavigationGroup;
-use App\Filament\Resources\BankKampuses\Pages\CreateBankKampus;
-use App\Filament\Resources\BankKampuses\Pages\EditBankKampus;
 use App\Filament\Resources\BankKampuses\Pages\ListBankKampuses;
 use App\Filament\Resources\BankKampuses\Schemas\BankKampusForm;
 use App\Filament\Resources\BankKampuses\Tables\BankKampusesTable;
@@ -18,6 +16,7 @@ class BankKampusResource extends Resource
 {
     protected static ?string $model = BankKampus::class;
     protected static ?string $navigationLabel = 'Rekening Bank';
+    protected static ?int $navigationSort = 4;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
     public static function form(Schema $schema): Schema
     {

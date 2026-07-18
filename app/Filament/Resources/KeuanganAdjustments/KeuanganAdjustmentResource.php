@@ -30,7 +30,7 @@ class KeuanganAdjustmentResource extends Resource
 
     protected static ?string $pluralModelLabel = 'Penyesuaian Keuangan';
 
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 8;
     public static function form(Schema $schema): Schema
     {
         return KeuanganAdjustmentForm::configure($schema);

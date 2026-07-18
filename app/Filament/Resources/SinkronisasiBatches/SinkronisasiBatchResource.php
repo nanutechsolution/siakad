@@ -14,7 +14,6 @@ use App\Models\SinkronisasiBatch;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -24,7 +23,7 @@ class SinkronisasiBatchResource extends Resource
 
     protected static ?string $navigationLabel = 'Riwayat Sinkronisasi';
     protected static ?string $modelLabel = 'Batch Sinkronisasi';
-    protected static ?int $navigationSort = 5;
+    protected static ?int $navigationSort = 99;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
 
 

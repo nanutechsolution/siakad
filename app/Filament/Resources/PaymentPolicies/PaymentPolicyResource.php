@@ -23,7 +23,9 @@ class PaymentPolicyResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
     protected static ?string $navigationLabel = 'Kebijakan Pembayaran';
     protected static ?string $modelLabel = 'Kebijakan Pembayaran';
+    protected static ?int $navigationSort = 3;
     protected static ?string $pluralModelLabel = 'Kebijakan Pembayaran';
+
     public static function form(Schema $schema): Schema
     {
         return PaymentPolicyForm::configure($schema);

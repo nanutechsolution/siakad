@@ -35,7 +35,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
     protected string $view = 'filament.pages.laporan-piutang';
     protected static ?string $navigationLabel = 'Laporan Piutang';
     protected static ?string $title = 'Laporan Piutang Mahasiswa';
-    protected static ?int $navigationSort = 100;
+    protected static ?int $navigationSort = 11;
 
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
 
@@ -137,7 +137,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
 
                 TextColumn::make('deskripsi')
                     ->label('Keterangan')
-                    ->limit(40)
+                    ->limit(20)
                     ->tooltip(fn (?string $state) => $state)
                     ->wrap(),
 

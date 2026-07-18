@@ -37,7 +37,7 @@ class LaporanKeuangan extends Page implements HasSchemas, HasTable
     protected string $view = 'filament.pages.laporan-keuangan';
     protected static ?string $navigationLabel = 'Laporan Keuangan';
     protected static ?string $title = 'Laporan Rekapitulasi Keuangan';
-    protected static ?int $navigationSort = 99;
+    protected static ?int $navigationSort = 10;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
 
     public ?array $filterData = [];

@@ -18,18 +18,12 @@ class KeuanganKomponenBiayaResource extends Resource
 {
     protected static ?string $model = KeuanganKomponenBiaya::class;
     protected static ?string $slug = 'keuangan/komponen-biaya';
-
     protected static ?string $modelLabel = 'Komponen Biaya';
-
     protected static ?string $pluralModelLabel = 'Komponen Biaya';
-
     protected static ?string $recordTitleAttribute = 'nama';
-
     protected static ?int $navigationSort = 1;
-
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
     protected static bool $canCreateAnother = false;
-
     public static function form(Schema $schema): Schema
     {
         return KeuanganKomponenBiayaForm::configure($schema);

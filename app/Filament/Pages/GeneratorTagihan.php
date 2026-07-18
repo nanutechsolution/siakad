@@ -34,7 +34,7 @@ class GeneratorTagihan extends Page implements HasSchemas
 
     protected static ?string $navigationLabel = 'Generator Tagihan Reguler';
     protected static ?string $title = 'Generator Tagihan Mahasiswa';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 5;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
     protected string $view = 'filament.pages.generator-tagihan';
 

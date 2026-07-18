@@ -42,7 +42,7 @@ class GeneratorTagihanNonReguler extends Page implements HasSchemas
     protected static ?string $title = 'Generator Tagihan Non Reguler';
 
 
-    protected static ?int $navigationSort = 4;
+    protected static ?int $navigationSort = 6;
 
 
     /**

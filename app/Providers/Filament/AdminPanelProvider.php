@@ -36,7 +36,7 @@ class AdminPanelProvider extends PanelProvider
             ->default()
             ->defaultThemeMode(ThemeMode::Light)
             ->renderHook(
-                PanelsRenderHook::TOPBAR_LOGO_AFTER,
+                PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => Blade::render('<x-active-academic-year />'),
             )
             ->id('admin')

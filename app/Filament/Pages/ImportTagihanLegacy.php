@@ -30,7 +30,7 @@ class ImportTagihanLegacy extends Page implements HasForms
     protected static string|UnitEnum|NULL $navigationGroup = NavigationGroup::KEUANGAN->value;
     protected static ?string $navigationLabel = 'Import Tagihan Lama';
     protected static ?string $title = 'Import Tagihan (Pra-SIAKAD)';
-    protected static ?int $navigationSort = 99;
+    protected static ?int $navigationSort = 9;
 
     public ?array $data = [];
 
