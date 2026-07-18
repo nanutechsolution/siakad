@@ -2,15 +2,19 @@
 
 namespace App\Providers;
 
-use App\Events\PembayaranTerverifikasi;
-use App\Listeners\Pembayaran\GenerateNimListener;
-use App\Listeners\Pembayaran\KirimNotifikasiPembayaranListener;
+use App\Domain\Authorization\Observers\KelasDosenWaliObserver;
+use App\Domain\Authorization\Observers\MahasiswaObserver;
+use App\Domain\Authorization\Observers\TrxDosenObserver;
+use App\Domain\Authorization\Observers\TrxPersonJabatanObserver;
+use App\Models\KelasDosenWali;
 use App\Models\KeuanganBeasiswaDetail;
 use App\Models\KeuanganMahasiswaBeasiswa;
+use App\Models\Mahasiswa;
 use App\Models\PembayaranMahasiswa;
 use App\Models\PerkuliahanSesi;
 use App\Models\TagihanMahasiswa;
 use App\Models\TagihanNonReguler;
+use App\Models\TrxDosen;
 use App\Models\TrxPersonJabatan;
 use App\Models\User;
 use App\Observers\PerkuliahanSesiObserver;
@@ -57,6 +61,10 @@ class AppServiceProvider extends ServiceProvider
             'revisiNilaiDosen',
             [DosenNilaiPolicy::class, 'revisiNilai']
         );
+        TrxPersonJabatan::observe(TrxPersonJabatanObserver::class);
+        TrxDosen::observe(TrxDosenObserver::class);
+        KelasDosenWali::observe(KelasDosenWaliObserver::class);
+        Mahasiswa::observe(MahasiswaObserver::class);
         PerkuliahanSesi::observe(PerkuliahanSesiObserver::class);
         \App\Models\RefTahunAkademik::observe(\App\Observers\TahunAkademikObserver::class);
         Relation::enforceMorphMap([

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TrxDosens\Tables;
 
+use App\Domain\Authorization\Services\FormResolver;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -72,8 +73,8 @@ class TrxDosensTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
                     ->searchable()
+                    ->options(fn () => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->preload(),
 
                 SelectFilter::make('jenis_dosen')

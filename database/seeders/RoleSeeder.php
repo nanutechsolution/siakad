@@ -1,106 +1,57 @@
 <?php
 
+declare(strict_types=1);
+
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
 use Spatie\Permission\Models\Role;
 
-class RoleSeeder extends Seeder
+/**
+ * Seed 20 role sesuai daftar requirement awal. Jalankan SEBELUM Filament
+ * Shield generate permission (php artisan shield:generate), dan sebelum
+ * data trx_person_jabatan/trx_dosen/mahasiswas mulai di-seed, karena
+ * JabatanRoleSyncService/DosenRoleSyncService/dst akan gagal silent
+ * (Spatie melempar RoleDoesNotExist) kalau role belum ada.
+ *
+ * php artisan db:seed --class=RoleSeeder
+ */
+final class RoleSeeder extends Seeder
 {
+    private const GUARD = 'web';
+
+    private const ROLES = [
+        'Super Admin',
+        'BAAK',
+        'Admin Akademik',
+        'Admin Fakultas',
+        'Admin Prodi',
+        'Admin PMB',
+        'Admin Keuangan',
+        'Kasir',
+        'Verifikator Pembayaran',
+        'Admin SDM',
+        'Admin LPM',
+        'Admin LPPM',
+        'Pustakawan',
+        'Rektor',
+        'Wakil Rektor',
+        'Dekan',
+        'Kaprodi',
+        'Dosen',
+        'Dosen Wali',
+        'Mahasiswa',
+    ];
+
     public function run(): void
     {
-        $roles = [
-
-            /*
-            |--------------------------------------------------------------------------
-            | Akademik
-            |--------------------------------------------------------------------------
-            */
-            'baak',
-            'admin_prodi',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Keuangan
-            |--------------------------------------------------------------------------
-            */
-            'admin_keuangan',
-            'kasir',
-            'verifikator_pembayaran',
-
-            /*
-            |--------------------------------------------------------------------------
-            | PMB
-            |--------------------------------------------------------------------------
-            */
-
-            /*
-            |--------------------------------------------------------------------------
-            | SDM
-            |--------------------------------------------------------------------------
-            */
-            'admin_sdm',
-
-            /*
-            |--------------------------------------------------------------------------
-            | LPM
-            |--------------------------------------------------------------------------
-            */
-            'admin_lpm',
-
-            /*
-            |--------------------------------------------------------------------------
-            | LPPM
-            |--------------------------------------------------------------------------
-            */
-            'admin_lppm',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Perpustakaan
-            |--------------------------------------------------------------------------
-            */
-            'pustakawan',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Pimpinan
-            |--------------------------------------------------------------------------
-            */
-            'rektor',
-            'wakil_rektor',
-            'dekan',
-            'kaprodi',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Dosen
-            |--------------------------------------------------------------------------
-            */
-            'dosen',
-            'dosen_wali',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Mahasiswa
-            |--------------------------------------------------------------------------
-            */
-            'mahasiswa',
-
-            /*
-            |--------------------------------------------------------------------------
-            | Guest
-            |--------------------------------------------------------------------------
-            */
-            'guest',
-            
-        ];
-
-        foreach ($roles as $role) {
+        foreach (self::ROLES as $roleName) {
             Role::firstOrCreate([
-                'name' => $role,
-                'guard_name' => 'web',
+                'name' => $roleName,
+                'guard_name' => self::GUARD,
             ]);
         }
+
+        $this->command?->info('RoleSeeder: ' . count(self::ROLES) . ' role tersedia.');
     }
 }

@@ -2,6 +2,10 @@
 
 namespace App\Models;
 
+use App\Domain\Authorization\Contracts\HasScopeStrategy;
+use App\Domain\Authorization\Enums\ScopeStrategy;
+use App\Models\Concerns\VisibleToUser;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
@@ -9,9 +13,9 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class TrxDosen extends Model
+class TrxDosen extends Model implements HasScopeStrategy
 {
-    use SoftDeletes, HasUuids;
+    use SoftDeletes, HasUuids, VisibleToUser;
 
     /**
      * Nama tabel di database sesuai skema asli.
@@ -47,8 +51,25 @@ class TrxDosen extends Model
      */
     protected $casts = [
         'is_active' => 'boolean',
-        'data_tambahan' => 'array', // Tipe json di database dikonversi jadi array di Laravel
+        'data_tambahan' => 'array',
     ];
+
+    public static function getSupportedScopeStrategies(): array
+    {
+        return [ScopeStrategy::GLOBAL, ScopeStrategy::FAKULTAS, ScopeStrategy::PRODI];
+    }
+    public static function getFakultasScopeColumn(): ?string
+    {
+        return 'prodi.fakultas_id';
+    }
+    public static function getProdiScopeColumn(): ?string
+    {
+        return 'prodi_id';
+    }
+    public static function applyOwnershipScope(Builder $query, User $user, ScopeStrategy $strategy): Builder
+    {
+        throw new \LogicException('TrxDosen tidak mendukung strategy ownership.');
+    }
 
     /**
      * Relasi ke Data Personal.

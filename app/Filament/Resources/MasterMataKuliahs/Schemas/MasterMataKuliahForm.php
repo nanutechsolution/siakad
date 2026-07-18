@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\MasterMataKuliahs\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
@@ -24,7 +25,7 @@ class MasterMataKuliahForm
                         ->schema([
                             Select::make('prodi_id')
                                 ->label('Program Studi')
-                                ->relationship('prodi', 'nama_prodi')
+                                ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                                 ->required()
                                 ->searchable()
                                 ->preload()
@@ -43,9 +44,9 @@ class MasterMataKuliahForm
                                         ->regex('/^[A-Z0-9]+$/')
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(
-                                            fn (Set $set, ?string $state) => $set('kode_mk', strtoupper(trim((string) $state)))
+                                            fn(Set $set, ?string $state) => $set('kode_mk', strtoupper(trim((string) $state)))
                                         )
-                                        ->dehydrateStateUsing(fn (?string $state): string => strtoupper(trim((string) $state)))
+                                        ->dehydrateStateUsing(fn(?string $state): string => strtoupper(trim((string) $state)))
                                         // Unique kombinasi prodi_id + kode_mk, aman untuk create maupun edit
                                         ->unique(
                                             table: 'master_mata_kuliahs',
@@ -90,7 +91,7 @@ class MasterMataKuliahForm
                                 ->maxValue(6)
                                 ->live(onBlur: true)
                                 ->rules([
-                                    fn (Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
+                                    fn(Get $get): \Closure => function (string $attribute, $value, \Closure $fail) use ($get) {
                                         $sum = (int) $get('sks_tatap_muka')
                                             + (int) $get('sks_praktek')
                                             + (int) $get('sks_lapangan');

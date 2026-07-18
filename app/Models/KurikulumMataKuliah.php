@@ -2,12 +2,17 @@
 
 namespace App\Models;
 
+use App\Domain\Authorization\Contracts\HasScopeStrategy;
+use App\Domain\Authorization\Enums\ScopeStrategy;
+use App\Models\Concerns\VisibleToUser;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
-class KurikulumMataKuliah extends Model
+class KurikulumMataKuliah extends Model implements HasScopeStrategy
 {
+    use VisibleToUser;
     /**
      * Nama tabel di database sesuai skema asli.
      */
@@ -40,6 +45,36 @@ class KurikulumMataKuliah extends Model
         'sks_lapangan' => 'integer',
     ];
 
+    public static function getSupportedScopeStrategies(): array
+    {
+        return [
+            ScopeStrategy::GLOBAL,
+            ScopeStrategy::FAKULTAS,
+            ScopeStrategy::PRODI,
+            ScopeStrategy::DOSEN_WALI,
+            ScopeStrategy::OWNERSHIP_MAHASISWA,
+        ];
+    }
+    public static function getFakultasScopeColumn(): ?string
+    {
+        return 'prodi.fakultas_id'; // dot-path -> whereHas('prodi', ...)
+    }
+
+    public static function getProdiScopeColumn(): ?string
+    {
+        return 'prodi_id';
+    }
+
+    public static function applyOwnershipScope(Builder $query, User $user, ScopeStrategy $strategy): Builder
+    {
+        return match ($strategy) {
+            ScopeStrategy::OWNERSHIP_MAHASISWA => $query->where('person_id', $user->person_id),
+            ScopeStrategy::DOSEN_WALI => $query->whereHas('kelas.dosenWali', function (Builder $q) use ($user) {
+                $q->whereHas('dosen', fn(Builder $d) => $d->where('person_id', $user->person_id));
+            }),
+            default => throw new \LogicException("Mahasiswa tidak mendukung strategy {$strategy->value}"),
+        };
+    }
     /**
      * Relasi ke Master Kurikulum.
      */

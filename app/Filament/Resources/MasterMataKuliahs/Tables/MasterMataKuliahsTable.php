@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Resources\MasterMataKuliahs\Tables;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Models\RefFakultas;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
@@ -94,9 +95,9 @@ class MasterMataKuliahsTable
 
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
                     ->searchable()
                     ->preload()
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->multiple(),
 
                 Filter::make('fakultas_id')

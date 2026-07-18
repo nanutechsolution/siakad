@@ -15,10 +15,10 @@ use App\Models\Mahasiswa;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+use UnitEnum;
 
 class MahasiswaResource extends Resource
 {
@@ -27,11 +27,8 @@ class MahasiswaResource extends Resource
     protected static ?string $modelLabel = 'Data Mahasiswa';
     protected static ?string $pluralModelLabel = 'Data Mahasiswa';
     protected static ?int $navigationSort = 1;
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::MAHASISWA->value;
 
-    public static function getNavigationGroup(): ?string
-    {
-        return NavigationGroup::MAHASISWA->value;
-    }
     protected static ?string $recordTitleAttribute = 'nim';
 
     public static function getGloballySearchableAttributes(): array
@@ -40,25 +37,26 @@ class MahasiswaResource extends Resource
     }
     public static function getEloquentQuery(): Builder
     {
-        return Mahasiswa::query()
-            ->with([
-                'person',
-                'biodata',
-                'prodi.fakultas',
-                'program',
-                'kurikulum',
-                'angkatan',
-                // Akademik
-                'kelasAktif.kelas.dosenWaliUtama.dosen.person',
-                'riwayatStatus.tahunAkademik',
-                // KRS
-                'krs.tahunAkademik',
-                'krs.details.mataKuliah',
-                // Keuangan
-                'tagihan',
-                'dispensasiAkademik',
-                'beasiswa.beasiswa',
-            ]);
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+        // return Mahasiswa::query()
+        //     ->with([
+        //         'person',
+        //         'biodata',
+        //         'prodi.fakultas',
+        //         'program',
+        //         'kurikulum',
+        //         'angkatan',
+        //         // Akademik
+        //         'kelasAktif.kelas.dosenWaliUtama.dosen.person',
+        //         'riwayatStatus.tahunAkademik',
+        //         // KRS
+        //         'krs.tahunAkademik',
+        //         'krs.details.mataKuliah',
+        //         // Keuangan
+        //         'tagihan',
+        //         'dispensasiAkademik',
+        //         'beasiswa.beasiswa',
+        //     ]);
     }
     public static function form(Schema $schema): Schema
     {

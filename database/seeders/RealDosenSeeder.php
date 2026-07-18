@@ -120,7 +120,7 @@ class RealDosenSeeder extends Seeder
                         'jenis_kelamin' => $gender,
                         'tempat_lahir' => $tempatLahir,
                         'tanggal_lahir' => $tglLahir,
-                        'email' => ($nidn ?: ($nuptk ?: rand(1000, 9999))) . '@dosen.unmaris.ac.id',
+                        'email' => ($nidn ?: ($nuptk ?: rand(1000, 9999))) . '@unmarissumba.ac.id',
                         'updated_at' => now()
                     ]
                 );

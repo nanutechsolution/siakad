@@ -31,7 +31,10 @@ class MasterMataKuliahResource extends Resource
     {
         return MasterMataKuliahForm::configure($schema);
     }
-
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     public static function table(Table $table): Table
     {
         return MasterMataKuliahsTable::configure($table);

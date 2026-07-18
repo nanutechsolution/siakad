@@ -3,11 +3,14 @@
 namespace App\Models;
 
 // use Illuminate\Contracts\Auth\MustVerifyEmail;
+
+use App\Models\Concerns\HasCurrentOrganization;
 use Database\Factories\UserFactory;
 use Filament\Models\Contracts\FilamentUser;
 use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -25,18 +28,46 @@ use Spatie\Permission\Traits\HasRoles;
 class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
-    use HasFactory, Notifiable, HasUuids, SoftDeletes, HasRoles, HasApiTokens, HasDatabaseNotifications;
+    use HasFactory, Notifiable, HasUuids, SoftDeletes, HasRoles, HasApiTokens, HasDatabaseNotifications, HasCurrentOrganization;
     protected $keyType = 'string';
     public $incrementing = false;
 
     protected $fillable = [
         'name',
         'email',
-        'person_id', // Pastikan ini ada
+        'person_id',
         'password',
         'username',
         'is_active'
     ];
+    public function scopeVisibleTo(Builder $query, User $actor): Builder
+    {
+        if ($actor->hasRole('super_admin')) {
+            return $query;
+        }
+
+        $resolver = app(
+            \App\Domain\Authorization\Services\OrganizationResolver::class
+        );
+
+        $prodiIds = $resolver->accessibleProdiIds($actor);
+
+
+        if ($prodiIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+
+        return $query->whereHas('person', function ($person) use ($prodiIds) {
+
+            $person->whereHas('mahasiswa', function ($mhs) use ($prodiIds) {
+                $mhs->whereIn('prodi_id', $prodiIds);
+            })
+                ->orWhereHas('dosen', function ($dosen) use ($prodiIds) {
+                    $dosen->whereIn('prodi_id', $prodiIds);
+                });
+        });
+    }
     /**
      * Get the attributes that should be cast.
      *
@@ -100,18 +131,16 @@ class User extends Authenticatable implements FilamentUser
     {
         return $this->mahasiswa()->exists();
     }
-
-
     public function canAccessAdmin(): bool
     {
-        return $this->hasAnyRole([
-            'super_admin',
-            'admin',
-            'admin_bauk',
-            'admin_prodi'
-        ]);
+        return $this->hasAnyRole(
+            collect(config('jabatan_role.strategy_roles'))
+                ->flatten()
+                ->push('admin')
+                ->unique()
+                ->all()
+        );
     }
-
     /*
     |--------------------------------------------------------------------------
     | Filament Panel Access

@@ -14,6 +14,7 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class MasterKurikulumResource extends Resource
 {
@@ -37,6 +38,10 @@ class MasterKurikulumResource extends Resource
     public static function table(Table $table): Table
     {
         return MasterKurikulumsTable::configure($table);
+    }
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
     }
 
     public static function getRelations(): array

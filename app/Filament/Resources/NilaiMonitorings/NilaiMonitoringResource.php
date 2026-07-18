@@ -24,6 +24,8 @@ class NilaiMonitoringResource extends Resource
     protected static ?string $navigationLabel = 'Monitoring Nilai';
     protected static ?string $modelLabel = 'Kelas Kuliah';
     protected static ?string $pluralModelLabel = 'Monitoring Nilai Akademik';
+
+    
     public static function getNavigationBadge(): ?string
     {
         return JadwalKuliah::withNilaiStats()

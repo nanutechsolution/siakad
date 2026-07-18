@@ -412,6 +412,16 @@ return [
         'CancelKeuanganAdjustment'   => 'Cancel Keuangan Adjustment',
         'PrintKeuanganAdjustment'    => 'Print Keuangan Adjustment',
         'ExportKeuanganAdjustment'   => 'Export Keuangan Adjustment',
+      /*
+|--------------------------------------------------------------------------
+| Penilaian / Komponen Nilai
+|--------------------------------------------------------------------------
+*/
+'CreateKomponenNilai' => 'Tambah Komponen Nilai',
+'ViewKomponenNilai' => 'Lihat Komponen Nilai',
+'UpdateKomponenNilai' => 'Ubah Komponen Nilai',
+'DeleteKomponenNilai' => 'Hapus Komponen Nilai',
+'ManageKomponenNilai' => 'Kelola Komponen Nilai',
     ],
     /*
     |--------------------------------------------------------------------------

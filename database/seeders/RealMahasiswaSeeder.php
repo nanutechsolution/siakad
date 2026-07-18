@@ -21,7 +21,7 @@ class RealMahasiswaSeeder extends Seeder
     public function run(): void
     {
         $this->command->info('🚀 Memulai import SEMUA data Mahasiswa Real dari CSV...');
-        $limit = 3000; // jumlah maksimal mahasiswa yang mau diimport
+        $limit = 30; // jumlah maksimal mahasiswa yang mau diimport
         $startAngkatan = 2022; // angkatan minimal yang mau diimport
         $csvPath = database_path('csv/mahasiswa_real.csv');
 
@@ -71,7 +71,7 @@ class RealMahasiswaSeeder extends Seeder
         $progress = new ProgressBar($this->command->getOutput(), $totalRows);
         $progress->setFormat(" %cur t%/%max% [%bar%] %percent:3s%% | %message%");
         $progress->start();
-        $limit = 3000;
+        $limit = 30;
         DB::beginTransaction();
         try {
             // Looping sekarang membaca sampai baris terakhir CSV tanpa batasan

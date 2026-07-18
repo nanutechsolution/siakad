@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\TrxDosens\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -24,7 +25,7 @@ class TrxDosenForm
 
                 Select::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
+                    ->options(fn () => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->preload()
                     ->required(),
@@ -57,12 +58,6 @@ class TrxDosenForm
                 Toggle::make('is_active')
                     ->label('Status Aktif')
                     ->default(true),
-                KeyValue::make('data_tambahan')
-                    ->label('Data Tambahan')
-                    ->keyLabel('Field')
-                    ->valueLabel('Nilai')
-                    ->addActionLabel('Tambah Data')
-                    ->columnSpanFull(),
             ]);
     }
 }

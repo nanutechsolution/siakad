@@ -12,13 +12,12 @@ use App\Filament\Resources\TrxDosens\Pages\ListTrxDosens;
 use App\Filament\Resources\TrxDosens\Schemas\TrxDosenForm;
 use App\Filament\Resources\TrxDosens\Tables\TrxDosensTable;
 use App\Models\TrxDosen;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
+
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class TrxDosenResource extends Resource
@@ -29,12 +28,13 @@ class TrxDosenResource extends Resource
     protected static ?string $modelLabel = 'Dosen';
     protected static ?string $pluralModelLabel = 'Dosen';
     protected static ?string $recordTitleAttribute = 'person.nama';
-    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    public static function getEloquentQuery(): Builder
     {
-        return parent::getEloquentQuery()
-            ->with([
-                'person.gelars',
-            ]);
+        return  parent::getEloquentQuery()->visibleTo(auth()->user());
+        // return parent::getEloquentQuery()
+        // ->with([
+        //     'person.gelars',
+        // ]);
     }
     public static function form(Schema $schema): Schema
     {

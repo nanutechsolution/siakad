@@ -19,6 +19,8 @@ use Illuminate\Session\Middleware\StartSession;
 use Illuminate\View\Middleware\ShareErrorsFromSession;
 use App\Enums\NavigationGroup as AppNavigationGroup;
 use App\Filament\Pages\Auth\Login;
+use App\Filament\Pages\PilihKonteksKerja;
+use App\Http\Middleware\EnsureOrganizationContext;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
 use Filament\Navigation\NavigationGroup;
@@ -51,6 +53,7 @@ class AdminPanelProvider extends PanelProvider
             ->sidebarCollapsibleOnDesktop(true)
             ->pages([
                 // Dashboard::class
+                 PilihKonteksKerja::class,
             ])
             ->navigationGroups(
                 // Me-render otomatis seluruh Navigation Group dari Enum
@@ -110,6 +113,7 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                EnsureOrganizationContext::class,
             ]);
     }
 }

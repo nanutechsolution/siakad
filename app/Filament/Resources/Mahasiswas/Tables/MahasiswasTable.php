@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Mahasiswas\Tables;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Kelas;
 use App\Models\KeuanganKomponenBiaya;
 use App\Models\RefTahunAkademik;
@@ -69,7 +70,7 @@ class MahasiswasTable
                 TrashedFilter::make(),
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('angkatan_id')

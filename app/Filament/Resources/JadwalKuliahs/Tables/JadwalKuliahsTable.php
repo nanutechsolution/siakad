@@ -123,7 +123,7 @@ class JadwalKuliahsTable
                     ->searchable()
                     ->preload()
                     // Default: langsung terfilter ke Tahun Akademik yang sedang aktif
-                    ->default(fn () => RefTahunAkademik::where('is_active', true)->first()?->id),
+                    ->default(fn() => RefTahunAkademik::where('is_active', true)->first()?->id),
 
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
@@ -152,9 +152,7 @@ class JadwalKuliahsTable
                         $jadwals = $livewire->getFilteredTableQuery()
                             ->with(['mataKuliah', 'kelas.prodi', 'ruang', 'dosenPengajars.dosen.person', 'tahunAkademik'])
                             ->get();
-
                         $activeTaLabel = RefTahunAkademik::where('is_active', true)->value('nama_tahun') ?? '-';
-
                         $pdf = Pdf::loadView('filament.resources.jadwal-kuliahs.exports.jadwal-pdf', [
                             'jadwals' => $jadwals,
                             'activeTaLabel' => $activeTaLabel,
@@ -162,7 +160,7 @@ class JadwalKuliahsTable
                         ])->setPaper('a4', 'landscape');
 
                         return response()->streamDownload(
-                            fn () => print($pdf->output()),
+                            fn() => print($pdf->output()),
                             'jadwal-kuliah-' . now()->format('Y-m-d-His') . '.pdf'
                         );
                     }),

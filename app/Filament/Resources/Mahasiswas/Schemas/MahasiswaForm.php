@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Mahasiswas\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Mahasiswa;
 use Filament\Forms\Components\KeyValue;
 use Filament\Forms\Components\Placeholder;
@@ -65,7 +66,7 @@ class MahasiswaForm
                                     ->schema([
                                         Select::make('prodi_id')
                                             ->label('Program Studi')
-                                            ->relationship('prodi', 'nama_prodi')
+                                            ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                                             ->searchable()
                                             ->preload()
                                             ->required()
@@ -96,16 +97,16 @@ class MahasiswaForm
                                             ->relationship(
                                                 name: 'kurikulum',
                                                 titleAttribute: 'nama_kurikulum',
-                                                modifyQueryUsing: fn (Builder $query, callable $get) => $query
+                                                modifyQueryUsing: fn(Builder $query, callable $get) => $query
                                                     ->when(
                                                         filled($get('prodi_id')),
-                                                        fn (Builder $query) => $query->where('prodi_id', $get('prodi_id')),
+                                                        fn(Builder $query) => $query->where('prodi_id', $get('prodi_id')),
                                                     ),
                                             )
                                             ->searchable()
                                             ->preload()
                                             ->nullable()
-                                            ->disabled(fn (callable $get) => blank($get('prodi_id')))
+                                            ->disabled(fn(callable $get) => blank($get('prodi_id')))
                                             ->helperText('Pilih Program Studi terlebih dahulu. Daftar kurikulum otomatis terfilter sesuai prodi (master_kurikulums.prodi_id).'),
                                     ]),
                             ]),
@@ -123,24 +124,11 @@ class MahasiswaForm
 
                                 Placeholder::make('last_synced_at')
                                     ->label('Terakhir Sinkronisasi')
-                                    ->content(fn (?Mahasiswa $record): string => $record?->last_synced_at
+                                    ->content(fn(?Mahasiswa $record): string => $record?->last_synced_at
                                         ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
                                         : 'Belum pernah sinkron'),
                             ]),
 
-                        Section::make('Data Tambahan')
-                            ->description('Metadata bebas (JSON) di luar kolom baku, mis. kebutuhan lokal kampus yang belum punya kolom sendiri.')
-                            ->collapsible()
-                            ->collapsed()
-                            ->schema([
-                                KeyValue::make('data_tambahan')
-                                    ->label('')
-                                    ->keyLabel('Key')
-                                    ->valueLabel('Value')
-                                    ->reorderable()
-                                    ->addActionLabel('Tambah Data')
-                                    ->nullable(),
-                            ]),
                     ])->columnSpan(['lg' => 1]),
             ])
             ->columns(3);

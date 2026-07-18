@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MasterKurikulums\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -23,7 +24,7 @@ class MasterKurikulumForm
                         ->schema([
                             Select::make('prodi_id')
                                 ->label('Program Studi')
-                                ->relationship('prodi', 'nama_prodi') // Asumsi kolom nama_prodi di tabel ref_prodi
+                                ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                                 ->required()
                                 ->searchable()
                                 ->preload(),

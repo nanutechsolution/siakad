@@ -2,13 +2,10 @@
 
 namespace App\Filament\Resources\JadwalKuliahs\RelationManagers;
 
-use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -23,6 +20,7 @@ class KomponenNilaiRelationManager extends RelationManager
 {
     protected static string $relationship = 'komponenNilai';
     protected static ?string $title = 'Bobot Komponen Penilaian';
+
     public function form(Schema $schema): Schema
     {
         return $schema
@@ -82,6 +80,7 @@ class KomponenNilaiRelationManager extends RelationManager
                 CreateAction::make()
                     ->label('Tambah Komponen')
                     ->icon('heroicon-m-plus')
+                    ->visible(fn() => auth()->user()->can('ManageKomponenNilai'))
                     ->before(function (RelationManager $livewire, $state) {
                         $currentTotal = $livewire->getRelationship()->sum('bobot_persen');
                         $newTotal = $currentTotal + $state['bobot_persen'];

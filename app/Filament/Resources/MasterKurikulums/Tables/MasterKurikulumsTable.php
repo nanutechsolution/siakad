@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\MasterKurikulums\Tables;
 
+use App\Domain\Authorization\Services\FormResolver;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -52,7 +53,7 @@ class MasterKurikulumsTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi') // Sesuaikan kolom text prodi Anda
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->preload(),
 

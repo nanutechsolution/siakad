@@ -26,7 +26,10 @@ class UserResource extends Resource
     protected static ?string $title = 'Data User';
     protected static ?string $recordTitleAttribute = 'username';
     protected static ?int $navigationSort = 1;
-
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     public static function getGloballySearchableAttributes(): array
     {
         return ['name', 'username', 'email'];

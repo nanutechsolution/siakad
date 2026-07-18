@@ -105,6 +105,7 @@ class KurikulumKomponenNilaiRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->label('Tambah Komponen Standar')
+                    ->visible(fn() => auth()->user()->can('CreateKomponenNilai'))
                     ->icon('heroicon-m-plus')
                     ->before(function (RelationManager $livewire, $state) {
                         if (blank($state) || ! isset($state['bobot_persen'])) {
@@ -128,6 +129,7 @@ class KurikulumKomponenNilaiRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make()
+                    ->visible(fn() => auth()->user()->can('UpdateKomponenNilai'))
                     ->color('warning')
                     ->before(function (RelationManager $livewire, $record, $state) {
                         // 1. TAMBAHKAN VALIDASI: Cek apakah $state null atau tidak memiliki key 'bobot_persen'
@@ -154,11 +156,11 @@ class KurikulumKomponenNilaiRelationManager extends RelationManager
                             $livewire->halt(); // Batalkan proses update
                         }
                     }),
-                DeleteAction::make(),
+                DeleteAction::make()->visible(fn() => auth()->user()->can('DeleteKomponenNilai')),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()->visible(fn() => auth()->user()->can('DeleteKomponenNilai')),
                 ]),
             ]);
     }
