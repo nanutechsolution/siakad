@@ -98,8 +98,17 @@ class TagihanMahasiswasTable
                                     ->numeric()
                                     ->required()
                                     ->minValue(1)
-                                    ->maxValue(fn($record) => ($record->total_tagihan - $record->total_bayar))
-                                    ->helperText(fn($record) => 'Maksimal yang dapat dibayarkan adalah Rp ' . number_format($record->total_tagihan - $record->total_bayar, 0, ',', '.'))
+                                    ->helperText(function ($record) {
+                                        return 'Sisa tagihan saat ini Rp ' .
+                                            number_format(
+                                                $record->total_tagihan - $record->total_bayar,
+                                                0,
+                                                ',',
+                                                '.'
+                                            ) .
+                                            '. Jika pembayaran lebih, saldo akan disimpan sebagai kredit mahasiswa.';
+                                    })
+                                    // ->maxValue(fn($record) => ($record->total_tagihan - $record->total_bayar))
                                     ->placeholder('Masukkan jumlah pembayaran...'),
                                 DateTimePicker::make('waktu_transfer')
                                     ->label('Tanggal & Waktu Transfer')
@@ -155,6 +164,4 @@ class TagihanMahasiswasTable
                 ])
             ]);
     }
-
-    
 }
