@@ -56,7 +56,7 @@ class TagihanMahasiswa extends Model
      */
     public function mahasiswa(): BelongsTo
     {
-        return $this->belongsTot(Mahasiswa::class, 'mahasiswa_id');
+        return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id');
     }
 
     /**
