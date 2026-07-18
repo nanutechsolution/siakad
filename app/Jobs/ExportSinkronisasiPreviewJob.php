@@ -6,6 +6,7 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Services\Keuangan\SinkronisasiTagihanService;
+use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -112,12 +113,17 @@ class ExportSinkronisasiPreviewJob implements ShouldQueue
 
         Notification::make()
             ->title('Export Preview Sinkronisasi Siap Diunduh')
-            ->body('File CSV lengkap sudah selesai dibuat.')
             ->success()
+            ->body('File CSV lengkap sudah selesai dibuat.')
             ->actions([
-                Notification::make('unduh')
+                Action::make('download')
                     ->label('Unduh CSV')
-                    ->url(route('sinkronisasi.export.download', ['export' => $this->exportId]), shouldOpenInNewTab: true)
+                    ->url(
+                        route('sinkronisasi.export.download', [
+                            'export' => $this->exportId,
+                        ]),
+                        shouldOpenInNewTab: true,
+                    )
                     ->button(),
             ])
             ->sendToDatabase($admin);
