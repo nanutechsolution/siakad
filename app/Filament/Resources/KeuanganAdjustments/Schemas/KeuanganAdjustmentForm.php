@@ -29,13 +29,29 @@ class KeuanganAdjustmentForm
                 Section::make('Informasi Tagihan')
                     ->schema([
                         Select::make('tagihan_id')
-                            ->label('Pilih Tagihan Mahasiswa')
-                            ->relationship(
-                                name: 'tagihan',
-                                titleAttribute: 'kode_transaksi',
-                                modifyQueryUsing: fn(Builder $query) => $query->with('mahasiswa.person')
-                            )
-                            ->getOptionLabelFromRecordUsing(fn(Model $record) => "{$record->kode_transaksi} - " . ($record->mahasiswa->person->nama_lengkap ?? 'Unknown'))
+                            ->searchable()
+                            ->getSearchResultsUsing(function (string $search) {
+                                return TagihanMahasiswa::query()
+                                    ->with('mahasiswa.person')
+                                    ->where(function ($q) use ($search) {
+                                        $q->where('kode_transaksi', 'like', "%{$search}%")
+                                            ->orWhereHas('mahasiswa.person', function ($q) use ($search) {
+                                                $q->where('nama_lengkap', 'like', "%{$search}%");
+                                            });
+                                    })
+                                    ->limit(50)
+                                    ->get()
+                                    ->mapWithKeys(fn($tagihan) => [
+                                        $tagihan->id => "{$tagihan->kode_transaksi} - {$tagihan->mahasiswa?->person?->nama_lengkap}"
+                                    ]);
+                            })
+                            ->getOptionLabelUsing(function ($value) {
+                                $tagihan = TagihanMahasiswa::with('mahasiswa.person')->find($value);
+
+                                return $tagihan
+                                    ? "{$tagihan->kode_transaksi} - {$tagihan->mahasiswa?->person?->nama_lengkap}"
+                                    : null;
+                            })
                             ->searchable()
                             ->preload()
                             ->required()
