@@ -118,7 +118,7 @@ class MahasiswasRelationManager extends RelationManager
             ])
             ->recordActions([
                 EditAction::make(),
-                DetachAction::make(),
+                DetachAction::make()->label("Hapus Dari Kelas Ini"),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
