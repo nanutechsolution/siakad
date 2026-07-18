@@ -6,7 +6,6 @@ namespace App\Jobs;
 
 use App\Models\User;
 use App\Services\Keuangan\SinkronisasiTagihanService;
-use Filament\Notifications\Actions\Action as NotificationAction;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
@@ -40,8 +39,7 @@ class ExportSinkronisasiPreviewJob implements ShouldQueue
         protected int $exportId,
         protected array $data,
         protected ?string $userId,
-    ) {
-    }
+    ) {}
 
     public function handle(SinkronisasiTagihanService $service): void
     {
@@ -117,7 +115,7 @@ class ExportSinkronisasiPreviewJob implements ShouldQueue
             ->body('File CSV lengkap sudah selesai dibuat.')
             ->success()
             ->actions([
-                NotificationAction::make('unduh')
+                Notification::make('unduh')
                     ->label('Unduh CSV')
                     ->url(route('sinkronisasi.export.download', ['export' => $this->exportId]), shouldOpenInNewTab: true)
                     ->button(),
