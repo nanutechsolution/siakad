@@ -219,7 +219,7 @@ trait HasStudentProfileRelations
     public function beasiswa(): HasMany
     {
         return $this->hasMany(KeuanganMahasiswaBeasiswa::class, 'mahasiswa_id')
-            ->with('masterBeasiswa')
+            ->with('beasiswa')
             ->orderByDesc('is_active')
             ->orderByDesc('created_at');
     }

@@ -30,6 +30,8 @@ class LaporanPiutangExport implements FromArray, WithHeadings, WithMapping, Shou
             'Nama Mahasiswa',
             'Program Studi',
             'Angkatan',
+            'Jenis Tagihan',
+            'Keterangan',
             'Total Tagihan (Rp)',
             'Total Terbayar (Rp)',
             'Sisa Tagihan (Rp)',
@@ -42,14 +44,18 @@ class LaporanPiutangExport implements FromArray, WithHeadings, WithMapping, Shou
     {
         // Handle konversi array ke object standar (karena DB raw fetch menjadi object stdClass)
         $row = (object) $row;
-        
+
         $keterlambatan = is_null($row->hari_terlambat) ? '-' : ($row->hari_terlambat > 0 ? $row->hari_terlambat : 'Belum Jatuh Tempo');
+
+        $jenisTagihan = ($row->jenis_tagihan ?? null) === 'SEMESTER' ? 'Semester' : 'Non Reguler';
 
         return [
             $row->nim,
             $row->nama_mahasiswa,
             $row->nama_prodi,
             $row->angkatan,
+            $jenisTagihan,
+            $row->deskripsi ?? '-',
             $row->total_tagihan,
             $row->total_bayar,
             $row->sisa_tagihan,

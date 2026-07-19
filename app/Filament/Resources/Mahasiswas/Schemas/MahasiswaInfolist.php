@@ -238,7 +238,7 @@ class MahasiswaInfolist
                         TextEntry::make('person.tempat_lahir')->label('Tempat Lahir')->placeholder('-'),
                         TextEntry::make('person.tanggal_lahir')
                             ->label('Tanggal Lahir')
-                            ->formatStateUsing(fn(?string $s) => static::tanggalIndonesia($s)),
+                            ->formatStateUsing(fn(?string $state) => static::tanggalIndonesia($state)),
                         TextEntry::make('biodata.agama')->label('Agama')->placeholder('-'),
                         TextEntry::make('person.email')->label('Email')->copyable()->icon('heroicon-o-envelope')->placeholder('-'),
                         TextEntry::make('person.no_hp')->label('Nomor HP')->copyable()->icon('heroicon-o-phone')->placeholder('-'),
@@ -542,8 +542,8 @@ class MahasiswaInfolist
                                         TextEntry::make('is_active')
                                             ->label('Status')
                                             ->badge()
-                                            ->formatStateUsing(fn(bool $s) => $s ? 'Aktif' : 'Tidak Aktif')
-                                            ->color(fn(bool $s) => $s ? 'success' : 'gray'),
+                                            ->formatStateUsing(fn(?bool $state) => $state ? 'Aktif' : 'Tidak Aktif')
+                                            ->color(fn(?bool $state) => $state ? 'success' : 'gray')
                                     ]),
                             ])
                             ->contained(false)

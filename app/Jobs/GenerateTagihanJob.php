@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Jobs;
 
+use App\Models\GeneratorBatch;
 use App\Models\KeuanganKomponenBiaya;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
@@ -46,14 +47,24 @@ class GenerateTagihanJob implements ShouldQueue
     protected array $data;
     protected ?string $userId;
 
-    public function __construct(array $data, ?string $userId)
+    /**
+     * Nullable & default null supaya backward-compatible kalau ada kode
+     * lain yang masih dispatch job ini tanpa batch id (mis. dari tinker/
+     * command lama) - job tetap jalan normal, cuma tidak menulis log batch.
+     */
+    protected ?int $batchId;
+
+    public function __construct(array $data, ?string $userId, ?int $batchId = null)
     {
         $this->data = $data;
         $this->userId = $userId;
+        $this->batchId = $batchId;
     }
 
     public function handle(LedgerService $ledger): void
     {
+        $batch = $this->batchId ? GeneratorBatch::find($this->batchId) : null;
+
         $tahunAkademikId = $this->data['tahun_akademik_id'];
         $tahunAkademik = RefTahunAkademik::find($tahunAkademikId);
         $namaTahun = $tahunAkademik ? $tahunAkademik->nama_tahun : 'Semester Berjalan';
@@ -102,6 +113,7 @@ class GenerateTagihanJob implements ShouldQueue
             $namaTahun,
             $beasiswaService,
             $ledger,
+            $batch,
             &$successCount,
             &$failedCount,
             &$skippedCount,
@@ -117,6 +129,7 @@ class GenerateTagihanJob implements ShouldQueue
 
                 if ($tagihanExists) {
                     $skippedCount++;
+                    $this->logMahasiswa($batch, $mhs->id, 'DILEWATI', null, 'Mahasiswa sudah memiliki tagihan di semester ini.');
                     DB::rollBack();
                     return;
                 }
@@ -236,6 +249,7 @@ class GenerateTagihanJob implements ShouldQueue
                 );
                 DB::commit();
                 $successCount++;
+                $this->logMahasiswa($batch, $mhs->id, 'BERHASIL', $totalTagihanBersih, "Tagihan {$kodeTransaksi} terbit dengan " . count($detailTagihanToInsert) . ' komponen.');
             } catch (\Illuminate\Database\QueryException $e) {
                 DB::rollBack();
 
@@ -247,18 +261,39 @@ class GenerateTagihanJob implements ShouldQueue
                 // dihitung sebagai "sudah ada", bukan "gagal".
                 if ((int) $e->getCode() === 23000 || str_contains($e->getMessage(), 'tagihan_mahasiswas_mhs_tahun_akademik_unique')) {
                     $skippedCount++;
+                    $this->logMahasiswa($batch, $mhs->id, 'DILEWATI', null, 'Race condition terdeteksi (tagihan sudah dibuat proses lain), dilewati dengan aman.');
                 } else {
                     $failedCount++;
                     $namaMhs = $mhs->person->nama_lengkap ?? 'Unknown';
-                    $errorLog[] = "NIM {$mhs->nim} ({$namaMhs}): " . $e->getMessage();
+                    $pesan = "NIM {$mhs->nim} ({$namaMhs}): " . $e->getMessage();
+                    $errorLog[] = $pesan;
+                    $this->logMahasiswa($batch, $mhs->id, 'GAGAL', null, $e->getMessage());
                 }
             } catch (\Exception $e) {
                 DB::rollBack();
                 $failedCount++;
                 $namaMhs = $mhs->person->nama_lengkap ?? 'Unknown';
-                $errorLog[] = "NIM {$mhs->nim} ({$namaMhs}): " . $e->getMessage();
+                $pesan = "NIM {$mhs->nim} ({$namaMhs}): " . $e->getMessage();
+                $errorLog[] = $pesan;
+                $this->logMahasiswa($batch, $mhs->id, 'GAGAL', null, $e->getMessage());
             }
         });
+
+        if ($batch) {
+            $batch->update([
+                'status' => 'COMPLETED',
+                'completed_at' => now(),
+                'total_mahasiswa' => $successCount + $failedCount + $skippedCount,
+                'total_berhasil' => $successCount,
+                'total_gagal' => $failedCount,
+                'total_skip' => $skippedCount,
+                'summary_snapshot' => [
+                    'total_berhasil' => $successCount,
+                    'total_gagal' => $failedCount,
+                    'total_skip' => $skippedCount,
+                ],
+            ]);
+        }
 
         // === KIRIM NOTIFIKASI DENGAN DETAIL REKAPAN ===
         if ($this->userId) {
@@ -269,7 +304,7 @@ class GenerateTagihanJob implements ShouldQueue
                 if (!empty($errorLog)) {
                     $bodySummary .= "\n\nBeberapa Kendala:\n" . implode("\n", array_slice($errorLog, 0, 5));
                     if (count($errorLog) > 5) {
-                        $bodySummary .= "\n...dan " . (count($errorLog) - 5) . " kendala lainnya.";
+                        $bodySummary .= "\n...dan " . (count($errorLog) - 5) . " kendala lainnya. Lihat detail lengkap di Riwayat Generator.";
                     }
                 }
 
@@ -289,6 +324,14 @@ class GenerateTagihanJob implements ShouldQueue
      */
     public function failed(\Throwable $exception): void
     {
+        if ($this->batchId) {
+            GeneratorBatch::where('id', $this->batchId)->update([
+                'status' => 'FAILED',
+                'completed_at' => now(),
+                'error_message' => $exception->getMessage(),
+            ]);
+        }
+
         if (!$this->userId) {
             return;
         }
@@ -303,5 +346,29 @@ class GenerateTagihanJob implements ShouldQueue
             ->body('Proses generate tagihan berhenti karena error sistem: ' . $exception->getMessage() . '. Silakan cek data yang sudah masuk sebelum menjalankan ulang, untuk menghindari duplikasi.')
             ->status('danger')
             ->sendToDatabase($admin);
+    }
+
+    /**
+     * Insert 1 baris log per mahasiswa - dipanggil di SETIAP titik keluar
+     * dari try/catch di atas (berhasil/gagal/dilewati), persis pola yang
+     * sama dengan SinkronisasiTagihanJob::logMahasiswa(). Kalau job ini
+     * di-dispatch tanpa batch (mis. dari kode lama yang belum di-update),
+     * $batch bernilai null dan logging ini otomatis dilewati - job tetap
+     * berjalan normal.
+     */
+    private function logMahasiswa(?GeneratorBatch $batch, string $mahasiswaId, string $status, ?float $totalTagihan, ?string $pesan): void
+    {
+        if (! $batch) {
+            return;
+        }
+
+        DB::table('generator_logs')->insert([
+            'generator_batch_id' => $batch->id,
+            'mahasiswa_id' => $mahasiswaId,
+            'status' => $status,
+            'total_tagihan' => $totalTagihan,
+            'pesan' => $pesan,
+            'created_at' => now(),
+        ]);
     }
 }

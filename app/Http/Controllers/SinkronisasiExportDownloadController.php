@@ -18,10 +18,12 @@ class SinkronisasiExportDownloadController extends Controller
         abort_if($row === null || $row->file_name === null, 404);
 
         // Hanya pemilik export sendiri yang boleh unduh, kecuali user
-        // punya permission tambahan untuk melihat export siapa pun -
-        // sesuaikan dengan kebijakan otorisasi project Anda.
+        // punya permission ViewAny:SinkronisasiBatch (bisa melihat semua
+        // batch & export siapa pun) - nama permission ini persis hasil
+        // generate `php artisan shield:generate --all` di project Anda,
+        // bukan konvensi dot-notation yang saya karang sebelumnya.
         abort_unless(
-            $row->user_id === $request->user()->id || $request->user()->can('SinkronisasiTagihan.viewAny'),
+            $row->user_id === $request->user()->id || $request->user()->can('ViewAny:SinkronisasiBatch'),
             403
         );
 

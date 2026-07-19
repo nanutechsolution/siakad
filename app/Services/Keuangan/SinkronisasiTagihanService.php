@@ -22,7 +22,8 @@ class SinkronisasiTagihanService
     public function __construct(
         private readonly TargetMahasiswaResolver $resolver,
         private readonly KomponenTagihanComparator $comparator,
-    ) {}
+    ) {
+    }
 
     /**
      * Preview SINKRON (tanpa queue) - dipanggil langsung dari halaman
@@ -48,10 +49,7 @@ class SinkronisasiTagihanService
         $sampelToWarn = [];
 
         $this->iterasiTarget($data, function (Mahasiswa $mhs, ?object $skemaTarif, $detailSkema, ?object $tagihan, $detailExisting) use (
-            &$agregat,
-            &$sampelToAdd,
-            &$sampelToReview,
-            &$sampelToWarn
+            &$agregat, &$sampelToAdd, &$sampelToReview, &$sampelToWarn
         ) {
             $agregat['total_mahasiswa_target']++;
 

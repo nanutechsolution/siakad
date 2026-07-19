@@ -14,7 +14,7 @@ class KeuanganSkemaTarifForm
     {
         return $schema
             ->components([
-               Section::make('Informasi Skema Tarif')
+                Section::make('Informasi Skema Tarif')
                     ->description('Konfigurasi skema tarif berdasarkan angkatan, program studi, dan program kelas.')
                     ->schema([
 
