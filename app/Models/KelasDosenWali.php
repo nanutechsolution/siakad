@@ -46,4 +46,9 @@ class KelasDosenWali extends Model
             ->withPivot('id', 'is_primary')
             ->withTimestamps();
     }
+
+    public function dosen(): BelongsTo
+    {
+        return $this->belongsTo(TrxDosen::class, 'dosen_id');
+    }
 }

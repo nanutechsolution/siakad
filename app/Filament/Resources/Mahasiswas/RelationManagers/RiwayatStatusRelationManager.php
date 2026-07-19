@@ -8,8 +8,6 @@ use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -48,38 +46,35 @@ class RiwayatStatusRelationManager extends RelationManager
                     ->options(collect(StatusKuliah::cases())->mapWithKeys(fn($enum) => [$enum->value => $enum->label()]))
                     ->required(),
 
-                Grid::make(2)->schema([
-                    TextInput::make('ips')
-                        ->label('IPS (Indeks Prestasi Semester)')
-                        ->numeric()
-                        ->minValue(0)
-                        ->maxValue(4)
-                        ->step(0.01)
-                        ->default(0)
-                        ->required(),
+                TextInput::make('ips')
+                    ->label('IPS (Indeks Prestasi Semester)')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(4)
+                    ->step(0.01)
+                    ->default(0)
+                    ->required(),
 
-                    TextInput::make('ipk')
-                        ->label('IPK (Indeks Prestasi Kumulatif)')
-                        ->numeric()
-                        ->minValue(0)
-                        ->maxValue(4)
-                        ->step(0.01)
-                        ->default(0)
-                        ->required(),
+                TextInput::make('ipk')
+                    ->label('IPK (Indeks Prestasi Kumulatif)')
+                    ->numeric()
+                    ->minValue(0)
+                    ->maxValue(4)
+                    ->step(0.01)
+                    ->default(0)
+                    ->required(),
 
-                    TextInput::make('sks_semester')
-                        ->label('SKS Semester')
-                        ->numeric()
-                        ->default(0)
-                        ->required(),
+                TextInput::make('sks_semester')
+                    ->label('SKS Semester')
+                    ->numeric()
+                    ->default(0)
+                    ->required(),
 
-                    TextInput::make('sks_total')
-                        ->label('SKS Total (Kumulatif)')
-                        ->numeric()
-                        ->default(0)
-                        ->required(),
-                ]),
-
+                TextInput::make('sks_total')
+                    ->label('SKS Total (Kumulatif)')
+                    ->numeric()
+                    ->default(0)
+                    ->required(),
                 TextInput::make('nomor_sk')
                     ->label('Nomor SK (Opsional)')
                     ->helperText('Diisi jika statusnya Cuti, Drop Out, Lulus, atau Mutasi.')

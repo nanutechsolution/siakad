@@ -67,7 +67,6 @@ trait ScopedMonitoringQueries
                     ->whereHas('mahasiswa.prodi', fn(Builder $qqq) => $qqq->where('fakultas_id', $v)));
         });
     }
-
     /**
      * Daftar prodi yang boleh muncul sebagai label/kategori di chart --
      * dibatasi ke accessibleProdiIds() user, BUKAN semua RefProdi aktif.

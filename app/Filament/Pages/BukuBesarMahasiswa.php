@@ -3,6 +3,8 @@
 namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Clusters\Laporan\LaporanCluster;
+use App\Filament\Clusters\Laporan\LaporanKeuanganCluster;
 use App\Models\KeuanganGeneralLedger;
 use App\Services\BukuBesarService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -28,12 +30,12 @@ class BukuBesarMahasiswa extends Page implements HasSchemas, HasTable
     use InteractsWithSchemas;
     use InteractsWithFormActions;
     use InteractsWithTable;
-
+    protected static ?string $cluster = LaporanKeuanganCluster::class;
     protected string $view = 'filament.pages.buku-besar-mahasiswa';
     protected static ?string $navigationLabel = 'Buku Besar';
     protected static ?string $title = 'Buku Besar Mahasiswa';
     protected static ?int $navigationSort = 12;
-    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
+    // protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
 
     public ?array $filterData = [];
     public ?object $mahasiswaInfo = null;

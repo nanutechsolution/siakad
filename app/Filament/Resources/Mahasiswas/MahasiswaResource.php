@@ -12,7 +12,6 @@ use App\Filament\Resources\Mahasiswas\Schemas\MahasiswaForm;
 use App\Filament\Resources\Mahasiswas\Schemas\MahasiswaInfolist;
 use App\Filament\Resources\Mahasiswas\Tables\MahasiswasTable;
 use App\Models\Mahasiswa;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -38,25 +37,6 @@ class MahasiswaResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return parent::getEloquentQuery()->visibleTo(auth()->user());
-        // return Mahasiswa::query()
-        //     ->with([
-        //         'person',
-        //         'biodata',
-        //         'prodi.fakultas',
-        //         'program',
-        //         'kurikulum',
-        //         'angkatan',
-        //         // Akademik
-        //         'kelasAktif.kelas.dosenWaliUtama.dosen.person',
-        //         'riwayatStatus.tahunAkademik',
-        //         // KRS
-        //         'krs.tahunAkademik',
-        //         'krs.details.mataKuliah',
-        //         // Keuangan
-        //         'tagihan',
-        //         'dispensasiAkademik',
-        //         'beasiswa.beasiswa',
-        //     ]);
     }
     public static function form(Schema $schema): Schema
     {

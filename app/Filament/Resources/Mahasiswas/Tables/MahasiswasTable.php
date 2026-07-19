@@ -166,29 +166,60 @@ class MahasiswasTable
                     BulkAction::make('pindah_kelas')
                         ->label('Pindah Kelas (Auto-Exit)')
                         ->icon('heroicon-o-arrow-path-rounded-square')
+                        ->deselectRecordsAfterCompletion()
                         ->form([
                             Select::make('kelas_tujuan_id')
                                 ->label('Pilih Kelas Tujuan')
-                                ->options(Kelas::query()->pluck('nama_kelas', 'id'))
+                                ->options(function () {
+                                    // Ambil semua kelas yang aktif
+                                    return \App\Models\Kelas::query()
+                                        ->join('ref_prodi', 'kelas.prodi_id', '=', 'ref_prodi.id')
+                                        ->join('ref_program', 'kelas.program_id', '=', 'ref_program.id')
+                                        ->select('kelas.id', DB::raw("CONCAT(kelas.nama_kelas, ' - ', ref_prodi.nama_prodi, ' (', ref_program.nama_program, ')') as label"))
+                                        ->pluck('label', 'id');
+                                })
+                                ->searchable()
                                 ->required(),
-                            DatePicker::make('tanggal_pindah')
-                                ->default(now())
-                                ->required(),
+                            DatePicker::make('tanggal_pindah')->default(now())->required(),
                         ])
                         ->action(function (Collection $records, array $data): void {
-                            $service = app(ManajemenKelasService::class);
+                            $service = app(\App\Services\ManajemenKelasService::class);
+                            $sukses = 0;
+                            $gagal = 0;
+                            $errors = [];
 
-                            foreach ($records as $record) {
-                                $service->pindahKelas(
-                                    $record->id,
-                                    $data['kelas_tujuan_id'],
-                                    $data['tanggal_pindah']
-                                );
+                            foreach ($records as $mahasiswa) {
+                                try {
+                                    // FIX: Cari record MahasiswaKelas yang aktif untuk mahasiswa ini
+                                    $kelasAktif = \App\Models\MahasiswaKelas::where('mahasiswa_id', $mahasiswa->id)
+                                        ->whereNull('tanggal_keluar')
+                                        ->first();
+
+                                    if (!$kelasAktif) {
+                                        throw new \Exception("Mahasiswa tidak memiliki kelas aktif.");
+                                    }
+
+                                    // Panggil service menggunakan ID dari MahasiswaKelas, bukan ID Mahasiswa
+                                    $service->pindahKelas(
+                                        $kelasAktif->id,
+                                        $data['kelas_tujuan_id'],
+                                        $data['tanggal_pindah']
+                                    );
+                                    $sukses++;
+                                } catch (\Exception $e) {
+                                    $gagal++;
+                                    $errors[] = "NIM {$mahasiswa->nim}: {$e->getMessage()}";
+                                    \Illuminate\Support\Facades\Log::error("Bulk Pindah Kelas Error [{$mahasiswa->nim}]: " . $e->getMessage());
+                                }
                             }
 
+                            $title = $gagal === 0 ? 'Berhasil' : 'Selesai dengan Catatan';
+                            $status = $gagal === 0 ? 'success' : 'warning';
+
                             \Filament\Notifications\Notification::make()
-                                ->title('Berhasil Dipindahkan')
-                                ->success()
+                                ->title($title)
+                                ->body("Sukses: $sukses, Gagal: $gagal. " . ($gagal > 0 ? "Error: " . implode(', ', array_slice($errors, 0, 5)) . (count($errors) > 5 ? '...' : '') : ""))
+                                ->status($status)
                                 ->send();
                         }),
                     DeleteBulkAction::make(),

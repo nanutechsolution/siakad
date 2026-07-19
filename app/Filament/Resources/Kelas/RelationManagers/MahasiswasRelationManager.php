@@ -4,126 +4,112 @@ namespace App\Filament\Resources\Kelas\RelationManagers;
 
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaKelas;
+use App\Services\MahasiswaPlottingService;
+use App\Services\MahasiswaMutasiService;
 use Filament\Actions\Action;
-use Filament\Actions\AttachAction;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\CreateAction;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DetachAction;
-use Filament\Actions\DetachBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Schema;
+use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Carbon\Carbon;
+use Filament\Actions\DeleteAction as ActionsDeleteAction;
+use Illuminate\Support\Facades\Log;
 
 class MahasiswasRelationManager extends RelationManager
 {
-    protected static string $relationship = 'mahasiswas';
+    protected static string $relationship = 'mahasiswaKelas';
     protected static ?string $title = 'Anggota Kelas';
-    protected static ?string $modelLabel = 'Mahasiswa';
-    public function form(Schema $schema): Schema
-    {
-        return $schema
-            ->components([
-                Select::make('mahasiswa_id')
-                    ->label('Pilih Mahasiswa Aktif')
-                    ->options(
-                        \App\Services\MahasiswaAkademikService::getMahasiswaAktifQuery()
-                            ->with('person') // Eager load relasi person agar tidak terjadi N+1
-                            ->get()
-                            ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])
-                    )
-                    ->searchable()
-                    ->getSearchResultsUsing(
-                        fn(string $search) =>
-                        \App\Services\MahasiswaAkademikService::getMahasiswaAktifQuery()
-                            ->whereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
-                            ->orWhere('nim', 'like', "%{$search}%")
-                            ->limit(50)
-                            ->with('person')
-                            ->get()
-                            ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])
-                    )
-                    ->required(),
-
-                DatePicker::make('tanggal_masuk')
-                    ->label('Tanggal Masuk Kelas')
-                    ->default(now())
-                    ->required(),
-            ]);
-    }
 
     public function table(Table $table): Table
     {
         return $table
-            ->recordTitleAttribute('nim')
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['mahasiswa.person']))
             ->columns([
-                TextColumn::make('nim')->label('NIM')->sortable(),
-                TextColumn::make('person.nama_lengkap')->label('Nama Mahasiswa')->searchable(),
-                TextColumn::make('pivot.tanggal_masuk')->label('Masuk Kelas')->date(),
-            ])
-            ->filters([
-                //
+                TextColumn::make('mahasiswa.nim')->label('NIM')->searchable()->sortable(),
+                TextColumn::make('mahasiswa.person.nama_lengkap')->label('Nama')->searchable()->wrap(),
+                TextColumn::make('tanggal_masuk')->date('d M Y'),
+                TextColumn::make('tanggal_keluar')->date('d M Y')->placeholder('Aktif'),
+                TextColumn::make('status')
+                    ->badge()
+                    ->state(fn(MahasiswaKelas $record) => $record->tanggal_keluar === null ? 'AKTIF' : 'NONAKTIF')
+                    ->color(fn($state) => $state === 'AKTIF' ? 'success' : 'gray'),
             ])
             ->headerActions([
                 Action::make('plot_mahasiswa')
                     ->label('Plotting Mahasiswa')
-                    ->icon('heroicon-o-plus')
-                    ->color('primary')
+                    ->icon('heroicon-o-user-plus')
+                    ->modalWidth('xl')
                     ->schema([
-                        Select::make('mahasiswa_id')
-                            ->label('Pilih Mahasiswa')
-                            ->options(
-                                Mahasiswa::query()
-                                    ->join('ref_person', 'mahasiswas.person_id', '=', 'ref_person.id')
-                                    ->limit(50)
-                                    ->get()
-                                    ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])
-                            )
+                        Select::make('mahasiswa_ids')
+                            ->multiple()
                             ->searchable()
-                            ->getSearchResultsUsing(
-                                fn(string $search) =>
-                                Mahasiswa::query()
-                                    ->join('ref_person', 'mahasiswas.person_id', '=', 'ref_person.id')
-                                    ->where('nim', 'like', "%{$search}%")
-                                    ->orWhere('nama_lengkap', 'like', "%{$search}%")
-                                    ->limit(50)
-                                    ->get()
-                                    ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])
-                            )
-                            ->required(),
-                        DatePicker::make('tanggal_masuk')
-                            ->default(now())
-                            ->required(),
+                            ->required()
+                            ->getSearchResultsUsing(function (string $search) {
+                                $kelas = $this->getOwnerRecord();
+                                return Mahasiswa::query()
+                                    ->where('angkatan_id', $kelas->angkatan_id) // Filter Angkatan
+                                    ->whereDoesntHave('mahasiswaKelas', fn($q) => $q->whereNull('tanggal_keluar'))
+                                    ->where(fn($q) => $q->whereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%"))
+                                        ->orWhere('nim', 'like', "%{$search}%"))
+                                    ->limit(30)
+                                    ->pluck('nim', 'id')
+                                    ->map(fn($nim, $id) => $nim . ' - ' . Mahasiswa::find($id)->person->nama_lengkap);
+                            })
+                            ->getOptionLabelsUsing(fn(array $values): array =>
+                            Mahasiswa::whereIn('id', $values)->with('person')->get()
+                                ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])->toArray()),
+                        DatePicker::make('tanggal_masuk')->default(now())->required(),
                     ])
-                    ->action(function (array $data, $livewire): void {
-                        // Gunakan ownerRecord untuk mendapatkan ID Kelas yang sedang dibuka
-                        Mahasiswa::query()
-                            ->join('ref_person', 'mahasiswas.person_id', '=', 'ref_person.id')
-                            ->select('mahasiswas.id', 'mahasiswas.nim', 'ref_person.nama_lengkap') // Pastikan pilih id mahasiswa
-                            ->limit(50)
-                            ->get()
-                            ->mapWithKeys(fn($m) => [(int) $m->id => "{$m->nim} - {$m->nama_lengkap}"]);
-
-                        \Filament\Notifications\Notification::make()
-                            ->title('Mahasiswa Berhasil Diplot')
-                            ->success()
+                    ->action(function (array $data, MahasiswaPlottingService $service) {
+                        $sukses = 0;
+                        $gagal = 0;
+                        $errorLog = [];
+                        foreach ($data['mahasiswa_ids'] as $id) {
+                            try {
+                                $service->plot($id, $this->getOwnerRecord()->id, $data['tanggal_masuk']);
+                                $sukses++;
+                            } catch (\Exception $e) {
+                                $gagal++;
+                                Log::error("Plotting Error: " . $e->getMessage());
+                                $errorLog[] = $e->getMessage();
+                            }
+                        }
+                        Notification::make()
+                            ->title($gagal == 0 ? 'Berhasil' : 'Selesai dengan Catatan')
+                            ->body("Sukses: $sukses, Gagal: $gagal. " . ($gagal > 0 ? "Pesan error: " . implode(', ', array_unique($errorLog)) : ""))
+                            ->status($gagal == 0 ? 'success' : 'warning')
                             ->send();
                     }),
             ])
             ->recordActions([
-                EditAction::make(),
-                DetachAction::make()->label("Hapus Dari Kelas Ini"),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DetachBulkAction::make(),
-                ]),
+                Action::make('mutasi')
+                    ->icon('heroicon-o-arrows-right-left')->color('warning')
+                    ->visible(fn($record) => $record->tanggal_keluar === null)
+                    ->form([
+                        Select::make('target_kelas_id')
+                            ->options(fn() => \App\Models\Kelas::query()
+                                ->where('id', '!=', $this->getOwnerRecord()->id)
+                                ->where('prodi_id', $this->getOwnerRecord()->prodi_id)
+                                ->where('angkatan_id', $this->getOwnerRecord()->angkatan_id)
+                                ->pluck('nama_kelas', 'id'))
+                            ->required(),
+                        DatePicker::make('tanggal_mutasi')->default(now())->required(),
+                    ])
+                    ->action(fn($record, array $data, MahasiswaMutasiService $srv) =>
+                    $srv->mutasi($record, $data['target_kelas_id'], $data['tanggal_mutasi'])),
+
+                ActionsDeleteAction::make('hapus_plotting')
+                    ->before(function ($record, MahasiswaPlottingService $srv, $action) {
+                        if (!$srv->canDelete($record)) {
+                            Notification::make()->danger()->title('Gagal Hapus')->body('Data memiliki histori akademik!')->send();
+                            $action->cancel(); // Stop proses delete
+                        }
+                    })
             ]);
     }
 }

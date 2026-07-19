@@ -29,7 +29,7 @@ class MonitoringKrs extends Page
     use HasPageShield;
 
     protected string $view = 'filament.pages.monitoring-krs';
-    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AKADEMIK->value;
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::MONITORING->value;
     protected static ?string $navigationLabel = 'Monitoring KRS';
     protected static ?string $title = 'Monitoring KRS';
     protected static ?int $navigationSort = 10;

@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
 use App\Exports\LaporanKeuanganExport;
+use App\Filament\Clusters\Laporan\LaporanCluster;
+use App\Filament\Clusters\Laporan\LaporanKeuanganCluster;
 use App\Filament\Widgets\LaporanKeuanganStatsWidget;
 use App\Services\LaporanKeuanganService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -34,12 +36,11 @@ class LaporanKeuangan extends Page implements HasSchemas, HasTable
     use InteractsWithSchemas;
     use InteractsWithFormActions;
     use InteractsWithTable;
+    protected static ?string $cluster = LaporanKeuanganCluster::class;
     protected string $view = 'filament.pages.laporan-keuangan';
-    protected static ?string $navigationLabel = 'Laporan Keuangan';
-    protected static ?string $title = 'Laporan Rekapitulasi Keuangan';
+    protected static ?string $navigationLabel = 'Keuangan';
+    protected static ?string $title = 'Rekapitulasi Keuangan';
     protected static ?int $navigationSort = 10;
-    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
-
     public ?array $filterData = [];
 
     public function mount(): void

@@ -3,31 +3,31 @@
 namespace App\Services;
 
 use App\Models\MahasiswaKelas;
+use App\Models\Kelas;
 use Illuminate\Support\Facades\DB;
 
 class ManajemenKelasService
 {
-    public function pindahKelas(string $mahasiswaId, int $kelasTujuanId, string $tanggal): bool
+    protected $plottingService;
+
+    // 1. Tambahkan constructor untuk Dependency Injection
+    public function __construct(MahasiswaPlottingService $plottingService)
     {
-        return DB::transaction(function () use ($mahasiswaId, $kelasTujuanId, $tanggal) {
-            // 1. Cari kelas aktif saat ini
-            $kelasLama = MahasiswaKelas::where('mahasiswa_id', $mahasiswaId)
-                ->whereNull('tanggal_keluar')
-                ->first();
+        $this->plottingService = $plottingService;
+    }
 
-            // 2. Tutup kelas lama (Auto-Exit)
-            if ($kelasLama) {
-                $kelasLama->update(['tanggal_keluar' => $tanggal]);
-            }
+    public function pindahKelas($mahasiswaKelasId, $tujuanId, $tanggal)
+    {
+        return DB::transaction(function () use ($mahasiswaKelasId, $tujuanId, $tanggal) {
+            $record = MahasiswaKelas::where('id', $mahasiswaKelasId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-            // 3. Masukkan ke kelas baru
-            MahasiswaKelas::create([
-                'mahasiswa_id' => $mahasiswaId,
-                'kelas_id'     => $kelasTujuanId,
-                'tanggal_masuk' => $tanggal,
-            ]);
+            // 2. Akses method melalui property $this->plottingService
+            $this->plottingService->keluarDariKelas($record, $tanggal);
 
-            return true;
+            // 3. Akses method plot melalui property $this->plottingService
+            $this->plottingService->plot($record->mahasiswa_id, $tujuanId, $tanggal);
         });
     }
 }

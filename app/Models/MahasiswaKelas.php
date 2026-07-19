@@ -15,7 +15,28 @@ class MahasiswaKelas extends Model
         'tanggal_masuk',
         'tanggal_keluar',
     ];
+    protected $with = [
+        'mahasiswa.person',
+    ];
+    public function getStatusAttribute(): string
+    {
+        return $this->tanggal_keluar
+            ? 'NONAKTIF'
+            : 'AKTIF';
+    }
+    public function getNamaMahasiswaAttribute(): string
+    {
+        return "{$this->mahasiswa->nim} - {$this->mahasiswa->person->nama_lengkap}";
+    }
+    public function getNimAttribute(): ?string
+    {
+        return $this->mahasiswa?->nim;
+    }
 
+    public function scopeNonAktif($query)
+    {
+        return $query->whereNotNull('tanggal_keluar');
+    }
     protected $casts = [
         'tanggal_masuk' => 'date',
         'tanggal_keluar' => 'date',
@@ -31,7 +52,7 @@ class MahasiswaKelas extends Model
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id', 'id');
     }
 
-     public function scopeAktif($query)
+    public function scopeAktif($query)
     {
         return $query->whereNull('tanggal_keluar');
     }

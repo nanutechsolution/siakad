@@ -14,12 +14,16 @@ use App\Models\KeuanganSaldoTransaction;
 use App\Models\Mahasiswa;
 use App\Models\PembayaranMahasiswa;
 use App\Models\PerkuliahanSesi;
+use App\Models\RefTahunAkademik;
+use App\Models\RiwayatStatusMahasiswa;
 use App\Models\TagihanMahasiswa;
 use App\Models\TagihanNonReguler;
 use App\Models\TrxDosen;
 use App\Models\TrxPersonJabatan;
 use App\Models\User;
 use App\Observers\PerkuliahanSesiObserver;
+use App\Observers\RiwayatStatusMahasiswaObserver;
+use App\Observers\TahunAkademikObserver;
 use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Policies\DosenJadwalKuliahPolicy;
@@ -46,18 +50,14 @@ class AppServiceProvider extends ServiceProvider
             'nilaiKelasDosen',
             [DosenJadwalKuliahPolicy::class, 'nilaiKelas']
         );
-
         Gate::define(
             'publishNilaiDosen',
             [DosenJadwalKuliahPolicy::class, 'publishNilai']
         );
-
-
         Gate::define(
             'inputNilaiDosen',
             [DosenNilaiPolicy::class, 'inputNilai']
         );
-
 
         Gate::define(
             'revisiNilaiDosen',
@@ -68,7 +68,8 @@ class AppServiceProvider extends ServiceProvider
         KelasDosenWali::observe(KelasDosenWaliObserver::class);
         Mahasiswa::observe(MahasiswaObserver::class);
         PerkuliahanSesi::observe(PerkuliahanSesiObserver::class);
-        \App\Models\RefTahunAkademik::observe(\App\Observers\TahunAkademikObserver::class);
+        RefTahunAkademik::observe(TahunAkademikObserver::class);
+        RiwayatStatusMahasiswa::observe(RiwayatStatusMahasiswaObserver::class);
         Relation::enforceMorphMap([
             'user'                  => User::class,
             'tagihan_mahasiswa'     => TagihanMahasiswa::class,

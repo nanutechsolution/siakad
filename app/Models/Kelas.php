@@ -69,8 +69,8 @@ class Kelas extends Model implements HasScopeStrategy
     {
         return match ($strategy) {
             ScopeStrategy::OWNERSHIP_MAHASISWA => $query->where('person_id', $user->person_id),
-            ScopeStrategy::DOSEN_WALI => $query->whereHas('kelas.dosenWali', function (Builder $q) use ($user) {
-                $q->whereHas('dosen', fn(Builder $d) => $d->where('person_id', $user->person_id));
+            ScopeStrategy::DOSEN_WALI => $query->whereHas('dosenWali', function (Builder $q) use ($user) {
+                $q->where('person_id', $user->person_id);
             }),
             default => throw new \LogicException("Mahasiswa tidak mendukung strategy {$strategy->value}"),
         };
@@ -115,29 +115,71 @@ class Kelas extends Model implements HasScopeStrategy
     {
         return $this->hasMany(MahasiswaKelas::class, 'kelas_id', 'id');
     }
+    public function jumlahMahasiswaAktif(): int
+    {
+        return $this->mahasiswaAktif()->count();
+    }
 
-    public function mahasiswas(): BelongsToMany
+    // public function mahasiswas(): BelongsToMany
+    // {
+    //     return $this->belongsToMany(Mahasiswa::class, 'mahasiswa_kelas', 'kelas_id', 'mahasiswa_id')
+    //         ->withPivot('id', 'tanggal_masuk', 'tanggal_keluar')
+    //         ->withTimestamps();
+    // }
+    // public function dosens(): BelongsToMany
+    // {
+    //     return $this->belongsToMany(TrxDosen::class, 'kelas_dosen_wali', 'kelas_id', 'dosen_id')
+    //         ->withPivot('id', 'is_primary')
+    //         ->withTimestamps();
+    // }
+    public function dosenWali(): BelongsToMany
     {
-        return $this->belongsToMany(Mahasiswa::class, 'mahasiswa_kelas', 'kelas_id', 'mahasiswa_id')
-            ->withPivot('id', 'tanggal_masuk', 'tanggal_keluar')
-            ->withTimestamps();
-    }
-    public function dosens(): BelongsToMany
-    {
-        return $this->belongsToMany(TrxDosen::class, 'kelas_dosen_wali', 'kelas_id', 'dosen_id')
+        return $this->belongsToMany(
+            TrxDosen::class,
+            'kelas_dosen_wali',
+            'kelas_id',
+            'dosen_id'
+        )
             ->withPivot('id', 'is_primary')
-            ->withTimestamps();
-    }
-    public function dosenWali(): \Illuminate\Database\Eloquent\Relations\BelongsToMany
-    {
-        return $this->belongsToMany(\App\Models\TrxDosen::class, 'kelas_dosen_wali', 'kelas_id', 'dosen_id')
-            ->withPivot('is_primary')
             ->withTimestamps();
     }
 
     public function dosenWaliUtama(): HasOne
     {
-        return $this->hasOne(\App\Models\KelasDosenWali::class, 'kelas_id')
+        return $this->hasOne(KelasDosenWali::class, 'kelas_id')
             ->where('is_primary', true);
+    }
+
+    public function getPrimaryDosenWali(): ?TrxDosen
+    {
+        return $this->dosenWaliUtama?->dosen;
+    }
+
+    /**
+     * Helper Scope: Mengambil entitas mahasiswa_kelas yang masih aktif di kelas ini saja.
+     */
+    public function mahasiswaKelasAktif(): HasMany
+    {
+        return $this->mahasiswaKelas()->whereNull('tanggal_keluar');
+    }
+    public function mahasiswaAktif(): BelongsToMany
+    {
+        return $this->belongsToMany(
+            Mahasiswa::class,
+            'mahasiswa_kelas',
+            'kelas_id',
+            'mahasiswa_id'
+        )
+            ->wherePivotNull('tanggal_keluar')
+            ->withPivot([
+                'id',
+                'tanggal_masuk',
+                'tanggal_keluar',
+            ]);
+    }
+
+    public function krs(): HasMany
+    {
+        return $this->hasMany(Krs::class, 'kelas_id');
     }
 }

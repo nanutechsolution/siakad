@@ -16,10 +16,20 @@ class KelasForm
 {
     public static function configure(Schema $schema): Schema
     {
+        // Buat closure untuk mengecek apakah kelas sudah punya mahasiswa
+        $hasStudents = function (?Kelas $record) {
+            if (!$record) return false;
+            
+            return DB::table('mahasiswa_kelas')
+                ->where('kelas_id', $record->id)
+                ->whereNull('tanggal_keluar') // Pastikan cek yang aktif saja
+                ->exists();
+        };
+
         return $schema
             ->components([
                 Section::make('Informasi Master Kelas')
-                    ->description('Pastikan kombinasi nama, prodi, program, dan angkatan belum pernah terdaftar.')
+                    ->description('Pastikan kombinasi nama, prodi, program, dan angkatan belum pernah terdaftar. Beberapa data akan dikunci jika kelas sudah terisi mahasiswa.')
                     ->schema([
                         TextInput::make('nama_kelas')
                             ->label('Nama Kelas')
@@ -43,21 +53,27 @@ class KelasForm
                             ->required()
                             ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->disabled($hasStudents)
+                            ->dehydrated(), // Penting: agar nilai tetap dikirim saat form disimpan meski di-disable
 
                         Select::make('program_id')
                             ->label('Program Kelas')
                             ->required()
                             ->options(DB::table('ref_program')->where('is_active', 1)->pluck('nama_program', 'id'))
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->disabled($hasStudents)
+                            ->dehydrated(),
 
                         Select::make('angkatan_id')
                             ->label('Angkatan')
                             ->required()
                             ->options(DB::table('ref_angkatan')->orderBy('id_tahun', 'desc')->pluck('id_tahun', 'id_tahun'))
                             ->searchable()
-                            ->preload(),
+                            ->preload()
+                            ->disabled($hasStudents)
+                            ->dehydrated(),
 
                         TextInput::make('kapasitas')
                             ->label('Kapasitas Kelas (Mahasiswa)')

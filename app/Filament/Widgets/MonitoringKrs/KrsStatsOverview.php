@@ -30,7 +30,6 @@ class KrsStatsOverview extends BaseWidget
         }
 
         $data = $this->computeStats((int) $taId);
-
         $persen = $data['wajib_krs'] > 0
             ? round($data['sudah_mengisi'] / $data['wajib_krs'] * 100, 1)
             : 0.0;
@@ -70,16 +69,22 @@ class KrsStatsOverview extends BaseWidget
     {
         $user = auth()->user();
         $ttl = now()->addMinutes((int) config('monitoring-krs.cache_ttl_minutes', 3));
-        $cacheKey = "monitoring-krs:stats:{$user->id}:{$taId}:" . md5(json_encode($this->pageFilters));
-
+        $version = Cache::get('monitoring-krs:version', 1);
+        $cacheKey = sprintf(
+            'monitoring-krs:stats:v%s:%s:%s:%s',
+            $version,
+            $user->id,
+            $taId,
+            md5(json_encode($this->pageFilters))
+        );
         return Cache::remember($cacheKey, $ttl, function () use ($taId) {
             // scopedMahasiswaQuery() sudah menerapkan visibleTo($user) + filter
             // prodi_id/fakultas_id pilihan user -- baseline, bukan opsional.
             $baseMahasiswa = $this->scopedMahasiswaQuery()
-                ->whereHas('riwayatStatus', fn ($q) => $q
+                ->whereHas('riwayatStatus', fn($q) => $q
                     ->where('tahun_akademik_id', $taId)
                     ->where('status_kuliah', StatusKuliah::AKTIF->value))
-                ->when($this->pageFilters['angkatan_id'] ?? null, fn ($q, $v) => $q->where('angkatan_id', $v));
+                ->when($this->pageFilters['angkatan_id'] ?? null, fn($q, $v) => $q->where('angkatan_id', $v));
 
             $mahasiswaAktif = (clone $baseMahasiswa)->count();
             $wajibKrs = $mahasiswaAktif; // asumsi: semua mahasiswa Aktif wajib isi KRS

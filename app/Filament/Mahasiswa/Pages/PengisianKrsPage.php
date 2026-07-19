@@ -313,12 +313,19 @@ class PengisianKrsPage extends Page implements HasForms
         DB::beginTransaction();
         try {
             $krsId = Str::uuid()->toString();
+            $kelas = \App\Models\Kelas::with('dosenWaliUtama')
+                ->findOrFail($this->activeKelasId);
 
+            $dosenWaliId = $kelas->dosenWaliUtama?->dosen_id;
+            $isPaket = ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
             // 1. Insert Header KRS (Tabel KRS menggunakan UUID di kolom id)
             DB::table('krs')->insert([
                 'id'                => $krsId,
                 'mahasiswa_id'      => $this->mahasiswa->id,
                 'tahun_akademik_id' => $this->activeTa->id,
+                'kelas_id'           => $this->activeKelasId,
+                'dosen_wali_id'      => $dosenWaliId,
+                'is_paket_snapshot'  => $isPaket,
                 'diajukan_at'       => now(),
                 'status_krs'        => 'DIAJUKAN',
                 'total_sks_diambil' => $totalSksDiambil,
@@ -335,13 +342,33 @@ class PengisianKrsPage extends Page implements HasForms
                 $statusAmbil = in_array($jId, $jadwalMengulang, true) ? 'U' : 'B';
 
                 $detailInserts[] = [
-                    'krs_id'           => $krsId,
-                    'jadwal_kuliah_id' => $jId,
-                    'mata_kuliah_id'   => $jadwal->mata_kuliah_id,
-                    'sks_snapshot'     => $jadwal->mataKuliah->sks_default,
-                    'status_ambil'     => $statusAmbil,
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
+                    'krs_id'                => $krsId,
+                    'jadwal_kuliah_id'      => $jId,
+
+                    // reference master saat transaksi
+                    'mata_kuliah_id'        => $jadwal->mata_kuliah_id,
+
+                    // snapshot untuk histori
+                    'kode_mk_snapshot'      => $jadwal->mataKuliah->kode_mk,
+                    'nama_mk_snapshot'      => $jadwal->mataKuliah->nama_mk,
+                    'sks_snapshot'          => $jadwal->mataKuliah->sks_default,
+
+                    // tipe aktivitas
+                    'activity_type_snapshot' => $jadwal->activity_type ?? 'REGULAR',
+
+                    'status_ambil'          => $statusAmbil,
+
+                    // nilai awal
+                    'nilai_angka'           => 0,
+                    'nilai_huruf'           => null,
+                    'nilai_indeks'          => 0,
+
+                    // kontrol akademik
+                    'is_published'          => false,
+                    'is_locked'             => false,
+
+                    'created_at'            => now(),
+                    'updated_at'            => now(),
                 ];
             }
             DB::table('krs_detail')->insert($detailInserts);

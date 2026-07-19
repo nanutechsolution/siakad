@@ -84,8 +84,6 @@
     ],
     ])
 
-   
-
     <div class="summary-box">
         <div class="summary-item">
             <span>Total Tagihan</span>

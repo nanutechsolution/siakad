@@ -29,7 +29,7 @@ final class PermissionResolver
     public function canManageAkademik(User $user): bool
     {
         return $this->hasAnyRole($user, [
-            'Super Admin',
+            'super_admin',
             'BAAK',
             'Admin Akademik',
             'Admin Fakultas',
@@ -40,36 +40,36 @@ final class PermissionResolver
 
     public function canManageKurikulum(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'BAAK', 'Admin Akademik', 'Kaprodi']);
+        return $this->hasAnyRole($user, ['super_admin', 'BAAK', 'Admin Akademik', 'Kaprodi']);
     }
 
     public function canManageNilai(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'BAAK', 'Admin Akademik', 'Kaprodi', 'Dosen']);
+        return $this->hasAnyRole($user, ['super_admin', 'BAAK', 'Admin Akademik', 'Kaprodi', 'Dosen']);
     }
 
     public function canManageKeuangan(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'Admin Keuangan', 'Kasir', 'Verifikator Pembayaran']);
+        return $this->hasAnyRole($user, ['super_admin', 'Admin Keuangan', 'Kasir', 'Verifikator Pembayaran']);
     }
 
     public function canManagePMB(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'Admin PMB']);
+        return $this->hasAnyRole($user, ['super_admin', 'Admin PMB']);
     }
 
     public function canManageSDM(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'Admin SDM']);
+        return $this->hasAnyRole($user, ['super_admin', 'Admin SDM']);
     }
 
     public function canManageLPM(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'Admin LPM']);
+        return $this->hasAnyRole($user, ['super_admin', 'Admin LPM']);
     }
 
     public function canManageLPPM(User $user): bool
     {
-        return $this->hasAnyRole($user, ['Super Admin', 'Admin LPPM']);
+        return $this->hasAnyRole($user, ['super_admin', 'Admin LPPM']);
     }
 }

@@ -4,13 +4,18 @@ namespace App\Filament\Resources\Kelas\Tables;
 
 use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Kelas;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
+use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
+use Filament\Actions\DeleteBulkAction as ActionsDeleteBulkAction;
+use Filament\Actions\EditAction as ActionsEditAction;
+use Filament\Notifications\Notification;
+use Filament\Tables\Actions\BulkActionGroup;
+use Filament\Tables\Actions\DeleteBulkAction;
+use Filament\Tables\Actions\EditAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\Indicator;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class KelasTable
@@ -18,6 +23,8 @@ class KelasTable
     public static function configure(Table $table): Table
     {
         return $table
+            // PERBAIKAN: Eager load relasi prodi dan program untuk menghabisi N+1 query pada list table
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['prodi', 'program']))
             ->columns([
                 TextColumn::make('nama_kelas')
                     ->label('Nama Kelas')
@@ -45,20 +52,14 @@ class KelasTable
                     ->numeric()
                     ->alignCenter(),
 
-                TextColumn::make('mahasiswas_count')
+                TextColumn::make('mahasiswa_kelas_aktif_count')
                     ->label('Isi Kelas')
-                    ->counts('mahasiswas')
+                    ->counts('mahasiswaKelasAktif')
                     ->badge()
-                    ->color(fn(int $state, Kelas $record): string => $state >= $record->kapasitas ? 'danger' : 'success')
+                    ->color(function (int $state, Kelas $record): string {
+                        return $state >= $record->kapasitas ? 'danger' : 'success';
+                    })
                     ->alignCenter(),
-                // Indicator::make('kapasitas_progress')
-                //     ->label('Kapasitas')
-                //     ->state(fn(Kelas $record): float => ($record->mahasiswas_count / $record->kapasitas) * 100)
-                //     ->color(fn(int $state): string => match (true) {
-                //         $state >= 100 => 'danger',
-                //         $state >= 80 => 'warning',
-                //         default => 'success',
-                //     }),
             ])
             ->filters([
                 SelectFilter::make('prodi_id')
@@ -67,14 +68,54 @@ class KelasTable
 
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
-                    ->options(DB::table('ref_angkatan')->pluck('id_tahun', 'id_tahun')),
+                    ->options(fn() => DB::table('ref_angkatan')->pluck('id_tahun', 'id_tahun')->toArray()),
             ])
             ->recordActions([
-                EditAction::make(),
+                ActionsEditAction::make(),
             ])
             ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                ActionsBulkActionGroup::make([
+                    ActionsDeleteBulkAction::make()
+                        // KUNCI: Matikan notifikasi sukses bawaan Filament agar tidak bentrok
+                        ->successNotification(null)
+                        ->action(function (Collection $records) {
+                            $gagalHapus = 0;
+                            $berhasilHapus = 0;
+
+                            foreach ($records as $record) {
+                                // Cek apakah kelas ini masih memiliki mahasiswa aktif ATAU dosen wali terikat
+                                // Pastikan di model Kelas Anda sudah ada relasi 'dosenWali' atau sesuaikan namanya
+                                $hasMahasiswaAktif = $record->mahasiswaKelasAktif()->exists();
+                                $hasDosenWali = method_exists($record, 'dosenWali') ? $record->dosenWali()->exists() : false;
+
+                                if ($hasMahasiswaAktif || $hasDosenWali) {
+                                    $gagalHapus++;
+                                    continue; // Lewati data ini, jangan di-delete
+                                }
+
+                                $record->delete();
+                                $berhasilHapus++;
+                            }
+
+                            // Kondisi 1: Jika ada yang gagal dihapus
+                            if ($gagalHapus > 0) {
+                                Notification::make()
+                                    ->title('Beberapa kelas gagal dihapus')
+                                    ->body("Ada {$gagalHapus} kelas yang tidak bisa dihapus karena masih memiliki mahasiswa aktif atau dosen wali terikat.")
+                                    ->warning()
+                                    ->persistent()
+                                    ->send();
+                            }
+
+                            // Kondisi 2: Hanya muncul jika memang ada record yang benar-benar terhapus
+                            if ($berhasilHapus > 0 && $gagalHapus === 0) {
+                                Notification::make()
+                                    ->title('Berhasil')
+                                    ->body("Sebanyak {$berhasilHapus} kelas berhasil dihapus.")
+                                    ->success()
+                                    ->send();
+                            }
+                        }),
                 ]),
             ]);
     }

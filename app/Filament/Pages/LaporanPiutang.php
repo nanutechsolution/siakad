@@ -4,6 +4,8 @@ namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
 use App\Exports\LaporanPiutangExport;
+use App\Filament\Clusters\Laporan\LaporanCluster;
+use App\Filament\Clusters\Laporan\LaporanKeuanganCluster;
 use App\Services\LaporanPiutangService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -23,7 +25,6 @@ use Filament\Tables\Table;
 use Illuminate\Contracts\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Maatwebsite\Excel\Facades\Excel;
-use UnitEnum;
 
 class LaporanPiutang extends Page implements HasSchemas, HasTable
 {
@@ -31,14 +32,11 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
     use InteractsWithSchemas;
     use InteractsWithFormActions;
     use InteractsWithTable;
-
+    protected static ?string $cluster = LaporanKeuanganCluster::class;
     protected string $view = 'filament.pages.laporan-piutang';
-    protected static ?string $navigationLabel = 'Laporan Piutang';
-    protected static ?string $title = 'Laporan Piutang Mahasiswa';
+    protected static ?string $navigationLabel = 'Piutang';
+    protected static ?string $title = 'Piutang Mahasiswa';
     protected static ?int $navigationSort = 11;
-
-    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::KEUANGAN->value;
-
     public ?array $filterData = [];
 
     public function mount(): void
@@ -114,7 +112,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
     public function table(Table $table): Table
     {
         return $table
-            ->records(fn (int $page, int $recordsPerPage): LengthAwarePaginator => app(LaporanPiutangService::class)
+            ->records(fn(int $page, int $recordsPerPage): LengthAwarePaginator => app(LaporanPiutangService::class)
                 ->getPiutang($this->filterData, $this->getTableSearch(), $page, $recordsPerPage))
             ->columns([
                 TextColumn::make('nim')
@@ -127,18 +125,18 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
 
                 TextColumn::make('nama_prodi')
                     ->label('Prodi & Angkatan')
-                    ->formatStateUsing(fn (string $state, array $record) => "{$state} ({$record['angkatan']})"),
+                    ->formatStateUsing(fn(string $state, array $record) => "{$state} ({$record['angkatan']})"),
 
                 TextColumn::make('jenis_tagihan')
                     ->label('Jenis')
                     ->badge()
-                    ->formatStateUsing(fn (string $state) => $state === 'SEMESTER' ? 'Semester' : 'Non Reguler')
-                    ->color(fn (string $state) => $state === 'SEMESTER' ? 'info' : 'warning'),
+                    ->formatStateUsing(fn(string $state) => $state === 'SEMESTER' ? 'Semester' : 'Non Reguler')
+                    ->color(fn(string $state) => $state === 'SEMESTER' ? 'info' : 'warning'),
 
                 TextColumn::make('deskripsi')
                     ->label('Keterangan')
                     ->limit(20)
-                    ->tooltip(fn (?string $state) => $state)
+                    ->tooltip(fn(?string $state) => $state)
                     ->wrap(),
 
                 TextColumn::make('total_tagihan')
@@ -164,7 +162,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
                         if (is_null($state)) return 'Tidak ada tenggat';
                         return $state > 0 ? "{$state} Hari" : 'Belum Jatuh Tempo';
                     })
-                    ->color(fn ($state) => $state > 0 ? 'danger' : 'success')
+                    ->color(fn($state) => $state > 0 ? 'danger' : 'success')
                     ->alignCenter(),
             ])
             ->headerActions([
@@ -209,7 +207,7 @@ class LaporanPiutang extends Page implements HasSchemas, HasTable
         ])->setPaper('a4', 'landscape');
 
         return response()->streamDownload(
-            fn () => print($pdf->output()),
+            fn() => print($pdf->output()),
             'Laporan_Piutang_UNMARIS_' . now()->format('Ymd_His') . '.pdf'
         );
     }

@@ -165,7 +165,22 @@ class Mahasiswa extends Model implements HasScopeStrategy
             ->withPivot('id', 'tanggal_masuk', 'tanggal_keluar')
             ->withTimestamps();
     }
+    /**
+     * Relasi ke tabel histori mahasiswa_kelas.
+     * Seorang mahasiswa bisa memiliki banyak riwayat kelas sepanjang masa studinya.
+     */
+    public function mahasiswaKelas(): HasMany
+    {
+        return $this->hasMany(MahasiswaKelas::class, 'mahasiswa_id', 'id');
+    }
 
+    /**
+     * Helper scope untuk mengambil kelas yang saat ini sedang aktif saja.
+     */
+    public function kelasAktif()
+    {
+        return $this->mahasiswaKelas()->whereNull('tanggal_keluar');
+    }
     /**
      * Status risiko akademik sederhana berdasar IPK terakhir & tren IPS.
      * Sesuaikan ambang batas (2.00) dengan aturan akademik kampusmu.
