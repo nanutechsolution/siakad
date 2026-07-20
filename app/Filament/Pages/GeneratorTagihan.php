@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Resources\GeneratorBatches\GeneratorBatchResource;
 use App\Models\Mahasiswa;
 use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
@@ -68,32 +69,32 @@ class GeneratorTagihan extends Page implements HasSchemas
                             ])
                             ->default('kolektif')
                             ->live()
-                            ->afterStateUpdated(fn () => $this->previewResult = null),
+                            ->afterStateUpdated(fn() => $this->previewResult = null),
 
                         Select::make('tahun_akademik_id')
                             ->label('Tahun Akademik')
                             ->options(RefTahunAkademik::query()->pluck('nama_tahun', 'id'))
-                            ->default(fn () => RefTahunAkademik::where('is_active', true)->value('id'))
+                            ->default(fn() => RefTahunAkademik::where('is_active', true)->value('id'))
                             ->searchable()
                             ->live()
                             ->required()
-                            ->afterStateUpdated(fn () => $this->previewResult = null),
+                            ->afterStateUpdated(fn() => $this->previewResult = null),
 
                         Select::make('prodi_id')
                             ->label('Program Studi')
                             ->options(RefProdi::query()->pluck('nama_prodi', 'id'))
                             ->searchable()
-                            ->visible(fn (Get $get) => $get('tipe_target') === 'kolektif')
+                            ->visible(fn(Get $get) => $get('tipe_target') === 'kolektif')
                             ->live()
-                            ->afterStateUpdated(fn () => $this->previewResult = null),
+                            ->afterStateUpdated(fn() => $this->previewResult = null),
 
                         Select::make('angkatan_id')
                             ->label('Angkatan')
                             ->options(Mahasiswa::select('angkatan_id')->distinct()->pluck('angkatan_id', 'angkatan_id'))
                             ->searchable()
-                            ->visible(fn (Get $get) => $get('tipe_target') === 'kolektif')
+                            ->visible(fn(Get $get) => $get('tipe_target') === 'kolektif')
                             ->live()
-                            ->afterStateUpdated(fn () => $this->previewResult = null),
+                            ->afterStateUpdated(fn() => $this->previewResult = null),
 
                         Select::make('mahasiswa_id')
                             ->label('Mahasiswa')
@@ -102,51 +103,51 @@ class GeneratorTagihan extends Page implements HasSchemas
                                     ->join('ref_person', 'mahasiswas.person_id', '=', 'ref_person.id')
                                     ->select('mahasiswas.id', 'mahasiswas.nim', 'ref_person.nama_lengkap')
                                     ->get()
-                                    ->mapWithKeys(fn ($mhs) => [$mhs->id => "{$mhs->nim} - {$mhs->nama_lengkap}"])
+                                    ->mapWithKeys(fn($mhs) => [$mhs->id => "{$mhs->nim} - {$mhs->nama_lengkap}"])
                             )
                             ->searchable()
-                            ->visible(fn (Get $get) => $get('tipe_target') === 'spesifik')
-                            ->required(fn (Get $get) => $get('tipe_target') === 'spesifik')
+                            ->visible(fn(Get $get) => $get('tipe_target') === 'spesifik')
+                            ->required(fn(Get $get) => $get('tipe_target') === 'spesifik')
                             ->live()
-                            ->afterStateUpdated(fn () => $this->previewResult = null),
+                            ->afterStateUpdated(fn() => $this->previewResult = null),
                     ])
                     ->columns(2),
 
                 Section::make('Statistik Preview')
                     ->description('Tekan "Jalankan Preview" pada aksi di bawah untuk melihat dampak generate tanpa membuat tagihan apa pun.')
-                    ->visible(fn () => $this->previewResult !== null)
+                    ->visible(fn() => $this->previewResult !== null)
                     ->schema([
                         Grid::make(4)->schema([
                             TextEntry::make('total_mahasiswa_kriteria')
                                 ->label('Total Sesuai Kriteria')
-                                ->state(fn () => $this->previewResult['agregat']['total_mahasiswa_kriteria'] ?? 0),
+                                ->state(fn() => $this->previewResult['agregat']['total_mahasiswa_kriteria'] ?? 0),
                             TextEntry::make('siap_digenerate')
                                 ->label('Siap Digenerate')
                                 ->badge()->color('success')
-                                ->state(fn () => $this->previewResult['agregat']['siap_digenerate'] ?? 0),
+                                ->state(fn() => $this->previewResult['agregat']['siap_digenerate'] ?? 0),
                             TextEntry::make('sudah_punya_tagihan')
                                 ->label('Dilewati (Sudah Ada Tagihan)')
                                 ->badge()->color('gray')
-                                ->state(fn () => $this->previewResult['agregat']['sudah_punya_tagihan'] ?? 0),
+                                ->state(fn() => $this->previewResult['agregat']['sudah_punya_tagihan'] ?? 0),
                             TextEntry::make('akan_gagal_tanpa_skema')
                                 ->label('Berpotensi Gagal')
                                 ->badge()->color('danger')
-                                ->state(fn () => $this->previewResult['agregat']['akan_gagal_tanpa_skema'] ?? 0),
+                                ->state(fn() => $this->previewResult['agregat']['akan_gagal_tanpa_skema'] ?? 0),
                         ]),
                         TextEntry::make('catatan_dibatasi')
                             ->hiddenLabel()
-                            ->visible(fn () => (bool) ($this->previewResult['dibatasi'] ?? false))
+                            ->visible(fn() => (bool) ($this->previewResult['dibatasi'] ?? false))
                             ->color('warning')
                             ->state('Daftar & rincian nominal di bawah dibatasi 100 baris pertama per kategori (bukan estimasi total seluruh batch) - dihitung untuk sampel supaya preview tetap ringan pada target berjumlah besar.'),
                     ]),
 
                 Section::make('Mahasiswa Berpotensi Gagal')
                     ->description('Mahasiswa ini TIDAK akan mendapat tagihan kalau Generate dijalankan sekarang - program_id kosong atau skema tarif belum dikonfigurasi. Perbaiki data ini dulu sebelum generate, atau lanjutkan (mahasiswa ini otomatis dilewati job dan dicatat sebagai error).')
-                    ->visible(fn () => $this->previewResult !== null && count($this->previewResult['sampel_gagal'] ?? []) > 0)
+                    ->visible(fn() => $this->previewResult !== null && count($this->previewResult['sampel_gagal'] ?? []) > 0)
                     ->schema([
                         RepeatableEntry::make('sampel_gagal')
                             ->hiddenLabel()
-                            ->state(fn () => $this->previewResult['sampel_gagal'] ?? [])
+                            ->state(fn() => $this->previewResult['sampel_gagal'] ?? [])
                             ->schema([
                                 TextEntry::make('nim')->label('NIM'),
                                 TextEntry::make('nama')->label('Nama'),
@@ -157,17 +158,17 @@ class GeneratorTagihan extends Page implements HasSchemas
 
                 Section::make('Sampel Mahasiswa Siap Digenerate')
                     ->description('Total tagihan sudah memperhitungkan diskon beasiswa (kalau ada), sama seperti yang akan tercatat saat Generate benar-benar dijalankan.')
-                    ->visible(fn () => $this->previewResult !== null && count($this->previewResult['sampel_siap'] ?? []) > 0)
+                    ->visible(fn() => $this->previewResult !== null && count($this->previewResult['sampel_siap'] ?? []) > 0)
                     ->collapsible()
-                    ->collapsed(fn () => ! collect($this->previewResult['sampel_siap'] ?? [])->contains(fn ($item) => filled($item['status_warning'] ?? null)))
+                    ->collapsed(fn() => ! collect($this->previewResult['sampel_siap'] ?? [])->contains(fn($item) => filled($item['status_warning'] ?? null)))
                     ->schema([
                         RepeatableEntry::make('sampel_siap')
                             ->hiddenLabel()
-                            ->state(fn () => $this->previewResult['sampel_siap'] ?? [])
+                            ->state(fn() => $this->previewResult['sampel_siap'] ?? [])
                             ->schema([
                                 TextEntry::make('status_warning')
                                     ->hiddenLabel()
-                                    ->visible(fn ($state) => filled($state))
+                                    ->visible(fn($state) => filled($state))
                                     ->badge()
                                     ->color('danger')
                                     ->icon('heroicon-m-exclamation-triangle')
@@ -177,7 +178,7 @@ class GeneratorTagihan extends Page implements HasSchemas
                                     TextEntry::make('nama')->label('Nama'),
                                     TextEntry::make('jumlah_komponen')->label('Jml Komponen'),
                                     TextEntry::make('total_diskon')->label('Total Diskon')->money('IDR')
-                                        ->color(fn ($state) => $state > 0 ? 'success' : 'gray'),
+                                        ->color(fn($state) => $state > 0 ? 'success' : 'gray'),
                                     TextEntry::make('total_tagihan')->label('Total Tagihan')->money('IDR')
                                         ->weight('bold'),
                                 ]),
@@ -206,7 +207,7 @@ class GeneratorTagihan extends Page implements HasSchemas
 
             Action::make('generate_tagihan')
                 ->formId('form-generator-tagihan')
-                ->disabled(fn () => ! auth()->user()->can('GenerateTagihan') || $this->previewResult === null)
+                ->disabled(fn() => ! auth()->user()->can('GenerateTagihan') || $this->previewResult === null)
                 ->label('Generate Tagihan Sekarang🚀')
                 ->color('primary')
                 ->requiresConfirmation()
@@ -214,7 +215,7 @@ class GeneratorTagihan extends Page implements HasSchemas
                 ->modalDescription('Proses ini akan menghasilkan tagihan mahasiswa sesuai skema tarif yang berlaku. Pastikan data tahun akademik, angkatan, program studi, dan komponen biaya telah dikonfigurasi dengan benar. Setelah proses dijalankan, tagihan akan diterbitkan kepada mahasiswa yang memenuhi kriteria.')
                 ->modalSubmitActionLabel('Lanjutkan')
                 ->modalCancelActionLabel('Batal')
-                ->modalSubmitAction(fn ($action) => $action->color('success'))
+                ->modalSubmitAction(fn($action) => $action->color('success'))
                 ->action(function (TagihanService $service) {
                     abort_unless(auth()->user()->can('GenerateTagihan'), 403);
                     $this->prosesGenerateTagihan($service);
@@ -249,6 +250,12 @@ class GeneratorTagihan extends Page implements HasSchemas
                 ->title('Proses Antrean Dimulai')
                 ->body($result['message'])
                 ->info()
+                ->actions([
+                  Action::make('lihat_riwayat')
+                        ->label('Lihat di Riwayat Generator')
+                        ->url(GeneratorBatchResource::getUrl('view', ['record' => $result['batch_id']]))
+                        ->button(),
+                ])
                 ->send();
 
             $this->previewResult = null;
