@@ -50,6 +50,8 @@ class DosenPanelProvider extends PanelProvider
             ->pages([
                 Dashboard::class,
             ])
+            ->topbar()
+            ->topNavigation()
             ->databaseNotifications()
             ->discoverWidgets(in: app_path('Filament/Dosen/Widgets'), for: 'App\Filament\Dosen\Widgets')
             ->widgets([
