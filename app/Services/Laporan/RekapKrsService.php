@@ -64,7 +64,7 @@ class RekapKrsService extends BaseLaporanService
         $krsRecords = $query->orderBy('created_at', 'desc')->get();
 
         // Transform ke DTO
-        $dtos = $krsRecords->map(fn(Krs $krs) => $this->transformToDto($krs, $tahunAkademik))->toArray();
+        $dtos = $krsRecords->map(fn(Krs $krs) => $this->transformToDto($krs, $tahunAkademik))->all();
 
         // Sort by nim
         $this->sortByKeys($dtos, ['nim' => 'ASC']);

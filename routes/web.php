@@ -6,6 +6,12 @@ use App\Models\PembayaranMahasiswa;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
+use App\Http\Controllers\LaporanKeuanganExportController;
+
+Route::get('/laporan-keuangan/export/pdf/{page}', [
+    LaporanKeuanganExportController::class,
+    'pdf'
+])->name('laporan.keuangan.export.pdf');
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/krs/{id}/cetak', CetakKrsController::class)->name('krs.cetak');

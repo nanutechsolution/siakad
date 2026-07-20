@@ -58,7 +58,7 @@ class RekapKelulusanService extends BaseLaporanService
         $dtos = $records->map(fn(RiwayatStatusMahasiswa $record) => $this->transformToDto($record))
             ->filter(fn($dto) => $dto !== null) // Filter null results
             ->values()
-            ->toArray();
+            ->all();
 
         // Sort by nama_mahasiswa
         $this->sortByKeys($dtos, ['nama_mahasiswa' => 'ASC']);
@@ -78,21 +78,24 @@ class RekapKelulusanService extends BaseLaporanService
      */
     private function transformToDto(RiwayatStatusMahasiswa $record): ?RekapKelulusanDto
     {
+        $ipk = (float) $record->ipk;
+        $sksTotal = (int) $record->sks_total;
+
         // Hanya include jika memenuhi kriteria lulus
-        if ($record->ipk < self::MIN_IPK_LULUS || $record->sks_total < self::MIN_SKS_LULUS) {
+        if ($ipk < self::MIN_IPK_LULUS || $sksTotal < self::MIN_SKS_LULUS) {
             return null;
         }
 
         $lamaStudi = $this->calculateLamaStudi($record->mahasiswa);
-        $predikat = $this->tentkanPredikatLulus($record->ipk);
+        $predikat = $this->tentkanPredikatLulus($ipk);
 
         return new RekapKelulusanDto(
-            nim: $record->mahasiswa->nim,
-            nama_mahasiswa: $record->mahasiswa->refPerson->nama_lengkap,
-            nama_prodi: $record->mahasiswa->refProdi->nama_prodi,
-            angkatan: $record->mahasiswa->angkatan_id,
-            ipk_final: $record->ipk,
-            sks_final: $record->sks_total,
+            nim: $record->mahasiswa->nim ?? '-',
+            nama_mahasiswa: $record->mahasiswa->refPerson->nama_lengkap ?? '(Data Person tidak ditemukan)',
+            nama_prodi: $record->mahasiswa->refProdi->nama_prodi ?? '(Prodi tidak ditemukan)',
+            angkatan: $record->mahasiswa->angkatan_id ?? 0,
+            ipk_final: $ipk,
+            sks_final: $sksTotal,
             tanggal_lulus: new DateTimeImmutable($record->updated_at->toDateTimeString()),
             lama_studi_semester: $lamaStudi,
             predikat_lulus: $predikat,

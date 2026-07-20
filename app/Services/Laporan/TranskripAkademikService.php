@@ -35,7 +35,7 @@ class TranskripAkademikService extends BaseLaporanService
             throw new \InvalidArgumentException('Mahasiswa ID harus dipilih untuk transkrip akademik');
         }
 
-        $mahasiswa = Mahasiswa::with('refPerson', 'refProdi', 'riwayatStatusMahasiswas')
+        $mahasiswa = Mahasiswa::with('person', 'prodi', 'riwayatStatus')
             ->findOrFail($filters['mahasiswa_id']);
 
         $query = AkademikTranskrip::query()
@@ -70,8 +70,8 @@ class TranskripAkademikService extends BaseLaporanService
 
         $dto = new TranskripAkademikDto(
             nim: $mahasiswa->nim,
-            nama_mahasiswa: $mahasiswa->refPerson->nama_lengkap,
-            nama_prodi: $mahasiswa->refProdi->nama_prodi,
+            nama_mahasiswa: $mahasiswa->person->nama_lengkap,
+            nama_prodi: $mahasiswa->prodi->nama_prodi,
             ipk_final: $ipkFinal,
             total_sks_final: $totalSksFinal,
             total_mata_kuliah: $transkrips->count(),
@@ -81,7 +81,7 @@ class TranskripAkademikService extends BaseLaporanService
 
         return [
             'data' => $dto,
-            'filter_summary' => "Transkrip: {$mahasiswa->nim} - {$mahasiswa->refPerson->nama_lengkap}",
+            'filter_summary' => "Transkrip: {$mahasiswa->nim} - {$mahasiswa->person->nama_lengkap}",
         ];
     }
 

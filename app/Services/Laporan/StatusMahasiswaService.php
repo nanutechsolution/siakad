@@ -66,7 +66,7 @@ class StatusMahasiswaService extends BaseLaporanService
 
         // Transform ke DTO
         $dtos = $records->map(fn(RiwayatStatusMahasiswa $record) => $this->transformToDto($record, $statusCode))
-            ->toArray();
+            ->all();
 
         // Sort by nim
         $this->sortByKeys($dtos, ['nim' => 'ASC']);
@@ -97,8 +97,8 @@ class StatusMahasiswaService extends BaseLaporanService
             status_kuliah: $statusCode,
             status_label: $this->getStatusLabel($statusCode),
             semester_terdaftar: $semesterTerdaftar,
-            ips_terakhir: $record->ips,
-            ipk_terakhir: $record->ipk,
+            ips_terakhir: $record->ips !== null ? (float) $record->ips : null,
+            ipk_terakhir: $record->ipk !== null ? (float) $record->ipk : null,
             kode_tahun_akademik: $record->tahunAkademik->kode_tahun,
         );
     }
@@ -118,7 +118,7 @@ class StatusMahasiswaService extends BaseLaporanService
     private function calculateSummary(array $dtos, string $statusCode): array
     {
         $totalMahasiswa = count($dtos);
-        
+
         // Group by prodi
         $prodiBreakdown = [];
         foreach ($dtos as $dto) {

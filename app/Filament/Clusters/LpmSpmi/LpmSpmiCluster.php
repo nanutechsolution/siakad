@@ -1,16 +1,15 @@
 <?php
 
-namespace App\Filament\Clusters\LaporanAkademik;
+namespace App\Filament\Clusters\LpmSpmi;
 
 use App\Enums\NavigationGroup;
 use Filament\Clusters\Cluster;
 use Filament\Pages\Enums\SubNavigationPosition;
 
-class LaporanAkademikCluster extends Cluster
+class LpmSpmiCluster extends Cluster
 {
-    protected static ?string $navigationLabel = 'Akademik';
-    protected static ?string $slug = 'laporan-akademik';
+    protected static ?string $navigationLabel = 'LPM / SPMI';
     protected static string|\UnitEnum|null $navigationGroup = NavigationGroup::LAPORAN->value;
     protected static ?SubNavigationPosition $subNavigationPosition = SubNavigationPosition::Top;
-    protected static ?string $clusterBreadcrumb  = 'laporan akademik';
+    protected static ?string $clusterBreadcrumb  = 'LPM / SPMI';
 }

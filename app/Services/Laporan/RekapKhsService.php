@@ -39,8 +39,8 @@ class RekapKhsService extends BaseLaporanService
 
         $query = RiwayatStatusMahasiswa::query()
             ->with([
-                'mahasiswa.refPerson',
-                'mahasiswa.refProdi',
+                'mahasiswa.person',
+                'mahasiswa.prodi',
                 'tahunAkademik'
             ])
             ->where('tahun_akademik_id', $tahunAkademik->id);
@@ -62,7 +62,7 @@ class RekapKhsService extends BaseLaporanService
 
         // Transform ke DTO
         $dtos = $records->map(fn(RiwayatStatusMahasiswa $record) => $this->transformToDto($record))
-            ->toArray();
+            ->all();
 
         // Sort by nim
         $this->sortByKeys($dtos, ['nim' => 'ASC']);
@@ -82,17 +82,18 @@ class RekapKhsService extends BaseLaporanService
      */
     private function transformToDto(RiwayatStatusMahasiswa $record): RekapKhsDto
     {
-        $statusAkademik = $this->determineStatusAkademik($record->ips);
+        $ips = (float) $record->ips;
+        $statusAkademik = $this->determineStatusAkademik($ips);
 
         return new RekapKhsDto(
             nim: $record->mahasiswa->nim,
-            nama_mahasiswa: $record->mahasiswa->refPerson->nama_lengkap,
-            nama_prodi: $record->mahasiswa->refProdi->nama_prodi,
+            nama_mahasiswa: $record->mahasiswa->person->nama_lengkap,
+            nama_prodi: $record->mahasiswa->prodi->nama_prodi,
             angkatan: $record->mahasiswa->angkatan_id,
             semester: $record->tahunAkademik->semester,
-            ips: $record->ips,
-            sks_semester: $record->sks_semester,
-            sks_total: $record->sks_total,
+            ips: $ips,
+            sks_semester: (int) $record->sks_semester,
+            sks_total: (int) $record->sks_total,
             status_akademik: $statusAkademik,
             kode_tahun_akademik: $record->tahunAkademik->kode_tahun,
             nama_tahun_akademik: $record->tahunAkademik->nama_tahun,
@@ -120,16 +121,26 @@ class RekapKhsService extends BaseLaporanService
     private function calculateSummary(array $dtos, int $semester): array
     {
         $totalMahasiswa = count($dtos);
-        $totalSksTotal = array_sum(array_column($dtos, 'sks_total'));
+
+        $ipsValues = array_column($dtos, 'ips');
+        $sksValues = array_column($dtos, 'sks_total');
+
+        $totalSksTotal = array_sum($sksValues);
 
         $rataIps = $totalMahasiswa > 0
-            ? array_sum(array_column($dtos, 'ips')) / $totalMahasiswa
+            ? array_sum($ipsValues) / $totalMahasiswa
             : 0;
 
-        $maxIps = max(array_column($dtos, 'ips')) ?: 0;
-        $minIps = min(array_column($dtos, 'ips')) ?: 0;
+        $maxIps = !empty($ipsValues)
+            ? max($ipsValues)
+            : 0;
+
+        $minIps = !empty($ipsValues)
+            ? min($ipsValues)
+            : 0;
 
         $statusBreakdown = [];
+
         foreach ($dtos as $dto) {
             $status = $dto->status_akademik;
             $statusBreakdown[$status] = ($statusBreakdown[$status] ?? 0) + 1;
@@ -138,7 +149,9 @@ class RekapKhsService extends BaseLaporanService
         return [
             'total_mahasiswa' => $totalMahasiswa,
             'total_sks_keseluruhan' => $totalSksTotal,
-            'rata_sks_per_mhs' => $totalMahasiswa > 0 ? round($totalSksTotal / $totalMahasiswa, 2) : 0,
+            'rata_sks_per_mhs' => $totalMahasiswa > 0
+                ? round($totalSksTotal / $totalMahasiswa, 2)
+                : 0,
             'rata_ips' => round($rataIps, 2),
             'max_ips' => round($maxIps, 2),
             'min_ips' => round($minIps, 2),

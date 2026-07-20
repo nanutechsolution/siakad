@@ -135,6 +135,23 @@ abstract class BaseLaporanService
     }
 
     /**
+     * Ambil nilai field dari array asosiatif ATAU objek (misal DTO readonly),
+     * agar helper seperti sortByKeys/groupByKey bisa dipakai untuk keduanya.
+     */
+    protected function getFieldValue(mixed $item, string $key): mixed
+    {
+        if (is_array($item)) {
+            return $item[$key] ?? null;
+        }
+
+        if (is_object($item)) {
+            return $item->{$key} ?? null;
+        }
+
+        return null;
+    }
+
+    /**
      * Group data array by key
      */
     protected function groupByKey(array $data, string $key): array
@@ -142,7 +159,7 @@ abstract class BaseLaporanService
         $grouped = [];
 
         foreach ($data as $item) {
-            $groupKey = $item[$key] ?? 'undefined';
+            $groupKey = $this->getFieldValue($item, $key) ?? 'undefined';
             if (!isset($grouped[$groupKey])) {
                 $grouped[$groupKey] = [];
             }
@@ -153,7 +170,8 @@ abstract class BaseLaporanService
     }
 
     /**
-     * Sort array by multiple keys
+     * Sort array by multiple keys.
+     * Mendukung baik array asosiatif maupun objek (misal DTO readonly).
      */
     protected function sortByKeys(array &$data, array $keys): array
     {
@@ -162,10 +180,13 @@ abstract class BaseLaporanService
                 $direction = strtoupper($direction ?? 'ASC');
                 $comparison = 0;
 
-                if (is_numeric($a[$key] ?? null) && is_numeric($b[$key] ?? null)) {
-                    $comparison = ($a[$key] ?? 0) <=> ($b[$key] ?? 0);
+                $valA = $this->getFieldValue($a, $key);
+                $valB = $this->getFieldValue($b, $key);
+
+                if (is_numeric($valA) && is_numeric($valB)) {
+                    $comparison = $valA <=> $valB;
                 } else {
-                    $comparison = strnatcmp((string)($a[$key] ?? ''), (string)($b[$key] ?? ''));
+                    $comparison = strnatcmp((string) ($valA ?? ''), (string) ($valB ?? ''));
                 }
 
                 if ($comparison !== 0) {
