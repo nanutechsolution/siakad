@@ -21,7 +21,7 @@ use UnitEnum;
 class TagihanMahasiswaResource extends Resource
 {
     protected static ?string $model = TagihanMahasiswa::class;
-    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KEUANGAN->value;
+    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KEMAHASISWAAN->value;
     protected static ?string $navigationLabel = 'Tagihan Semester';
     protected static ?string $modelLabel = 'Tagihan Semester';
     protected static ?string $pluralModelLabel = 'Daftar Tagihan Semester';
