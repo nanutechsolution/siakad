@@ -132,13 +132,21 @@ class User extends Authenticatable implements FilamentUser
     }
     public function canAccessAdmin(): bool
     {
-        return $this->hasAnyRole(
-            collect(config('jabatan_role.strategy_roles'))
-                ->flatten()
-                ->push('admin')
-                ->unique()
-                ->all()
-        );
+        return $this->hasAnyRole([
+            'super_admin',
+            'BAAK',
+            'Admin Akademik',
+            'Admin Fakultas',
+            'Admin Prodi',
+            'Admin Keuangan',
+            'Kasir',
+            'Verifikator Pembayaran',
+            'Admin PMB',
+            'Admin SDM',
+            'Admin LPM',
+            'Admin LPPM',
+            'Pustakawan',
+        ]);
     }
     /*
     |--------------------------------------------------------------------------
