@@ -23,11 +23,6 @@
                 Isi Sekarang
             </x-filament::button>
         </div>
-        @else
-        <div class="flex items-center justify-center gap-2 text-success-600 dark:text-success-400">
-            <x-heroicon-o-check-circle class="w-6 h-6" />
-            <p class="font-medium">Semua evaluasi dosen telah selesai diisi.</p>
-        </div>
         @endif
     </x-filament::section>
 </x-filament-widgets::widget>
