@@ -125,9 +125,10 @@ final class PendapatanService
     /** Laporan #7 — Pendapatan Per Periode (bulanan / semester / tahun akademik). */
     public function queryPerPeriode(array $filters, string $groupBy = 'bulanan'): Builder
     {
-        $base = $this->verifiedPaymentsQuery($filters);
+        $base = $this->verifiedPaymentsQuery($filters)->toBase();
 
         $aggregate = match ($groupBy) {
+
             'tahun_akademik' => $base
                 ->selectRaw('
                 ta.id as periode_id,
@@ -154,11 +155,11 @@ final class PendapatanService
                 DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
                 SUM(pm.nominal_bayar) as total
             ")
-                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')"),
+                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
         };
 
 
-        return MahasiswaRecord::query()
+        return \App\Models\LaporanKeuangan\MahasiswaRecord::query()
             ->fromSub($aggregate, 'laporan')
             ->selectRaw('
             periode_id as id,
