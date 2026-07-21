@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan;
 
+use App\Models\LaporanKeuangan\MahasiswaRecord;
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -59,11 +60,22 @@ final class PendapatanService
     /** Laporan #5 — Pendapatan Mahasiswa: pendapatan per jenis tagihan. */
     public function queryPerJenisTagihan(array $filters): Builder
     {
-        return $this->verifiedPaymentsQuery($filters)
-            ->select('tm.jenis_tagihan')
-            ->selectRaw('SUM(pm.nominal_bayar) as total')
-            ->groupBy('tm.jenis_tagihan')
-            ->orderBy('tm.jenis_tagihan');
+        $query = $this->verifiedPaymentsQuery($filters)
+            ->selectRaw('
+            tm.jenis_tagihan,
+            SUM(pm.nominal_bayar) as total
+        ')
+            ->groupBy('tm.jenis_tagihan');
+
+
+        return MahasiswaRecord::query()
+            ->fromSub($query, 'laporan')
+            ->selectRaw('
+            jenis_tagihan as id,
+            jenis_tagihan,
+            total
+        ')
+            ->orderBy('jenis_tagihan');
     }
 
     /**
@@ -113,22 +125,19 @@ final class PendapatanService
     /** Laporan #7 — Pendapatan Per Periode (bulanan / semester / tahun akademik). */
     public function queryPerPeriode(array $filters, string $groupBy = 'bulanan'): Builder
     {
-        $query = $this->verifiedPaymentsQuery($filters);
+        $base = $this->verifiedPaymentsQuery($filters);
 
-        return match ($groupBy) {
-            'tahun_akademik' => $query
+        $aggregate = match ($groupBy) {
+            'tahun_akademik' => $base
                 ->selectRaw('
-                ta.id as id,
                 ta.id as periode_id,
                 ta.nama_tahun as label,
                 SUM(pm.nominal_bayar) as total
             ')
-                ->groupBy('ta.id', 'ta.nama_tahun')
-                ->orderBy('ta.id'),
+                ->groupBy('ta.id', 'ta.nama_tahun'),
 
-            'semester' => $query
+            'semester' => $base
                 ->selectRaw("
-                ta.semester as id,
                 ta.semester as periode_id,
                 CASE ta.semester
                     WHEN 1 THEN 'Ganjil'
@@ -137,18 +146,27 @@ final class PendapatanService
                 END as label,
                 SUM(pm.nominal_bayar) as total
             ")
-                ->groupBy('ta.semester')
-                ->orderBy('ta.semester'),
-            default => $this->verifiedPaymentsQuery($filters)
+                ->groupBy('ta.semester'),
+
+            default => $base
                 ->selectRaw("
-        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
-        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
-        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
-        SUM(pm.nominal_bayar) as total
-    ")
-                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
-                ->orderByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')"),
+                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
+                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
+                SUM(pm.nominal_bayar) as total
+            ")
+                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')"),
         };
+
+
+        return MahasiswaRecord::query()
+            ->fromSub($aggregate, 'laporan')
+            ->selectRaw('
+            periode_id as id,
+            periode_id,
+            label,
+            total
+        ')
+            ->orderBy('periode_id');
     }
 
     /** Dipakai widget Chart — hasil per periode selalu dataset kecil (puluhan baris), aman ->get(). */
