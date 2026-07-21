@@ -83,7 +83,7 @@ final class RekapTagihanService
                 mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
-                m.angkatan_id,
+                mahasiswas.angkatan_id,
                 '" . TagihanMapQuery::JENIS_NON_REGULER . "' as jenis_tagihan,
                 t.deskripsi as periode,
                 t.total_tagihan,
