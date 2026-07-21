@@ -21,9 +21,9 @@ final class PiutangService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->where('tm.sisa_tagihan', '>', 0)
-            ->when($filters['jenis_tagihan'] ?? null, fn ($q, $v) => $q->where('tm.jenis_tagihan', $v));
+            ->when($filters['jenis_tagihan'] ?? null, fn($q, $v) => $q->where('tm.jenis_tagihan', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
@@ -52,8 +52,8 @@ final class PiutangService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
-            ->when($filters['jenis_tagihan'] ?? null, fn ($q, $v) => $q->where('tm.jenis_tagihan', $v));
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
+            ->when($filters['jenis_tagihan'] ?? null, fn($q, $v) => $q->where('tm.jenis_tagihan', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
@@ -65,7 +65,7 @@ final class PiutangService
 
         $jumlahMenunggak = (clone $query)
             ->where('tm.sisa_tagihan', '>', 0)
-            ->select('m.id')
+            ->select('mahasiswas.id')
             ->distinct()
             ->count();
 
