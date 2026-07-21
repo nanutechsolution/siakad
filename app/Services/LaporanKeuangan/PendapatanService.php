@@ -159,15 +159,30 @@ final class PendapatanService
 
             default => $base
                 ->selectRaw("
-                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
-                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
-                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
-                SUM(pm.nominal_bayar) as total
-            ")
+        CONCAT(
+            YEAR(pm.tanggal_bayar),
+            '-',
+            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
+        ) as id,
+
+        CONCAT(
+            YEAR(pm.tanggal_bayar),
+            '-',
+            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
+        ) as periode_id,
+
+        CONCAT(
+            YEAR(pm.tanggal_bayar),
+            '-',
+            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
+        ) as label,
+
+        SUM(pm.nominal_bayar) as total
+    ")
                 ->groupByRaw("
-                YEAR(pm.tanggal_bayar),
-                MONTH(pm.tanggal_bayar)
-            "),
+        YEAR(pm.tanggal_bayar),
+        MONTH(pm.tanggal_bayar)
+    "),
         };
 
 
