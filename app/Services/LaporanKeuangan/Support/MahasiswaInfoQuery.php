@@ -23,7 +23,7 @@ final class MahasiswaInfoQuery
     public static function base(): Builder
     {
         return MahasiswaRecord::query()
-            ->from('mahasiswas as m')
+            ->from('mahasiswas')
             ->join('ref_person as p', 'p.id', '=', 'm.person_id')
             ->join('ref_prodi as pr', 'pr.id', '=', 'm.prodi_id')
             ->join('ref_fakultas as f', 'f.id', '=', 'pr.fakultas_id')

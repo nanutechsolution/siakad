@@ -20,7 +20,7 @@ final class RekapPembayaranService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('users as u', 'u.id', '=', 'pm.verified_by')
@@ -37,8 +37,8 @@ final class RekapPembayaranService
             ->selectRaw('
                 pm.id as nomor_transaksi,
                 pm.tanggal_bayar,
-                m.nim,
-                m.id,
+                mahasiswas.nim,
+                mahasiswas.id,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 tm.jenis_tagihan,
