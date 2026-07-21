@@ -24,8 +24,8 @@ final class MahasiswaInfoQuery
     {
         return MahasiswaRecord::query()
             ->from('mahasiswas')
-            ->join('ref_person as p', 'p.id', '=', 'm.person_id')
-            ->join('ref_prodi as pr', 'pr.id', '=', 'm.prodi_id')
+            ->join('ref_person as p', 'p.id', '=', 'mahasiswas.person_id')
+            ->join('ref_prodi as pr', 'pr.id', '=', 'mahasiswas.prodi_id')
             ->join('ref_fakultas as f', 'f.id', '=', 'pr.fakultas_id')
             ->whereNull('m.deleted_at');
     }
@@ -35,6 +35,6 @@ final class MahasiswaInfoQuery
         return $query
             ->when($filters['fakultas_id'] ?? null, fn(Builder $q, $v) => $q->where('f.id', $v))
             ->when($filters['prodi_id'] ?? null, fn(Builder $q, $v) => $q->where('pr.id', $v))
-            ->when($filters['angkatan_id'] ?? null, fn(Builder $q, $v) => $q->where('m.angkatan_id', $v));
+            ->when($filters['angkatan_id'] ?? null, fn(Builder $q, $v) => $q->where('mahasiswas.angkatan_id', $v));
     }
 }
