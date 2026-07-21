@@ -20,15 +20,15 @@ final class RekapPembayaranService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
             ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('users as u', 'u.id', '=', 'pm.verified_by')
             ->whereNull('pm.deleted_at')
-            ->when($filters['status_verifikasi_id'] ?? null, fn ($q, $v) => $q->where('pm.status_verifikasi_id', $v))
-            ->when($filters['metode_pembayaran'] ?? null, fn ($q, $v) => $q->where('pm.metode_pembayaran', $v))
-            ->when($filters['tanggal_dari'] ?? null, fn ($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
-            ->when($filters['tanggal_sampai'] ?? null, fn ($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v));
+            ->when($filters['status_verifikasi_id'] ?? null, fn($q, $v) => $q->where('pm.status_verifikasi_id', $v))
+            ->when($filters['metode_pembayaran'] ?? null, fn($q, $v) => $q->where('pm.metode_pembayaran', $v))
+            ->when($filters['tanggal_dari'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
+            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
@@ -38,6 +38,7 @@ final class RekapPembayaranService
                 pm.id as nomor_transaksi,
                 pm.tanggal_bayar,
                 m.nim,
+                m.id,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 tm.jenis_tagihan,
