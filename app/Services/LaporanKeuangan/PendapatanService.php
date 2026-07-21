@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan;
 
+use App\Models\LaporanKeuangan\LaporanAgregatRecord;
 use App\Models\LaporanKeuangan\MahasiswaRecord;
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
@@ -68,7 +69,7 @@ final class PendapatanService
             ->groupBy('tm.jenis_tagihan');
 
 
-        return MahasiswaRecord::query()
+        return LaporanAgregatRecord::query()
             ->fromSub($query->toBase(), 'laporan')
             ->selectRaw('
             jenis_tagihan as id,

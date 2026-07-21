@@ -38,7 +38,7 @@ class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLa
     protected static ?int $navigationSort = 5;
 
     protected  string $view = 'filament.pages.laporan-keuangan.report-page';
-    protected PendapatanService $service;
+  protected PendapatanService $service;
 
     public function boot(PendapatanService $service): void
     {
@@ -85,7 +85,7 @@ class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLa
         return [
             'total' => TextColumn::make('total')->label('Total Pendapatan')->money('idr'),
             'jenis_tagihan' => TextColumn::make('jenis_tagihan')->label('Jenis Tagihan')
-                ->formatStateUsing(fn(string $s) => $s === 'SEMESTER' ? 'Semester' : 'Non-Reguler'),
+                ->formatStateUsing(fn (string $s) => $s === 'SEMESTER' ? 'Semester' : 'Non-Reguler'),
         ];
     }
 

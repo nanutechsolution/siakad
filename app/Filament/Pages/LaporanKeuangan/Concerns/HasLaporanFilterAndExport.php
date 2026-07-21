@@ -125,6 +125,7 @@ trait HasLaporanFilterAndExport
     {
         return [];
     }
+    
 
     protected function getHeaderActions(): array
     {
