@@ -8,6 +8,8 @@ use App\Exports\LaporanKeuangan\GenericLaporanExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Forms\Form;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -59,13 +61,18 @@ trait HasLaporanFilterAndExport
     {
         return $form
             ->components([
-                \Filament\Schemas\Components\Grid::make([
-                    'default' => 1,
-                    'sm' => 2,
-                    'lg' => 3,
-                    'xl' => 4,
-                ])
-                    ->schema($this->filterFormSchema()),
+                Section::make('Filter Laporan')
+                    ->description('Pilih parameter laporan yang ingin ditampilkan')
+                    ->schema([
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 2,
+                            'lg' => 3,
+                            'xl' => 4,
+                        ])
+                            ->schema($this->filterFormSchema()),
+                    ])
+                    ->collapsible(),
             ])
             ->statePath('filterState');
     }
