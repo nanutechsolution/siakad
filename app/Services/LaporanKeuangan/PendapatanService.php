@@ -132,14 +132,19 @@ final class PendapatanService
 
             'tahun_akademik' => $base
                 ->selectRaw("
+                CONCAT('tahun-', ta.id) as id,
                 ta.id as periode_id,
                 ta.nama_tahun as label,
                 SUM(pm.nominal_bayar) as total
             ")
-                ->groupBy('ta.id', 'ta.nama_tahun'),
+                ->groupBy(
+                    'ta.id',
+                    'ta.nama_tahun'
+                ),
 
             'semester' => $base
                 ->selectRaw("
+                CONCAT('semester-', ta.semester) as id,
                 ta.semester as periode_id,
                 CASE ta.semester
                     WHEN 1 THEN 'Ganjil'
@@ -148,26 +153,39 @@ final class PendapatanService
                 END as label,
                 SUM(pm.nominal_bayar) as total
             ")
-                ->groupBy('ta.semester'),
+                ->groupBy(
+                    'ta.semester'
+                ),
 
             default => $base
                 ->selectRaw("
+                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
                 DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
                 DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
                 SUM(pm.nominal_bayar) as total
             ")
-                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
+                ->groupByRaw("
+                YEAR(pm.tanggal_bayar),
+                MONTH(pm.tanggal_bayar)
+            "),
         };
 
 
-        return \App\Models\LaporanKeuangan\MahasiswaRecord::query()
-            ->fromSub($aggregate, 'laporan')
-            ->selectRaw("
-            periode_id as id,
-            periode_id,
-            label,
-            total
-        ");
+        return MahasiswaRecord::query()
+            ->fromSub($aggregate->toBase(), 'laporan')
+            ->select([
+                'id',
+                'periode_id',
+                'label',
+                'total',
+            ]);
+    }
+    protected function getTableRecordKey($record): string
+    {
+        return (string) (
+            $record->id
+            ?? md5(json_encode($record->toArray()))
+        );
     }
 
     /** Dipakai widget Chart — hasil per periode selalu dataset kecil (puluhan baris), aman ->get(). */
