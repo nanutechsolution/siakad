@@ -58,7 +58,6 @@ final class PendapatanService
             ->get();
     }
 
-    /** Laporan #5 — Pendapatan Mahasiswa: pendapatan per jenis tagihan. */
     public function queryPerJenisTagihan(array $filters): Builder
     {
         $query = $this->verifiedPaymentsQuery($filters)
@@ -70,7 +69,7 @@ final class PendapatanService
 
 
         return MahasiswaRecord::query()
-            ->fromSub($query, 'laporan')
+            ->fromSub($query->toBase(), 'laporan')
             ->selectRaw('
             jenis_tagihan as id,
             jenis_tagihan,
@@ -78,7 +77,6 @@ final class PendapatanService
         ')
             ->orderBy('jenis_tagihan');
     }
-
     /**
      * Laporan #6 — Pendapatan Per Prodi.
      *
