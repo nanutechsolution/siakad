@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan\Support;
 
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -32,7 +33,7 @@ final class FilterOptions
     public static function prodi(?int $fakultasId = null): array
     {
         return DB::table('ref_prodi')
-            ->when($fakultasId, fn($q, $v) => $q->where('fakultas_id', $v))
+            ->when($fakultasId, fn ($q, $v) => $q->where('fakultas_id', $v))
             ->orderBy('nama_prodi')
             ->pluck('nama_prodi', 'id')
             ->all();
@@ -40,6 +41,9 @@ final class FilterOptions
 
     public static function angkatan(): array
     {
+        // ref_angkatan HANYA punya kolom `id_tahun` — dipakai sekaligus
+        // sebagai primary key DAN nilai tahunnya (bukan id + tahun
+        // terpisah). mahasiswas.angkatan_id adalah FK ke id_tahun ini.
         return DB::table('ref_angkatan')
             ->orderByDesc('id_tahun')
             ->pluck('id_tahun', 'id_tahun')
@@ -82,7 +86,7 @@ final class FilterOptions
             })
             ->limit(50)
             ->get(['m.id', 'm.nim', 'p.nama_lengkap'])
-            ->mapWithKeys(fn($row) => [$row->id => "{$row->nim} — {$row->nama_lengkap}"])
+            ->mapWithKeys(fn ($row) => [$row->id => "{$row->nim} — {$row->nama_lengkap}"])
             ->all();
     }
 

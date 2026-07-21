@@ -4,8 +4,8 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan\Support;
 
-use App\Models\TagihanMahasiswa;
-use App\Models\TagihanNonReguler;
+use App\Models\LaporanKeuangan\TagihanMahasiswaRecord;
+use App\Models\LaporanKeuangan\TagihanNonRegulerRecord;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
@@ -33,13 +33,13 @@ final class TagihanMapQuery
 
     public static function build(): Builder
     {
-        $semester = TagihanMahasiswa::query()
+        $semester = TagihanMahasiswaRecord::query()
             ->whereNull('deleted_at')
             ->selectRaw("
                 id as tagihan_id,
                 mahasiswa_id,
                 tahun_akademik_id,
-                '".self::JENIS_SEMESTER."' as jenis_tagihan,
+                '" . self::JENIS_SEMESTER . "' as jenis_tagihan,
                 total_tagihan,
                 total_bayar,
                 sisa_tagihan,
@@ -50,13 +50,13 @@ final class TagihanMapQuery
                 GREATEST(DATEDIFF(CURDATE(), tenggat_waktu), 0) as hari_keterlambatan
             ");
 
-        $nonReguler = TagihanNonReguler::query()
+        $nonReguler = TagihanNonRegulerRecord::query()
             ->whereNull('deleted_at')
             ->selectRaw("
                 id as tagihan_id,
                 mahasiswa_id,
                 NULL as tahun_akademik_id,
-                '".self::JENIS_NON_REGULER."' as jenis_tagihan,
+                '" . self::JENIS_NON_REGULER . "' as jenis_tagihan,
                 total_tagihan,
                 total_bayar,
                 (total_tagihan - total_bayar) as sisa_tagihan,

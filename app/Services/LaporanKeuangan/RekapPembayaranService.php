@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan;
 
-use App\Models\PembayaranMahasiswa;
+use App\Models\LaporanKeuangan\PembayaranMahasiswaRecord;
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
 use Illuminate\Database\Eloquent\Builder;
@@ -55,7 +55,7 @@ final class RekapPembayaranService
      */
     public function distinctMetodePembayaran(): Collection
     {
-        return PembayaranMahasiswa::query()
+        return PembayaranMahasiswaRecord::query()
             ->whereNull('deleted_at')
             ->distinct()
             ->orderBy('metode_pembayaran')

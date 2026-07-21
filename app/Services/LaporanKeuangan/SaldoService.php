@@ -4,7 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan;
 
-use App\Models\KeuanganGeneralLedger;
 use App\Models\LaporanKeuangan\KeuanganGeneralLedgerRecord;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -24,7 +23,7 @@ final class SaldoService
     {
         $mahasiswaId = $filters['mahasiswa_id'] ?? null;
 
-        $query = KeuanganGeneralLedger::query();
+        $query = KeuanganGeneralLedgerRecord::query();
 
         if (blank($mahasiswaId)) {
             return $query->whereRaw('1 = 0');
@@ -32,8 +31,8 @@ final class SaldoService
 
         return $query
             ->where('mahasiswa_id', $mahasiswaId)
-            ->when($filters['tanggal_dari'] ?? null, fn($q, $v) => $q->whereDate('created_at', '>=', $v))
-            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('created_at', '<=', $v))
+            ->when($filters['tanggal_dari'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '>=', $v))
+            ->when($filters['tanggal_sampai'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '<=', $v))
             ->orderBy('created_at')
             ->selectRaw('
                 created_at as tanggal,
@@ -48,7 +47,7 @@ final class SaldoService
 
     public function saldoAkhir(string $mahasiswaId): float
     {
-        $last = KeuanganGeneralLedger::query()
+        $last = KeuanganGeneralLedgerRecord::query()
             ->where('mahasiswa_id', $mahasiswaId)
             ->orderByDesc('created_at')
             ->first();
