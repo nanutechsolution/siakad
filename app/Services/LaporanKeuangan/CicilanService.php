@@ -30,16 +30,17 @@ final class CicilanService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->where('tm.status_bayar', 'CICIL')
-            ->when($filters['jenis_tagihan'] ?? null, fn ($q, $v) => $q->where('tm.jenis_tagihan', $v));
+            ->when($filters['jenis_tagihan'] ?? null, fn($q, $v) => $q->where('tm.jenis_tagihan', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query
             ->orderBy('p.nama_lengkap')
             ->selectRaw('
-                m.nim,
+               mahasiswas.id,
+                mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 tm.total_tagihan,

@@ -35,6 +35,7 @@ final class RekapPembayaranService
         return $query
             ->orderByDesc('pm.tanggal_bayar')
             ->selectRaw('
+                mahasiswas.id,
                 pm.id as nomor_transaksi,
                 pm.tanggal_bayar,
                 mahasiswas.nim,

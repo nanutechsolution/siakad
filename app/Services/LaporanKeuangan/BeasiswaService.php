@@ -31,19 +31,19 @@ final class BeasiswaService
     public function query(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
-            ->join('keuangan_mahasiswa_beasiswas as mb', 'mb.mahasiswa_id', '=', 'm.id')
+            ->join('keuangan_mahasiswa_beasiswas as mb', 'mb.mahasiswa_id', '=', 'mahasiswas.id')
             ->join('keuangan_master_beasiswas as mbe', 'mbe.id', '=', 'mb.beasiswa_id')
             ->join('ref_tahun_akademik as ta_mulai', 'ta_mulai.id', '=', 'mb.tahun_akademik_mulai_id')
             ->leftJoin('ref_tahun_akademik as ta_akhir', 'ta_akhir.id', '=', 'mb.tahun_akademik_akhir_id')
-            ->when($filters['beasiswa_id'] ?? null, fn ($q, $v) => $q->where('mb.beasiswa_id', $v))
-            ->when(! ($filters['tampilkan_nonaktif'] ?? false), fn ($q) => $q->where('mb.is_active', true));
+            ->when($filters['beasiswa_id'] ?? null, fn($q, $v) => $q->where('mb.beasiswa_id', $v))
+            ->when(! ($filters['tampilkan_nonaktif'] ?? false), fn($q) => $q->where('mb.is_active', true));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query
             ->orderBy('p.nama_lengkap')
             ->selectRaw("
-                m.id as mahasiswa_id,
+                mahasiswas.id as mahasiswa_id,
                 p.nama_lengkap,
                 mbe.nama_beasiswa,
                 mbe.kategori,

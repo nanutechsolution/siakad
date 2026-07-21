@@ -34,7 +34,7 @@ final class TunggakanService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
+            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
             ->where('tm.sisa_tagihan', '>', 0)
             ->when($filters['semester'] ?? null, fn ($q, $v) => $q->where('ta.semester', $v))
@@ -45,7 +45,7 @@ final class TunggakanService
         return $query
             ->orderByDesc('tm.sisa_tagihan')
             ->selectRaw('
-                m.nim,
+                mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 ta.semester,
