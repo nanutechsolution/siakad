@@ -56,7 +56,7 @@ final class RekapTagihanService
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query->selectRaw("
-                mahasiswa.id,
+                mahasiswas.id,
                 mahasiswa.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
