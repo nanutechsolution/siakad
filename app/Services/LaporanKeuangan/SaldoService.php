@@ -4,48 +4,51 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan;
 
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use App\Models\KeuanganGeneralLedger;
+use App\Models\LaporanKeuangan\KeuanganGeneralLedgerRecord;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Laporan #10 — Laporan Saldo, bersumber dari `keuangan_general_ledgers`
- * (kolom debit/kredit/saldo_berjalan per mahasiswa sudah sesuai kebutuhan
- * laporan tanpa perlu agregasi tambahan).
+ * Laporan #10 — Laporan Saldo, bersumber dari `keuangan_general_ledgers`.
  *
- * Laporan ini WAJIB difilter per mahasiswa (konsep saldo berjalan hanya
- * relevan untuk satu akun/mahasiswa pada satu waktu). Jika mahasiswa_id
- * tidak diisi, method rows() mengembalikan collection kosong.
+ * WAJIB difilter per mahasiswa (konsep saldo berjalan hanya relevan
+ * untuk satu akun pada satu waktu). Jika mahasiswa_id tidak diisi,
+ * query() mengembalikan builder yang dijamin kosong (whereRaw('1 = 0'))
+ * — bukan menahan/menge-collect apa pun secara manual, supaya Filament
+ * tetap bisa memaginate seperti biasa (hasilnya cuma 0 baris) tanpa kode
+ * khusus di trait/Page.
  */
 final class SaldoService
 {
-    public function rows(array $filters): Collection
+    public function query(array $filters): Builder
     {
         $mahasiswaId = $filters['mahasiswa_id'] ?? null;
 
+        $query = KeuanganGeneralLedger::query();
+
         if (blank($mahasiswaId)) {
-            return collect();
+            return $query->whereRaw('1 = 0');
         }
 
-        return DB::table('keuangan_general_ledgers')
+        return $query
             ->where('mahasiswa_id', $mahasiswaId)
-            ->when($filters['tanggal_dari'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '>=', $v))
-            ->when($filters['tanggal_sampai'] ?? null, fn ($q, $v) => $q->whereDate('created_at', '<=', $v))
-            ->select([
-                'created_at as tanggal',
-                'referensi_dokumen',
-                'tipe_transaksi',
-                'debit',
-                'kredit',
-                'saldo_berjalan',
-                'keterangan',
-            ])
+            ->when($filters['tanggal_dari'] ?? null, fn($q, $v) => $q->whereDate('created_at', '>=', $v))
+            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('created_at', '<=', $v))
             ->orderBy('created_at')
-            ->get();
+            ->selectRaw('
+                created_at as tanggal,
+                referensi_dokumen,
+                tipe_transaksi,
+                debit,
+                kredit,
+                saldo_berjalan,
+                keterangan
+            ');
     }
 
     public function saldoAkhir(string $mahasiswaId): float
     {
-        $last = DB::table('keuangan_general_ledgers')
+        $last = KeuanganGeneralLedger::query()
             ->where('mahasiswa_id', $mahasiswaId)
             ->orderByDesc('created_at')
             ->first();

@@ -16,7 +16,7 @@ use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 class LaporanSaldo extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
@@ -26,7 +26,6 @@ class LaporanSaldo extends Page implements HasForms, HasTable, ProvidesLaporanDa
     }
 
     protected static ?string $cluster = LaporanKeuanganCluster::class;
-
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-scale';
 
     protected static ?string $navigationLabel = 'Laporan Saldo';
@@ -82,9 +81,9 @@ class LaporanSaldo extends Page implements HasForms, HasTable, ProvidesLaporanDa
         ];
     }
 
-    public function tableRows(array $filters): Collection
+    public function query(array $filters): Builder
     {
-        return $this->service->rows($filters);
+        return $this->service->query($filters);
     }
 
     public function reportTitle(): string

@@ -4,8 +4,6 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan\Support;
 
-use App\Models\RefAngkatan;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 /**
@@ -42,10 +40,10 @@ final class FilterOptions
 
     public static function angkatan(): array
     {
-        return RefAngkatan::query()
-            ->latest('id_tahun')
-            ->pluck('id_tahun', 'id_tahun')
-            ->toArray();
+        return DB::table('ref_angkatan')
+            ->orderByDesc('tahun')
+            ->pluck('tahun', 'id')
+            ->all();
     }
 
     public static function statusVerifikasiPembayaran(): array

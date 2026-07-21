@@ -6,45 +6,38 @@ namespace App\Services\LaporanKeuangan;
 
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Laporan #1 — Rekap Tagihan Mahasiswa.
  *
- * Filter yang didukung (semua opsional):
- * - tahun_akademik_id (hanya berlaku untuk jenis SEMESTER)
- * - semester            (hanya berlaku untuk jenis SEMESTER)
- * - fakultas_id
- * - prodi_id
- * - angkatan_id
- * - jenis_tagihan       SEMESTER | NON_REGULER (kosong = keduanya)
- *
- * CATATAN: `tagihan_non_regulers` tidak memiliki relasi ke
- * `ref_tahun_akademik`, sehingga filter tahun_akademik_id / semester
- * otomatis diabaikan untuk baris NON_REGULER (keterbatasan schema,
- * sudah dikonfirmasi pada tahap analisa).
+ * PERFORMA: query() TIDAK memanggil ->get(). Filament yang memaginate
+ * (LIMIT/OFFSET di database), export yang men-chunk. Union SEMESTER +
+ * NON_REGULER tetap bisa dipaginate native karena Laravel mendukung
+ * ->paginate() di atas query UNION.
  */
 final class RekapTagihanService
 {
-    public function rows(array $filters): Collection
+    public function query(array $filters): Builder
     {
         $jenis = $filters['jenis_tagihan'] ?? null;
 
-        $rows = collect();
+        $query = match ($jenis) {
+            TagihanMapQuery::JENIS_SEMESTER => $this->semesterQuery($filters),
+            TagihanMapQuery::JENIS_NON_REGULER => $this->nonRegulerQuery($filters),
+            default => $this->semesterQuery($filters)->unionAll($this->nonRegulerQuery($filters)),
+        };
 
-        if ($jenis === null || $jenis === TagihanMapQuery::JENIS_SEMESTER) {
-            $rows = $rows->concat($this->semesterRows($filters));
-        }
-
-        if ($jenis === null || $jenis === TagihanMapQuery::JENIS_NON_REGULER) {
-            $rows = $rows->concat($this->nonRegulerRows($filters));
-        }
-
-        return $rows->values();
+        // PENTING: ORDER BY untuk query UNION harus dipasang di hasil
+        // GABUNGAN (di sini), bukan di masing-masing bagian sebelum
+        // di-union — kalau tidak, pagination (LIMIT/OFFSET) antar
+        // halaman bisa tidak konsisten/duplikat. Referensinya memakai
+        // nama alias hasil SELECT (bukan prefix tabel), karena itulah
+        // nama kolom yang terlihat pada hasil UNION.
+        return $query->orderBy('nama_lengkap');
     }
 
-    private function semesterRows(array $filters): Collection
+    private function semesterQuery(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
             ->join('tagihan_mahasiswas as t', 't.mahasiswa_id', '=', 'm.id')
@@ -55,24 +48,21 @@ final class RekapTagihanService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        return $query
-            ->select([
-                'm.nim',
-                'p.nama_lengkap',
-                'pr.nama_prodi',
-                'm.angkatan_id',
-                DB::raw("'" . TagihanMapQuery::JENIS_SEMESTER . "' as jenis_tagihan"),
-                'ta.nama_tahun as periode',
-                't.total_tagihan',
-                't.total_bayar',
-                't.sisa_tagihan',
-                't.status_bayar',
-            ])
-            ->orderBy('p.nama_lengkap')
-            ->get();
+        return $query->selectRaw("
+                m.nim,
+                p.nama_lengkap,
+                pr.nama_prodi,
+                m.angkatan_id,
+                '" . TagihanMapQuery::JENIS_SEMESTER . "' as jenis_tagihan,
+                ta.nama_tahun as periode,
+                t.total_tagihan,
+                t.total_bayar,
+                t.sisa_tagihan,
+                t.status_bayar
+            ");
     }
 
-    private function nonRegulerRows(array $filters): Collection
+    private function nonRegulerQuery(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
             ->join('tagihan_non_regulers as t', 't.mahasiswa_id', '=', 'm.id')
@@ -80,20 +70,17 @@ final class RekapTagihanService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        return $query
-            ->select([
-                'm.nim',
-                'p.nama_lengkap',
-                'pr.nama_prodi',
-                'm.angkatan_id',
-                DB::raw("'" . TagihanMapQuery::JENIS_NON_REGULER . "' as jenis_tagihan"),
-                't.deskripsi as periode',
-                't.total_tagihan',
-                't.total_bayar',
-                DB::raw('(t.total_tagihan - t.total_bayar) as sisa_tagihan'),
-                't.status_bayar',
-            ])
-            ->orderBy('p.nama_lengkap')
-            ->get();
+        return $query->selectRaw("
+                m.nim,
+                p.nama_lengkap,
+                pr.nama_prodi,
+                m.angkatan_id,
+                '" . TagihanMapQuery::JENIS_NON_REGULER . "' as jenis_tagihan,
+                t.deskripsi as periode,
+                t.total_tagihan,
+                t.total_bayar,
+                (t.total_tagihan - t.total_bayar) as sisa_tagihan,
+                t.status_bayar
+            ");
     }
 }

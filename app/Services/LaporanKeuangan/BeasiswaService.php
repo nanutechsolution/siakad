@@ -5,23 +5,30 @@ declare(strict_types=1);
 namespace App\Services\LaporanKeuangan;
 
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Laporan #8 — Rekap Beasiswa.
  *
+ * PERFORMA: versi sebelumnya menghitung estimasi potongan dengan query
+ * TAMBAHAN per baris di PHP (rows->map(...)) — N+1 murni. Sekarang
+ * dipindah jadi correlated subquery bersarang di SELECT. Ini query yang
+ * lebih "berat" per baris dibanding laporan lain, TAPI karena hanya
+ * dieksekusi untuk baris pada halaman aktif (paginate) atau dalam satu
+ * chunk export (bukan seluruh dataset sekaligus), dan jumlah penerima
+ * beasiswa secara alami jauh lebih kecil dari total mahasiswa, ini masih
+ * aman. Kalau di kemudian hari data beasiswa jadi sangat besar, opsi
+ * lanjutan: pre-agregasi ke tabel ringkasan terpisah (materialized).
+ *
  * PENTING (sudah dikonfirmasi pada tahap analisa): tidak ada foreign key
- * yang menghubungkan langsung baris `tagihan_mahasiswas_details` dengan
- * beasiswa penyebabnya. Kolom "Potongan Tagihan" pada laporan ini adalah
- * ESTIMASI, dihitung dari aturan `keuangan_beasiswa_details` terhadap
- * tarif di `keuangan_detail_tarif` (dicocokkan via skema tarif aktif
- * mahasiswa: angkatan + prodi + program). Ini BUKAN hasil telusur
- * transaksi tagihan riil — beri catatan ini juga di UI.
+ * yang menghubungkan langsung `tagihan_mahasiswas_details` dengan
+ * beasiswa penyebabnya — kolom "Potongan Tagihan" adalah ESTIMASI dari
+ * aturan `keuangan_beasiswa_details` × `keuangan_detail_tarif` pada
+ * skema tarif aktif mahasiswa, BUKAN hasil telusur transaksi riil.
  */
 final class BeasiswaService
 {
-    public function rows(array $filters): Collection
+    public function query(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
             ->join('keuangan_mahasiswa_beasiswas as mb', 'mb.mahasiswa_id', '=', 'm.id')
@@ -33,68 +40,36 @@ final class BeasiswaService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        $rows = $query
-            ->select([
-                'mb.id as mahasiswa_beasiswa_id',
-                'mb.beasiswa_id',
-                'm.id as mahasiswa_id',
-                'p.nama_lengkap',
-                'mbe.nama_beasiswa',
-                'mbe.kategori',
-                'ta_mulai.nama_tahun as periode_mulai',
-                'ta_akhir.nama_tahun as periode_akhir',
-                'mb.is_active',
-            ])
+        return $query
             ->orderBy('p.nama_lengkap')
-            ->get();
-
-        // Catatan performa: perhitungan estimasi dilakukan per baris (bukan
-        // agregasi tunggal) karena setiap mahasiswa bisa punya skema tarif
-        // berbeda. Untuk jumlah penerima beasiswa yang wajar (puluhan-ratusan
-        // per angkatan), ini cukup cepat; jika data sangat besar,
-        // pertimbangkan pre-agregasi per (angkatan, prodi, program, beasiswa).
-        return $rows->map(function (\stdClass $row) {
-            $row->estimasi_potongan = $this->estimasiPotongan((string) $row->mahasiswa_id, (int) $row->beasiswa_id);
-
-            return $row;
-        });
-    }
-
-    private function estimasiPotongan(string $mahasiswaId, int $beasiswaId): float
-    {
-        $mahasiswa = DB::table('mahasiswas')
-            ->where('id', $mahasiswaId)
-            ->select('angkatan_id', 'prodi_id', 'program_id')
-            ->first();
-
-        if ($mahasiswa === null || $mahasiswa->program_id === null) {
-            return 0.0;
-        }
-
-        $skemaTarifId = DB::table('keuangan_skema_tarif')
-            ->where('angkatan_id', $mahasiswa->angkatan_id)
-            ->where('prodi_id', $mahasiswa->prodi_id)
-            ->where('program_kelas_id', $mahasiswa->program_id)
-            ->where('is_active', true)
-            ->value('id');
-
-        if ($skemaTarifId === null) {
-            return 0.0;
-        }
-
-        $details = DB::table('keuangan_beasiswa_details as bd')
-            ->join('keuangan_detail_tarif as dt', function ($join) use ($skemaTarifId) {
-                $join->on('dt.komponen_biaya_id', '=', 'bd.komponen_biaya_id')
-                    ->where('dt.skema_tarif_id', '=', $skemaTarifId);
-            })
-            ->where('bd.beasiswa_id', $beasiswaId)
-            ->select('bd.tipe_diskon', 'bd.nilai_diskon', 'dt.nominal as tarif_nominal')
-            ->get();
-
-        return (float) $details->sum(function (\stdClass $d) {
-            return $d->tipe_diskon === 'PERSENTASE'
-                ? ($d->tarif_nominal * ($d->nilai_diskon / 100))
-                : $d->nilai_diskon;
-        });
+            ->selectRaw("
+                m.id as mahasiswa_id,
+                p.nama_lengkap,
+                mbe.nama_beasiswa,
+                mbe.kategori,
+                ta_mulai.nama_tahun as periode_mulai,
+                ta_akhir.nama_tahun as periode_akhir,
+                mb.is_active,
+                (
+                    SELECT COALESCE(SUM(
+                        CASE WHEN bd.tipe_diskon = 'PERSENTASE'
+                             THEN dt.nominal * (bd.nilai_diskon / 100)
+                             ELSE bd.nilai_diskon
+                        END
+                    ), 0)
+                    FROM keuangan_beasiswa_details bd
+                    JOIN keuangan_detail_tarif dt
+                        ON dt.komponen_biaya_id = bd.komponen_biaya_id
+                       AND dt.skema_tarif_id = (
+                            SELECT st.id FROM keuangan_skema_tarif st
+                            WHERE st.angkatan_id = m.angkatan_id
+                              AND st.prodi_id = m.prodi_id
+                              AND st.program_kelas_id = m.program_id
+                              AND st.is_active = 1
+                            LIMIT 1
+                       )
+                    WHERE bd.beasiswa_id = mb.beasiswa_id
+                ) as estimasi_potongan
+            ");
     }
 }

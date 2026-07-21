@@ -15,6 +15,7 @@ use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PendapatanPerPeriode extends Page implements HasForms, HasTable, ProvidesLaporanData
@@ -35,7 +36,6 @@ class PendapatanPerPeriode extends Page implements HasForms, HasTable, ProvidesL
     protected static ?int $navigationSort = 7;
 
     protected  string $view = 'filament.pages.laporan-keuangan.report-page';
-
     protected PendapatanService $service;
 
     public function boot(PendapatanService $service): void
@@ -90,9 +90,9 @@ class PendapatanPerPeriode extends Page implements HasForms, HasTable, ProvidesL
         ];
     }
 
-    public function tableRows(array $filters): Collection
+    public function query(array $filters): Builder
     {
-        return $this->service->perPeriode($filters, $filters['group_by'] ?? 'bulanan');
+        return $this->service->queryPerPeriode($filters, $filters['group_by'] ?? 'bulanan');
     }
 
     public function reportTitle(): string

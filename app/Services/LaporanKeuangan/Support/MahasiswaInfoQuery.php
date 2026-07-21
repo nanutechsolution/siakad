@@ -4,19 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan\Support;
 
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use App\Models\Mahasiswa;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Query dasar identitas mahasiswa yang dipakai berulang di seluruh laporan.
- * Alias tabel baku dipakai konsisten: m = mahasiswas, p = ref_person,
- * pr = ref_prodi, f = ref_fakultas.
+ * Query dasar identitas mahasiswa, sekarang beranchor pada Eloquent Model
+ * (MahasiswaRecord) alih-alih DB::table() murni — supaya hasil akhirnya
+ * (setelah di-join berlapis oleh Service) tetap berupa Eloquent Builder
+ * yang bisa dipaginate native oleh Filament (->paginate() dengan
+ * LIMIT/OFFSET di level database).
+ *
+ * ->from('mahasiswas as m') dipakai (bukan default table Model) supaya
+ * SEMUA query lain di codebase yang sudah pakai alias 'm.', 'p.', 'pr.',
+ * 'f.' tetap jalan tanpa perlu ditulis ulang.
  */
 final class MahasiswaInfoQuery
 {
     public static function base(): Builder
     {
-        return DB::table('mahasiswas as m')
+        return Mahasiswa::query()
+            ->from('mahasiswas as m')
             ->join('ref_person as p', 'p.id', '=', 'm.person_id')
             ->join('ref_prodi as pr', 'pr.id', '=', 'm.prodi_id')
             ->join('ref_fakultas as f', 'f.id', '=', 'pr.fakultas_id')

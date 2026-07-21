@@ -56,7 +56,6 @@ class MahasiswaAccountWidget extends Widget
                 ->first();
 
             $dosenWali = $dosen?->person;
-            $dosenWali = $dosen?->person;
         }
 
         return [

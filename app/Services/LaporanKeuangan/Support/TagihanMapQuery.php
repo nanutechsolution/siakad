@@ -4,24 +4,26 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan\Support;
 
-use Illuminate\Database\Query\Builder;
-use Illuminate\Support\Facades\DB;
+use App\Models\TagihanMahasiswa;
+use App\Models\TagihanNonReguler;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Menyatukan `tagihan_mahasiswas` (SEMESTER) dan `tagihan_non_regulers`
- * (NON_REGULER) menjadi satu peta (tagihan_id, mahasiswa_id,
- * tahun_akademik_id, jenis_tagihan) yang bisa dijadikan subquery join.
+ * (NON_REGULER) menjadi satu subquery (UNION ALL) yang bisa di-join
+ * seperti tabel biasa (alias `tm`).
  *
- * CATATAN PENTING: `pembayaran_mahasiswas` menyimpan referensi tagihan
- * secara polymorphic (`tagihan_type` + `tagihan_id`). Kita sengaja TIDAK
- * bergantung pada isi string `tagihan_type` (bisa berupa FQCN model atau
- * morph-alias custom, tidak diketahui dari schema saja). Join dilakukan
- * murni berdasarkan `tagihan_id` (UUID), yang secara praktik tidak pernah
- * bentrok antar dua tabel sumber tagihan.
+ * PERUBAHAN PERFORMA: `hari_keterlambatan` sekarang dihitung DI SQL
+ * (GREATEST(DATEDIFF(...), 0)), bukan di PHP setelah ->get(). Ini
+ * penting justru KARENA sekarang query dipaginate native — kalau
+ * komputasi ini masih di PHP, ia hanya jalan untuk baris yang benar-benar
+ * diambil (aman), tapi menaruhnya di SQL membuat kolom ini bisa
+ * di-ORDER BY / dipakai kondisi lanjutan tanpa fetch tambahan.
  *
- * Jika di kemudian hari ternyata ada kebutuhan strict-check terhadap
- * `tagihan_type`, tambahkan kondisi tambahan pada query yang meng-consume
- * map ini.
+ * CATATAN: join ke `pembayaran_mahasiswas` di service lain dilakukan
+ * murni berdasarkan `tagihan_id` (UUID), TIDAK bergantung pada isi
+ * `tagihan_type` (lihat catatan lengkap di versi sebelumnya) — ini tetap
+ * berlaku sama di versi refactor ini.
  */
 final class TagihanMapQuery
 {
@@ -31,37 +33,39 @@ final class TagihanMapQuery
 
     public static function build(): Builder
     {
-        $semester = DB::table('tagihan_mahasiswas')
+        $semester = TagihanMahasiswa::query()
             ->whereNull('deleted_at')
-            ->select([
-                'id as tagihan_id',
-                'mahasiswa_id',
-                'tahun_akademik_id',
-                DB::raw("'" . self::JENIS_SEMESTER . "' as jenis_tagihan"),
-                'total_tagihan',
-                'total_bayar',
-                'sisa_tagihan',
-                'status_bayar',
-                'tenggat_waktu',
-                'kode_transaksi',
-                'deskripsi',
-            ]);
+            ->selectRaw("
+                id as tagihan_id,
+                mahasiswa_id,
+                tahun_akademik_id,
+                '".self::JENIS_SEMESTER."' as jenis_tagihan,
+                total_tagihan,
+                total_bayar,
+                sisa_tagihan,
+                status_bayar,
+                tenggat_waktu,
+                kode_transaksi,
+                deskripsi,
+                GREATEST(DATEDIFF(CURDATE(), tenggat_waktu), 0) as hari_keterlambatan
+            ");
 
-        $nonReguler = DB::table('tagihan_non_regulers')
+        $nonReguler = TagihanNonReguler::query()
             ->whereNull('deleted_at')
-            ->select([
-                'id as tagihan_id',
-                'mahasiswa_id',
-                DB::raw('NULL as tahun_akademik_id'),
-                DB::raw("'" . self::JENIS_NON_REGULER . "' as jenis_tagihan"),
-                'total_tagihan',
-                'total_bayar',
-                DB::raw('(total_tagihan - total_bayar) as sisa_tagihan'),
-                'status_bayar',
-                'tenggat_waktu',
-                'kode_transaksi',
-                'deskripsi',
-            ]);
+            ->selectRaw("
+                id as tagihan_id,
+                mahasiswa_id,
+                NULL as tahun_akademik_id,
+                '".self::JENIS_NON_REGULER."' as jenis_tagihan,
+                total_tagihan,
+                total_bayar,
+                (total_tagihan - total_bayar) as sisa_tagihan,
+                status_bayar,
+                tenggat_waktu,
+                kode_transaksi,
+                deskripsi,
+                GREATEST(DATEDIFF(CURDATE(), tenggat_waktu), 0) as hari_keterlambatan
+            ");
 
         return $semester->unionAll($nonReguler);
     }

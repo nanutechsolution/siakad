@@ -6,21 +6,26 @@ namespace App\Services\LaporanKeuangan;
 
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
-use Illuminate\Support\Collection;
-use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Laporan #9 — Rekap Cicilan.
  *
- * CATATAN: Schema tidak memiliki tabel jadwal cicilan (mis. jumlah cicilan
- * yang direncanakan, tanggal jatuh tempo per cicilan). "Jumlah Cicilan"
- * pada laporan ini adalah nilai turunan = jumlah baris
- * `pembayaran_mahasiswas` berstatus verifikasi FINAL yang terhubung ke
- * tagihan tersebut — bukan data eksplisit dari sistem cicilan formal.
+ * PERFORMA: versi sebelumnya menghitung "jumlah cicilan" via query
+ * batch terpisah setelah ->get() (untuk menghindari N+1 per baris).
+ * Sekarang dipindah jadi correlated subquery di SELECT — jalan sama
+ * baiknya untuk tabel yang dipaginate (hanya dihitung untuk baris pada
+ * halaman aktif) MAUPUN saat export di-chunk (dihitung per baris dalam
+ * chunk, tanpa query batch terpisah lagi karena sudah menyatu di SELECT
+ * yang sama, jadi tetap 1 query per halaman/chunk, bukan N+1).
+ *
+ * CATATAN: Schema tidak memiliki tabel jadwal cicilan formal. "Jumlah
+ * Cicilan" adalah nilai turunan = jumlah baris pembayaran terverifikasi
+ * FINAL pada tagihan tersebut — bukan data eksplisit sistem cicilan.
  */
 final class CicilanService
 {
-    public function rows(array $filters): Collection
+    public function query(array $filters): Builder
     {
         $map = TagihanMapQuery::build();
 
@@ -31,38 +36,23 @@ final class CicilanService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        $rows = $query
-            ->select([
-                'm.id as mahasiswa_id',
-                'tm.tagihan_id',
-                'm.nim',
-                'p.nama_lengkap',
-                'pr.nama_prodi',
-                'tm.total_tagihan',
-                'tm.total_bayar as sudah_dibayar',
-                'tm.sisa_tagihan',
-                'tm.status_bayar',
-            ])
+        return $query
             ->orderBy('p.nama_lengkap')
-            ->get();
-
-        $tagihanIds = $rows->pluck('tagihan_id')->all();
-
-        $jumlahCicilanMap = DB::table('pembayaran_mahasiswas as pm')
-            ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
-            ->whereNull('pm.deleted_at')
-            ->where('sv.is_final', true)
-            ->whereIn('pm.tagihan_id', $tagihanIds)
-            ->select('pm.tagihan_id')
-            ->selectRaw('COUNT(*) as jumlah_cicilan')
-            ->groupBy('pm.tagihan_id')
-            ->get()
-            ->keyBy('tagihan_id');
-
-        return $rows->map(function (\stdClass $row) use ($jumlahCicilanMap) {
-            $row->jumlah_cicilan = (int) ($jumlahCicilanMap->get($row->tagihan_id)->jumlah_cicilan ?? 0);
-
-            return $row;
-        });
+            ->selectRaw('
+                m.nim,
+                p.nama_lengkap,
+                pr.nama_prodi,
+                tm.total_tagihan,
+                tm.total_bayar as sudah_dibayar,
+                tm.sisa_tagihan,
+                tm.status_bayar,
+                (
+                    SELECT COUNT(*) FROM pembayaran_mahasiswas pm2
+                    JOIN ref_status_verifikasi_pembayaran sv2 ON sv2.id = pm2.status_verifikasi_id
+                    WHERE pm2.tagihan_id = tm.tagihan_id
+                      AND sv2.is_final = 1
+                      AND pm2.deleted_at IS NULL
+                ) as jumlah_cicilan
+            ');
     }
 }

@@ -16,6 +16,7 @@ use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PendapatanPerProdi extends Page implements HasForms, HasTable, ProvidesLaporanData
@@ -36,6 +37,7 @@ class PendapatanPerProdi extends Page implements HasForms, HasTable, ProvidesLap
     protected static ?int $navigationSort = 6;
 
     protected  string $view = 'filament.pages.laporan-keuangan.report-page';
+
 
     protected PendapatanService $service;
 
@@ -84,9 +86,9 @@ class PendapatanPerProdi extends Page implements HasForms, HasTable, ProvidesLap
         ];
     }
 
-    public function tableRows(array $filters): Collection
+    public function query(array $filters): Builder
     {
-        return $this->service->perProdi($filters);
+        return $this->service->queryPerProdi($filters);
     }
 
     public function reportTitle(): string

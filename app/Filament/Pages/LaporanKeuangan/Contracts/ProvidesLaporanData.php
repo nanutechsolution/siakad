@@ -4,11 +4,17 @@ declare(strict_types=1);
 
 namespace App\Filament\Pages\LaporanKeuangan\Contracts;
 
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Kontrak yang wajib diimplementasikan setiap Page laporan agar bisa
- * memakai trait HasLaporanFilterAndExport secara seragam.
+ * Kontrak setiap Page laporan. PERUBAHAN dari versi sebelumnya:
+ * `tableRows(): Collection` (fetch semua data) DIHAPUS, diganti
+ * `query(): Builder` (query BELUM dieksekusi).
+ *
+ * Satu Builder yang sama dipakai untuk DUA jalur berbeda:
+ * - TABLE  : Filament memanggil ->paginate() sendiri (LIMIT/OFFSET native).
+ * - EXPORT : dibaca bertahap via ->chunk() / Maatwebsite WithChunkReading,
+ *            TIDAK PERNAH di-->get() sekaligus.
  */
 interface ProvidesLaporanData
 {
@@ -18,8 +24,12 @@ interface ProvidesLaporanData
     /** Peta [key => Label Kolom] sesuai urutan tampil di tabel & export. */
     public function tableHeadings(): array;
 
-    /** Data baris laporan sesuai filter yang sedang aktif. */
-    public function tableRows(array $filters): Collection;
+    /**
+     * Query BELUM dieksekusi (tidak boleh memanggil ->get()/->all() di
+     * dalam method ini). Filament yang akan memanggil ->paginate();
+     * proses export yang akan memanggil ->chunk().
+     */
+    public function query(array $filters): Builder;
 
     /** Judul laporan, dipakai di header PDF/Excel. */
     public function reportTitle(): string;

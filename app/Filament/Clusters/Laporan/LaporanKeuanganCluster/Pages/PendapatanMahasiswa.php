@@ -17,6 +17,7 @@ use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLaporanData
@@ -37,7 +38,6 @@ class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLa
     protected static ?int $navigationSort = 5;
 
     protected  string $view = 'filament.pages.laporan-keuangan.report-page';
-
     protected PendapatanService $service;
 
     public function boot(PendapatanService $service): void
@@ -89,9 +89,9 @@ class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLa
         ];
     }
 
-    public function tableRows(array $filters): Collection
+    public function query(array $filters): Builder
     {
-        return $this->service->perJenisTagihan($filters);
+        return $this->service->queryPerJenisTagihan($filters);
     }
 
     public function reportTitle(): string

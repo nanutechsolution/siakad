@@ -14,6 +14,7 @@ use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 
 class RekapCicilan extends Page implements HasForms, HasTable, ProvidesLaporanData
@@ -75,9 +76,9 @@ class RekapCicilan extends Page implements HasForms, HasTable, ProvidesLaporanDa
         ];
     }
 
-    public function tableRows(array $filters): Collection
+    public function query(array $filters): Builder
     {
-        return $this->service->rows($filters);
+        return $this->service->query($filters);
     }
 
     public function reportTitle(): string

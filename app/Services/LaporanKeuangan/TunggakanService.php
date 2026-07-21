@@ -6,19 +6,22 @@ namespace App\Services\LaporanKeuangan;
 
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
-use Illuminate\Support\Carbon;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder;
 
 /**
  * Laporan #4 — Rekap Tunggakan (untuk proses penagihan).
  *
- * Kategori tunggakan berdasarkan jumlah hari sejak tenggat_waktu terlewati:
+ * Kategori tunggakan berdasarkan jumlah hari sejak tenggat_waktu
+ * terlewati (dihitung di SQL via CASE, referensi ke
+ * `tm.hari_keterlambatan` yang sudah tersedia dari TagihanMapQuery):
  * - RINGAN : 1–30 hari
  * - SEDANG : 31–90 hari
  * - BERAT  : > 90 hari
  *
- * Ambang batas ini adalah keputusan bisnis default (dikonfirmasi bersama
- * pengguna). Ubah konstanta di bawah bila kebijakan penagihan berbeda.
+ * Ambang batas ini adalah keputusan bisnis default (dikonfirmasi
+ * bersama pengguna). Ubah konstanta di bawah bila kebijakan penagihan
+ * berbeda — otomatis berlaku baik untuk tampilan tabel maupun export,
+ * karena keduanya memakai query yang sama.
  */
 final class TunggakanService
 {
@@ -26,7 +29,7 @@ final class TunggakanService
 
     private const BATAS_SEDANG_MAX_HARI = 90;
 
-    public function rows(array $filters): Collection
+    public function query(array $filters): Builder
     {
         $map = TagihanMapQuery::build();
 
@@ -39,48 +42,24 @@ final class TunggakanService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        $rows = $query
-            ->select([
-                'm.nim',
-                'p.nama_lengkap',
-                'pr.nama_prodi',
-                'ta.semester',
-                'ta.nama_tahun',
-                'tm.sisa_tagihan as jumlah_tunggakan',
-                'tm.tenggat_waktu',
-                'tm.status_bayar',
-            ])
+        return $query
             ->orderByDesc('tm.sisa_tagihan')
-            ->get();
-
-        return $rows->map(function (\stdClass $row): \stdClass {
-            $lamaHari = $this->lamaTunggakanHari($row->tenggat_waktu);
-            $row->lama_tunggakan_hari = $lamaHari;
-            $row->kategori_tunggakan = $this->kategori($lamaHari);
-
-            return $row;
-        });
-    }
-
-    public function kategori(int $lamaHari): string
-    {
-        return match (true) {
-            $lamaHari > self::BATAS_SEDANG_MAX_HARI => 'BERAT',
-            $lamaHari > self::BATAS_RINGAN_MAX_HARI => 'SEDANG',
-            $lamaHari > 0 => 'RINGAN',
-            default => 'BELUM_JATUH_TEMPO',
-        };
-    }
-
-    private function lamaTunggakanHari(?string $tenggatWaktu): int
-    {
-        if ($tenggatWaktu === null) {
-            return 0;
-        }
-
-        $tenggat = Carbon::parse($tenggatWaktu)->startOfDay();
-        $today = Carbon::today();
-
-        return $tenggat->lessThan($today) ? $tenggat->diffInDays($today) : 0;
+            ->selectRaw('
+                m.nim,
+                p.nama_lengkap,
+                pr.nama_prodi,
+                ta.semester,
+                ta.nama_tahun,
+                tm.sisa_tagihan as jumlah_tunggakan,
+                tm.tenggat_waktu,
+                tm.status_bayar,
+                tm.hari_keterlambatan as lama_tunggakan_hari,
+                CASE
+                    WHEN tm.hari_keterlambatan > ' . self::BATAS_SEDANG_MAX_HARI . ' THEN \'BERAT\'
+                    WHEN tm.hari_keterlambatan > ' . self::BATAS_RINGAN_MAX_HARI . ' THEN \'SEDANG\'
+                    WHEN tm.hari_keterlambatan > 0 THEN \'RINGAN\'
+                    ELSE \'BELUM_JATUH_TEMPO\'
+                END as kategori_tunggakan
+            ');
     }
 }
