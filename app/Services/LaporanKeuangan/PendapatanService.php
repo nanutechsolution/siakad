@@ -142,12 +142,12 @@ final class PendapatanService
 
             default => $query
                 ->selectRaw("
-                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
-                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
-                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
-                SUM(pm.nominal_bayar) as total
-            ")
-                ->groupBy('periode_id', 'label')
+        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
+        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
+        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
+        SUM(pm.nominal_bayar) as total
+    ")
+                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
                 ->orderBy('periode_id'),
         };
     }
