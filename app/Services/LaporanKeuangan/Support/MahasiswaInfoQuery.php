@@ -27,9 +27,8 @@ final class MahasiswaInfoQuery
             ->join('ref_person as p', 'p.id', '=', 'mahasiswas.person_id')
             ->join('ref_prodi as pr', 'pr.id', '=', 'mahasiswas.prodi_id')
             ->join('ref_fakultas as f', 'f.id', '=', 'pr.fakultas_id')
-            ->whereNull('m.deleted_at');
+            ->whereNull('mahasiswas.deleted_at');
     }
-
     public static function applyFilters(Builder $query, array $filters): Builder
     {
         return $query
