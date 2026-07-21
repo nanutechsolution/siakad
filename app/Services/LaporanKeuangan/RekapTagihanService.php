@@ -60,7 +60,7 @@ final class RekapTagihanService
                 mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
-                m.angkatan_id,
+                mahasiswas.angkatan_id,
                 '" . TagihanMapQuery::JENIS_SEMESTER . "' as jenis_tagihan,
                 ta.nama_tahun as periode,
                 t.total_tagihan,
