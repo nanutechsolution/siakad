@@ -9,6 +9,7 @@ use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\DB;
 
 /**
  * Digunakan oleh 3 halaman: Pendapatan Mahasiswa, Pendapatan Per Prodi,
@@ -125,16 +126,16 @@ final class PendapatanService
     /** Laporan #7 — Pendapatan Per Periode (bulanan / semester / tahun akademik). */
     public function queryPerPeriode(array $filters, string $groupBy = 'bulanan'): Builder
     {
-        $base = $this->verifiedPaymentsQuery($filters)->toBase();
+        $base = $this->verifiedPaymentsBaseQuery($filters);
 
         $aggregate = match ($groupBy) {
 
             'tahun_akademik' => $base
-                ->selectRaw('
+                ->selectRaw("
                 ta.id as periode_id,
                 ta.nama_tahun as label,
                 SUM(pm.nominal_bayar) as total
-            ')
+            ")
                 ->groupBy('ta.id', 'ta.nama_tahun'),
 
             'semester' => $base
@@ -161,18 +162,54 @@ final class PendapatanService
 
         return \App\Models\LaporanKeuangan\MahasiswaRecord::query()
             ->fromSub($aggregate, 'laporan')
-            ->selectRaw('
+            ->selectRaw("
             periode_id as id,
             periode_id,
             label,
             total
-        ')
-            ->orderBy('periode_id');
+        ");
     }
 
     /** Dipakai widget Chart — hasil per periode selalu dataset kecil (puluhan baris), aman ->get(). */
     public function perPeriode(array $filters, string $groupBy = 'bulanan'): Collection
     {
         return $this->queryPerPeriode($filters, $groupBy)->get();
+    }
+
+    private function verifiedPaymentsBaseQuery(array $filters): Builder
+    {
+        $map = TagihanMapQuery::build();
+
+        $query = MahasiswaRecord::query()
+            ->from('mahasiswas as m')
+            ->join('ref_person as p', 'p.id', '=', 'm.person_id')
+            ->join('ref_prodi as pr', 'pr.id', '=', 'm.prodi_id')
+            ->join('ref_fakultas as f', 'f.id', '=', 'pr.fakultas_id')
+            ->joinSub(
+                $map,
+                'tm',
+                fn($join) =>
+                $join->on('tm.mahasiswa_id', '=', 'm.id')
+            )
+            ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
+            ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
+            ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
+            ->whereNull('m.deleted_at')
+            ->whereNull('pm.deleted_at')
+            ->where('sv.is_final', true)
+            ->when(
+                $filters['tahun_akademik_id'] ?? null,
+                fn($q, $v) => $q->where('tm.tahun_akademik_id', $v)
+            )
+            ->when(
+                $filters['tanggal_dari'] ?? null,
+                fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v)
+            )
+            ->when(
+                $filters['tanggal_sampai'] ?? null,
+                fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v)
+            );
+
+        return MahasiswaInfoQuery::applyFilters($query, $filters);
     }
 }
