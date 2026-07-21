@@ -47,15 +47,12 @@ class RekapPembayaran extends Page implements HasForms, HasTable, ProvidesLapora
         return [
             DatePicker::make('tanggal_dari')->label('Tanggal Dari')->native(false),
             DatePicker::make('tanggal_sampai')->label('Tanggal Sampai')->native(false),
-
             Select::make('status_verifikasi_id')
                 ->label('Status Verifikasi')
                 ->options(FilterOptions::statusVerifikasiPembayaran()),
-
             Select::make('metode_pembayaran')
                 ->label('Metode Pembayaran')
                 ->options(fn() => $this->service->distinctMetodePembayaran()->mapWithKeys(fn($m) => [$m => $m])->all()),
-
             Select::make('fakultas_id')->label('Fakultas')->options(FilterOptions::fakultas())->searchable(),
             Select::make('prodi_id')->label('Program Studi')->options(FilterOptions::prodi())->searchable(),
         ];

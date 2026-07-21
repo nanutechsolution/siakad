@@ -58,7 +58,7 @@ trait HasLaporanFilterAndExport
     public function filterForm(Schema $form): Schema
     {
         return $form
-            ->schema($this->filterFormSchema())
+            ->components($this->filterFormSchema())
             ->statePath('filterState');
     }
 
