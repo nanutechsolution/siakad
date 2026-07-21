@@ -42,7 +42,7 @@ final class FilterOptions
     {
         return DB::table('ref_angkatan')
             ->orderByDesc('tahun')
-            ->pluck('tahun', 'id')
+            ->pluck('id_tahun', 'id_tahun')
             ->all();
     }
 
