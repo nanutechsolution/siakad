@@ -100,13 +100,14 @@ final class PendapatanService
             ->groupBy('pr.id', 'pr.nama_prodi', 'pp.total_pendapatan')
             ->orderBy('pr.nama_prodi')
             ->selectRaw('
-                pr.id as prodi_id,
-                pr.nama_prodi,
-                COUNT(DISTINCT mahasiswas.id) as jumlah_mahasiswa,
-                SUM(tm.total_tagihan) as total_tagihan,
-                SUM(tm.total_bayar) as total_pembayaran,
-                COALESCE(pp.total_pendapatan, 0) as total_pendapatan
-            ');
+        pr.id as id,
+        pr.id as prodi_id,
+        pr.nama_prodi,
+        COUNT(DISTINCT mahasiswas.id) as jumlah_mahasiswa,
+        SUM(tm.total_tagihan) as total_tagihan,
+        SUM(tm.total_bayar) as total_pembayaran,
+        COALESCE(pp.total_pendapatan, 0) as total_pendapatan
+    ');
     }
 
     /** Laporan #7 — Pendapatan Per Periode (bulanan / semester / tahun akademik). */
