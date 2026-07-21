@@ -26,15 +26,15 @@ final class PendapatanService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswa.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
             ->whereNull('pm.deleted_at')
             ->where('sv.is_final', true)
-            ->when($filters['tahun_akademik_id'] ?? null, fn ($q, $v) => $q->where('tm.tahun_akademik_id', $v))
-            ->when($filters['tanggal_dari'] ?? null, fn ($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
-            ->when($filters['tanggal_sampai'] ?? null, fn ($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v));
+            ->when($filters['tahun_akademik_id'] ?? null, fn($q, $v) => $q->where('tm.tahun_akademik_id', $v))
+            ->when($filters['tanggal_dari'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
+            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v));
 
         return MahasiswaInfoQuery::applyFilters($query, $filters);
     }
@@ -78,31 +78,31 @@ final class PendapatanService
         $map = TagihanMapQuery::build();
 
         $pendapatanPerProdi = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->whereNull('pm.deleted_at')
             ->where('sv.is_final', true)
-            ->when($filters['tahun_akademik_id'] ?? null, fn ($q, $v) => $q->where('tm.tahun_akademik_id', $v))
-            ->when($filters['tanggal_dari'] ?? null, fn ($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
-            ->when($filters['tanggal_sampai'] ?? null, fn ($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v))
+            ->when($filters['tahun_akademik_id'] ?? null, fn($q, $v) => $q->where('tm.tahun_akademik_id', $v))
+            ->when($filters['tanggal_dari'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
+            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v))
             ->groupBy('pr.id')
             ->selectRaw('pr.id as prodi_id, SUM(pm.nominal_bayar) as total_pendapatan');
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
-            ->when($filters['tahun_akademik_id'] ?? null, fn ($q, $v) => $q->where('tm.tahun_akademik_id', $v));
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
+            ->when($filters['tahun_akademik_id'] ?? null, fn($q, $v) => $q->where('tm.tahun_akademik_id', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query
-            ->leftJoinSub($pendapatanPerProdi, 'pp', fn ($join) => $join->on('pp.prodi_id', '=', 'pr.id'))
+            ->leftJoinSub($pendapatanPerProdi, 'pp', fn($join) => $join->on('pp.prodi_id', '=', 'pr.id'))
             ->groupBy('pr.id', 'pr.nama_prodi', 'pp.total_pendapatan')
             ->orderBy('pr.nama_prodi')
             ->selectRaw('
                 pr.id as prodi_id,
                 pr.nama_prodi,
-                COUNT(DISTINCT m.id) as jumlah_mahasiswa,
+                COUNT(DISTINCT mahasiswas.id) as jumlah_mahasiswa,
                 SUM(tm.total_tagihan) as total_tagihan,
                 SUM(tm.total_bayar) as total_pembayaran,
                 COALESCE(pp.total_pendapatan, 0) as total_pendapatan
