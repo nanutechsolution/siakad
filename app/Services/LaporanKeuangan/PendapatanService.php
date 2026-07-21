@@ -117,20 +117,36 @@ final class PendapatanService
 
         return match ($groupBy) {
             'tahun_akademik' => $query
-                ->select('ta.id as periode_id', 'ta.nama_tahun as label')
-                ->selectRaw('SUM(pm.nominal_bayar) as total')
+                ->selectRaw('
+                ta.id as id,
+                ta.id as periode_id,
+                ta.nama_tahun as label,
+                SUM(pm.nominal_bayar) as total
+            ')
                 ->groupBy('ta.id', 'ta.nama_tahun')
                 ->orderBy('ta.id'),
+
             'semester' => $query
-                ->select('ta.semester as periode_id')
-                ->selectRaw("CASE ta.semester WHEN 1 THEN 'Ganjil' WHEN 2 THEN 'Genap' ELSE 'Pendek' END as label")
-                ->selectRaw('SUM(pm.nominal_bayar) as total')
+                ->selectRaw("
+                ta.semester as id,
+                ta.semester as periode_id,
+                CASE ta.semester
+                    WHEN 1 THEN 'Ganjil'
+                    WHEN 2 THEN 'Genap'
+                    ELSE 'Pendek'
+                END as label,
+                SUM(pm.nominal_bayar) as total
+            ")
                 ->groupBy('ta.semester')
                 ->orderBy('ta.semester'),
+
             default => $query
-                ->selectRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id")
-                ->selectRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label")
-                ->selectRaw('SUM(pm.nominal_bayar) as total')
+                ->selectRaw("
+                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
+                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
+                DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
+                SUM(pm.nominal_bayar) as total
+            ")
                 ->groupBy('periode_id', 'label')
                 ->orderBy('periode_id'),
         };
