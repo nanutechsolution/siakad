@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Services\LaporanKeuangan\Support;
 
+use App\Models\LaporanKeuangan\MahasiswaRecord;
 use App\Models\Mahasiswa;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -22,7 +23,7 @@ final class MahasiswaInfoQuery
 {
     public static function base(): Builder
     {
-        return Mahasiswa::query()
+        return MahasiswaRecord::query()
             ->from('mahasiswas as m')
             ->join('ref_person as p', 'p.id', '=', 'm.person_id')
             ->join('ref_prodi as pr', 'pr.id', '=', 'm.prodi_id')
