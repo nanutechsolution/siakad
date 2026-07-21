@@ -139,8 +139,7 @@ final class PendapatanService
             ")
                 ->groupBy('ta.semester')
                 ->orderBy('ta.semester'),
-
-            default => $query
+            default => $this->verifiedPaymentsQuery($filters)
                 ->selectRaw("
         DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
         DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
@@ -148,7 +147,7 @@ final class PendapatanService
         SUM(pm.nominal_bayar) as total
     ")
                 ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
-                ->orderBy('periode_id'),
+                ->orderByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')"),
         };
     }
 
