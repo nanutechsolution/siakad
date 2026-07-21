@@ -7,7 +7,6 @@ namespace App\Filament\Pages\LaporanKeuangan\Concerns;
 use App\Exports\LaporanKeuangan\GenericLaporanExport;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
-use Filament\Forms\Form;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -85,11 +84,8 @@ trait HasLaporanFilterAndExport
         }
 
         return $table
-            // ->query() (bukan ->records()) = Filament yang menjalankan
-            // ->paginate() sendiri terhadap Builder ini. Query BENAR-BENAR
-            // baru dibentuk setiap render (closure), jadi selalu memakai
-            // $this->filterState terbaru tanpa perlu cache manual.
-            ->query(fn(): Builder => $this->query($this->filterState))
+            // ->query(fn(): Builder => $this->query($this->filterState))
+            ->query(fn() => $this->query($this->filterState))
             ->columns($columns)
             ->paginated([10, 25, 50, 100])
             ->defaultPaginationPageOption(25)
