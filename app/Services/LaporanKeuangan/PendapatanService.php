@@ -26,7 +26,7 @@ final class PendapatanService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
+            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswa.id'))
             ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
@@ -78,7 +78,7 @@ final class PendapatanService
         $map = TagihanMapQuery::build();
 
         $pendapatanPerProdi = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'm.id'))
+            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswa.id'))
             ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->whereNull('pm.deleted_at')
