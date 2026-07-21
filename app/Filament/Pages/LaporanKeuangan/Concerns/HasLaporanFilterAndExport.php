@@ -58,7 +58,15 @@ trait HasLaporanFilterAndExport
     public function filterForm(Schema $form): Schema
     {
         return $form
-            ->components($this->filterFormSchema())
+            ->components([
+                \Filament\Schemas\Components\Grid::make([
+                    'default' => 1,
+                    'sm' => 2,
+                    'lg' => 3,
+                    'xl' => 4,
+                ])
+                    ->schema($this->filterFormSchema()),
+            ])
             ->statePath('filterState');
     }
 
