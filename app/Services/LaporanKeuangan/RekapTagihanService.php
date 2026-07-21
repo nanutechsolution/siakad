@@ -47,7 +47,7 @@ final class RekapTagihanService
     private function semesterQuery(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
-            ->join('tagihan_mahasiswas as t', 't.mahasiswa_id', '=', 'mahasiswa.id')
+            ->join('tagihan_mahasiswas as t', 't.mahasiswa_id', '=', 'mahasiswas.id')
             ->join('ref_tahun_akademik as ta', 'ta.id', '=', 't.tahun_akademik_id')
             ->whereNull('t.deleted_at')
             ->when($filters['tahun_akademik_id'] ?? null, fn($q, $v) => $q->where('t.tahun_akademik_id', $v))
@@ -57,7 +57,7 @@ final class RekapTagihanService
 
         return $query->selectRaw("
                 mahasiswa.id,
-                m.nim,
+                mahasiswa.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 m.angkatan_id,
@@ -73,14 +73,14 @@ final class RekapTagihanService
     private function nonRegulerQuery(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
-            ->join('tagihan_non_regulers as t', 't.mahasiswa_id', '=', 'mahasiswa.id')
+            ->join('tagihan_non_regulers as t', 't.mahasiswa_id', '=', 'mahasiswas.id')
             ->whereNull('t.deleted_at');
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query->selectRaw("
-                mahasiswa.id,
-                mahasiswa.nim,
+                mahasiswas.id,
+                mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 m.angkatan_id,
