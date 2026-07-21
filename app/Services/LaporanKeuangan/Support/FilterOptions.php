@@ -41,7 +41,7 @@ final class FilterOptions
     public static function angkatan(): array
     {
         return DB::table('ref_angkatan')
-            ->orderByDesc('tahun')
+            ->orderByDesc('id_tahun')
             ->pluck('id_tahun', 'id_tahun')
             ->all();
     }
