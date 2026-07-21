@@ -33,8 +33,8 @@ final class MahasiswaInfoQuery
     public static function applyFilters(Builder $query, array $filters): Builder
     {
         return $query
-            ->when($filters['fakultas_id'] ?? null, fn (Builder $q, $v) => $q->where('f.id', $v))
-            ->when($filters['prodi_id'] ?? null, fn (Builder $q, $v) => $q->where('pr.id', $v))
-            ->when($filters['angkatan_id'] ?? null, fn (Builder $q, $v) => $q->where('m.angkatan_id', $v));
+            ->when($filters['fakultas_id'] ?? null, fn(Builder $q, $v) => $q->where('f.id', $v))
+            ->when($filters['prodi_id'] ?? null, fn(Builder $q, $v) => $q->where('pr.id', $v))
+            ->when($filters['angkatan_id'] ?? null, fn(Builder $q, $v) => $q->where('m.angkatan_id', $v));
     }
 }
