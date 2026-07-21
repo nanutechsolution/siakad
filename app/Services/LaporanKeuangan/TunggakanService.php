@@ -34,18 +34,20 @@ final class TunggakanService
         $map = TagihanMapQuery::build();
 
         $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn ($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
+            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
             ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
             ->where('tm.sisa_tagihan', '>', 0)
-            ->when($filters['semester'] ?? null, fn ($q, $v) => $q->where('ta.semester', $v))
-            ->when($filters['jenis_tagihan'] ?? null, fn ($q, $v) => $q->where('tm.jenis_tagihan', $v));
+            ->when($filters['semester'] ?? null, fn($q, $v) => $q->where('ta.semester', $v))
+            ->when($filters['jenis_tagihan'] ?? null, fn($q, $v) => $q->where('tm.jenis_tagihan', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query
             ->orderByDesc('tm.sisa_tagihan')
             ->selectRaw('
+                mahasiswas.id,
                 mahasiswas.nim,
+                p.id,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 ta.semester,
@@ -55,8 +57,8 @@ final class TunggakanService
                 tm.status_bayar,
                 tm.hari_keterlambatan as lama_tunggakan_hari,
                 CASE
-                    WHEN tm.hari_keterlambatan > '.self::BATAS_SEDANG_MAX_HARI.' THEN \'BERAT\'
-                    WHEN tm.hari_keterlambatan > '.self::BATAS_RINGAN_MAX_HARI.' THEN \'SEDANG\'
+                    WHEN tm.hari_keterlambatan > ' . self::BATAS_SEDANG_MAX_HARI . ' THEN \'BERAT\'
+                    WHEN tm.hari_keterlambatan > ' . self::BATAS_RINGAN_MAX_HARI . ' THEN \'SEDANG\'
                     WHEN tm.hari_keterlambatan > 0 THEN \'RINGAN\'
                     ELSE \'BELUM_JATUH_TEMPO\'
                 END as kategori_tunggakan
