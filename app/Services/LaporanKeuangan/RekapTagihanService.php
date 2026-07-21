@@ -57,7 +57,7 @@ final class RekapTagihanService
 
         return $query->selectRaw("
                 mahasiswas.id,
-                mahasiswa.nim,
+                mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
                 m.angkatan_id,
