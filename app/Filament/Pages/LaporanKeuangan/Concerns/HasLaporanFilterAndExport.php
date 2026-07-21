@@ -107,7 +107,7 @@ trait HasLaporanFilterAndExport
             ->query(fn(): Builder => $this->query($this->filterState))
             ->columns($columns)
             ->paginated([10, 25, 50, 100])
-            ->defaultPaginationPageOption(25)
+            ->defaultPaginationPageOption(10)
             ->striped()
             ->emptyStateHeading('Belum ada data untuk filter ini')
             ->emptyStateDescription('Coba ubah kombinasi filter di atas, lalu klik "Terapkan Filter".')
