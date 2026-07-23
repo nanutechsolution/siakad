@@ -112,16 +112,14 @@ trait HasStudentProfileRelations
      */
     public function getDosenWaliAttribute(): ?RefPerson
     {
-        $this->loadMissing('kelasAktif.kelas.dosenWaliUtama.dosen.person');
+        $this->loadMissing('kelasAktif');
 
-        $kelas = $this->kelasAktif;
-
-        dd(
-            get_class($kelas),
-            $kelas
-        );
-
-        return $kelas?->kelas?->dosenWaliUtama?->dosen?->person;
+        dd([
+            'relation_type'   => get_class($this->kelasAktif()),
+            'property_type'   => get_debug_type($this->kelasAktif),
+            'property_class'  => is_object($this->kelasAktif) ? get_class($this->kelasAktif) : null,
+            'property_value'  => $this->kelasAktif,
+        ]);
     }
     // public function getDosenWaliAttribute(): ?RefPerson
     // {
