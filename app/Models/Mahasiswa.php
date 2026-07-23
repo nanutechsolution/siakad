@@ -17,6 +17,13 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
+/**
+ * @property-read \App\Models\MahasiswaKelas|null $kelasAktif
+ * @property-read \App\Models\RefPerson|null $dosenWali
+ * @property-read \Illuminate\Database\Eloquent\Collection<int,\App\Models\Krs> $krs
+ * @property-read \Illuminate\Database\Eloquent\Collection<int,\App\Models\TagihanMahasiswa> $tagihan
+ */
+
 class Mahasiswa extends Model implements HasScopeStrategy
 {
     use HasFactory, HasUuids, SoftDeletes, HasStudentProfileRelations;

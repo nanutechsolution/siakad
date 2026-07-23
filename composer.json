@@ -25,6 +25,7 @@
         "spatie/laravel-settings": "^3.9"
     },
     "require-dev": {
+        "barryvdh/laravel-ide-helper": "*",
         "fakerphp/faker": "^1.23",
         "laravel/pail": "^1.2.5",
         "laravel/pao": "^1.0.6",
