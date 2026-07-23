@@ -11,12 +11,12 @@ use Livewire\Attributes\Reactive; // <-- 1. Wajib di-import sesuai dokumentasi
 
 class BebanMengajarStatsOverview extends StatsOverviewWidget
 {
-    #[Reactive] // <-- 2. Wajib dipasang agar Livewire tahu properti ini dinamis
-    public array $filters = [];
+    #[Reactive]
+    public ?array $filters = null;
 
     protected function getStats(): array
     {
-        // Data $this->filters otomatis ter-update setiap kali filter tabel berubah
+        $filters = $this->filters ?? [];
         $summary = app(BebanMengajarService::class)->summary($this->filters);
 
         return [
