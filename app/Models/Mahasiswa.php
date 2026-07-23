@@ -88,50 +88,50 @@ class Mahasiswa extends Model implements HasScopeStrategy
     /**
      * Get the person data associated with the student.
      */
-    public function person(): BelongsTo
-    {
-        return $this->belongsTo(RefPerson::class, 'person_id');
-    }
+    // public function person(): BelongsTo
+    // {
+    //     return $this->belongsTo(RefPerson::class, 'person_id');
+    // }
 
     /**
      * Get the program study associated with the student.
      */
-    public function prodi(): BelongsTo
-    {
-        return $this->belongsTo(RefProdi::class, 'prodi_id');
-    }
+    // public function prodi(): BelongsTo
+    // {
+    //     return $this->belongsTo(RefProdi::class, 'prodi_id');
+    // }
 
     /**
      * Get the batch (angkatan) associated with the student.
      */
-    public function angkatan(): BelongsTo
-    {
-        return $this->belongsTo(RefAngkatan::class, 'angkatan_id', 'id_tahun');
-    }
+    // public function angkatan(): BelongsTo
+    // {
+    //     return $this->belongsTo(RefAngkatan::class, 'angkatan_id', 'id_tahun');
+    // }
 
     /**
      * Get the program class (e.g., Reguler, Eksekutif) associated with the student.
      */
-    public function program(): BelongsTo
-    {
-        return $this->belongsTo(RefProgram::class, 'program_id');
-    }
+    // public function program(): BelongsTo
+    // {
+    //     return $this->belongsTo(RefProgram::class, 'program_id');
+    // }
 
     /**
      * Get the curriculum associated with the student.
      */
-    public function kurikulum(): BelongsTo
-    {
-        return $this->belongsTo(MasterKurikulum::class, 'kurikulum_id');
-    }
+    // public function kurikulum(): BelongsTo
+    // {
+    //     return $this->belongsTo(MasterKurikulum::class, 'kurikulum_id');
+    // }
 
     /**
      * Get the study plans (KRS) of the student.
      */
-    public function krs(): HasMany
-    {
-        return $this->hasMany(Krs::class, 'mahasiswa_id');
-    }
+    // public function krs(): HasMany
+    // {
+    //     return $this->hasMany(Krs::class, 'mahasiswa_id');
+    // }
 
     /**
      * Get the bills associated with the student.
@@ -144,10 +144,10 @@ class Mahasiswa extends Model implements HasScopeStrategy
     /**
      * Get the status history of the student.
      */
-    public function riwayatStatus(): HasMany
-    {
-        return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id')->orderBy('tahun_akademik_id');
-    }
+    // public function riwayatStatus(): HasMany
+    // {
+    //     return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id')->orderBy('tahun_akademik_id');
+    // }
     public function tagihanMahasiswas(): HasMany
     {
         return $this->hasMany(TagihanMahasiswa::class, 'mahasiswa_id');
@@ -181,13 +181,13 @@ class Mahasiswa extends Model implements HasScopeStrategy
         return $this->hasMany(MahasiswaKelas::class, 'mahasiswa_id', 'id');
     }
 
-    /**
-     * Helper scope untuk mengambil kelas yang saat ini sedang aktif saja.
-     */
-    public function kelasAktif()
-    {
-        return $this->mahasiswaKelas()->whereNull('tanggal_keluar');
-    }
+    // /**
+    //  * Helper scope untuk mengambil kelas yang saat ini sedang aktif saja.
+    //  */
+    // public function kelasAktif()
+    // {
+    //     return $this->mahasiswaKelas()->whereNull('tanggal_keluar');
+    // }
     /**
      * Status risiko akademik sederhana berdasar IPK terakhir & tren IPS.
      * Sesuaikan ambang batas (2.00) dengan aturan akademik kampusmu.
@@ -228,14 +228,14 @@ class Mahasiswa extends Model implements HasScopeStrategy
         return ($this->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
     }
 
-    public function biodata(): HasOne
-    {
-        return $this->hasOne(
-            MahasiswaBiodata::class,
-            'mahasiswa_id',
-            'id'
-        );
-    }
+    // public function biodata(): HasOne
+    // {
+    //     return $this->hasOne(
+    //         MahasiswaBiodata::class,
+    //         'mahasiswa_id',
+    //         'id'
+    //     );
+    // }
 
     public function edomProgress()
     {
