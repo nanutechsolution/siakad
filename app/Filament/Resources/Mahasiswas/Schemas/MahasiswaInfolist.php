@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\Mahasiswas\Schemas;
 
+use App\Enums\KrsStatusEnum;
 use App\Filament\Resources\RefPeople\RefPersonResource;
 use App\Models\Mahasiswa;
 use Carbon\Carbon;
@@ -80,8 +81,12 @@ class MahasiswaInfolist
                                 TextEntry::make('statusTerakhir.status_kuliah')
                                     ->label('Status Mahasiswa')
                                     ->badge()
-                                    ->formatStateUsing(fn(?string $state) => Mahasiswa::labelStatusKuliah($state))
-                                    ->color(fn(?string $state) => Mahasiswa::warnaStatusKuliah($state)),
+                                    ->formatStateUsing(
+                                        fn(?string $state) => Mahasiswa::labelStatusKuliah($state)
+                                    )
+                                    ->color(
+                                        fn(?string $state) => Mahasiswa::warnaStatusKuliah($state)
+                                    ),
 
                                 TextEntry::make('nim')
                                     ->label('NIM')
@@ -195,8 +200,12 @@ class MahasiswaInfolist
                         TextEntry::make('statusTerakhir.status_kuliah')
                             ->label('Status Mahasiswa')
                             ->badge()
-                            ->formatStateUsing(fn(?string $s) => Mahasiswa::labelStatusKuliah($s))
-                            ->color(fn(?string $s) => Mahasiswa::warnaStatusKuliah($s)),
+                            ->formatStateUsing(
+                                fn(?string $state) => Mahasiswa::labelStatusKuliah($state)
+                            )
+                            ->color(
+                                fn(?string $state) => Mahasiswa::warnaStatusKuliah($state)
+                            ),
                         TextEntry::make('program.nama_program')->label('Program')->placeholder('-'),
                         TextEntry::make('prodi.nama_prodi')->label('Program Studi'),
                         TextEntry::make('prodi.fakultas.nama_fakultas')->label('Fakultas'),
@@ -377,14 +386,11 @@ class MahasiswaInfolist
                                 TextEntry::make('status_krs')
                                     ->label('Status Approval')
                                     ->badge()
-                                    ->color(fn(string $state) => match ($state) {
-                                        'DRAFT' => 'gray',
-                                        'DIAJUKAN' => 'warning',
-                                        'DISETUJUI' => 'success',
-                                        'DITOLAK' => 'danger',
-                                        'DIBATALKAN' => 'gray',
-                                        default => 'gray',
-                                    }),
+                                    ->color(function ($state): string {
+                                        return $state instanceof KrsStatusEnum
+                                            ? $state->getColor()
+                                            : KrsStatusEnum::tryFrom($state)?->getColor() ?? 'gray';
+                                    })
                             ]),
                     ])
                     ->contained(false),
@@ -604,15 +610,20 @@ class MahasiswaInfolist
                         TextEntry::make('person_id')->label('ID Person')->copyable(),
                         TextEntry::make('created_at')
                             ->label('Dibuat Pada')
-                            ->state(fn(?string $s) => static::tanggalIndonesia($s, 'd F Y, H:i') . ' WITA'),
+                            ->state(
+                                fn($record) => static::tanggalIndonesia(
+                                    $record->created_at,
+                                    'd F Y, H:i'
+                                ) . ' WITA'
+                            ),
                         TextEntry::make('updated_at')
                             ->label('Diperbarui Pada')
-                            ->state(fn(?string $s) => static::tanggalIndonesia($s, 'd F Y, H:i') . ' WITA'),
+                            ->state(fn($record) => static::tanggalIndonesia($record->updated_at, 'd F Y, H:i') . ' WITA'),
                         TextEntry::make('deleted_at')
                             ->label('Status Hapus')
                             ->badge()
-                            ->state(fn(?string $s) => $s ? 'Dihapus (Soft Delete)' : 'Aktif')
-                            ->color(fn(?string $s) => $s ? 'danger' : 'success'),
+                            ->state(fn($record) => $record ? 'Dihapus (Soft Delete)' : 'Aktif')
+                            ->color(fn($record) => $record ? 'danger' : 'success'),
                     ]),
 
             ]);

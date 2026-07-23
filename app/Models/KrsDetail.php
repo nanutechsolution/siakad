@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Domain\Akademik\Enums\StatusAmbil;
 use App\Enums\StatusNilaiKelas;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
@@ -48,8 +49,9 @@ class KrsDetail extends Model
      * (bukan dibatalkan). Sesuaikan huruf kode ini dengan modul KRS Anda
      * jika berbeda -- ini titik yang WAJIB dicek sebelum go-live.
      */
-    public const STATUS_AMBIL_AKTIF = ['B']; // contoh: B = Baru/Berjalan
-
+    public const STATUS_AMBIL_AKTIF = [
+        StatusAmbil::BARU->value,
+    ];
     /**
      * Log ke activity_log setiap kali nilai / status berubah.
      * Sumber "waktu input", "dosen penginput", "waktu publish" bagi BARA

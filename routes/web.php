@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\LaporanKeuanganExportController;
 use App\Http\Controllers\Mahasiswa\DokumenAkademikController;
+use App\Http\Controllers\MigrationErrorReportController;
 use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::get('/laporan-keuangan/export/pdf/{page}', [
@@ -121,3 +122,7 @@ Route::middleware(['auth'])
         Route::get('khs/pdf', [DokumenAkademikController::class, 'khsPdf'])->name('khs.pdf');
         Route::get('transkrip/pdf', [DokumenAkademikController::class, 'transkripPdf'])->name('transkrip.pdf');
     });
+
+Route::middleware(['web', 'auth'])
+    ->get('/migration/batches/{batch}/error-report', MigrationErrorReportController::class)
+    ->name('migration.batches.error-report');
