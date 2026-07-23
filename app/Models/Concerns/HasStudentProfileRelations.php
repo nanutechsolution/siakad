@@ -112,21 +112,28 @@ trait HasStudentProfileRelations
      */
     public function getDosenWaliAttribute(): ?RefPerson
     {
-        $kelas = $this->relationLoaded('kelasAktif')
-            ? $this->kelasAktif()
-            : $this->kelasAktif()->first();
+        $this->loadMissing('kelasAktif.kelas.dosenWaliUtama.dosen.person');
 
-        if (! $kelas) {
-            return null;
-        }
-
-        /** @var Kelas|null $kelasModel */
-        $kelasModel = $kelas->relationLoaded('kelas')
-            ? $kelas->kelas
-            : $kelas->kelas()->with('dosenWaliUtama.dosen.person')->first();
-
-        return $kelasModel?->dosenWaliUtama?->dosen?->person;
+        return $this->kelasAktif?->kelas?->dosenWaliUtama?->dosen?->person;
     }
+    // public function getDosenWaliAttribute(): ?RefPerson
+    // {
+    //     /** @var MahasiswaKelas|null $kelas */
+    //     $kelas = $this->relationLoaded('kelasAktif')
+    //         ? $this->kelasAktif
+    //         : $this->kelasAktif()->first();
+
+    //     if (! $kelas) {
+    //         return null;
+    //     }
+
+    //     /** @var Kelas|null $kelasModel */
+    //     $kelasModel = $kelas->relationLoaded('kelas')
+    //         ? $kelas->kelas
+    //         : $kelas->kelas()->with('dosenWaliUtama.dosen.person')->first();
+
+    //     return $kelasModel?->dosenWaliUtama?->dosen?->person;
+    // }
 
     /**
      * Eager-load chain lengkap untuk resolusi Dosen PA tanpa N+1,
