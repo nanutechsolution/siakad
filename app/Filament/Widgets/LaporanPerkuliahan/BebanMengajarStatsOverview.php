@@ -17,8 +17,8 @@ class BebanMengajarStatsOverview extends StatsOverviewWidget
     protected function getStats(): array
     {
         $filters = $this->filters ?? [];
-        $summary = app(BebanMengajarService::class)->summary($this->filters);
-
+        $summary = app(BebanMengajarService::class)
+            ->summary($filters);
         return [
             Stat::make('Total Dosen Terplot', number_format($summary['total_dosen']) . ' Orang')
                 ->description('Dosen yang memiliki jam mengajar periode ini')
