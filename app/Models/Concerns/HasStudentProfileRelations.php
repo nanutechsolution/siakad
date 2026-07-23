@@ -110,35 +110,25 @@ trait HasStudentProfileRelations
      * accessor, gunakan withDosenWaliEagerLoad() saat query index/list agar
      * tidak N+1.
      */
+
     public function getDosenWaliAttribute(): ?RefPerson
     {
-        $this->loadMissing('kelasAktif');
+        /** @var MahasiswaKelas|null $kelas */
+        $kelas = $this->relationLoaded('kelasAktif')
+            ? $this->kelasAktif
+            : $this->kelasAktif()->first();
 
-        dd([
-            'relation_type'   => get_class($this->kelasAktif()),
-            'property_type'   => get_debug_type($this->kelasAktif),
-            'property_class'  => is_object($this->kelasAktif) ? get_class($this->kelasAktif) : null,
-            'property_value'  => $this->kelasAktif,
-        ]);
+        if (! $kelas) {
+            return null;
+        }
+
+        /** @var Kelas|null $kelasModel */
+        $kelasModel = $kelas->relationLoaded('kelas')
+            ? $kelas->kelas
+            : $kelas->kelas()->with('dosenWaliUtama.dosen.person')->first();
+
+        return $kelasModel?->dosenWaliUtama?->dosen?->person;
     }
-    // public function getDosenWaliAttribute(): ?RefPerson
-    // {
-    //     /** @var MahasiswaKelas|null $kelas */
-    //     $kelas = $this->relationLoaded('kelasAktif')
-    //         ? $this->kelasAktif
-    //         : $this->kelasAktif()->first();
-
-    //     if (! $kelas) {
-    //         return null;
-    //     }
-
-    //     /** @var Kelas|null $kelasModel */
-    //     $kelasModel = $kelas->relationLoaded('kelas')
-    //         ? $kelas->kelas
-    //         : $kelas->kelas()->with('dosenWaliUtama.dosen.person')->first();
-
-    //     return $kelasModel?->dosenWaliUtama?->dosen?->person;
-    // }
 
     /**
      * Eager-load chain lengkap untuk resolusi Dosen PA tanpa N+1,
