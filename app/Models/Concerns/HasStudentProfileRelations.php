@@ -113,7 +113,7 @@ trait HasStudentProfileRelations
     public function getDosenWaliAttribute(): ?RefPerson
     {
         $kelas = $this->relationLoaded('kelasAktif')
-            ? $this->kelasAktif
+            ? $this->kelasAktif()
             : $this->kelasAktif()->first();
 
         if (! $kelas) {
