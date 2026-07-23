@@ -7,6 +7,8 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\LaporanKeuanganExportController;
+use App\Http\Controllers\Mahasiswa\DokumenAkademikController;
+use Barryvdh\DomPDF\Facade\Pdf;
 
 Route::get('/laporan-keuangan/export/pdf/{page}', [
     LaporanKeuanganExportController::class,
@@ -40,14 +42,22 @@ Route::middleware(['auth'])->group(function () {
             ->where('kurikulum_id', $jadwal->kurikulum_id)
             ->get();
 
-        // Ambil peserta kelas
         $peserta = \App\Models\KrsDetail::query()
-            ->with(['krs.mahasiswa.person', 'detailNilai'])
+            ->with([
+                'krs.mahasiswa.person',
+                'detailNilai',
+            ])
             ->where('jadwal_kuliah_id', $jadwal->id)
             ->where('status_ambil', '!=', 'K')
             ->get();
 
-        return view('print.nilai-kelas', compact('jadwal', 'komponenAktif', 'peserta'));
+        $pdf = Pdf::loadView('print.nilai-kelas', compact(
+            'jadwal',
+            'komponenAktif',
+            'peserta'
+        ));
+
+        return $pdf->stream('daftar-nilai.pdf');
     })->name('dosen.nilai.print');
 
     Route::get('/pembayaran/bukti/{pembayaran}/download', function (PembayaranMahasiswa $pembayaran) {
@@ -104,3 +114,10 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/sinkronisasi/export/{export}/download', SinkronisasiExportDownloadController::class)
         ->name('sinkronisasi.export.download');
 });
+Route::middleware(['auth'])
+    ->prefix('mahasiswa/dokumen')
+    ->name('mahasiswa.')
+    ->group(function () {
+        Route::get('khs/pdf', [DokumenAkademikController::class, 'khsPdf'])->name('khs.pdf');
+        Route::get('transkrip/pdf', [DokumenAkademikController::class, 'transkripPdf'])->name('transkrip.pdf');
+    });

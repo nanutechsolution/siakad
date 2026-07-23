@@ -113,7 +113,7 @@ class InputNilaiKelas extends Page implements HasTable
         return $table
             ->query(
                 KrsDetail::query()
-                    ->with(['krs.mahasiswa.person', 'detailNilai'])
+                    ->with(['krs.mahasiswa.person', 'detailNilai', 'jadwalKuliah'])
                     ->where('jadwal_kuliah_id', $this->record->id)
                     ->where('status_ambil', '!=', 'K')
             )
@@ -174,6 +174,7 @@ class InputNilaiKelas extends Page implements HasTable
                     ->color('danger')
                     ->requiresConfirmation()
                     ->modalDescription('Aksi ini akan mengunci seluruh nilai mahasiswa di kelas ini. Perubahan selanjutnya wajib melalui form revisi.')
+                    ->disabled(fn() => ! $this->isInputOpen)
                     ->visible(fn() => Gate::allows('publishNilaiDosen', $this->record))
                     ->action(function (\App\Services\Dosen\GradeService $service) {
                         $count = $service->publishClassGrades($this->record);

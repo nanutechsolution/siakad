@@ -6,13 +6,13 @@ use App\Enums\NavigationGroup;
 use App\Filament\Resources\LpmDokumens\Pages\CreateLpmDokumen;
 use App\Filament\Resources\LpmDokumens\Pages\EditLpmDokumen;
 use App\Filament\Resources\LpmDokumens\Pages\ListLpmDokumens;
+use App\Filament\Resources\LpmDokumens\RelationManagers\ApprovalsRelationManager;
+use App\Filament\Resources\LpmDokumens\RelationManagers\VersiBaruRelationManager;
 use App\Filament\Resources\LpmDokumens\Schemas\LpmDokumenForm;
 use App\Filament\Resources\LpmDokumens\Tables\LpmDokumensTable;
 use App\Models\LpmDokumen;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -37,7 +37,8 @@ class LpmDokumenResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            ApprovalsRelationManager::class,
+            VersiBaruRelationManager::class,
         ];
     }
 

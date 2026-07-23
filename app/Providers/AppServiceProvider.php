@@ -38,7 +38,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(\App\Services\Mahasiswa\NilaiAkademikService::class);
     }
 
     /**
@@ -46,22 +46,33 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        Gate::define(
-            'nilaiKelasDosen',
-            [DosenJadwalKuliahPolicy::class, 'nilaiKelas']
-        );
-        Gate::define(
-            'publishNilaiDosen',
-            [DosenJadwalKuliahPolicy::class, 'publishNilai']
-        );
+        // 1. Registrasi Policy berbasis Model (Sangat disarankan & Clean)
+        Gate::policy(\App\Models\KrsDetail::class, DosenNilaiPolicy::class);
+        Gate::policy(\App\Models\JadwalKuliah::class, DosenJadwalKuliahPolicy::class);
+        // 2. Jika tetap ingin mempertahankan Alias String (inputNilaiDosen & revisiNilaiDosen)
+        // Bungkus dengan Closure agar parameter $user dan $record diteruskan dengan sempurna
         Gate::define(
             'inputNilaiDosen',
-            [DosenNilaiPolicy::class, 'inputNilai']
+            fn(User $user, \App\Models\KrsDetail $record) =>
+            app(DosenNilaiPolicy::class)->inputNilai($user, $record)
         );
 
         Gate::define(
             'revisiNilaiDosen',
-            [DosenNilaiPolicy::class, 'revisiNilai']
+            fn(User $user, \App\Models\KrsDetail $record) =>
+            app(DosenNilaiPolicy::class)->revisiNilai($user, $record)
+        );
+
+        Gate::define(
+            'nilaiKelasDosen',
+            fn(User $user, \App\Models\JadwalKuliah $record) =>
+            app(DosenJadwalKuliahPolicy::class)->nilaiKelas($user, $record)
+        );
+
+        Gate::define(
+            'publishNilaiDosen',
+            fn(User $user, \App\Models\JadwalKuliah $record) =>
+            app(DosenJadwalKuliahPolicy::class)->publishNilai($user, $record)
         );
         TrxPersonJabatan::observe(TrxPersonJabatanObserver::class);
         TrxDosen::observe(TrxDosenObserver::class);
@@ -82,6 +93,9 @@ class AppServiceProvider extends ServiceProvider
             'keuangan_adjustment' => \App\Models\KeuanganAdjustment::class,
             'keuangan_saldo'      => KeuanganSaldo::class,
             'keuangan_saldo_transaction'   => KeuanganSaldoTransaction::class,
+            'krs' => \App\Models\Krs::class,
+            'trx_person_gelar' => \App\Models\TrxPersonGelar::class,
+            'Krs_detail' => \App\Models\KrsDetail::class,
         ]);
     }
 }

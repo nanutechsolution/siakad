@@ -38,9 +38,6 @@ class KrsValidationService
     /**
      * Gate 2: Status & Kontinuitas Mahasiswa (Gap Semester)
      */
-    /**
-     * Gate 2: Status & Kontinuitas Mahasiswa (Gap Semester)
-     */
     public function checkStatusMahasiswa(
         Mahasiswa $mahasiswa,
         RefTahunAkademik $taTarget
@@ -108,7 +105,16 @@ class KrsValidationService
         if ($isOverride) {
             return KrsValidationResult::pass('GATE_KEUANGAN', 'Override manual validasi keuangan aktif.');
         }
-
+        $hasDispensasi = DB::table('dispensasi_akademiks')
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->whereIn('jenis', ['KRS', 'KEUANGAN'])
+            ->where('status', 'AKTIF')
+            ->where('berlaku_mulai', '<=', $ta->tgl_selesai_krs)
+            ->where('berlaku_sampai', '>=', $ta->tgl_mulai_krs)
+            ->exists();
+        if ($hasDispensasi) {
+            return KrsValidationResult::pass('GATE_KEUANGAN', 'Validasi keuangan dilewati karena terdapat dispensasi aktif.');
+        }
         // 1. Cek tunggakan semester lalu
         $tunggakanLalu = DB::table('tagihan_mahasiswas')
             ->where('mahasiswa_id', $mahasiswa->id)
@@ -116,11 +122,9 @@ class KrsValidationService
             ->where('status_bayar', '!=', 'LUNAS')
             ->whereNull('deleted_at')
             ->sum(DB::raw('total_tagihan - total_bayar'));
-
         if ($tunggakanLalu > 0) {
             return KrsValidationResult::fail('GATE_KEUANGAN', "Terblokir: Tunggakan semester lalu Rp " . number_format((float)$tunggakanLalu, 0, ',', '.'));
         }
-
         // 2. Ambil tagihan semester ini
         $tagihan = DB::table('tagihan_mahasiswas')
             ->where('mahasiswa_id', $mahasiswa->id)
@@ -131,7 +135,6 @@ class KrsValidationService
         if (!$tagihan) {
             return KrsValidationResult::fail('GATE_KEUANGAN', 'Tagihan semester ini belum diterbitkan.');
         }
-
         // 3. ✅ DELEGASI ke PaymentPolicyChecker (single source of truth)
         $tagihanModel = TagihanMahasiswa::find($tagihan->id);
         $compliance = app(PaymentPolicyChecker::class)->cekKepatuhan($mahasiswa, $tagihanModel);
@@ -464,7 +467,6 @@ class KrsValidationService
         $jadwalIds = $krs->details->pluck('jadwal_kuliah_id')->filter()->toArray();
         $requestedSks = (int) $krs->details->sum('sks_snapshot');
         $sksMengulang = (int) $krs->details->where('status_ambil', 'U')->sum('sks_snapshot');
-
         $hasDispensasiSks = DB::table('dispensasi_akademiks')
             ->where('mahasiswa_id', $mahasiswa->id)
             ->where('jenis', 'KRS')
@@ -472,7 +474,6 @@ class KrsValidationService
             ->where('berlaku_mulai', '<=', $ta->tgl_selesai_krs)
             ->where('berlaku_sampai', '>=', $ta->tgl_mulai_krs)
             ->exists();
-
         return [
             $this->checkPeriode($ta),
             $this->checkStatusMahasiswa($mahasiswa, $ta),

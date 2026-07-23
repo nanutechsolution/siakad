@@ -2,6 +2,7 @@
 
 namespace App\Filament\Tables;
 
+use App\Enums\KrsStatusEnum;
 use App\Services\Laporan\RekapKrsService;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -26,25 +27,25 @@ class RekapKrsTable
         return $table
             ->records(function () use ($getFilters, $table) {
                 $activeFilters = $getFilters();
- 
+
                 if (empty($activeFilters['tahun_akademik_id'])) {
                     return new LengthAwarePaginator([], 0, 10);
                 }
- 
+
                 $result = app(RekapKrsService::class)->getData($activeFilters);
                 $items = collect($result['data'])->map->toArray()->values();
- 
+
                 $livewire = $table->getLivewire();
                 $perPage = (int) (property_exists($livewire, 'tableRecordsPerPage')
                     ? ($livewire->tableRecordsPerPage ?: 25)
                     : 25);
                 $page = (int) (
                     method_exists($livewire, 'getTablePage')
-                        ? $livewire->getTablePage()
-                        : ($livewire->page ?? Request::get('page', 1))
+                    ? $livewire->getTablePage()
+                    : ($livewire->page ?? Request::get('page', 1))
                 );
                 $slice = $items->slice(($page - 1) * $perPage, $perPage)->values();
- 
+
                 return new LengthAwarePaginator(
                     $slice,
                     $items->count(),
@@ -59,45 +60,40 @@ class RekapKrsTable
                     ->searchable()
                     ->sortable()
                     ->weight('bold'),
- 
+
                 TextColumn::make('nama_mahasiswa')
                     ->label('Nama Mahasiswa')
                     ->searchable()
                     ->wrap(),
- 
+
                 TextColumn::make('nama_prodi')
                     ->label('Prodi')
                     ->badge()
                     ->color('info'),
- 
+
                 TextColumn::make('angkatan')
                     ->label('Angkatan')
                     ->sortable(),
- 
+
                 TextColumn::make('semester')
                     ->label('Semester')
                     ->alignCenter(),
- 
+
                 TextColumn::make('jumlah_mata_kuliah')
                     ->label('Jml MK')
                     ->alignCenter()
                     ->badge(),
- 
+
                 TextColumn::make('total_sks')
                     ->label('Total SKS')
                     ->alignCenter()
                     ->weight('bold'),
- 
                 TextColumn::make('status_krs')
                     ->label('Status')
                     ->badge()
-                    ->color(fn (string $state): string => match ($state) {
-                        'APPROVED' => 'success',
-                        'SUBMITTED' => 'warning',
-                        'REJECTED' => 'danger',
-                        default => 'gray',
-                    }),
- 
+                    ->formatStateUsing(fn(KrsStatusEnum $state) => $state->getLabel())
+                    ->color(fn(KrsStatusEnum $state) => $state->getColor())
+                    ->icon(fn(KrsStatusEnum $state) => $state->getIcon()),
                 TextColumn::make('nama_tahun_akademik')
                     ->label('Tahun Akademik')
                     ->toggleable(isToggledHiddenByDefault: true),

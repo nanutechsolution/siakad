@@ -38,13 +38,13 @@ class RekapKrsService extends BaseLaporanService
         $this->validateFilterParams($filters);
 
         $tahunAkademik = $this->getTahunAkademik((int)$filters['tahun_akademik_id']);
-        
+
         $query = Krs::query()
             ->with([
-                'mahasiswa.refPerson',
-                'mahasiswa.refProdi',
+                'mahasiswa.person',
+                'mahasiswa.prodi',
                 'tahunAkademik',
-                'krsDetails.masterMataKuliah'
+                'details.mataKuliah'
             ])
             ->where('tahun_akademik_id', $tahunAkademik->id);
 
@@ -84,13 +84,12 @@ class RekapKrsService extends BaseLaporanService
      */
     private function transformToDto(Krs $krs, $tahunAkademik): RekapKrsDto
     {
-        $jumlahMk = $krs->krsDetails->count();
-        $totalSks = (int)$krs->krsDetails->sum(fn($detail) => $detail->masterMataKuliah?->sks_default ?? 0);
-
+        $jumlahMk = $krs->details->count();
+        $totalSks = (int)$krs->details->sum(fn($detail) => $detail->masterMataKuliah?->sks_default ?? 0);
         return new RekapKrsDto(
             nim: $krs->mahasiswa->nim,
-            nama_mahasiswa: $krs->mahasiswa->refPerson->nama_lengkap,
-            nama_prodi: $krs->mahasiswa->refProdi->nama_prodi,
+            nama_mahasiswa: $krs->mahasiswa->person->nama_lengkap,
+            nama_prodi: $krs->mahasiswa->prodi->nama_prodi,
             angkatan: $krs->mahasiswa->angkatan_id,
             semester: $tahunAkademik->semester,
             jumlah_mata_kuliah: $jumlahMk,
@@ -111,8 +110,12 @@ class RekapKrsService extends BaseLaporanService
         $totalSks = array_sum(array_column($dtos, 'total_sks'));
         $rataSksPerMahasiswa = $totalMahasiswa > 0 ? $totalSks / $totalMahasiswa : 0;
 
-        $statusBreakdown = array_count_values(array_column($dtos, 'status_krs'));
-
+        $statusBreakdown = array_count_values(
+            array_map(
+                fn($status) => $status->value,
+                array_column($dtos, 'status_krs')
+            )
+        );
         return [
             'total_mahasiswa' => $totalMahasiswa,
             'total_mata_kuliah' => $totalMataKuliah,

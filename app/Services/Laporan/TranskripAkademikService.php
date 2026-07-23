@@ -44,7 +44,9 @@ class TranskripAkademikService extends BaseLaporanService
 
         // Optional: filter by period
         if (!empty($filters['tahun_akademik_id'])) {
-            $query->whereHas('krsDetail.krs', fn($q) => 
+            $query->whereHas(
+                'krsDetail.krs',
+                fn($q) =>
                 $q->where('tahun_akademik_id', $filters['tahun_akademik_id'])
             );
         }
@@ -53,7 +55,7 @@ class TranskripAkademikService extends BaseLaporanService
 
         // Hitung IPK dari transkrip
         $ipkFinal = $this->hitungIpkFinal($transkrips);
-        
+
         // Total SKS
         $totalSksFinal = (int)$transkrips->sum('sks_diakui');
 
@@ -117,7 +119,7 @@ class TranskripAkademikService extends BaseLaporanService
     public function getDataForPdf(string $mahasiswaId): array
     {
         $result = $this->getData(['mahasiswa_id' => $mahasiswaId]);
-        
+
         return [
             'mahasiswa' => [
                 'nim' => $result['data']->nim,

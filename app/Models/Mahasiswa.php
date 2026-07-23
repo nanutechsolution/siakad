@@ -249,4 +249,21 @@ class Mahasiswa extends Model implements HasScopeStrategy
             'mahasiswa_id'
         );
     }
+
+    /** Riwayat IPS/IPK per semester (sumber resmi untuk KHS & Transkrip). */
+    public function riwayatStatus(): HasMany
+    {
+        return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id');
+    }
+
+    /** Nilai final per mata kuliah (sumber resmi untuk Transkrip Sementara). */
+    public function transkrip(): HasMany
+    {
+        return $this->hasMany(AkademikTranskrip::class, 'mahasiswa_id');
+    }
+
+    public function getNamaLengkapAttribute(): ?string
+    {
+        return $this->person?->nama_lengkap;
+    }
 }

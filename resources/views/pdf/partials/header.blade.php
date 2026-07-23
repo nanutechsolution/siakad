@@ -3,72 +3,73 @@ $kampus = app(\App\Settings\KampusSettings::class);
 $logoFullPath = $kampus->logo_path ? storage_path('app/public/'.$kampus->logo_path) : null;
 @endphp
 
-<table style="width: 100%; border-collapse: collapse; margin-bottom: 4px;">
+<!-- Container Kop Surat -->
+<table style="width: 100%; border-collapse: collapse; margin-bottom: 5px;">
     <tr>
-        <!-- Bagian Logo dengan Batasan Proporsional -->
-        <td style="width: 80px; vertical-align: middle; padding-bottom: 6px;">
+        <!-- Kolom Logo (Presisi 15%) -->
+        <td style="width: 15%; text-align: left; vertical-align: middle; padding-right: 15px;">
             @if ($logoFullPath && file_exists($logoFullPath))
-                <img src="{{ $logoFullPath }}" style="width: 65px; height: 65px; object-fit: contain;">
+            <img src="{{ $logoFullPath }}" style="width: 85px; max-height: 85px; object-fit: contain;">
             @else
-                <!-- Placeholder kotak minimalis jika gambar logo absen -->
-                <div style="width: 65px; height: 65px; border: 1px dashed #cbd5e1; background-color: #f8fafc;"></div>
+            <div style="width: 80px; height: 80px; border: 1px solid #94a3b8; text-align: center; line-height: 80px; font-size: 10px; color: #64748b; background-color: #f8fafc;">
+                Logo Absen
+            </div>
             @endif
         </td>
-        
-        <!-- Informasi Institusi Pusat -->
-        <td style="vertical-align: middle; text-align: center; padding-bottom: 6px;">
-            <!-- Nama Kampus: Lebih Besar, Bold Tebal, & Berwarna Navy Baku -->
-            <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 16px; font-weight: 800; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.75px; margin-bottom: 2px;">
+
+        <!-- Kolom Informasi Institusi (Pusat) -->
+        <td style="width: 70%; text-align: center; vertical-align: middle;">
+            <!-- Nama Kampus: Font Serif Klasik untuk Kesan Formal -->
+            <div style="font-family: 'Times New Roman', Times, serif; font-size: 22px; font-weight: bold; color: #000000; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 4px;">
                 {{ $kampus->nama }}
             </div>
-            
-            <!-- Status Akreditasi: Dibuat seperti Sub-Label Elegan -->
+
+            <!-- Status Akreditasi -->
             @if ($kampus->akreditasi)
-                <div style="font-size: 8.5px; color: #0f766e; font-weight: bold; text-transform: uppercase; margin-bottom: 4px; letter-spacing: 0.5px;">
-                    Terakreditasi Institusi: {{ $kampus->akreditasi }}
-                </div>
+            <div style="font-family: Arial, sans-serif; font-size: 11px; font-weight: bold; color: #333333; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
+                Terakreditasi: {{ $kampus->akreditasi }}
+            </div>
             @endif
-            
-            <!-- Detail Alamat & Kontak: Teks Lebih Rapi & Muted -->
-            <div style="font-size: 9px; color: #334155; margin-bottom: 2px; line-height: 1.3;">
+
+            <!-- Detail Alamat & Kontak -->
+            <div style="font-family: Arial, sans-serif; font-size: 10px; color: #111827; line-height: 1.4; margin-bottom: 2px;">
                 {{ $kampus->alamat }}
             </div>
-            <div style="font-size: 8.5px; color: #64748b;">
-                Telp: {{ $kampus->telepon }} <span style="color: #cbd5e1; padding: 0 3px;">•</span> 
-                Email: <span style="color: #1e3a8a;">{{ $kampus->email }}</span> <span style="color: #cbd5e1; padding: 0 3px;">•</span> 
-                Website: <span style="color: #1e3a8a;">{{ $kampus->website }}</span>
+            <div style="font-family: Arial, sans-serif; font-size: 10px; color: #111827;">
+                Telepon: {{ $kampus->telepon }} &nbsp;|&nbsp;
+                Email: {{ $kampus->email }} &nbsp;|&nbsp;
+                Website: {{ $kampus->website }}
             </div>
         </td>
-        
-        <!-- Penyeimbang Kanan (Spacer) agar Teks Center Sempurna -->
-        <td style="width: 80px; padding-bottom: 6px;"></td>
+
+        <!-- Penyeimbang Kanan (Spacer) Presisi 15% -->
+        <td style="width: 15%;"></td>
     </tr>
 </table>
 
-<!-- Garis Pembatas Kop Surat Ganda Formal (Tebal Khas Dokumen Negara) -->
-<div style="border-top: 2.5px solid #1e3a8a; border-bottom: 0.75px solid #1e3a8a; height: 2px; margin-bottom: 12px; clear: both;"></div>
+<!-- Garis Pembatas Ganda Standar Dokumen Resmi (Tebal & Tipis) -->
+<div style="border-bottom: 3px solid #000000; margin-bottom: 2px; clear: both;"></div>
+<div style="border-bottom: 1px solid #000000; margin-bottom: 15px;"></div>
 
-<!-- Judul Dokumen: Menghilangkan Underline Jadul, Diganti Teks Bersih Berjarak -->
+<!-- Judul Dokumen -->
 @if (!empty($judulDokumen))
-<div style="text-align: center; margin-bottom: 6px;">
-    <div style="font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; font-size: 13px; font-weight: bold; color: #1e3a8a; text-transform: uppercase; letter-spacing: 0.5px;">
+<div style="text-align: center; margin-bottom: 8px;">
+    <div style="font-family: Arial, sans-serif; font-size: 14px; font-weight: bold; color: #000000; text-transform: uppercase; letter-spacing: 1px;">
         {{ $judulDokumen }}
     </div>
 </div>
 @endif
 
-<!-- Baris Informasi Filter: Dibungkus Box Badge semi-transparan untuk Kerapian Parameter Laporan -->
+<!-- Baris Informasi / Filter Parameter Dokumen -->
 @if (!empty($infoBaris))
-<div style="text-align: center; margin-bottom: 15px;">
-    <div style="display: block; background-color: #f8fafc; border: 1px solid #e2e8f0; padding: 4px 8px; border-radius: 4px; max-width: 100%;">
-        <span style="font-size: 8.5px; color: #475569; font-weight: 500;">
-            @foreach($infoBaris as $index => $item)
-                <span style="color: #1e3a8a; font-weight: 600;">{{ $item }}</span>
-                @if(!$loop->last)
-                    <span style="color: #94a3b8; padding: 0 6px;">•</span>
-                @endif
-            @endforeach
-        </span>
+<div style="text-align: center; margin-bottom: 20px;">
+    <div style="font-family: Arial, sans-serif; font-size: 10px; color: #475569;">
+        @foreach($infoBaris as $index => $item)
+        <span style="font-weight: 600; color: #1e293b;">{{ $item }}</span>
+        @if(!$loop->last)
+        <span style="margin: 0 8px; color: #94a3b8;">|</span>
+        @endif
+        @endforeach
     </div>
 </div>
 @endif

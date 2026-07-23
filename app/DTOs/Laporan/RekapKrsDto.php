@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\DTOs\Laporan;
 
+use App\Enums\KrsStatusEnum;
 use Illuminate\Contracts\Support\Arrayable;
 
 /**
@@ -21,7 +22,7 @@ class RekapKrsDto implements Arrayable
         public readonly int $semester,
         public readonly int $jumlah_mata_kuliah,
         public readonly int $total_sks,
-        public readonly string $status_krs,
+        public readonly KrsStatusEnum  $status_krs,
         public readonly ?string $kode_tahun_akademik = null,
         public readonly ?string $nama_tahun_akademik = null,
     ) {}

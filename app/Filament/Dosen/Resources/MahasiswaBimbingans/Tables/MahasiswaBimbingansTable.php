@@ -97,7 +97,7 @@ class MahasiswaBimbingansTable
             ->modalContent(function (Model $record, KrsValidationService $validationService) {
                 $krs = $record->krs->first();
                 $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
-                $krs->loadMissing(['details.jadwalKuliah.mataKuliah', 'details.jadwalKuliah.dosenPengampus.dosen.person']);
+                $krs->loadMissing(['details.jadwalKuliah.mataKuliah', 'details.jadwalKuliah.dosenPengampu.person']);
                 $hasilValidasi = $validationService->runAllValidations($record, $krs, $activeTa);
                 return view('filament.dosen.components.review-krs-modal', [
                     'krs' => $krs,
@@ -122,6 +122,11 @@ class MahasiswaBimbingansTable
                 Action::make('approve')
                     ->label('Setujui KRS')
                     ->color('success')
+                    ->visible(
+                        fn(Model $record) =>
+                        $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                    )
+                    ->cancelParentActions()
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
                     ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
@@ -146,7 +151,6 @@ class MahasiswaBimbingansTable
                             Notification::make()->title('Gagal: ' . $e->getMessage())->danger()->send();
                             return; // Hentikan proses jika benar-benar gagal
                         }
-
                         // Tutup modal dengan aman di luar blok try-catch
                         $action->cancel();
                     }),
@@ -157,6 +161,11 @@ class MahasiswaBimbingansTable
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
                     ->requiresConfirmation()
+                    ->close()
+                    ->visible(
+                        fn(Model $record) =>
+                        $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                    )
                     ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
                         if (empty(trim($data['catatan_dosen'] ?? ''))) {
                             Notification::make()->title('Catatan wajib diisi saat menolak KRS.')->warning()->send();

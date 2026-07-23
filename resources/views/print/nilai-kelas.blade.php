@@ -100,9 +100,6 @@
 
 <body>
 
-    <div class="text-right no-print" style="margin-bottom: 10px;">
-        <button onclick="window.print()" style="padding: 5px 15px; cursor: pointer; background: #22c55e; color: #fff; border: none; border-radius: 4px;">Cetak / Simpan PDF</button>
-    </div>
     @include('pdf.partials.header', [
     'judulDokumen' => 'DAFTAR NILAI MAHASISWA',
     ])
@@ -116,8 +113,8 @@
         <tr>
             <td>Kelas / SKS</td>
             <td>: {{ $jadwal->kelas?->nama_kelas }} / {{ $jadwal->mataKuliah?->sks_snapshot ?? '-' }} SKS</td>
-            <td>Dosen Penguji</td>
-            <td>: {{ Auth::user()?->person?->nama_lengkap }}</td>
+            <td>Dosen Pengampu</td>
+            <td>: {{ Auth::user()?->person?->nama_dengan_gelar }}</td>
         </tr>
     </table>
 
@@ -161,10 +158,10 @@
 
     <div class="ttd-container">
         <div class="ttd-box">
-            <p>Kota Kampus, {{ now()->translatedFormat('d F Y') }}</p>
+            <p>Tambolaka, {{ now()->translatedFormat('d F Y') }}</p>
             <p>Dosen Pengampu,</p>
             <div class="ttd-space"></div>
-            <p><strong><u>{{ Auth::user()?->person?->nama_lengkap }}</u></strong></p>
+            <p><strong><u>{{ Auth::user()?->person?->nama_dengan_gelar  }}</u></strong></p>
             <p>NIDN. {{ Auth::user()?->person?->trxDosen?->nidn ?? '-' }}</p>
         </div>
     </div>

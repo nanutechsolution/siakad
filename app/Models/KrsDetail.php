@@ -3,6 +3,7 @@
 namespace App\Models;
 
 use App\Enums\StatusNilaiKelas;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -173,5 +174,32 @@ class KrsDetail extends Model
     public function isEvaluatedFor(string $dosenId): bool
     {
         return $this->edomJawabans()->where('dosen_id', $dosenId)->exists();
+    }
+
+
+    /**
+     * Scope: hanya baris nilai yang SAH untuk ditampilkan ke mahasiswa.
+     * Kombinasi (sesuai keputusan bisnis):
+     *   - krs_detail.is_published = true (dosen sudah finalisasi baris ini)
+     *   - DAN tahun akademik terkait sudah "tayang" secara resmi
+     *     (ref_tahun_akademik.is_locked_nilai = true ATAU
+     *      tgl_publish_nilai sudah lewat)
+     */
+    public function scopeNilaiTayang(Builder $query): Builder
+    {
+        return $query->where('is_published', true)
+            ->whereHas('krs.tahunAkademik', function (Builder $q) {
+                $q->where('is_locked_nilai', true)
+                    ->orWhere(function (Builder $q2) {
+                        $q2->whereNotNull('tgl_publish_nilai')
+                            ->whereDate('tgl_publish_nilai', '<=', now());
+                    });
+            });
+    }
+
+    /** Scope: batasi ke mahasiswa tertentu (lewat relasi krs). */
+    public function scopeMilikMahasiswa(Builder $query, string $mahasiswaId): Builder
+    {
+        return $query->whereHas('krs', fn(Builder $q) => $q->where('mahasiswa_id', $mahasiswaId));
     }
 }

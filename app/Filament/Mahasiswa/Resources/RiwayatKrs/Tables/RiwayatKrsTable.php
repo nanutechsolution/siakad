@@ -3,6 +3,7 @@
 namespace App\Filament\Mahasiswa\Resources\RiwayatKrs\Tables;
 
 use App\Enums\KrsStatusEnum;
+use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -27,7 +28,7 @@ class RiwayatKrsTable
                     ->label('Total SKS')
                     ->badge()
                     ->color('info'),
-                    
+
 
                 TextColumn::make('status_krs')
                     ->label('Status')
@@ -38,6 +39,14 @@ class RiwayatKrsTable
             ->defaultSort('tgl_krs', 'desc')
             ->recordActions([
                 ViewAction::make()->label('Lihat Detail')->authorize(true),
+                Action::make('cetak_krs')
+                    ->label('Cetak')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    // Hanya bisa dicetak jika statusnya disetujui (opsional, sesuaikan dengan logic Anda)
+                    // ->visible(fn ($record) => $record->status_krs === KrsStatusEnum::DISETUJUI)
+                    ->url(fn($record) => route('krs.cetak', $record->id))
+                    ->openUrlInNewTab(), // Buka di tab baru agar tidak menutup panel Filament
             ]);
     }
 }

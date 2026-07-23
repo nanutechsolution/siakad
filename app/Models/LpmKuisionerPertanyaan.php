@@ -28,8 +28,23 @@ class LpmKuisionerPertanyaan extends Model
         return $this->belongsTo(LpmKuisionerKelompok::class, 'kelompok_id');
     }
 
+    public function surveyJawabans(): HasMany
+    {
+        return $this->hasMany(LpmSurveyJawaban::class, 'pertanyaan_id');
+    }
+
     public function jawabans(): HasMany
     {
         return $this->hasMany(LpmEdomJawaban::class, 'pertanyaan_id');
+    }
+
+    public function jawabanPihaks(): HasMany
+    {
+        return $this->hasMany(LpmSurveyJawabanPihak::class, 'pertanyaan_id');
+    }
+
+    public function isRating(): bool
+    {
+        return str_starts_with((string) $this->jenis_input, 'RATING');
     }
 }

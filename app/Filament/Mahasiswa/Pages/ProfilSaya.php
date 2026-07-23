@@ -32,7 +32,7 @@ class ProfilSaya extends Page implements HasForms
     protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::AKADEMIK->value;
     protected static ?string $navigationLabel = 'Profil Saya';
     protected static ?string $title = 'Profil Saya';
-
+    protected static bool $shouldRegisterNavigation = false;
 
     protected string $view = 'filament.mahasiswa.pages.profil-saya';
     public ?array $data = [];

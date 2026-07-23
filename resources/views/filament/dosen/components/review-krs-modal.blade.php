@@ -28,32 +28,6 @@
         </div>
     </div>
 
-    <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
-        <div class="bg-gray-50 dark:bg-white/5 px-4 py-3 border-b border-gray-200 dark:border-white/10">
-            <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Validasi Sistem</h3>
-        </div>
-        <div class="p-4 space-y-3">
-            @foreach($hasilValidasi as $validasi)
-            <div class="flex items-start gap-3">
-                <div class="mt-0.5">
-                    @if($validasi->passed)
-                    <x-heroicon-c-check-circle class="w-5 h-5 text-success-500" />
-                    @else
-                    <x-heroicon-c-x-circle class="w-5 h-5 text-danger-500" />
-                    @endif
-                </div>
-                <div>
-                    <p class="text-sm font-medium {{ $validasi->passed ? 'text-gray-900 dark:text-white' : 'text-danger-600 dark:text-danger-400' }}">
-                        {{ str_replace('_', ' ', $validasi->gateCode) }}
-                    </p>
-                    @if(!$validasi->passed || $validasi->message !== 'OK')
-                    <p class="text-xs text-gray-500 mt-0.5">{{ $validasi->message }}</p>
-                    @endif
-                </div>
-            </div>
-            @endforeach
-        </div>
-    </div>
     <div class="grid grid-cols-2 gap-3 mb-4">
         <div class="rounded-lg border p-3 {{ $statusRisiko->getColor() === 'danger' ? 'border-danger-300 bg-danger-50' : ($statusRisiko->getColor() === 'warning' ? 'border-warning-300 bg-warning-50' : 'border-gray-200') }}">
             <p class="text-xs text-gray-500">Status Risiko Akademik</p>
@@ -109,8 +83,11 @@
                             @endif
                         </td>
                         <td class="px-4 py-3 text-xs text-gray-500">
-                            @if($detail->jadwalKuliah && $detail->jadwalKuliah->dosenPengampus->isNotEmpty())
-                            {{ $detail->jadwalKuliah->dosenPengampus->map(fn($p) => $p->dosen->person->nama_lengkap)->join(', ') }}
+                            @if($detail->jadwalKuliah && $detail->jadwalKuliah->dosenPengampu->isNotEmpty())
+                            {{ $detail->jadwalKuliah->dosenPengampu
+    ->map(fn($dosen) => $dosen->person?->nama_dengan_gelar)
+    ->filter()
+    ->join(', ') }}
                             @else
                             -
                             @endif

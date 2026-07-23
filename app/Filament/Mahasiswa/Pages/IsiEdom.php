@@ -9,13 +9,8 @@ use App\Models\LpmEdomJawaban;
 use App\Models\LpmEdomSaran;
 use App\Models\LpmKuisionerKelompok;
 use App\Models\TrxDosen;
-use App\Services\EdomService;
-use Filament\Forms\Components\Radio;
-use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use UnitEnum;
@@ -43,7 +38,7 @@ class IsiEdom extends Page
         $this->jadwal = JadwalKuliah::with('mataKuliah')->findOrFail($this->jadwalId);
         $this->dosen = TrxDosen::with('person.gelars')->findOrFail($this->dosenId);
         // 1. Ambil pertanyaan EDOM yang aktif
-        $this->kelompokPertanyaan = LpmKuisionerKelompok::with(['pertanyaan' => function ($q) {
+        $this->kelompokPertanyaan = LpmKuisionerKelompok::with(['pertanyaans' => function ($q) {
             $q->orderBy('urutan');
         }])
             ->where('kategori', 'EDOM')
@@ -53,7 +48,7 @@ class IsiEdom extends Page
 
         // 2. Hitung total pertanyaan aktif secara real-time
         $this->totalPertanyaan = $this->kelompokPertanyaan->sum(function ($kelompok) {
-            return $kelompok->pertanyaan->count();
+            return $kelompok->pertanyaans->count();
         });
 
         // 3. Jika ternyata kosong, kirim notifikasi peringatan ke layar
@@ -84,7 +79,7 @@ class IsiEdom extends Page
 
         // Inisialisasi default array ratings
         foreach ($this->kelompokPertanyaan as $kelompok) {
-            foreach ($kelompok->pertanyaan as $pertanyaan) {
+            foreach ($kelompok->pertanyaans as $pertanyaan) {
                 $this->ratings[$pertanyaan->id] = null;
             }
         }
@@ -105,7 +100,7 @@ class IsiEdom extends Page
 
         // Validasi pertanyaan wajib
         foreach ($this->kelompokPertanyaan as $kelompok) {
-            foreach ($kelompok->pertanyaan as $pertanyaan) {
+            foreach ($kelompok->pertanyaans as $pertanyaan) {
                 if ($pertanyaan->is_required && empty($this->ratings[$pertanyaan->id])) {
                     $this->addError("ratings.{$pertanyaan->id}", "Pertanyaan ini wajib dijawab.");
                 }

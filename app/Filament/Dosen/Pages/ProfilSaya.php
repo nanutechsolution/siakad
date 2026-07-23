@@ -151,11 +151,9 @@ class ProfilSaya extends Page implements HasForms
         $totalLuaran = DB::table('lppm_luarans')->where('dosen_id', $dosenId)->count();
 
         $skorEdom = DB::table('lpm_edom_jawaban')
-            ->join('krs_detail', 'krs_detail.id', '=', 'lpm_edom_jawaban.krs_detail_id')
-            ->join('jadwal_kuliah_dosen', 'jadwal_kuliah_dosen.jadwal_kuliah_id', '=', 'krs_detail.jadwal_kuliah_id')
-            ->where('jadwal_kuliah_dosen.dosen_id', $dosenId)
-            ->whereRaw("lpm_edom_jawaban.jawaban_nilai REGEXP '^[0-9]+(\\.[0-9]+)?$'")
-            ->avg(DB::raw('CAST(lpm_edom_jawaban.jawaban_nilai AS DECIMAL(5,2))'));
+            ->where('dosen_id', $dosenId)
+            ->whereRaw("jawaban_nilai REGEXP '^[0-9]+(\\.[0-9]+)?$'")
+            ->avg(DB::raw('CAST(jawaban_nilai AS DECIMAL(5,2))'));
 
         $jabatanAktif = DB::table('trx_person_jabatan')
             ->join('ref_jabatan', 'ref_jabatan.id', '=', 'trx_person_jabatan.jabatan_id')

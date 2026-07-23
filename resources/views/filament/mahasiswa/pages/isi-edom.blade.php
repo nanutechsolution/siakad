@@ -328,7 +328,7 @@ dark:text-white
 <div class="divide-y divide-gray-100 dark:divide-gray-800">
 
 
-@foreach($kelompok->pertanyaan as $index=>$pertanyaan)
+@foreach($kelompok->pertanyaans as $index=>$pertanyaan)
 
 
 <div class="p-6">

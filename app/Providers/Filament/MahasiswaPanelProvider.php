@@ -5,11 +5,13 @@ namespace App\Providers\Filament;
 use App\Enums\MahasiswaNavigationGroup;
 use App\Filament\Mahasiswa\Pages\Auth\LoginMahasiswa;
 use App\Filament\Mahasiswa\Widgets\MahasiswaAccountWidget;
+use Filament\Actions\Action;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
 use Filament\Http\Middleware\DisableBladeIconComponents;
 use Filament\Http\Middleware\DispatchServingFilamentEvent;
+use Filament\Navigation\MenuItem;
 use Filament\Navigation\NavigationGroup;
 use Filament\Pages\Dashboard;
 use Filament\Panel;
@@ -45,9 +47,15 @@ class MahasiswaPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => Blade::render('<x-active-academic-year />'),
             )
-            ->topbar()
             ->topNavigation()
             ->profile()
+            ->userMenuItems([
+                Action::make("Profil-Saya")
+                    ->label('Biodata')
+                    ->url('/mahasiswa/profil-saya')
+                    ->icon('heroicon-o-user-circle'),
+            ])
+
             ->font('Instrument Sans')
             ->viteTheme('resources/css/filament/mahasiswa/theme.css')
             ->brandName('Portal Mahasiswa — UNMARIS')
@@ -60,7 +68,6 @@ class MahasiswaPanelProvider extends PanelProvider
                 Dashboard::class,
             ])
             ->databaseNotifications()
-            ->databaseNotificationsPolling('30s')
             ->navigationGroups(
                 array_map(
                     fn(MahasiswaNavigationGroup $group) =>
@@ -72,7 +79,6 @@ class MahasiswaPanelProvider extends PanelProvider
             )
             ->discoverWidgets(in: app_path('Filament/Mahasiswa/Widgets'), for: 'App\Filament\Mahasiswa\Widgets')
             ->widgets([
-                // AccountWidget::class,
                 MahasiswaAccountWidget::class
             ])
             ->middleware([

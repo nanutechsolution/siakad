@@ -24,7 +24,6 @@ class TagihanMahasiswasTable
     {
         return $table
             // ->defaultSort('tahunAkademik.kode_tahun', 'desc')
-
             ->columns([
                 TextColumn::make('tahunAkademik.nama_tahun')
                     ->label('Semester / Periode')

@@ -189,7 +189,7 @@
                 Menyetujui,<br>
                 Dosen Pembimbing Akademik
                 <div class="signature-space"></div>
-                <span class="bold-underline">{{ $dosenWali->person->nama_lengkap ?? '_________________________' }}</span><br>
+                <span class="bold-underline">{{ $dosenWali->person->nama_dengan_gelar ?? '_________________________' }}</span><br>
                 NIDN. {{ $dosenWali->nidn ?? '-' }}
             </td>
             <td></td>

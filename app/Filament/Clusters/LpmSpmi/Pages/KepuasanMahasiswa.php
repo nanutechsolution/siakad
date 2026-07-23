@@ -36,6 +36,17 @@ class KepuasanMahasiswa extends Page implements HasTable
                     ->label('Tahun Akademik')
                     ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
                     ->query(fn($query) => $query),
+                SelectFilter::make('kategori')
+                    ->label('Kategori Survey')
+                    ->options([
+                        'KEPUASAN_MAHASISWA' => 'Kepuasan Mahasiswa',
+                        'KEPUASAN_DOSEN' => 'Kepuasan Dosen',
+                        'KEPUASAN_TENDIK' => 'Kepuasan Tenaga Kependidikan',
+                        'KEPUASAN_ALUMNI' => 'Kepuasan Alumni',
+                        'KEPUASAN_PENGGUNA_LULUSAN' => 'Kepuasan Pengguna Lulusan',
+                    ])
+                    ->default(KepuasanMahasiswaService::DEFAULT_KATEGORI)
+                    ->query(fn($query) => $query),
             ])
             ->columns([
                 TextColumn::make('nama_kelompok')->label('Kelompok')->searchable(),
@@ -58,7 +69,7 @@ class KepuasanMahasiswa extends Page implements HasTable
                     'kepuasan-mahasiswa-' . now()->format('Ymd-His') . '.xlsx'
                 )),
             Action::make('exportPdf')
-            ->color('danger')
+                ->color('danger')
                 ->label('Export PDF')
                 ->icon('heroicon-o-document-arrow-down')
                 ->action(fn() => $this->downloadPdf()),
@@ -85,6 +96,7 @@ class KepuasanMahasiswa extends Page implements HasTable
 
         return [
             'tahun_akademik_id' => $state['tahun_akademik_id']['value'] ?? null,
+            'kategori' => $state['kategori']['value'] ?? KepuasanMahasiswaService::DEFAULT_KATEGORI,
         ];
     }
 }

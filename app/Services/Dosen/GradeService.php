@@ -8,11 +8,17 @@ use App\Models\AkademikGradeRevisionLog;
 use App\Models\JadwalKuliah;
 use App\Models\KrsDetail;
 use App\Models\RefSkalaNilai;
+use App\Services\Akademik\RiwayatStatusService;
+use App\Services\Akademik\TranskripService;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\DB;
 
 class GradeService
 {
+    public function __construct(
+        private readonly TranskripService $transkripService,
+        private readonly RiwayatStatusService $riwayatStatusService,
+    ) {}
     /**
      * Hitung nilai akhir (angka, huruf, indeks) satu baris KrsDetail
      * berdasarkan nilai per komponen x bobot masing-masing, lalu simpan.
@@ -77,12 +83,20 @@ class GradeService
     public function publishClassGrades(JadwalKuliah $jadwalKuliah): int
     {
         return DB::transaction(function () use ($jadwalKuliah) {
-            return $jadwalKuliah->krsDetails()
+
+            $affected = $jadwalKuliah->krsDetails()
                 ->where('is_published', false)
                 ->update([
                     'is_published' => true,
                     'is_locked' => true,
                 ]);
+
+            if ($affected > 0) {
+                $this->transkripService->sinkronkanKelas($jadwalKuliah);
+                $this->riwayatStatusService->sinkronkanKelas($jadwalKuliah);
+            }
+
+            return $affected;
         });
     }
 
