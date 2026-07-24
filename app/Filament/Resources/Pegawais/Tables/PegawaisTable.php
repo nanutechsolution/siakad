@@ -25,10 +25,13 @@ class PegawaisTable
                     ->placeholder('-'),
                 TextColumn::make('person.nama_dengan_gelar')
                     ->label('Nama Pegawai')
-                    ->searchable()
-                    ->sortable()
                     ->formatStateUsing(fn($record) => $record->person?->nama_dengan_gelar ?? '-')
-                    ->weight('bold'),
+                    ->searchable(query: function ($query, string $search) {
+                        $query->whereHas('person', function ($q) use ($search) {
+                            $q->where('nama_lengkap', 'like', "%{$search}%");
+                        });
+                    })
+                    ->sortable(),
                 TextColumn::make('person.jenis_kelamin')
                     ->label('L/P')
                     ->sortable(),
