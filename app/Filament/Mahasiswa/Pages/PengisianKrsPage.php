@@ -59,7 +59,6 @@ class PengisianKrsPage extends Page implements HasForms
         }
 
         $valKeuangan = $service->checkKeuangan($this->mahasiswa, $this->activeTa, false);
-        dd($valKeuangan);
         if (!$valKeuangan->passed) {
             $this->setIneligible($valKeuangan->message);
             return;
