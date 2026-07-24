@@ -97,6 +97,7 @@ class AppServiceProvider extends ServiceProvider
             'trx_person_gelar' => \App\Models\TrxPersonGelar::class,
             'Krs_detail' => \App\Models\KrsDetail::class,
             'keuangan_master_beasiswa' => \App\Models\KeuanganMasterBeasiswa::class,
+            'trx_pegawai' => \App\Models\TrxPegawai::class,
         ]);
     }
 }
