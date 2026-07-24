@@ -1,28 +1,35 @@
 <?php
 
+declare(strict_types=1);
+
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LpmIndikator extends Model
 {
-    use HasFactory;
+    protected $fillable = [
+        'standar_id',
+        'kode_indikator',
+        'nama_indikator',
+        'satuan',
+        'deskripsi',
+        'slug',
+        'bobot',
+        'is_iku',
+        'is_active',
+        'sumber_data_siakad',
+        'calculation_method',
+        'calculation_params',
+    ];
 
-    protected $table = 'lpm_indikators';
-    protected $guarded = ['id'];
-
-    protected function casts(): array
-    {
-        return [
-            'bobot' => 'decimal:2',
-            'is_iku' => 'boolean',
-            'is_active' => 'boolean',
-            'calculation_params' => 'json',
-        ];
-    }
+    protected $casts = [
+        'is_iku' => 'boolean',
+        'is_active' => 'boolean',
+        'calculation_params' => 'array',
+    ];
 
     public function standar(): BelongsTo
     {

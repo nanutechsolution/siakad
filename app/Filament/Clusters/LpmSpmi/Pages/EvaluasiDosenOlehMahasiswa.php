@@ -32,6 +32,7 @@ class EvaluasiDosenOlehMahasiswa extends Page implements HasTable
     {
         return $table
             ->query(fn() => app(EvaluasiDosenService::class)->query($this->getActiveFilters()))
+            ->defaultKeySort(false)
             ->filters([
                 // NOTE: filter no-op secara query builder — filtering aktual
                 // dilakukan oleh EvaluasiDosenService::query() lewat getActiveFilters().

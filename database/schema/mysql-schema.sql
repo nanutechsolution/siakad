@@ -986,6 +986,168 @@ CREATE TABLE `kurikulum_mk_prasyarat` (
   CONSTRAINT `kurikulum_mk_prasyarat_prasyarat_kurikulum_mk_id_foreign` FOREIGN KEY (`prasyarat_kurikulum_mk_id`) REFERENCES `kurikulum_mata_kuliah` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_akreditasi_elemens`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_akreditasi_elemens` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `kriteria_id` bigint unsigned NOT NULL,
+  `kode_elemen` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `deskripsi` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `urutan` int unsigned NOT NULL DEFAULT '1',
+  `status_kelengkapan` enum('BELUM','PROSES','LENGKAP') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'BELUM',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_akreditasi_elemens_kriteria_id_urutan_index` (`kriteria_id`,`urutan`),
+  CONSTRAINT `lpm_akreditasi_elemens_kriteria_id_foreign` FOREIGN KEY (`kriteria_id`) REFERENCES `lpm_akreditasi_kriterias` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_akreditasi_evidences`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_akreditasi_evidences` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `elemen_id` bigint unsigned NOT NULL,
+  `indikator_id` bigint unsigned DEFAULT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `keterangan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `uploaded_by_person_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_akreditasi_evidences_elemen_id_foreign` (`elemen_id`),
+  KEY `lpm_akreditasi_evidences_indikator_id_foreign` (`indikator_id`),
+  KEY `lpm_akreditasi_evidences_uploaded_by_person_id_foreign` (`uploaded_by_person_id`),
+  CONSTRAINT `lpm_akreditasi_evidences_elemen_id_foreign` FOREIGN KEY (`elemen_id`) REFERENCES `lpm_akreditasi_elemens` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_akreditasi_evidences_indikator_id_foreign` FOREIGN KEY (`indikator_id`) REFERENCES `lpm_akreditasi_indikators` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `lpm_akreditasi_evidences_uploaded_by_person_id_foreign` FOREIGN KEY (`uploaded_by_person_id`) REFERENCES `ref_person` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_akreditasi_indikators`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_akreditasi_indikators` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `elemen_id` bigint unsigned NOT NULL,
+  `deskripsi` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `bobot` decimal(5,2) DEFAULT NULL,
+  `indikator_siakad_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_akreditasi_indikators_elemen_id_foreign` (`elemen_id`),
+  KEY `lpm_akreditasi_indikators_indikator_siakad_id_foreign` (`indikator_siakad_id`),
+  CONSTRAINT `lpm_akreditasi_indikators_elemen_id_foreign` FOREIGN KEY (`elemen_id`) REFERENCES `lpm_akreditasi_elemens` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_akreditasi_indikators_indikator_siakad_id_foreign` FOREIGN KEY (`indikator_siakad_id`) REFERENCES `lpm_indikators` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_akreditasi_kriterias`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_akreditasi_kriterias` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `akreditasi_id` bigint unsigned NOT NULL,
+  `kode_kriteria` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_kriteria` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `urutan` int unsigned NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_akreditasi_kriterias_akreditasi_id_urutan_index` (`akreditasi_id`,`urutan`),
+  CONSTRAINT `lpm_akreditasi_kriterias_akreditasi_id_foreign` FOREIGN KEY (`akreditasi_id`) REFERENCES `lpm_akreditasis` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_akreditasi_lembagas`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_akreditasi_lembagas` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `kode` varchar(30) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama` varchar(150) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jenis` enum('INSTITUSI','PRODI') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PRODI',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `lpm_akreditasi_lembagas_kode_unique` (`kode`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_akreditasis`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_akreditasis` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `lembaga_id` bigint unsigned NOT NULL,
+  `prodi_id` bigint unsigned DEFAULT NULL,
+  `jenis_akreditasi` enum('INSTITUSI','PRODI') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `instrumen` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL COMMENT 'mis. IAPS 4.0, IAPT 3.0',
+  `status` enum('PERSIAPAN','PENGISIAN','SUBMIT','VISITASI','SELESAI') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PERSIAPAN',
+  `peringkat_target` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `peringkat_hasil` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tanggal_submit` date DEFAULT NULL,
+  `tanggal_visitasi` date DEFAULT NULL,
+  `berlaku_sampai` date DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_akreditasis_lembaga_id_foreign` (`lembaga_id`),
+  KEY `lpm_akreditasis_prodi_id_foreign` (`prodi_id`),
+  KEY `lpm_akreditasis_jenis_akreditasi_status_index` (`jenis_akreditasi`,`status`),
+  CONSTRAINT `lpm_akreditasis_lembaga_id_foreign` FOREIGN KEY (`lembaga_id`) REFERENCES `lpm_akreditasi_lembagas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_akreditasis_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_ami_checklist_items`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_ami_checklist_items` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `checklist_id` bigint unsigned NOT NULL,
+  `pertanyaan` text COLLATE utf8mb4_unicode_ci NOT NULL,
+  `urutan` int unsigned NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_ami_checklist_items_checklist_id_urutan_index` (`checklist_id`,`urutan`),
+  CONSTRAINT `lpm_ami_checklist_items_checklist_id_foreign` FOREIGN KEY (`checklist_id`) REFERENCES `lpm_ami_checklists` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_ami_checklist_jawabans`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_ami_checklist_jawabans` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `program_id` bigint unsigned NOT NULL,
+  `checklist_item_id` bigint unsigned NOT NULL,
+  `jawaban` enum('SESUAI','TIDAK_SESUAI','OBSERVASI') COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `catatan` text COLLATE utf8mb4_unicode_ci,
+  `finding_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `unique_jawaban_per_program_item` (`program_id`,`checklist_item_id`),
+  KEY `lpm_ami_checklist_jawabans_checklist_item_id_foreign` (`checklist_item_id`),
+  KEY `lpm_ami_checklist_jawabans_finding_id_foreign` (`finding_id`),
+  CONSTRAINT `lpm_ami_checklist_jawabans_checklist_item_id_foreign` FOREIGN KEY (`checklist_item_id`) REFERENCES `lpm_ami_checklist_items` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_ami_checklist_jawabans_finding_id_foreign` FOREIGN KEY (`finding_id`) REFERENCES `lpm_ami_findings` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `lpm_ami_checklist_jawabans_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `lpm_ami_programs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_ami_checklists`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_ami_checklists` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `standar_id` bigint unsigned NOT NULL,
+  `kriteria` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `urutan` int unsigned NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_ami_checklists_standar_id_urutan_index` (`standar_id`,`urutan`),
+  CONSTRAINT `lpm_ami_checklists_standar_id_foreign` FOREIGN KEY (`standar_id`) REFERENCES `lpm_standars` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lpm_ami_discussions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -1004,21 +1166,45 @@ CREATE TABLE `lpm_ami_discussions` (
   CONSTRAINT `lpm_ami_discussions_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_ami_evidences`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_ami_evidences` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `checklist_jawaban_id` bigint unsigned DEFAULT NULL,
+  `finding_id` bigint unsigned DEFAULT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `keterangan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `uploaded_by_person_id` bigint unsigned DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_ami_evidences_checklist_jawaban_id_foreign` (`checklist_jawaban_id`),
+  KEY `lpm_ami_evidences_finding_id_foreign` (`finding_id`),
+  KEY `lpm_ami_evidences_uploaded_by_person_id_foreign` (`uploaded_by_person_id`),
+  CONSTRAINT `lpm_ami_evidences_checklist_jawaban_id_foreign` FOREIGN KEY (`checklist_jawaban_id`) REFERENCES `lpm_ami_checklist_jawabans` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_ami_evidences_finding_id_foreign` FOREIGN KEY (`finding_id`) REFERENCES `lpm_ami_findings` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_ami_evidences_uploaded_by_person_id_foreign` FOREIGN KEY (`uploaded_by_person_id`) REFERENCES `ref_person` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lpm_ami_findings`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `lpm_ami_findings` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `periode_id` bigint unsigned NOT NULL,
+  `program_id` bigint unsigned DEFAULT NULL,
   `prodi_id` bigint unsigned NOT NULL,
   `jenis_temuan` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'OBSERVASI' COMMENT 'MAYOR, MINOR, OBSERVASI',
   `standar_id` bigint unsigned NOT NULL,
   `auditor_name` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `auditor_id` bigint unsigned DEFAULT NULL,
   `klasifikasi` enum('OB','KTS_MINOR','KTS_MAYOR') COLLATE utf8mb4_unicode_ci NOT NULL,
   `deskripsi_temuan` text COLLATE utf8mb4_unicode_ci NOT NULL,
   `rekomendasi` text COLLATE utf8mb4_unicode_ci,
   `akar_masalah` text COLLATE utf8mb4_unicode_ci,
   `rencana_tindak_lanjut` text COLLATE utf8mb4_unicode_ci,
+  `preventive_action` text COLLATE utf8mb4_unicode_ci,
   `deadline_perbaikan` date DEFAULT NULL,
   `is_closed` tinyint(1) NOT NULL DEFAULT '0',
   `status_workflow` enum('OPEN','ACTION_PLAN','VERIFICATION','CLOSED') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'OPEN',
@@ -1028,8 +1214,12 @@ CREATE TABLE `lpm_ami_findings` (
   KEY `lpm_ami_findings_periode_id_foreign` (`periode_id`),
   KEY `lpm_ami_findings_prodi_id_foreign` (`prodi_id`),
   KEY `lpm_ami_findings_standar_id_foreign` (`standar_id`),
+  KEY `lpm_ami_findings_program_id_foreign` (`program_id`),
+  KEY `lpm_ami_findings_auditor_id_foreign` (`auditor_id`),
+  CONSTRAINT `lpm_ami_findings_auditor_id_foreign` FOREIGN KEY (`auditor_id`) REFERENCES `lpm_auditors` (`id`) ON DELETE SET NULL,
   CONSTRAINT `lpm_ami_findings_periode_id_foreign` FOREIGN KEY (`periode_id`) REFERENCES `lpm_ami_periodes` (`id`),
   CONSTRAINT `lpm_ami_findings_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`),
+  CONSTRAINT `lpm_ami_findings_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `lpm_ami_programs` (`id`) ON DELETE SET NULL,
   CONSTRAINT `lpm_ami_findings_standar_id_foreign` FOREIGN KEY (`standar_id`) REFERENCES `lpm_standars` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -1049,6 +1239,57 @@ CREATE TABLE `lpm_ami_periodes` (
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_ami_program_auditors`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_ami_program_auditors` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `program_id` bigint unsigned NOT NULL,
+  `auditor_id` bigint unsigned NOT NULL,
+  `peran` enum('KETUA_TIM','ANGGOTA') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'ANGGOTA',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `lpm_ami_program_auditors_program_id_auditor_id_unique` (`program_id`,`auditor_id`),
+  KEY `lpm_ami_program_auditors_auditor_id_foreign` (`auditor_id`),
+  CONSTRAINT `lpm_ami_program_auditors_auditor_id_foreign` FOREIGN KEY (`auditor_id`) REFERENCES `lpm_auditors` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_ami_program_auditors_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `lpm_ami_programs` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_ami_programs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_ami_programs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `periode_id` bigint unsigned NOT NULL,
+  `unit_kerja_id` bigint unsigned NOT NULL,
+  `tanggal_pelaksanaan` date DEFAULT NULL,
+  `status` enum('DIJADWALKAN','BERLANGSUNG','SELESAI') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DIJADWALKAN',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `lpm_ami_programs_unit_kerja_id_foreign` (`unit_kerja_id`),
+  KEY `lpm_ami_programs_periode_id_unit_kerja_id_index` (`periode_id`,`unit_kerja_id`),
+  CONSTRAINT `lpm_ami_programs_periode_id_foreign` FOREIGN KEY (`periode_id`) REFERENCES `lpm_ami_periodes` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `lpm_ami_programs_unit_kerja_id_foreign` FOREIGN KEY (`unit_kerja_id`) REFERENCES `lpm_unit_kerjas` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `lpm_auditors`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `lpm_auditors` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `person_id` bigint unsigned NOT NULL,
+  `no_sertifikat_auditor` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `kompetensi` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `lpm_auditors_person_id_unique` (`person_id`),
+  CONSTRAINT `lpm_auditors_person_id_foreign` FOREIGN KEY (`person_id`) REFERENCES `ref_person` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `lpm_dokumen_approvals`;
@@ -1659,6 +1900,58 @@ CREATE TABLE `master_mata_kuliahs` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `master_mata_kuliahs_prodi_id_kode_mk_unique` (`prodi_id`,`kode_mk`),
   CONSTRAINT `master_mata_kuliahs_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `migration_batches`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `migration_batches` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `source` enum('EXCEL','CSV','NEO_DATABASE','NEO_API') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `status` enum('PROCESSING','COMPLETED','FAILED') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PROCESSING',
+  `file_name` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `file_path` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `parameter_snapshot` json NOT NULL,
+  `summary_snapshot` json DEFAULT NULL,
+  `total_rows` int unsigned NOT NULL DEFAULT '0',
+  `total_berhasil` int unsigned NOT NULL DEFAULT '0',
+  `total_gagal` int unsigned NOT NULL DEFAULT '0',
+  `total_dilewati` int unsigned NOT NULL DEFAULT '0',
+  `error_message` text COLLATE utf8mb4_unicode_ci,
+  `started_at` timestamp NULL DEFAULT NULL,
+  `completed_at` timestamp NULL DEFAULT NULL,
+  `created_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `migration_batches_created_by_foreign` (`created_by`),
+  KEY `migration_batches_status_created_at_index` (`status`,`created_at`),
+  KEY `migration_batches_source_status_index` (`source`,`status`),
+  CONSTRAINT `migration_batches_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `migration_logs`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `migration_logs` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `migration_batch_id` bigint unsigned NOT NULL,
+  `row_number` int unsigned NOT NULL,
+  `nim` varchar(20) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `krs_detail_id` bigint unsigned DEFAULT NULL,
+  `status` enum('BERHASIL','GAGAL','DILEWATI') COLLATE utf8mb4_unicode_ci NOT NULL,
+  `pesan` text COLLATE utf8mb4_unicode_ci,
+  `row_data` json NOT NULL,
+  `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (`id`),
+  KEY `migration_logs_krs_detail_id_foreign` (`krs_detail_id`),
+  KEY `migration_logs_migration_batch_id_status_index` (`migration_batch_id`,`status`),
+  KEY `migration_logs_mahasiswa_id_created_at_index` (`mahasiswa_id`,`created_at`),
+  KEY `migration_logs_status_index` (`status`),
+  CONSTRAINT `migration_logs_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `migration_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `migration_logs_migration_batch_id_foreign` FOREIGN KEY (`migration_batch_id`) REFERENCES `migration_batches` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `migrations`;
@@ -2834,3 +3127,19 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (215,'2026_07_21_15
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (216,'2026_07_21_155631_extend_lpm_dokumens_table',1);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (217,'2026_07_23_092725_create_lpm_survey_jawaban_pihak_table',2);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (218,'2026_07_23_093144_create_lpm_survey_analisis_table',2);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (219,'2026_07_23_140434_create_migration_batches_table',3);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (220,'2026_07_23_140436_create_migration_logs_table',3);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (221,'2026_07_24_121805_create_lpm_auditors_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (222,'2026_07_24_121832_create_lpm_ami_programs_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (223,'2026_07_24_121902_create_lpm_ami_program_auditors_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (224,'2026_07_24_121925_create_lpm_ami_checklists_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (225,'2026_07_24_121954_create_lpm_ami_checklist_items_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (226,'2026_07_24_122031_create_lpm_ami_checklist_jawabans_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (227,'2026_07_24_122112_create_lpm_ami_evidences_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (228,'2026_07_24_122145_extend_lpm_ami_findings_table',4);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (229,'2026_07_24_124906_create_lpm_akreditasi_lembagas_table',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (230,'2026_07_24_124927_create_lpm_akreditasis',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (231,'2026_07_24_124951_create_lpm_akreditasi_kriterias_table',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (232,'2026_07_24_125008_create_lpm_akreditasi_elemens',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (233,'2026_07_24_125026_create_lpm_akreditasi_indikators',5);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (234,'2026_07_24_125045_create_lpm_akreditasi_evidences',5);
