@@ -17,12 +17,16 @@ class KeuanganKomponenBiayaForm
                 Section::make('Informasi Komponen Biaya')
                     ->description('Master komponen biaya yang digunakan pada penyusunan skema tarif mahasiswa.')
                     ->schema([
+                        TextInput::make('kode_komponen')
+                            ->label('Kode Komponen')
+                            ->required()
+                            ->maxLength(100)
+                            ->placeholder('Contoh: SPP'),
                         TextInput::make('nama_komponen')
                             ->label('Nama Komponen')
                             ->required()
                             ->maxLength(100)
                             ->placeholder('Contoh: SPP Tetap'),
-
                         Select::make('tipe_biaya')
                             ->label('Tipe Biaya')
                             ->options([
