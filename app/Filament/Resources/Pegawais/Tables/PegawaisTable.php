@@ -27,6 +27,7 @@ class PegawaisTable
                     ->label('Nama Pegawai')
                     ->searchable()
                     ->sortable()
+                    ->formatStateUsing(fn($record) => $record->person?->nama_dengan_gelar ?? '-')
                     ->weight('bold'),
                 TextColumn::make('person.jenis_kelamin')
                     ->label('L/P')
