@@ -57,12 +57,12 @@ class AdminPanelProvider extends PanelProvider
                 PilihKonteksKerja::class,
             ])
             ->navigationGroups(
-                // Me-render otomatis seluruh Navigation Group dari Enum
                 array_map(function ($group) {
                     return NavigationGroup::make($group->value)
                         ->icon($group->icon());
                 }, AppNavigationGroup::cases())
             )
+            ->globalSearch(false)
             ->pages([])
             ->breadcrumbs(true)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')

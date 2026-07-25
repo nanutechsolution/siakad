@@ -18,6 +18,7 @@ class LpmKategoriStandarResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $navigationLabel = 'Kategori Standar';
     protected static ?string $modelLabel = 'Kategori Standar';
+    protected static ?int $navigationSort = 2;
     public static function form(Schema $schema): Schema
     {
         return LpmKategoriStandarForm::configure($schema);

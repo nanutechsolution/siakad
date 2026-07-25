@@ -31,6 +31,6 @@ class LpmAkreditasiEvidence extends Model
 
     public function uploadedBy(): BelongsTo
     {
-        return $this->belongsTo(Person::class, 'uploaded_by_person_id');
+        return $this->belongsTo(RefPerson::class, 'uploaded_by_person_id');
     }
 }

@@ -11,10 +11,8 @@ use App\Filament\Resources\LpmKuisionerKelompoks\RelationManagers\PertanyaansRel
 use App\Filament\Resources\LpmKuisionerKelompoks\Schemas\LpmKuisionerKelompokForm;
 use App\Filament\Resources\LpmKuisionerKelompoks\Tables\LpmKuisionerKelompoksTable;
 use App\Models\LpmKuisionerKelompok;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -23,6 +21,7 @@ class LpmKuisionerKelompokResource extends Resource
     protected static ?string $model = LpmKuisionerKelompok::class;
     protected static ?string $navigationLabel = 'Instrumen Kuisioner';
     protected static ?string $modelLabel = 'Kelompok Kuisioner';
+    protected static ?int $navigationSort = 4;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     public static function form(Schema $schema): Schema
     {

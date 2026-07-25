@@ -23,6 +23,7 @@ class LpmUnitKerjaResource extends Resource
     protected static ?string $navigationLabel = 'Organisasi Mutu';
     protected static ?string $modelLabel = 'Unit Kerja';
     protected static ?string $pluralModelLabel = 'Unit Kerja';
+    protected static ?int $navigationSort= 1;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     public static function form(Schema $schema): Schema
     {

@@ -23,7 +23,6 @@ class RefFakultasTable
                     ->sortable()
                     ->badge()
                     ->color('primary'),
-
                 TextColumn::make('nama_fakultas')
                     ->label('Nama Fakultas')
                     ->searchable()
