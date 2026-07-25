@@ -3,6 +3,8 @@
 namespace App\Filament\Resources\Krs\Tables;
 
 use App\Enums\KrsStatusEnum;
+use App\Enums\Pdf\PdfDocumentType;
+use App\Filament\Actions\Pdf\PdfDownloadAction;
 use App\Models\Krs;
 use App\Models\KrsStatusLog;
 use Filament\Actions\Action;
@@ -233,6 +235,13 @@ class KrsTable
                                 'catatan_admin' => $data['alasan_buka'],
                             ], $data['alasan_buka']);
                         }),
+
+                    PdfDownloadAction::make(
+                        name: 'cetak-krs',
+                        label: 'Cetak KRS',
+                        type: PdfDocumentType::KRS,
+                        contextResolver: fn($record) => ['krs_id' => $record->id],
+                    ),
                     Action::make('cetak')
                         ->label('Cetak PDF')
                         ->icon('heroicon-o-printer')

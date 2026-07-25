@@ -2,7 +2,10 @@
 
 namespace App\Filament\Resources\Khs\Pages;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Filament\Resources\Khs\KhsResource;
+use App\Models\Mahasiswa;
+use App\Services\Pdf\PdfService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Resources\Pages\ViewRecord;
@@ -14,12 +17,25 @@ class ViewKhs extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('cetak_pdf')
-                ->label('Cetak KHS (PDF)')
+            Action::make('cetak_khs')
+                ->label('Cetak KHS')
                 ->icon('heroicon-o-printer')
-                ->color('danger') // Warna merah agar identik dengan dokumen PDF
-                ->url(fn($record) => route('khs.cetak', $record->id)) // Mengarahkan ke route cetak PDF
-                ->openUrlInNewTab(), // UX: Buka di tab baru agar halaman KHS tidak tertutup
+                ->color('success')
+                ->action(function () {
+                    $khs = $this->record;
+                    $document = app(PdfService::class)->generateArchived(
+                        type: PdfDocumentType::KHS,
+                        context: [
+                            'krs_id' => $khs->id,
+                            'mahasiswa_id' => $khs->mahasiswa_id,
+                            'tahun_akademik_id' => $khs->tahun_akademik_id,
+                        ],
+                        documentableType: Mahasiswa::class,
+                        documentableId: $khs->mahasiswa_id,
+                    );
+                    return app(PdfService::class)
+                        ->downloadArchived($document);
+                }),
         ];
     }
 }

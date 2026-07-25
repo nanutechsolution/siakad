@@ -12,6 +12,7 @@ use App\Models\KeuanganMahasiswaBeasiswa;
 use App\Models\KeuanganSaldo;
 use App\Models\KeuanganSaldoTransaction;
 use App\Models\Mahasiswa;
+use App\Models\PdfDocument;
 use App\Models\PembayaranMahasiswa;
 use App\Models\PerkuliahanSesi;
 use App\Models\RefTahunAkademik;
@@ -99,6 +100,7 @@ class AppServiceProvider extends ServiceProvider
             'keuangan_master_beasiswa' => \App\Models\KeuanganMasterBeasiswa::class,
             'trx_pegawai' => \App\Models\TrxPegawai::class,
             'payment_policy' => \App\Models\PaymentPolicy::class,
+            'pdf_document' => PdfDocument::class,
         ]);
     }
 }

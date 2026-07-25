@@ -2,16 +2,12 @@
 
 namespace App\Filament\Resources\Krs\RelationManagers;
 
-use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\DissociateAction;
-use Filament\Actions\DissociateBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
@@ -22,7 +18,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class KrsDetailsRelationManager extends RelationManager
 {
-    protected static string $relationship = 'krsDetails';
+    protected static string $relationship = 'details';
     protected static ?string $title = 'Daftar Mata Kuliah Diambil';
     protected static ?string $modelLabel = 'Mata Kuliah';
     public function form(Schema $schema): Schema
@@ -33,7 +29,6 @@ class KrsDetailsRelationManager extends RelationManager
                     ->label('Pilih Jadwal Baru')
                     ->relationship('jadwalKuliah', 'id', function (Builder $query, RelationManager $livewire) {
                         $krs = $livewire->getOwnerRecord();
-                        // Hanya tampilkan jadwal pada TA yang sama
                         $query->where('tahun_akademik_id', $krs->tahun_akademik_id)
                             ->with(['mataKuliah', 'kelas']);
                     })
@@ -72,7 +67,6 @@ class KrsDetailsRelationManager extends RelationManager
             ->headerActions([
                 CreateAction::make()
                     ->mutateDataUsing(function (array $data, RelationManager $livewire): array {
-                        // Sinkronisasi snapshot saat tambah record dari relation manager
                         $jadwal = \App\Models\JadwalKuliah::with('mataKuliah')->find($data['jadwal_kuliah_id']);
                         if ($jadwal) {
                             $data['mata_kuliah_id'] = $jadwal->mata_kuliah_id;

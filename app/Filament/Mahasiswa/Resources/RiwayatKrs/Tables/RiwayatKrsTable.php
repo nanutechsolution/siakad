@@ -3,6 +3,8 @@
 namespace App\Filament\Mahasiswa\Resources\RiwayatKrs\Tables;
 
 use App\Enums\KrsStatusEnum;
+use App\Enums\Pdf\PdfDocumentType;
+use App\Filament\Actions\Pdf\PdfDownloadAction;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
@@ -39,6 +41,12 @@ class RiwayatKrsTable
             ->defaultSort('tgl_krs', 'desc')
             ->recordActions([
                 ViewAction::make()->label('Lihat Detail')->authorize(true),
+                PdfDownloadAction::make(
+                    name: 'cetak-krs',
+                    label: 'Cetak KRS',
+                    type: PdfDocumentType::KRS,
+                    contextResolver: fn($record) => ['krs_id' => $record->id],
+                ),
                 Action::make('cetak_krs')
                     ->label('Cetak')
                     ->icon('heroicon-o-printer')

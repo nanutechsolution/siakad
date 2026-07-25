@@ -1,5 +1,6 @@
 <?php
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Http\Controllers\Akademik\CetakKrsController;
 use App\Http\Controllers\Bara\NilaiRekapExportController;
 use App\Models\PembayaranMahasiswa;
@@ -8,6 +9,7 @@ use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
 use App\Http\Controllers\LaporanKeuanganExportController;
 use App\Http\Controllers\Mahasiswa\DokumenAkademikController;
+use App\Http\Controllers\Mahasiswa\KhsPdfController;
 use App\Http\Controllers\MigrationErrorReportController;
 use Barryvdh\DomPDF\Facade\Pdf;
 
@@ -110,11 +112,38 @@ Route::get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])->name('khs.cet
 
 
 use App\Http\Controllers\SinkronisasiExportDownloadController;
+use App\Services\Pdf\PdfService;
 
 Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/sinkronisasi/export/{export}/download', SinkronisasiExportDownloadController::class)
         ->name('sinkronisasi.export.download');
+    Route::get(
+        '/mahasiswa/khs/{tahunAkademikId}/download',
+        KhsPdfController::class
+    )
+        ->name('mahasiswa.khs.download')
+        ->middleware('auth');
 });
+
+
+Route::get('/pdf/download/{type}/{context}', function (
+    string $type,
+    string $context,
+    PdfService $service
+) {
+
+    $context = json_decode(
+        base64_decode($context),
+        true
+    );
+
+    return $service->download(
+        PdfDocumentType::from($type),
+        $context
+    );
+})
+    ->middleware('auth')
+    ->name('pdf.download');
 Route::middleware(['auth'])
     ->prefix('mahasiswa/dokumen')
     ->name('mahasiswa.')

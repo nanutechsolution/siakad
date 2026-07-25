@@ -21,7 +21,6 @@ use Filament\Tables\Table;
 class EvidencesRelationManager extends RelationManager
 {
     protected static string $relationship = 'evidences';
-
     protected static ?string $title = 'Bukti Audit (Evidence)';
     public function form(Schema $schema): Schema
     {

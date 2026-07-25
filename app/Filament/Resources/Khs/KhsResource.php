@@ -3,20 +3,15 @@
 namespace App\Filament\Resources\Khs;
 
 use App\Enums\NavigationGroup;
-use App\Filament\Resources\Khs\Pages\CreateKhs;
-use App\Filament\Resources\Khs\Pages\EditKhs;
 use App\Filament\Resources\Khs\Pages\ListKhs;
 use App\Filament\Resources\Khs\Pages\ViewKhs;
 use App\Filament\Resources\Khs\Schemas\KhsForm;
 use App\Filament\Resources\Khs\Schemas\KhsInfolist;
 use App\Filament\Resources\Khs\Tables\KhsTable;
 use App\Filament\Resources\Krs\RelationManagers\KrsDetailsRelationManager;
-use App\Models\Khs;
 use App\Models\Krs;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
