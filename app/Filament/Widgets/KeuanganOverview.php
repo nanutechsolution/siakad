@@ -2,12 +2,14 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\DB;
 
 class KeuanganOverview extends BaseWidget
 {
+    use HasWidgetShield;
     protected function getStats(): array
     {
         $tahunAktif = DB::table('ref_tahun_akademik')

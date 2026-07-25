@@ -12,12 +12,13 @@ return [
     'archive_disk' => env('PDF_ARCHIVE_DISK', 'local'),
 
     'institusi' => [
-        'nama_universitas' => env('PDF_NAMA_UNIVERSITAS', 'UNIVERSITAS MARISTELLA (UNMARIS)'),
+        'nama_universitas' => env('PDF_NAMA_UNIVERSITAS', 'UNIVERSITAS Stella Maris Sumba (UNMARIS)'),
         'alamat' => env('PDF_ALAMAT_UNIVERSITAS', 'Jl. Contoh No. 1, Waingapu, Sumba Timur, NTT'),
         'telepon' => env('PDF_TELEPON_UNIVERSITAS', '(0387) 000000'),
         'email' => env('PDF_EMAIL_UNIVERSITAS', 'info@unmaris.ac.id'),
         'website' => env('PDF_WEBSITE_UNIVERSITAS', 'www.unmaris.ac.id'),
         'logo_path' => public_path('images/logo-unmaris.png'),
+        
     ],
 
     'document_types' => [

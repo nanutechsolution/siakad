@@ -4,11 +4,13 @@ namespace App\Filament\Widgets;
 
 use App\Domain\Migration\Enums\MigrationBatchStatus;
 use App\Models\MigrationBatch;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class MigrationStatsWidget extends StatsOverviewWidget
 {
+    use HasWidgetShield;
     protected function getStats(): array
     {
         $totalBatch = MigrationBatch::query()->count();

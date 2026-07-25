@@ -6,6 +6,7 @@ namespace App\Filament\Widgets\Keuangan;
 
 use App\Models\KeuanganMahasiswaBeasiswa;
 use App\Models\RefTahunAkademik;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Cache;
@@ -13,6 +14,7 @@ use Illuminate\Support\Facades\DB;
 
 class RingkasanBeasiswaStatsWidget extends BaseWidget
 {
+    use HasWidgetShield;
     protected static ?int $sort = 1;
 
     protected function getStats(): array
@@ -20,9 +22,9 @@ class RingkasanBeasiswaStatsWidget extends BaseWidget
         // TTL 15 Menit (900 detik) - Agregasi data tagihan sangat berat, wajib di-cache
         $stats = Cache::remember('keuangan_beasiswa_stats', 900, function () {
             $tahunAktif = RefTahunAkademik::where('is_active', true)->first();
-            
+
             $totalPenerimaAktif = KeuanganMahasiswaBeasiswa::where('is_active', true)->count();
-            
+
             // Agregasi nilai diskon dari tagihan yang di-generate pada tahun akademik aktif
             $totalDiskonBerjalan = 0;
             if ($tahunAktif) {
@@ -34,9 +36,9 @@ class RingkasanBeasiswaStatsWidget extends BaseWidget
 
             // Breakdown sumber beasiswa
             $internalCount = KeuanganMahasiswaBeasiswa::where('is_active', true)
-                ->whereHas('beasiswa', fn ($q) => $q->where('kategori', 'INTERNAL'))
+                ->whereHas('beasiswa', fn($q) => $q->where('kategori', 'INTERNAL'))
                 ->count();
-                
+
             return [
                 'penerima_aktif' => $totalPenerimaAktif,
                 'total_diskon' => (float) $totalDiskonBerjalan,

@@ -2,11 +2,13 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
 class AkademikProdiChart extends ChartWidget
 {
+    use HasWidgetShield;
     protected ?string $heading = 'Distribusi Mahasiswa Aktif per Program Studi';
 
     protected function getType(): string

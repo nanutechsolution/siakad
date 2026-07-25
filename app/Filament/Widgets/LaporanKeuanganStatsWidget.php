@@ -3,12 +3,14 @@
 namespace App\Filament\Widgets;
 
 use App\Services\LaporanKeuanganService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Livewire\Attributes\Reactive;
 
 class LaporanKeuanganStatsWidget extends BaseWidget
 {
+    use HasWidgetShield;
     /**
      * #[Reactive] membuat widget otomatis re-render setiap kali
      * $filterData di LaporanKeuangan Page berubah, tanpa refresh manual.

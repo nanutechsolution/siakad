@@ -6,6 +6,7 @@ namespace App\Filament\Widgets\HR;
 
 use App\Enums\HR\JenisJabatan;
 use App\Models\TrxPersonJabatan;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
@@ -14,6 +15,7 @@ use Illuminate\Support\Carbon;
 
 class JabatanBerakhirWidget extends BaseWidget
 {
+    use HasWidgetShield;
     protected  static ?int $sort = 2;
 
     protected int|string|array $columnSpan = 'full';

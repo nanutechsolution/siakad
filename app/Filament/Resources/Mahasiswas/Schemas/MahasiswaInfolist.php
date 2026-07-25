@@ -3,11 +3,9 @@
 namespace App\Filament\Resources\Mahasiswas\Schemas;
 
 use App\Enums\KrsStatusEnum;
-use App\Filament\Resources\RefPeople\RefPersonResource;
 use App\Models\Mahasiswa;
 use Carbon\Carbon;
 use Filament\Infolists\Components\ImageEntry;
-use Filament\Infolists\Components\KeyValueEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
@@ -37,7 +35,7 @@ class MahasiswaInfolist
                         static::tabKrs(),
                         static::tabNilai(),
                         static::tabPresensi(),
-                        static::tabKeuangan(),
+                        // static::tabKeuangan(),
                         static::tabFeederPddikti(),
                         static::tabSistem(),
                     ]),

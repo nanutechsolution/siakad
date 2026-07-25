@@ -2,11 +2,13 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
 class KeuanganPendingVerifikasiList extends Widget
 {
+    use HasWidgetShield;
     protected string $view = 'filament.widgets.keuangan-pending-verifikasi-list';
 
     protected int|string|array $columnSpan = 'full';

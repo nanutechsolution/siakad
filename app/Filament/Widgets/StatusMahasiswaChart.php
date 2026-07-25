@@ -2,17 +2,17 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Facades\DB;
 
 class StatusMahasiswaChart extends ChartWidget
 {
+    use HasWidgetShield;
     protected  ?string $heading = 'Distribusi Pergerakan Status Mahasiswa';
 
     protected function getData(): array
     {
-        // Query langsung menggunakan DB facade ke tabel academic_history_logs 
-        // Kolom 'new_mode' dipastikan ada berdasarkan potongan skema log Anda
         $logData = DB::table('academic_history_logs')
             ->select('new_mode', DB::raw('count(*) as total'))
             ->groupBy('new_mode')

@@ -2,12 +2,14 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
 class KeuanganTrendChart extends ChartWidget
 {
+    use HasWidgetShield;
     protected ?string $heading = 'Tren Pembayaran Terverifikasi (6 Bulan Terakhir)';
 
     protected function getType(): string

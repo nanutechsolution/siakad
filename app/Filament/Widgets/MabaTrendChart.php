@@ -4,14 +4,13 @@ namespace App\Filament\Widgets;
 
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 
 class MabaTrendChart extends ChartWidget
 {
+    use HasWidgetShield;
     protected  ?string $heading = 'Tren Pertumbuhan Mahasiswa Baru';
-
-    // Mengatur lebar grafik (bisa full width atau setengah layar)
-
     protected function getData(): array
     {
         // Ambil 5 atau 6 tahun akademik terakhir

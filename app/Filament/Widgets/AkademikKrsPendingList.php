@@ -2,12 +2,14 @@
 
 namespace App\Filament\Widgets;
 
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\Widget;
 use Illuminate\Support\Facades\DB;
 
 class AkademikKrsPendingList extends Widget
 {
-protected string $view = 'filament.widgets.akademik-krs-pending-list';
+    use HasWidgetShield;
+    protected string $view = 'filament.widgets.akademik-krs-pending-list';
 
     protected int|string|array $columnSpan = 'full';
 
