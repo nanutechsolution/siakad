@@ -223,7 +223,7 @@ class VerifikasiPembayaransTable
                         ->label('Cetak Kwitansi')
                         ->icon('heroicon-o-receipt-percent')
                         ->color('success')
-                        ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::VERIFIED) // Sesuaikan dengan enum terverifikasi Anda
+                        ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::VERIFIED)
                         ->action(function ($record) {
                             $document = app(PdfService::class)->generateArchived(
                                 type: PdfDocumentType::KWITANSI,
