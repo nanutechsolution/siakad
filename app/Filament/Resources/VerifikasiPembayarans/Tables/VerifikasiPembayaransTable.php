@@ -2,14 +2,15 @@
 
 namespace App\Filament\Resources\VerifikasiPembayarans\Tables;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\StatusVerifikasiPembayaran;
 use App\Models\PembayaranMahasiswa;
+use App\Services\Pdf\PdfService;
 use App\Services\Pembayaran\PembayaranVerificationService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -217,6 +218,21 @@ class VerifikasiPembayaransTable
                                     ->danger()
                                     ->send();
                             }
+                        }),
+                    Action::make('cetak-kwitansi')
+                        ->label('Cetak Kwitansi')
+                        ->icon('heroicon-o-receipt-percent')
+                        ->color('success')
+                        ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::VERIFIED) // Sesuaikan dengan enum terverifikasi Anda
+                        ->action(function ($record) {
+                            $document = app(PdfService::class)->generateArchived(
+                                type: PdfDocumentType::KWITANSI,
+                                context: ['pembayaran_id' => $record->id],
+                                documentableType: PembayaranMahasiswa::class,
+                                documentableId: $record->id,
+                            );
+
+                            return app(PdfService::class)->downloadArchived($document);
                         }),
                 ]),
             ])

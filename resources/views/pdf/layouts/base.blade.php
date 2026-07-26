@@ -95,19 +95,21 @@
 </head>
 
 <body>
+    @php $kopSurat = app(\App\Services\Pdf\KopSuratResolver::class)->resolve(); @endphp
+
     <header>
         <div class="kop">
             <table>
                 <tr>
                     <td class="logo">
-                        @if(file_exists(config('pdf.institusi.logo_path')))
-                        <img src="{{ config('pdf.institusi.logo_path') }}" width="55">
+                        @if($kopSurat['logoAbsolutePath'])
+                        <img src="{{ $kopSurat['logoAbsolutePath'] }}" width="55">
                         @endif
                     </td>
                     <td class="institusi">
-                        <h1>{{ config('pdf.institusi.nama_universitas') }}</h1>
-                        <p>{{ config('pdf.institusi.alamat') }}</p>
-                        <p>Telp: {{ config('pdf.institusi.telepon') }} | Email: {{ config('pdf.institusi.email') }} | {{ config('pdf.institusi.website') }}</p>
+                        <h1>{{ $kopSurat['nama'] }} @if($kopSurat['akreditasi'])(Akreditasi {{ $kopSurat['akreditasi'] }})@endif</h1>
+                        <p>{{ $kopSurat['alamat'] }}</p>
+                        <p>Telp: {{ $kopSurat['telepon'] }} | Email: {{ $kopSurat['email'] }} | {{ $kopSurat['website'] }}</p>
                     </td>
                 </tr>
             </table>

@@ -235,12 +235,11 @@ class KrsTable
                                 'catatan_admin' => $data['alasan_buka'],
                             ], $data['alasan_buka']);
                         }),
-
                     PdfDownloadAction::make(
-                        name: 'cetak-krs',
-                        label: 'Cetak KRS',
+                        name: 'cetak',
+                        label: 'Cetak PDF',
                         type: PdfDocumentType::KRS,
-                        contextResolver: fn($record) => ['krs_id' => $record->id],
+                        contextResolver: fn(Krs $record) => ['krs_id' => $record->id],
                     ),
                     Action::make('cetak')
                         ->label('Cetak PDF')

@@ -19,11 +19,10 @@ class KrsPdfResolver implements PdfDataResolverInterface
             ->join('ref_prodi', 'ref_prodi.id', '=', 'mahasiswas.prodi_id')
             ->join('ref_fakultas', 'ref_fakultas.id', '=', 'ref_prodi.fakultas_id')
             ->join('ref_tahun_akademik', 'ref_tahun_akademik.id', '=', 'krs.tahun_akademik_id')
-            ->leftJoin('trx_dosen', 'trx_dosen.id', '=', 'krs.dosen_wali_id')
-            ->leftJoin('ref_person as wali_person', 'wali_person.id', '=', 'trx_dosen.person_id')
             ->where('krs.id', $krsId)
             ->select([
                 'krs.id as krs_id',
+                'krs.mahasiswa_id',
                 'krs.status_krs',
                 'krs.total_sks_diambil',
                 'krs.disetujui_pada',
@@ -34,13 +33,30 @@ class KrsPdfResolver implements PdfDataResolverInterface
                 'ref_fakultas.nama_fakultas',
                 'ref_tahun_akademik.nama_tahun',
                 'ref_tahun_akademik.semester',
-                'wali_person.nama_lengkap as nama_dosen_wali',
-                'trx_dosen.nidn as nidn_dosen_wali',
             ])
             ->first();
 
         if (! $krs) {
             throw new RuntimeException("KRS dengan id [{$krsId}] tidak ditemukan.");
+        }
+
+        // Dosen wali diambil dari mahasiswa_kelas -> kelas_dosen_wali (is_primary),
+        // BUKAN dari krs.dosen_wali_id — konsisten dengan logika KrsTable.php.
+        $kelasId = DB::table('mahasiswa_kelas')
+            ->where('mahasiswa_id', $krs->mahasiswa_id)
+            ->orderBy('id')
+            ->value('kelas_id');
+
+        $dosenWali = null;
+
+        if ($kelasId) {
+            $dosenWali = DB::table('kelas_dosen_wali')
+                ->join('trx_dosen', 'trx_dosen.id', '=', 'kelas_dosen_wali.dosen_id')
+                ->join('ref_person', 'ref_person.id', '=', 'trx_dosen.person_id')
+                ->where('kelas_dosen_wali.kelas_id', $kelasId)
+                ->orderByDesc('kelas_dosen_wali.is_primary')
+                ->select(['ref_person.nama_lengkap', 'trx_dosen.nidn'])
+                ->first();
         }
 
         $details = DB::table('krs_detail')
@@ -111,8 +127,8 @@ class KrsPdfResolver implements PdfDataResolverInterface
             jenjang: $krs->jenjang,
             namaTahunAkademik: $krs->nama_tahun,
             semester: (int) $krs->semester,
-            namaDosenWali: $krs->nama_dosen_wali,
-            nidnDosenWali: $krs->nidn_dosen_wali,
+            namaDosenWali: $dosenWali->nama_lengkap ?? null,
+            nidnDosenWali: $dosenWali->nidn ?? null,
             statusKrs: $krs->status_krs,
             totalSks: (int) $krs->total_sks_diambil,
             disetujuiPada: $krs->disetujui_pada,

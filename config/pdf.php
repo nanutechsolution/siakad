@@ -2,24 +2,21 @@
 
 use App\Enums\Pdf\PdfClassification;
 use App\Enums\Pdf\PdfDocumentType;
+use App\Services\Pdf\Resolvers\InvoiceTagihanPdfResolver;
 use App\Services\Pdf\Resolvers\JadwalKuliahPdfResolver;
 use App\Services\Pdf\Resolvers\KartuUjianPdfResolver;
 use App\Services\Pdf\Resolvers\KhsPdfResolver;
 use App\Services\Pdf\Resolvers\KrsPdfResolver;
+use App\Services\Pdf\Resolvers\KwitansiPdfResolver;
 
 return [
 
     'archive_disk' => env('PDF_ARCHIVE_DISK', 'local'),
 
-    'institusi' => [
-        'nama_universitas' => env('PDF_NAMA_UNIVERSITAS', 'UNIVERSITAS Stella Maris Sumba (UNMARIS)'),
-        'alamat' => env('PDF_ALAMAT_UNIVERSITAS', 'Jl. Contoh No. 1, Waingapu, Sumba Timur, NTT'),
-        'telepon' => env('PDF_TELEPON_UNIVERSITAS', '(0387) 000000'),
-        'email' => env('PDF_EMAIL_UNIVERSITAS', 'info@unmaris.ac.id'),
-        'website' => env('PDF_WEBSITE_UNIVERSITAS', 'www.unmaris.ac.id'),
-        'logo_path' => public_path('images/logo-unmaris.png'),
-        
-    ],
+    'kode_status_verifikasi_terverifikasi' => env('PDF_KODE_STATUS_VERIFIKASI_TERVERIFIKASI', 'VERIFIED'),
+    // TODO (konfirmasi): sesuaikan dengan nilai yang sebenarnya tersimpan
+    // di pembayaran_mahasiswas.tagihan_type untuk tagihan reguler.
+    'tagihan_type_reguler' => env('PDF_TAGIHAN_TYPE_REGULER', 'tagihan_mahasiswas'),
 
     'document_types' => [
 
@@ -53,6 +50,28 @@ return [
             'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
             'orientation' => 'portrait',
+        ],
+
+        PdfDocumentType::INVOICE_TAGIHAN->value => [
+            'resolver' => InvoiceTagihanPdfResolver::class,
+            'view' => 'pdf.keuangan.invoice-tagihan',
+            'classification' => PdfClassification::SEMI_PERMANENT->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => false, // reuse kode_transaksi yang sudah ada, tidak generate nomor baru
+            'requires_signature' => false,
+        ],
+
+        PdfDocumentType::KWITANSI->value => [
+            'resolver' => KwitansiPdfResolver::class,
+            'view' => 'pdf.keuangan.kwitansi',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/KWT/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'KWT',
+            'requires_signature' => true,
         ],
 
     ],

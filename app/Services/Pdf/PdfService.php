@@ -82,7 +82,23 @@ class PdfService
             return $current;
         }
 
-        $pdf = $this->templateEngine->render($definition['view'], $dto->toArray(), $definition);
+        $viewData = $dto->toArray();
+        $nomorDokumen = null;
+        $resolvedSigners = [];
+
+        // Nomor & penandatangan WAJIB di-resolve sebelum render, supaya tercetak
+        // di dalam isi dokumen — bukan ditempel setelah PDF jadi.
+        if ($definition['requires_number'] ?? false) {
+            $nomorDokumen = app(PdfNumberGenerator::class)->generate($type, $context['kode_unit'] ?? null);
+            $viewData['nomorDokumen'] = $nomorDokumen;
+        }
+
+        if ($definition['requires_signature'] ?? false) {
+            $resolvedSigners = app(PdfSigner::class)->resolveSigners($type);
+            $viewData['signers'] = $resolvedSigners;
+        }
+
+        $pdf = $this->templateEngine->render($definition['view'], $viewData, $definition);
         $binary = $pdf->output();
         $hash = hash('sha256', $binary);
 
@@ -99,6 +115,7 @@ class PdfService
             'classification' => $definition['classification']->value,
             'documentable_type' => $documentableType,
             'documentable_id' => $documentableId,
+            'nomor_dokumen' => $nomorDokumen,
             'file_disk' => $this->storage->disk(),
             'file_path' => $path,
             'file_hash' => $hash,
@@ -112,6 +129,10 @@ class PdfService
             'generated_by' => Auth::id(),
             'generated_at' => now(),
         ]);
+
+        if (! empty($resolvedSigners)) {
+            app(PdfSigner::class)->persistSignatures($document, $resolvedSigners);
+        }
 
         $this->logGenerated($type, $context, $document);
 

@@ -15,7 +15,6 @@ class EditKhs extends EditRecord
     {
         return [
             ViewAction::make(),
-            DeleteAction::make(),
         ];
     }
 }
