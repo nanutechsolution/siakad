@@ -14,8 +14,6 @@ return [
     'archive_disk' => env('PDF_ARCHIVE_DISK', 'local'),
 
     'kode_status_verifikasi_terverifikasi' => env('PDF_KODE_STATUS_VERIFIKASI_TERVERIFIKASI', 'VERIFIED'),
-    // TODO (konfirmasi): sesuaikan dengan nilai yang sebenarnya tersimpan
-    // di pembayaran_mahasiswas.tagihan_type untuk tagihan reguler.
     'tagihan_type_reguler' => env('PDF_TAGIHAN_TYPE_REGULER', 'tagihan_mahasiswa'),
 
     'document_types' => [
@@ -58,7 +56,7 @@ return [
             'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
             'orientation' => 'portrait',
-            'requires_number' => false, // reuse kode_transaksi yang sudah ada, tidak generate nomor baru
+            'requires_number' => false,
             'requires_signature' => false,
         ],
 

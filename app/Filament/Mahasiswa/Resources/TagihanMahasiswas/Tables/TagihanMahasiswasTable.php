@@ -2,8 +2,11 @@
 
 namespace App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Tables;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\StatusVerifikasiPembayaran;
 use App\Models\BankKampus;
+use App\Models\TagihanMahasiswa;
+use App\Services\Pdf\PdfService;
 use App\Services\Pembayaran\Channels\MahasiswaUploadChannel;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
@@ -70,7 +73,19 @@ class TagihanMahasiswasTable
                 ActionGroup::make([
                     ViewAction::make()
                         ->label('Rincian Biaya'),
-
+                    Action::make('cetak-invoice')
+                        ->label('Cetak Invoice')
+                        ->icon('heroicon-o-printer')
+                        ->color('success')
+                        ->action(function (TagihanMahasiswa $record) {
+                            $document = app(PdfService::class)->generateArchived(
+                                type: PdfDocumentType::INVOICE_TAGIHAN,
+                                context: ['tagihan_id' => $record->id],
+                                documentableType: TagihanMahasiswa::class,
+                                documentableId: $record->id,
+                            );
+                            return app(PdfService::class)->downloadArchived($document);
+                        }),
                     // Aksi 2: Tombol Cerdas Upload Bukti Bayar
                     Action::make('upload_bukti')
                         ->label('Konfirmasi Bayar')
