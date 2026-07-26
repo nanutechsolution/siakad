@@ -2,11 +2,14 @@
 
 namespace App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Pages;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\StatusVerifikasiPembayaran;
 use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\TagihanMahasiswaResource;
 use App\Models\KeuanganSaldo;
 use App\Models\KeuanganSaldoTransaction;
 use App\Models\PembayaranMahasiswa;
+use App\Models\TagihanMahasiswa;
+use App\Services\Pdf\PdfService;
 use App\Services\Pembayaran\PembayaranAllocationService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DateTimePicker;
@@ -126,62 +129,21 @@ class ViewTagihanMahasiswa extends ViewRecord
 
                     return redirect()->to(TagihanMahasiswaResource::getUrl('view', ['record' => $this->record]));
                 }),
+            Action::make('cetak-invoice')
+                ->label('Cetak Invoice')
+                ->icon('heroicon-o-printer')
+                ->color('success')
+                ->action(function () {
+                    $document = app(PdfService::class)->generateArchived(
+                        type: PdfDocumentType::INVOICE_TAGIHAN,
+                        context: ['tagihan_id' => $this->record->id],
+                        documentableType: TagihanMahasiswa::class,
+                        documentableId: $this->record->id,
+                    );
 
-            Action::make('konfirmasiPembayaran')
-                ->label('Konfirmasi Pembayaran Transfer')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('warning')
-                ->visible(fn() => $this->record->status_bayar !== 'LUNAS')
-                ->modalWidth('2xl')
-                ->schema([
-                    TextInput::make('nominal_bayar')
-                        ->numeric()
-                        ->required()
-                        ->prefix('Rp'),
-
-                    DateTimePicker::make('tanggal_bayar')
-                        ->required()
-                        ->default(now()),
-
-                    Select::make('bank_tujuan')
-                        ->required()
-                        ->options([
-                            'BNI' => 'BNI',
-                            'BRI' => 'BRI',
-                            'Mandiri' => 'Mandiri',
-                            'BCA' => 'BCA',
-                        ]),
-
-                    FileUpload::make('bukti_bayar')
-                        ->required()
-                        ->directory('bukti-pembayaran')
-                        ->image()
-                        ->maxSize(4096),
-                    Textarea::make('catatan'),
-                ])
-                ->action(function (array $data) {
-                    DB::transaction(function () use ($data) {
-                        PembayaranMahasiswa::create([
-                            'id' => Str::uuid()->toString(),
-                            'idempotency_key' => Str::uuid()->toString(),
-                            'tagihan_id' => $this->record->id,
-                            'nominal_bayar' => $data['nominal_bayar'],
-                            'tanggal_bayar' => $data['tanggal_bayar'],
-                            'bank_tujuan' => $data['bank_tujuan'],
-                            'bukti_bayar_path' => $data['bukti_bayar'],
-                            'catatan' => $data['catatan'],
-                            'status_verifikasi_id' => StatusVerifikasiPembayaran::PENDING ?? 1,
-                        ]);
-                    });
-
-                    Notification::make()
-                        ->success()
-                        ->title('Berhasil')
-                        ->body('Konfirmasi pembayaran transfer berhasil dikirim. Menunggu verifikasi admin.')
-                        ->send();
-
-                    return redirect()->to(TagihanMahasiswaResource::getUrl('view', ['record' => $this->record]));
+                    return app(PdfService::class)->downloadArchived($document);
                 }),
+
 
         ];
     }
