@@ -16,7 +16,7 @@ return [
     'kode_status_verifikasi_terverifikasi' => env('PDF_KODE_STATUS_VERIFIKASI_TERVERIFIKASI', 'VERIFIED'),
     // TODO (konfirmasi): sesuaikan dengan nilai yang sebenarnya tersimpan
     // di pembayaran_mahasiswas.tagihan_type untuk tagihan reguler.
-    'tagihan_type_reguler' => env('PDF_TAGIHAN_TYPE_REGULER', 'tagihan_mahasiswas'),
+    'tagihan_type_reguler' => env('PDF_TAGIHAN_TYPE_REGULER', 'tagihan_mahasiswa'),
 
     'document_types' => [
 
