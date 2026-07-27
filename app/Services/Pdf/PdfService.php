@@ -82,12 +82,14 @@ class PdfService
             return $current;
         }
 
+        // ID dokumen di-generate lebih dulu supaya bisa dipakai sebagai target
+        // link QR SEBELUM PDF dirender (QR harus muncul di dalam isi dokumen).
+        $documentId = (string) Str::uuid();
+
         $viewData = $dto->toArray();
         $nomorDokumen = null;
         $resolvedSigners = [];
 
-        // Nomor & penandatangan WAJIB di-resolve sebelum render, supaya tercetak
-        // di dalam isi dokumen — bukan ditempel setelah PDF jadi.
         if ($definition['requires_number'] ?? false) {
             $nomorDokumen = app(PdfNumberGenerator::class)->generate($type, $context['kode_unit'] ?? null);
             $viewData['nomorDokumen'] = $nomorDokumen;
@@ -96,6 +98,10 @@ class PdfService
         if ($definition['requires_signature'] ?? false) {
             $resolvedSigners = app(PdfSigner::class)->resolveSigners($type);
             $viewData['signers'] = $resolvedSigners;
+        }
+
+        if ($definition['requires_qr'] ?? false) {
+            $viewData['qrCodeBase64'] = app(PdfQrGenerator::class)->generateBase64($documentId);
         }
 
         $pdf = $this->templateEngine->render($definition['view'], $viewData, $definition);
@@ -111,6 +117,7 @@ class PdfService
         }
 
         $document = PdfDocument::create([
+            'id' => $documentId,
             'document_type' => $type->value,
             'classification' => $definition['classification']->value,
             'documentable_type' => $documentableType,

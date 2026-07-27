@@ -32,11 +32,11 @@ class KwitansiPdfResolver implements PdfDataResolverInterface
             );
         }
 
-        $tagihanTypeReguler = config('pdf.tagihan_type_reguler', 'tagihan_mahasiswas');
+        $tagihanTypeReguler = config('pdf.tagihan_type_reguler', 'tagihan_mahasiswa');
 
         if ($pembayaran->tagihan_type !== $tagihanTypeReguler) {
             throw new RuntimeException(
-                'Resolver Kwitansi Fase 2 baru mendukung tagihan reguler (tagihan_mahasiswas). Tagihan non-reguler menyusul.'
+                'Resolver Kwitansi Fase 2 baru mendukung tagihan reguler (tagihan_mahasiswa). Tagihan non-reguler menyusul.'
             );
         }
 

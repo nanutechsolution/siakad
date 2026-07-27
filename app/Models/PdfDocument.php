@@ -45,4 +45,9 @@ class PdfDocument extends Model
     {
         return $this->morphTo();
     }
+
+    public function signatures()
+    {
+        return $this->hasMany(PdfSignature::class, 'pdf_document_id')->orderBy('urutan');
+    }
 }

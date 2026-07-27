@@ -8,6 +8,11 @@ use App\Services\Pdf\Resolvers\KartuUjianPdfResolver;
 use App\Services\Pdf\Resolvers\KhsPdfResolver;
 use App\Services\Pdf\Resolvers\KrsPdfResolver;
 use App\Services\Pdf\Resolvers\KwitansiPdfResolver;
+use App\Services\Pdf\Resolvers\SuratAktifKuliahPdfResolver;
+use App\Services\Pdf\Resolvers\SuratCutiPdfResolver;
+use App\Services\Pdf\Resolvers\SuratDispensasiPdfResolver;
+use App\Services\Pdf\Resolvers\SuratPindahProdiPdfResolver;
+use App\Services\Pdf\Resolvers\TranskripFinalPdfResolver;
 
 return [
 
@@ -15,6 +20,12 @@ return [
 
     'kode_status_verifikasi_terverifikasi' => env('PDF_KODE_STATUS_VERIFIKASI_TERVERIFIKASI', 'VERIFIED'),
     'tagihan_type_reguler' => env('PDF_TAGIHAN_TYPE_REGULER', 'tagihan_mahasiswa'),
+    'kode_status_kuliah_aktif' => env('PDF_KODE_STATUS_KULIAH_AKTIF', 'A'),
+    'kode_status_kuliah_cuti' => env('PDF_KODE_STATUS_KULIAH_CUTI', 'C'),
+
+    // TODO (konfirmasi): sesuaikan dengan value char(1) yang sebenarnya
+    // tersimpan di riwayat_status_mahasiswas.status_kuliah untuk "Lulus".
+    'kode_status_kuliah_lulus' => env('PDF_KODE_STATUS_KULIAH_LULUS', 'L'),
 
     'document_types' => [
 
@@ -58,6 +69,7 @@ return [
             'orientation' => 'portrait',
             'requires_number' => false,
             'requires_signature' => false,
+            'requires_qr' => false,
         ],
 
         PdfDocumentType::KWITANSI->value => [
@@ -70,6 +82,72 @@ return [
             'nomor_format' => '{SEQ:4}/KWT/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
             'kode_jenis' => 'KWT',
             'requires_signature' => true,
+            'requires_qr' => true,
+        ],
+
+        PdfDocumentType::SURAT_AKTIF_KULIAH->value => [
+            'resolver' => SuratAktifKuliahPdfResolver::class,
+            'view' => 'pdf.mahasiswa.surat-aktif-kuliah',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/SKA/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'SKA',
+            'requires_signature' => true,
+            'requires_qr' => true,
+        ],
+
+        PdfDocumentType::SURAT_CUTI->value => [
+            'resolver' => SuratCutiPdfResolver::class,
+            'view' => 'pdf.mahasiswa.surat-cuti',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/SKC/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'SKC',
+            'requires_signature' => true,
+            'requires_qr' => true,
+        ],
+
+        PdfDocumentType::SURAT_PINDAH_PRODI->value => [
+            'resolver' => SuratPindahProdiPdfResolver::class,
+            'view' => 'pdf.mahasiswa.surat-pindah-prodi',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/SKP/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'SKP',
+            'requires_signature' => true,
+            'requires_qr' => true,
+        ],
+
+        PdfDocumentType::SURAT_DISPENSASI->value => [
+            'resolver' => SuratDispensasiPdfResolver::class,
+            'view' => 'pdf.akademik.surat-dispensasi',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/SKD/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'SKD',
+            'requires_signature' => true,
+            'requires_qr' => true,
+        ],
+
+        PdfDocumentType::TRANSKRIP_FINAL->value => [
+            'resolver' => TranskripFinalPdfResolver::class,
+            'view' => 'pdf.akademik.transkrip-final',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/TRANSKRIP/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'TRS',
+            'requires_signature' => true,
+            'requires_qr' => true,
         ],
 
     ],

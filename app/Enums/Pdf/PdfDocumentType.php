@@ -10,6 +10,11 @@ enum PdfDocumentType: string
     case KHS = 'khs';
     case INVOICE_TAGIHAN = 'invoice_tagihan';
     case KWITANSI = 'kwitansi';
+    case SURAT_AKTIF_KULIAH = 'surat_aktif_kuliah';
+    case SURAT_CUTI = 'surat_cuti';
+    case SURAT_PINDAH_PRODI = 'surat_pindah_prodi';
+    case SURAT_DISPENSASI = 'surat_dispensasi';
+    case TRANSKRIP_FINAL = 'transkrip_final';
 
     public function label(): string
     {
@@ -20,6 +25,11 @@ enum PdfDocumentType: string
             self::KHS => 'Kartu Hasil Studi',
             self::INVOICE_TAGIHAN => 'Tagihan / Invoice',
             self::KWITANSI => 'Kwitansi Pembayaran',
+            self::SURAT_AKTIF_KULIAH => 'Surat Keterangan Aktif Kuliah',
+            self::SURAT_CUTI => 'Surat Keterangan Cuti',
+            self::SURAT_PINDAH_PRODI => 'Surat Keterangan Pindah Program Studi',
+            self::SURAT_DISPENSASI => 'Surat Keterangan Dispensasi Akademik',
+            self::TRANSKRIP_FINAL => 'Transkrip Akademik (Final)',
         };
     }
 }

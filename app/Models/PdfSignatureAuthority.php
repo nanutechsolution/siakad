@@ -17,4 +17,9 @@ class PdfSignatureAuthority extends Model
     protected $casts = [
         'is_active' => 'boolean',
     ];
+
+    public function jabatan()
+    {
+        return $this->belongsTo(\App\Models\RefJabatan::class, 'jabatan_id');
+    }
 }
