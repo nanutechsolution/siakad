@@ -4,8 +4,6 @@ namespace App\Filament\Resources\VerifikasiPembayarans;
 
 use App\Enums\NavigationGroup;
 use App\Enums\StatusVerifikasiPembayaran;
-use App\Filament\Resources\VerifikasiPembayarans\Pages\CreateVerifikasiPembayaran;
-use App\Filament\Resources\VerifikasiPembayarans\Pages\EditVerifikasiPembayaran;
 use App\Filament\Resources\VerifikasiPembayarans\Pages\ListVerifikasiPembayarans;
 use App\Filament\Resources\VerifikasiPembayarans\Schemas\VerifikasiPembayaranForm;
 use App\Filament\Resources\VerifikasiPembayarans\Tables\VerifikasiPembayaransTable;
