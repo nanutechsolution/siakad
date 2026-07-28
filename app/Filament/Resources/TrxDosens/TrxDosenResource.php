@@ -31,10 +31,6 @@ class TrxDosenResource extends Resource
     public static function getEloquentQuery(): Builder
     {
         return  parent::getEloquentQuery()->visibleTo(auth()->user());
-        // return parent::getEloquentQuery()
-        // ->with([
-        //     'person.gelars',
-        // ]);
     }
     public static function form(Schema $schema): Schema
     {
@@ -48,9 +44,7 @@ class TrxDosenResource extends Resource
 
     public static function getRelations(): array
     {
-        return [
-
-        ];
+        return [];
     }
 
     public static function getPages(): array
