@@ -49,9 +49,6 @@ class TrxDosenResource extends Resource
     public static function getRelations(): array
     {
         return [
-            AtribusiGelarRelationManager::class,
-            RiwayatJabatanRelationManager::class,
-            RiwayatRoleRelationManager::class,
 
         ];
     }

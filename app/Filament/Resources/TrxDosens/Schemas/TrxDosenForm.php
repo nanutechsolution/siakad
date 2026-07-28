@@ -3,11 +3,10 @@
 namespace App\Filament\Resources\TrxDosens\Schemas;
 
 use App\Domain\Authorization\Services\FormResolver;
+use App\Models\RefGelar;
 use App\Models\TrxDosen;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -166,15 +165,20 @@ class TrxDosenForm
                                         Section::make('Gelar Akademik')
                                             ->description('Urutan menentukan tampilan gelar di depan/belakang nama.')
                                             ->icon('heroicon-o-star')
-                                            ->relationship('person.gelars') // trx_person_gelar via person
+                                            // REMOVED: ->relationship('person.gelars') 
                                             ->schema([
-                                                Repeater::make('gelars')
+                                                // CHANGED: Use the actual relationship name from TrxDosen
+                                                Repeater::make('atribusiGelar')
                                                     ->relationship()
                                                     ->schema([
                                                         Select::make('gelar_id')
                                                             ->label('Gelar')
-                                                            ->relationship('gelar', 'nama_gelar')
-                                                            ->searchable()
+                                                            ->relationship('gelar', 'nama')
+                                                            ->getOptionLabelFromRecordUsing(
+                                                                fn(RefGelar $record): string =>
+                                                                "{$record->kode} — {$record->nama} (" . (is_object($record->jenjang) ? $record->jenjang->value : $record->jenjang) . ")"
+                                                            )
+                                                            ->searchable(['kode', 'nama'])
                                                             ->preload()
                                                             ->required(),
                                                         TextInput::make('urutan')
@@ -192,9 +196,10 @@ class TrxDosenForm
 
                                         Section::make('Riwayat Jabatan')
                                             ->icon('heroicon-o-user-group')
-                                            ->relationship('person.jabatans') // trx_person_jabatan via person
+                                            // REMOVED: ->relationship('person.jabatans')
                                             ->schema([
-                                                Repeater::make('jabatans')
+                                                // CHANGED: Use the actual relationship name from TrxDosen
+                                                Repeater::make('atribusiJabatan')
                                                     ->relationship()
                                                     ->schema([
                                                         Select::make('jabatan_id')
@@ -219,6 +224,103 @@ class TrxDosenForm
                                                     ->collapsible()
                                                     ->addActionLabel('Tambah Riwayat Jabatan')
                                                     ->columnSpanFull(),
+                                            ]),
+                                    ]),
+
+                                // ================= TAB 3: BIODATA & ID AKADEMIK =================
+                                Tab::make('Biodata & ID Akademik')
+                                    ->icon('heroicon-o-user-circle')
+                                    ->schema([
+                                        // Menggunakan ->relationship('biodata') agar otomatis tersambung ke tabel dosen_biodata
+                                        Group::make()
+                                            ->relationship('biodata')
+                                            ->schema([
+
+                                                Section::make('Biodata Personal & Kontak Kantor')
+                                                    ->icon('heroicon-o-identification')
+                                                    ->schema([
+                                                        Grid::make(2)->schema([
+                                                            Select::make('agama')
+                                                                ->options([
+                                                                    'ISLAM' => 'Islam',
+                                                                    'KRISTEN' => 'Kristen',
+                                                                    'KATOLIK' => 'Katolik',
+                                                                    'HINDU' => 'Hindu',
+                                                                    'BUDDHA' => 'Buddha',
+                                                                    'KHONGHUCU' => 'Khonghucu',
+                                                                ]),
+
+                                                            Select::make('status_pernikahan')
+                                                                ->options([
+                                                                    'LAJANG' => 'Belum Menikah',
+                                                                    'MENIKAH' => 'Menikah',
+                                                                    'CERAI_HIDUP' => 'Cerai Hidup',
+                                                                    'CERAI_MATI' => 'Cerai Mati',
+                                                                ]),
+
+                                                            TextInput::make('no_hp_kantor')
+                                                                ->label('No. HP / Ekstensi Kantor')
+                                                                ->tel()
+                                                                ->maxLength(20),
+
+                                                            TextInput::make('kode_pos')
+                                                                ->label('Kode Pos')
+                                                                ->maxLength(10),
+
+                                                            Textarea::make('alamat_domisili')
+                                                                ->label('Alamat Domisili')
+                                                                ->rows(3)
+                                                                ->columnSpanFull(),
+                                                        ]),
+                                                    ]),
+
+                                                Section::make('Kepakaran & Riset')
+                                                    ->icon('heroicon-o-academic-cap')
+                                                    ->schema([
+                                                        TextInput::make('bidang_keahlian')
+                                                            ->label('Bidang Keahlian')
+                                                            ->placeholder('Contoh: Machine Learning, Hukum Perdata')
+                                                            ->maxLength(255),
+
+                                                        Textarea::make('minat_penelitian')
+                                                            ->label('Minat Penelitian')
+                                                            ->placeholder('Topik-topik riset yang diminati...')
+                                                            ->rows(3),
+                                                    ]),
+
+                                                Section::make('ID Peneliti & Portfolio Akademik')
+                                                    ->description('Integrasi identitas dosen pada database jurnal dan repositori publik.')
+                                                    ->icon('heroicon-o-globe-alt')
+                                                    ->schema([
+                                                        Grid::make(2)->schema([
+                                                            TextInput::make('sinta_id')
+                                                                ->label('SINTA ID')
+                                                                ->placeholder('Contoh: 6012345'),
+
+                                                            TextInput::make('scopus_id')
+                                                                ->label('Scopus ID')
+                                                                ->placeholder('Contoh: 57200000000'),
+
+                                                            TextInput::make('orcid_id')
+                                                                ->label('ORCID ID')
+                                                                ->placeholder('Contoh: 0000-0002-1825-0097'),
+
+                                                            TextInput::make('google_scholar_id')
+                                                                ->label('Google Scholar ID')
+                                                                ->placeholder('Contoh: ID_Scholar_Anda'),
+
+                                                            TextInput::make('h_index_scopus')
+                                                                ->label('h-index Scopus')
+                                                                ->numeric()
+                                                                ->default(0),
+
+                                                            TextInput::make('h_index_scholar')
+                                                                ->label('h-index Google Scholar')
+                                                                ->numeric()
+                                                                ->default(0),
+                                                        ]),
+                                                    ]),
+
                                             ]),
                                     ]),
                             ]),

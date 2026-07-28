@@ -35,7 +35,7 @@ class MahasiswaInfolist
                         static::tabKrs(),
                         static::tabNilai(),
                         static::tabPresensi(),
-                        // static::tabKeuangan(),
+                        static::tabKeuangan(),
                         static::tabFeederPddikti(),
                         static::tabSistem(),
                     ]),
@@ -494,7 +494,8 @@ class MahasiswaInfolist
                         TextEntry::make('ringkasan_keuangan.sisa_tagihan')
                             ->label('Sisa Tagihan')
                             ->money('IDR', locale: 'id')
-                            ->color(fn($s) => $s > 0 ? 'danger' : 'success'),
+                            // Diubah: $s -> $state
+                            ->color(fn($state) => $state > 0 ? 'danger' : 'success'),
                         TextEntry::make('saldo.saldo')
                             ->label('Saldo Dompet Kampus')
                             ->money('IDR', locale: 'id')
@@ -512,14 +513,17 @@ class MahasiswaInfolist
                                         TextEntry::make('jenis')->label('Jenis'),
                                         TextEntry::make('berlaku_mulai')
                                             ->label('Berlaku Mulai')
-                                            ->formatStateUsing(fn($s) => static::tanggalIndonesia($s)),
+                                            // Diubah: $s -> $state
+                                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state)),
                                         TextEntry::make('berlaku_sampai')
                                             ->label('Berlaku Sampai')
-                                            ->formatStateUsing(fn($s) => static::tanggalIndonesia($s)),
+                                            // Diubah: $s -> $state
+                                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state)),
                                         TextEntry::make('status')
                                             ->label('Status')
                                             ->badge()
-                                            ->color(fn(string $s) => match ($s) {
+                                            // Diubah: string $s -> ?string $state
+                                            ->color(fn(?string $state) => match ($state) {
                                                 'AKTIF' => 'success',
                                                 'DRAFT' => 'gray',
                                                 'EXPIRED' => 'gray',
@@ -547,7 +551,7 @@ class MahasiswaInfolist
                                             ->label('Status')
                                             ->badge()
                                             ->formatStateUsing(fn(?bool $state) => $state ? 'Aktif' : 'Tidak Aktif')
-                                            ->color(fn(?bool $state) => $state ? 'success' : 'gray')
+                                            ->color(fn(?bool $state) => $state ? 'success' : 'gray'),
                                     ]),
                             ])
                             ->contained(false)
@@ -555,7 +559,6 @@ class MahasiswaInfolist
                     ]),
             ]);
     }
-
     /*
     |--------------------------------------------------------------------
     | TAB 9 — FEEDER PDDIKTI
@@ -620,8 +623,8 @@ class MahasiswaInfolist
                         TextEntry::make('deleted_at')
                             ->label('Status Hapus')
                             ->badge()
-                            ->state(fn($record) => $record ? 'Dihapus (Soft Delete)' : 'Aktif')
-                            ->color(fn($record) => $record ? 'danger' : 'success'),
+                            ->state(fn($state) => $state ? 'Dihapus (Soft Delete)' : 'Aktif')
+                            ->color(fn($state) => $state ? 'danger' : 'success'),
                     ]),
 
             ]);
