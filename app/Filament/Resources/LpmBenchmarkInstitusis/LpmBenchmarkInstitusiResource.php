@@ -22,6 +22,7 @@ class LpmBenchmarkInstitusiResource extends Resource
     protected static ?string $navigationLabel = 'Institusi Pembanding';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Institusi Pembanding';
+    protected static ?int $navigationSort = 13;
 
     public static function form(Schema $schema): Schema
     {

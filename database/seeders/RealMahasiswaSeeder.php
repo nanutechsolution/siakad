@@ -9,11 +9,9 @@ use Illuminate\Support\Facades\File;
 use App\Models\RefProdi as Prodi;
 use App\Models\RefProgram as ProgramKelas;
 use App\Models\User;
-use App\Helpers\SistemHelper;
 use App\Models\RefPerson as ModelsPerson;
 use App\Models\Mahasiswa;
 use Carbon\Carbon;
-use App\Models\RiwayatStatusMahasiswa;
 use Symfony\Component\Console\Helper\ProgressBar;
 
 class RealMahasiswaSeeder extends Seeder

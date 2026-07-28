@@ -22,6 +22,8 @@ class LpmAkreditasiResource extends Resource
     protected static ?string $model = LpmAkreditasi::class;
 
     protected static ?string $navigationLabel = 'Akreditasi';
+    
+    protected static ?int $navigationSort = 12;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     
     protected static ?string $modelLabel = 'Proses Akreditasi';

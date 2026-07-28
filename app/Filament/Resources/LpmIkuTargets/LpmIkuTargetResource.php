@@ -9,10 +9,8 @@ use App\Filament\Resources\LpmIkuTargets\Pages\ListLpmIkuTargets;
 use App\Filament\Resources\LpmIkuTargets\Schemas\LpmIkuTargetForm;
 use App\Filament\Resources\LpmIkuTargets\Tables\LpmIkuTargetsTable;
 use App\Models\LpmIkuTarget;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -20,8 +18,9 @@ class LpmIkuTargetResource extends Resource
 {
     protected static ?string $model = LpmIkuTarget::class;
     protected static ?string $navigationLabel = 'Target & Capaian IKU';
-    protected static string|UnitEnum|null $navigationGroup =NavigationGroup::LPM->value;
+    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Target IKU';
+    protected static ?int $navigationSort = 4;
 
     public static function form(Schema $schema): Schema
     {

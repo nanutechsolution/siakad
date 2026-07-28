@@ -50,4 +50,8 @@ class LpmStandar extends Model
     {
         return $this->hasMany(LpmAmiFinding::class, 'standar_id');
     }
+    public function riwayatPeningkatans(): HasMany
+    {
+        return $this->hasMany(LpmRiwayatPeningkatan::class, 'standar_id')->orderByDesc('tanggal');
+    }
 }

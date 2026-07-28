@@ -22,6 +22,8 @@ class LpmAuditorResource extends Resource
     protected static ?string $navigationLabel = 'Auditor';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Auditor';
+    
+    protected static ?int $navigationSort = 8;
     public static function form(Schema $schema): Schema
     {
         return LpmAuditorForm::configure($schema);

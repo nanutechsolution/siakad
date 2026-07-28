@@ -52,7 +52,6 @@ class JadwalKuliahMhs extends Page
             ->orderByDesc('tanggal_mulai')
             ->get();
     }
-
     /**
      * Jadwal kuliah mahasiswa untuk tahun akademik terpilih, dikelompokkan
      * per hari (Senin..Minggu) dan diurutkan per jam.

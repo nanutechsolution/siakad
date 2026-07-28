@@ -6,6 +6,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class LpmIkuTarget extends Model
 {
@@ -36,5 +37,10 @@ class LpmIkuTarget extends Model
     public function unitKerja(): BelongsTo
     {
         return $this->belongsTo(LpmUnitKerja::class, 'unit_kerja_id');
+    }
+
+    public function buktiPelaksanaans(): HasMany
+    {
+        return $this->hasMany(LpmBuktiPelaksanaan::class, 'iku_target_id');
     }
 }

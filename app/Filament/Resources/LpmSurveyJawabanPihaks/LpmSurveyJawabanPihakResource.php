@@ -11,10 +11,8 @@ use App\Filament\Resources\LpmSurveyJawabanPihaks\Schemas\LpmSurveyJawabanPihakF
 use App\Filament\Resources\LpmSurveyJawabanPihaks\Schemas\LpmSurveyJawabanPihakInfolist;
 use App\Filament\Resources\LpmSurveyJawabanPihaks\Tables\LpmSurveyJawabanPihaksTable;
 use App\Models\LpmSurveyJawabanPihak;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -24,6 +22,8 @@ class LpmSurveyJawabanPihakResource extends Resource
     protected static ?string $navigationLabel = 'Entri Survey Dosen/Tendik/Alumni';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Jawaban Survey Pihak Lain';
+
+    protected static ?int $navigationSort = 7;
     public static function form(Schema $schema): Schema
     {
         return LpmSurveyJawabanPihakForm::configure($schema);

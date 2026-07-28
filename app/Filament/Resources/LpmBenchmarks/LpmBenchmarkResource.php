@@ -23,6 +23,7 @@ class LpmBenchmarkResource extends Resource
     protected static ?string $navigationLabel = 'Benchmarking';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Data Benchmarking';
+    protected static ?int $navigationSort =13;
     public static function form(Schema $schema): Schema
     {
         return LpmBenchmarkForm::configure($schema);

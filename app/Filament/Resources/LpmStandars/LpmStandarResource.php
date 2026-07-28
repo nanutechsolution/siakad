@@ -11,10 +11,8 @@ use App\Filament\Resources\LpmStandars\RelationManagers\RiwayatPeningkatansRelat
 use App\Filament\Resources\LpmStandars\Schemas\LpmStandarForm;
 use App\Filament\Resources\LpmStandars\Tables\LpmStandarsTable;
 use App\Models\LpmStandar;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -23,6 +21,7 @@ class LpmStandarResource extends Resource
     protected static ?string $model = LpmStandar::class;
     protected static ?string $navigationLabel = 'Standar Mutu';
     protected static ?string $modelLabel = 'Standar Mutu';
+    protected static ?int $navigationSort =3;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     public static function form(Schema $schema): Schema
     {

@@ -21,7 +21,7 @@ class LpmKuisionerKelompokResource extends Resource
     protected static ?string $model = LpmKuisionerKelompok::class;
     protected static ?string $navigationLabel = 'Instrumen Kuisioner';
     protected static ?string $modelLabel = 'Kelompok Kuisioner';
-    protected static ?int $navigationSort = 4;
+     protected static ?int $navigationSort = 6;
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     public static function form(Schema $schema): Schema
     {

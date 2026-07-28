@@ -14,7 +14,6 @@ use App\Models\LpmAmiFinding;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use UnitEnum;
 
@@ -24,6 +23,7 @@ class LpmAmiFindingResource extends Resource
     protected static ?string $navigationLabel = 'Temuan Audit';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Temuan Audit';
+    protected static ?int $navigationSort = 10;
     public static function form(Schema $schema): Schema
     {
         return LpmAmiFindingForm::configure($schema);

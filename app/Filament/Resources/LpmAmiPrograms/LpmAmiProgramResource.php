@@ -27,6 +27,8 @@ class LpmAmiProgramResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
 
     protected static ?string $modelLabel = 'Program Audit';
+    
+    protected static ?int $navigationSort = 10;
 
     public static function form(Schema $schema): Schema
     {

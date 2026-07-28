@@ -3,8 +3,6 @@
 namespace App\Filament\Resources\LpmAkreditasiLembagas;
 
 use App\Enums\NavigationGroup;
-use App\Filament\Resources\LpmAkreditasiLembagas\Pages\CreateLpmAkreditasiLembaga;
-use App\Filament\Resources\LpmAkreditasiLembagas\Pages\EditLpmAkreditasiLembaga;
 use App\Filament\Resources\LpmAkreditasiLembagas\Pages\ListLpmAkreditasiLembagas;
 use App\Filament\Resources\LpmAkreditasiLembagas\Schemas\LpmAkreditasiLembagaForm;
 use App\Filament\Resources\LpmAkreditasiLembagas\Tables\LpmAkreditasiLembagasTable;
@@ -23,6 +21,7 @@ class LpmAkreditasiLembagaResource extends Resource
     protected static ?string $navigationLabel = 'Lembaga Akreditasi';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Lembaga Akreditasi';
+    protected static ?int $navigationSort = 11;
     public static function form(Schema $schema): Schema
     {
         return LpmAkreditasiLembagaForm::configure($schema);

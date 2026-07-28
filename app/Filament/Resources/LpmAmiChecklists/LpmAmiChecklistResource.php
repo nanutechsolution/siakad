@@ -25,6 +25,8 @@ class LpmAmiChecklistResource extends Resource
     protected static ?string $navigationLabel = 'Checklist Audit';
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::LPM->value;
     protected static ?string $modelLabel = 'Checklist Audit';
+    
+    protected static ?int $navigationSort = 9;
     public static function form(Schema $schema): Schema
     {
         return LpmAmiChecklistForm::configure($schema);
