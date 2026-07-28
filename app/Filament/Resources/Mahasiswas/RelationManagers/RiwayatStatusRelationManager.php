@@ -2,7 +2,11 @@
 
 namespace App\Filament\Resources\Mahasiswas\RelationManagers;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\StatusKuliah;
+use App\Models\RiwayatStatusMahasiswa;
+use App\Services\Pdf\PdfService;
+use Filament\Actions\Action;
 use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -12,7 +16,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Schema;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
@@ -136,6 +139,20 @@ class RiwayatStatusRelationManager extends RelationManager
             ->recordActions([
                 EditAction::make(),
                 DeleteAction::make(),
+                Action::make('cetak-surat-aktif')
+                    ->label('Cetak Surat Aktif Kuliah')
+                    ->icon('heroicon-o-document-check')
+                    ->color('success')
+                    ->action(function ($record) {
+                        $document = app(PdfService::class)->generateArchived(
+                            type: PdfDocumentType::SURAT_AKTIF_KULIAH,
+                            context: ['riwayat_status_id' => $record->id],
+                            documentableType: RiwayatStatusMahasiswa::class,
+                            documentableId: (string) $record->id,
+                        );
+
+                        return app(PdfService::class)->downloadArchived($document);
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([

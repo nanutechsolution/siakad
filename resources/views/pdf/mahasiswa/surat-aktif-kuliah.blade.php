@@ -44,18 +44,7 @@
 
 <p class="mt-10">Demikian surat keterangan ini dibuat untuk dipergunakan sebagaimana mestinya.</p>
 
-<table style="width:100%; margin-top:40px; font-size:10px;">
-    <tr>
-        <td width="60%"></td>
-        <td width="40%" class="text-center">
-            @foreach($signers as $signer)
-            <p>{{ $signer['label'] }}</p>
-            <div style="height:50px;"></div>
-            <p><strong>{{ $signer['namaLengkap'] }}</strong></p>
-            @endforeach
-        </td>
-    </tr>
-</table>
+@include('pdf.partials.qr-and-signatures')
 
 <p class="mt-20" style="font-size:9px;">Dicetak pada: {{ $dicetakPada }}</p>
 @endsection

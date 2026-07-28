@@ -3,8 +3,6 @@
 namespace App\Filament\Clusters\PdfCenter\Resources\PdfSignatureAuthorities;
 
 use App\Filament\Clusters\PdfCenter\PdfCenterCluster;
-use App\Filament\Clusters\PdfCenter\Resources\PdfSignatureAuthorities\Pages\CreatePdfSignatureAuthority;
-use App\Filament\Clusters\PdfCenter\Resources\PdfSignatureAuthorities\Pages\EditPdfSignatureAuthority;
 use App\Filament\Clusters\PdfCenter\Resources\PdfSignatureAuthorities\Pages\ListPdfSignatureAuthorities;
 use App\Filament\Clusters\PdfCenter\Resources\PdfSignatureAuthorities\Schemas\PdfSignatureAuthorityForm;
 use App\Filament\Clusters\PdfCenter\Resources\PdfSignatureAuthorities\Tables\PdfSignatureAuthoritiesTable;
@@ -20,11 +18,8 @@ class PdfSignatureAuthorityResource extends Resource
     protected static ?string $model = PdfSignatureAuthority::class;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedPencilSquare;
-
     protected static ?string $navigationLabel = 'Penandatangan';
-
     protected static ?string $modelLabel = 'Otoritas Penandatangan';
-
     protected static ?int $navigationSort = 3;
     protected static ?string $cluster = PdfCenterCluster::class;
 
@@ -49,8 +44,6 @@ class PdfSignatureAuthorityResource extends Resource
     {
         return [
             'index' => ListPdfSignatureAuthorities::route('/'),
-            'create' => CreatePdfSignatureAuthority::route('/create'),
-            'edit' => EditPdfSignatureAuthority::route('/{record}/edit'),
         ];
     }
 }

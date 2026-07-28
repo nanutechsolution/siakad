@@ -16,18 +16,29 @@ use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Model;
 use Override;
 
 class PdfDocumentResource extends Resource
 {
     protected static ?string $model = PdfDocument::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedArchiveBox;
 
+    protected static ?string $navigationLabel = 'Arsip Dokumen';
+
+    protected static ?string $modelLabel = 'Dokumen PDF';
+
+    protected static ?int $navigationSort = 2;
     protected static ?string $cluster = PdfCenterCluster::class;
 
     #[Override]
     public static function canCreate(): bool
+    {
+        return false;
+    }
+    #[Override]
+    public static function canEdit(Model $record): bool
     {
         return false;
     }

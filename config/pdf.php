@@ -22,9 +22,6 @@ return [
     'tagihan_type_reguler' => env('PDF_TAGIHAN_TYPE_REGULER', 'tagihan_mahasiswa'),
     'kode_status_kuliah_aktif' => env('PDF_KODE_STATUS_KULIAH_AKTIF', 'A'),
     'kode_status_kuliah_cuti' => env('PDF_KODE_STATUS_KULIAH_CUTI', 'C'),
-
-    // TODO (konfirmasi): sesuaikan dengan value char(1) yang sebenarnya
-    // tersimpan di riwayat_status_mahasiswas.status_kuliah untuk "Lulus".
     'kode_status_kuliah_lulus' => env('PDF_KODE_STATUS_KULIAH_LULUS', 'L'),
 
     'document_types' => [

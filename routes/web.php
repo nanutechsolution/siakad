@@ -107,6 +107,7 @@ Route::get('/mahasiswa/reauth', function () {
 
 
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\PdfVerificationController;
 
 Route::get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])->name('khs.cetak');
 
@@ -155,3 +156,6 @@ Route::middleware(['auth'])
 Route::middleware(['web', 'auth'])
     ->get('/migration/batches/{batch}/error-report', MigrationErrorReportController::class)
     ->name('migration.batches.error-report');
+Route::get('/verify/{document}', [PdfVerificationController::class, 'show'])
+    ->name('pdf.verify')
+    ->middleware('throttle:30,1');

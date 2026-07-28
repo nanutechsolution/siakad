@@ -60,7 +60,6 @@ class PdfService
         string $documentableId,
     ): PdfDocument {
         $definition = $this->registry->get($type);
-
         if ($definition['classification'] === PdfClassification::DYNAMIC) {
             throw new RuntimeException(
                 "Jenis dokumen [{$type->value}] berklasifikasi DYNAMIC dan tidak boleh diarsipkan. Gunakan stream()/download()."
@@ -99,7 +98,6 @@ class PdfService
             $resolvedSigners = app(PdfSigner::class)->resolveSigners($type);
             $viewData['signers'] = $resolvedSigners;
         }
-
         if ($definition['requires_qr'] ?? false) {
             $viewData['qrCodeBase64'] = app(PdfQrGenerator::class)->generateBase64($documentId);
         }

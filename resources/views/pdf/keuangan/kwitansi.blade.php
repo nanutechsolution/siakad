@@ -49,7 +49,7 @@
     </tr>
     @endif
 </table>
-
+<!-- 
 <table style="width:100%; margin-top:40px; font-size:10px;">
     <tr>
         @foreach($signers as $signer)
@@ -60,7 +60,9 @@
         </td>
         @endforeach
     </tr>
-</table>
+</table> -->
+
+@include('pdf.partials.qr-and-signatures')
 
 <p class="mt-20" style="font-size:9px;">Dicetak pada: {{ $dicetakPada }} — Dokumen ini sah sebagai bukti pembayaran resmi.</p>
 @endsection
