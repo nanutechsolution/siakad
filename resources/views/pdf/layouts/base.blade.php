@@ -37,9 +37,9 @@
 
         .kop {
             width: 100%;
-            border-bottom: 2px solid #1a1a1a;
-            padding-bottom: 6px;
-            margin-bottom: 4px;
+            border-bottom: 3px double #000;
+            padding-bottom: 8px;
+            margin-bottom: 15px;
         }
 
         .kop table {
@@ -47,17 +47,33 @@
         }
 
         .kop .logo {
-            width: 60px;
+            width: 80px;
+            text-align: center;
+        }
+
+        .kop .logo img {
+            width: 65px;
+        }
+
+        .kop .institusi {
+            text-align: center;
         }
 
         .kop .institusi h1 {
-            font-size: 14px;
+            font-size: 16px;
+            font-weight: bold;
             margin: 0;
+            text-transform: uppercase;
+        }
+
+        .kop .institusi .akreditasi {
+            font-size: 10px;
+            margin-top: 3px;
         }
 
         .kop .institusi p {
             font-size: 9px;
-            margin: 0;
+            margin: 2px 0;
         }
 
         table.data {
@@ -107,9 +123,28 @@
                         @endif
                     </td>
                     <td class="institusi">
-                        <h1>{{ $kopSurat['nama'] }} @if($kopSurat['akreditasi'])(Akreditasi {{ $kopSurat['akreditasi'] }})@endif</h1>
-                        <p>{{ $kopSurat['alamat'] }}</p>
-                        <p>Telp: {{ $kopSurat['telepon'] }} | Email: {{ $kopSurat['email'] }} | {{ $kopSurat['website'] }}</p>
+
+                        <h1>{{ $kopSurat['nama'] }}</h1>
+
+                        <div class="akreditasi">
+                            Terakreditasi {{ $kopSurat['akreditasi'] }}
+                            @if(!empty($kopSurat['nomorAkreditasi']))
+                            | SK: {{ $kopSurat['nomorAkreditasi'] }}
+                            @endif
+                        </div>
+
+                        <p>
+                            {{ $kopSurat['alamat'] }}
+                        </p>
+
+                        <p>
+                            Telp: {{ $kopSurat['telepon'] }}
+                            |
+                            Email: {{ $kopSurat['email'] }}
+                            |
+                            {{ $kopSurat['website'] }}
+                        </p>
+
                     </td>
                 </tr>
             </table>
