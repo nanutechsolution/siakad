@@ -315,8 +315,9 @@ class MahasiswaForm
                     ->schema([
                         Section::make('Pas Foto')
                             ->icon('heroicon-o-camera')
+                            ->relationship('person')
                             ->schema([
-                                FileUpload::make('person.photo_path')
+                                FileUpload::make('photo_path')
                                     ->label('Unggah Pas Foto')
                                     ->image()
                                     ->imageEditor()
