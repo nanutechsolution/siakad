@@ -3,372 +3,192 @@
 
 <head>
     <meta charset="utf-8">
-
     <title>@yield('title', 'Dokumen Resmi')</title>
-
     <style>
         @page {
-            margin: 125px 45px 65px 45px;
+            /* Margin standar dokumen resmi A4 */
+            margin: 100px 40px 60px 40px;
         }
 
         body {
-            font-family: 'DejaVu Sans', sans-serif;
-            font-size: 11px;
-            color: #111;
+            /* Menggunakan font serif untuk kesan formal/akademik */
+            font-family: 'Times New Roman', Times, serif;
+            font-size: 11pt;
+            color: #000;
+            line-height: 1.3;
         }
 
-
-        /*
-|--------------------------------------------------------------------------
-| HEADER
-|--------------------------------------------------------------------------
-*/
-
+        /* HEADER FIXED */
         header {
             position: fixed;
-            top: -105px;
+            top: -70px;
             left: 0;
             right: 0;
-            height: 95px;
         }
 
-
-        .kop {
-            width: 100%;
-            border-bottom: 4px double #000;
-            padding-bottom: 8px;
+        /* FOOTER FIXED */
+        footer {
+            position: fixed;
+            bottom: -40px;
+            left: 0;
+            right: 0;
+            height: 30px;
+            font-size: 8pt;
+            color: #555;
+            border-top: 1px solid #999;
+            padding-top: 5px;
+            font-family: 'Helvetica', 'Arial', sans-serif;
+            /* Font berbeda untuk footer sistem */
+            text-align: center;
         }
 
-
-        .kop table {
+        /* --- STRUKTUR KOP SURAT --- */
+        .kop-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-
-        .logo {
-            width: 90px;
-            vertical-align: middle;
-        }
-
-
-        .logo img {
-            width: 70px;
-        }
-
-
-        .institusi {
+        /* Kolom 1: Logo */
+        .kop-table .logo-col {
+            width: 15%;
             text-align: center;
             vertical-align: middle;
         }
 
+        .kop-table .logo-col img {
+            max-width: 70px;
+            height: auto;
+        }
 
-        .institusi h1 {
+        /* Kolom 2: Teks Utama */
+        .kop-table .text-col {
+            width: 70%;
+            text-align: center;
+            vertical-align: middle;
+        }
 
-            font-size: 17px;
+        /* Kolom 3: Penyeimbang (Kosong agar kolom teks benar-benar di tengah) */
+        .kop-table .dummy-col {
+            width: 15%;
+        }
+
+        /* --- TIPOGRAFI KOP --- */
+        .institusi {
+            font-size: 16pt;
             font-weight: bold;
-
-            letter-spacing: .5px;
-
-            margin: 0;
-
             text-transform: uppercase;
-
-        }
-
-
-        .institusi h2 {
-
-            font-size: 12px;
-
             margin: 2px 0;
-
-            font-weight: bold;
-
+            letter-spacing: 0.5px;
         }
-
 
         .akreditasi {
-
-            font-size: 9px;
-
-            margin-top: 4px;
-
+            font-size: 10pt;
+            font-weight: bold;
+            margin-bottom: 4px;
         }
-
-
-        .alamat {
-
-            font-size: 9px;
-
-            line-height: 14px;
-
-        }
-
 
         .kontak {
-
-            font-size: 8.5px;
-
+            font-size: 9pt;
+            margin: 0;
         }
 
-
-        /*
-|--------------------------------------------------------------------------
-| FOOTER
-|--------------------------------------------------------------------------
-*/
-
-
-        footer {
-
-            position: fixed;
-
-            bottom: -45px;
-
-            left: 0;
-
-            right: 0;
-
-            height: 35px;
-
-            border-top: 1px solid #aaa;
-
-            padding-top: 5px;
-
-            font-size: 8px;
-
-            color: #555;
-
+        /* Garis ganda (Tebal atas, tipis bawah) lebih stabil di render PDF */
+        .garis-ganda {
+            border-top: 3px solid #000;
+            border-bottom: 1px solid #000;
+            height: 2px;
+            margin-top: 10px;
+            margin-bottom: 15px;
         }
 
-
-        .footer-left {
-
-            float: left;
-
-        }
-
-
-        .footer-right {
-
-            float: right;
-
-        }
-
-
-
-        /*
-|--------------------------------------------------------------------------
-| CONTENT
-|--------------------------------------------------------------------------
-*/
-
-
-        .content {
-
-            margin-top: 20px;
-
-        }
-
-
+        /* --- STYLING TAMBAHAN --- */
         table.data {
-
             width: 100%;
-
             border-collapse: collapse;
-
+            margin-top: 15px;
         }
-
-
-        table.data th {
-
-            background: #f0f0f0;
-
-            font-weight: bold;
-
-        }
-
 
         table.data th,
         table.data td {
-
-            border: 1px solid #999;
-
-            padding: 5px;
-
-            font-size: 10px;
-
+            border: 1px solid #000;
+            padding: 5px 8px;
+            font-size: 10pt;
         }
 
-
+        table.data th {
+            background-color: #f2f2f2;
+            font-weight: bold;
+        }
 
         .text-center {
             text-align: center;
         }
 
-
         .text-right {
             text-align: right;
         }
 
+        .mt-10 {
+            margin-top: 10px;
+        }
 
-        .page-break {
-            page-break-after: always;
+        .mt-20 {
+            margin-top: 20px;
         }
     </style>
-
 </head>
 
-
 <body>
-
-
     @php
-
-    $kopSurat = app(
-    \App\Services\Pdf\KopSuratResolver::class
-    )->resolve();
-
+    $kopSurat = app(\App\Services\Pdf\KopSuratResolver::class)->resolve();
     @endphp
 
-
-
     <header>
+        <table class="kop-table">
+            <tr>
+                <td class="logo-col">
+                    @if(!empty($kopSurat['logoAbsolutePath']) && file_exists($kopSurat['logoAbsolutePath']))
+                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents($kopSurat['logoAbsolutePath'])) }}" alt="Logo">
+                    @endif
+                </td>
 
-        <div class="kop">
+                <td class="text-col">
+                    <div class="institusi">{{ $kopSurat['nama'] ?? 'NAMA INSTITUSI' }}</div>
 
-            <table>
-
-                <tr>
-
-
-                    <td class="logo">
-
-                        @if(
-                        isset($kopSurat['logoAbsolutePath'])
-                        &&
-                        file_exists($kopSurat['logoAbsolutePath'])
-                        )
-
-                        <img src="data:image/png;base64,
-{{base64_encode(file_get_contents($kopSurat['logoAbsolutePath']))}}">
-
-
+                    @if(!empty($kopSurat['akreditasi']))
+                    <div class="akreditasi">
+                        Terakreditasi "{{ $kopSurat['akreditasi'] }}"
+                        @if(!empty($kopSurat['nomorAkreditasi']))
+                        | SK: {{ $kopSurat['nomorAkreditasi'] }}
                         @endif
+                    </div>
+                    @endif
 
-                    </td>
+                    <div class="kontak">
+                        {{ $kopSurat['alamat'] ?? '' }}
+                    </div>
+                    <div class="kontak">
+                        Telp: {{ $kopSurat['telepon'] ?? '-' }} | Surel: {{ $kopSurat['email'] ?? '-' }} | Laman: {{ $kopSurat['website'] ?? '-' }}
+                    </div>
+                </td>
 
+                <td class="dummy-col"></td>
+            </tr>
+        </table>
 
-
-                    <td class="institusi">
-
-
-                        <h1>
-                            {{ strtoupper($kopSurat['nama']) }}
-                        </h1>
-
-
-                        <h2>
-                            SISTEM INFORMASI AKADEMIK
-                        </h2>
-
-
-
-                        <div class="akreditasi">
-
-                            Terakreditasi
-                            {{ $kopSurat['akreditasi'] }}
-
-                            @if(!empty($kopSurat['nomorAkreditasi']))
-
-                            <br>
-
-                            Nomor SK :
-                            {{ $kopSurat['nomorAkreditasi'] }}
-
-                            @endif
-
-                        </div>
-
-
-
-                        <div class="alamat">
-
-                            {{ $kopSurat['alamat'] }}
-
-                        </div>
-
-
-
-                        <div class="kontak">
-
-                            Telp:
-                            {{ $kopSurat['telepon'] }}
-
-                            |
-
-                            Email:
-                            {{ $kopSurat['email'] }}
-
-                            |
-
-                            {{ $kopSurat['website'] }}
-
-                        </div>
-
-
-                    </td>
-
-
-                    <td width="40px"></td>
-
-
-                </tr>
-
-            </table>
-
-        </div>
-
-
+        <!-- Garis pembatas dipisah dari tabel agar merentang penuh -->
+        <div class="garis-ganda"></div>
     </header>
 
-
-
-
     <footer>
-
-
-        <div class="footer-left">
-
-            SIAKAD UNMARIS
-
-        </div>
-
-
-        <div class="footer-right">
-
-            Dicetak:
-            {{ now()->translatedFormat('d F Y H:i') }}
-
-        </div>
-
-
+        Dicetak melalui SIAKAD pada {{ now()->translatedFormat('d F Y H:i') }} WITA<br>
+        Dokumen ini sah tanpa tanda tangan basah selama dicetak dari sistem resmi.
     </footer>
 
-
-
-
-
-    <div class="content">
-
-
+    <!-- Gunakan tag main dengan margin-top agar konten tidak tertutup header fixed -->
+    <main style="padding-top: 70px;">
         @yield('content')
-
-
-    </div>
-
-
+    </main>
 </body>
 
 </html>
