@@ -79,7 +79,7 @@ class PdfSigner
                 'authorityId' => $authority->id,
                 'urutan' => $authority->urutan,
                 'label' => $authority->label,
-                'personId' => $pejabat->person_id,
+                'personId' => $pejabat->id,
                 'namaLengkap' => $pejabat->nama_dengan_gelar,
             ];
         })->all();
