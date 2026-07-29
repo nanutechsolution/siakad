@@ -56,10 +56,10 @@ class PdfSigner
                 $query->where('trx_person_jabatan.fakultas_id', $scope['fakultas_id']);
                 $scopeLabel = " (fakultas_id: {$scope['fakultas_id']})";
             }
-
             $pejabat = $query
                 ->orderByDesc('trx_person_jabatan.tanggal_mulai')
-                ->select(['ref_person.id as person_id', 'ref_person.nama_lengkap'])
+                ->select(['ref_person.id as person_id'])
+                ->with('gelars')
                 ->first();
 
             if (! $pejabat) {
@@ -74,7 +74,7 @@ class PdfSigner
                 'urutan' => $authority->urutan,
                 'label' => $authority->label,
                 'personId' => $pejabat->person_id,
-                'namaLengkap' => $pejabat->nama_lengkap,
+                'namaLengkap' => $pejabat->nama_dengan_gelar,
             ];
         })->all();
     }

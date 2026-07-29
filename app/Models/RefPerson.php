@@ -33,6 +33,9 @@ class RefPerson extends Model
         'photo_path',
     ];
 
+    protected $appends = [
+        'nama_dengan_gelar',
+    ];
     /**
      * Casting tipe data agar sesuai dengan skema SQL.
      *
