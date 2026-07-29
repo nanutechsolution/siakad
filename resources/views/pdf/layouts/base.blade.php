@@ -6,7 +6,15 @@
     <title>@yield('title', 'Dokumen')</title>
     <style>
         @page {
-            margin: 90px 40px 60px 40px;
+            margin: 120px 40px 60px 40px;
+        }
+
+        header {
+            position: fixed;
+            top: -100px;
+            left: 0;
+            right: 0;
+            height: 90px;
         }
 
         body {
@@ -15,13 +23,6 @@
             color: #1a1a1a;
         }
 
-        header {
-            position: fixed;
-            top: -70px;
-            left: 0;
-            right: 0;
-            height: 70px;
-        }
 
         footer {
             position: fixed;
@@ -106,6 +107,10 @@
 
         .mt-20 {
             margin-top: 20px;
+        }
+
+        .content {
+            margin-top: 25px;
         }
     </style>
 </head>
