@@ -6,8 +6,6 @@ use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Mahasiswa;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\KeyValue;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -107,25 +105,23 @@ class MahasiswaForm
                                                     ->alphaNum()
                                                     ->helperText('Format NIM mengikuti pola pada Program Studi (ref_prodi.format_nim). Pastikan tidak duplikat.')
                                                     ->columnSpan(2),
-
-                                                Placeholder::make('nim_preview')
+                                                TextEntry::make('nim_preview')
                                                     ->label('Status NIM')
-                                                    ->content(function (callable $get) {
+                                                    ->html() // Mengizinkan elemen HTML dalam return string
+                                                    ->state(function (callable $get, ?Mahasiswa $record) {
                                                         $nim = $get('nim');
 
                                                         if (blank($nim)) {
-                                                            return new \Illuminate\Support\HtmlString(
-                                                                '<span class="text-gray-400">Belum diisi</span>'
-                                                            );
+                                                            return '<span class="text-gray-400">Belum diisi</span>';
                                                         }
 
                                                         $exists = Mahasiswa::where('nim', $nim)
-                                                            ->when(request()->route('record'), fn($q, $id) => $q->whereKeyNot($id))
+                                                            ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
                                                             ->exists();
 
                                                         return $exists
-                                                            ? new \Illuminate\Support\HtmlString('<span class="text-danger-600 font-medium">⚠ NIM sudah dipakai</span>')
-                                                            : new \Illuminate\Support\HtmlString('<span class="text-success-600 font-medium">✓ NIM tersedia</span>');
+                                                            ? '<span class="text-danger-600 font-medium">⚠ NIM sudah dipakai</span>'
+                                                            : '<span class="text-success-600 font-medium">✓ NIM tersedia</span>';
                                                     })
                                                     ->live()
                                                     ->columnSpan(1),
@@ -323,9 +319,9 @@ class MahasiswaForm
                                 FileUpload::make('person.photo_path')
                                     ->label('Unggah Pas Foto')
                                     ->image()
-                                    ->imageEditor() 
-                                    ->directory('mahasiswa/foto') 
-                                    ->maxSize(2048) 
+                                    ->imageEditor()
+                                    ->directory('mahasiswa/foto')
+                                    ->maxSize(2048)
                                     ->columnSpanFull(),
                             ])
                             ->collapsible(),
