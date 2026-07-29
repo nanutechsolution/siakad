@@ -10,6 +10,7 @@ use App\Filament\Resources\LpmAmiFindings\RelationManagers\DiscussionsRelationMa
 use App\Filament\Resources\LpmAmiFindings\RelationManagers\EvidencesRelationManager;
 use App\Filament\Resources\LpmAmiFindings\Schemas\LpmAmiFindingForm;
 use App\Filament\Resources\LpmAmiFindings\Tables\LpmAmiFindingsTable;
+use App\Filament\Resources\LpmIkuTargets\RelationManagers\BuktiPelaksanaansRelationManager;
 use App\Models\LpmAmiFinding;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -38,6 +39,7 @@ class LpmAmiFindingResource extends Resource
     {
         return [
             EvidencesRelationManager::class,
+            BuktiPelaksanaansRelationManager::class,
             DiscussionsRelationManager::class,
         ];
     }

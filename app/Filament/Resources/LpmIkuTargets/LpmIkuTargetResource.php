@@ -6,6 +6,7 @@ use App\Enums\NavigationGroup;
 use App\Filament\Resources\LpmIkuTargets\Pages\CreateLpmIkuTarget;
 use App\Filament\Resources\LpmIkuTargets\Pages\EditLpmIkuTarget;
 use App\Filament\Resources\LpmIkuTargets\Pages\ListLpmIkuTargets;
+use App\Filament\Resources\LpmIkuTargets\RelationManagers\BuktiPelaksanaansRelationManager;
 use App\Filament\Resources\LpmIkuTargets\Schemas\LpmIkuTargetForm;
 use App\Filament\Resources\LpmIkuTargets\Tables\LpmIkuTargetsTable;
 use App\Models\LpmIkuTarget;
@@ -35,7 +36,7 @@ class LpmIkuTargetResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            BuktiPelaksanaansRelationManager::class,
         ];
     }
 
