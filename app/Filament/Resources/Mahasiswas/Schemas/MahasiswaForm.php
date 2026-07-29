@@ -20,6 +20,7 @@ use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 
 class MahasiswaForm
 {
@@ -114,9 +115,7 @@ class MahasiswaForm
                                                         $nim = $get('nim');
 
                                                         if (blank($nim)) {
-                                                            return new \Illuminate\Support\HtmlString(
-                                                                '<span class="text-gray-400">Belum diisi</span>'
-                                                            );
+                                                            return new HtmlString('<span class="text-gray-400">Belum diisi</span>');
                                                         }
 
                                                         $exists = Mahasiswa::where('nim', $nim)
@@ -124,8 +123,8 @@ class MahasiswaForm
                                                             ->exists();
 
                                                         return $exists
-                                                            ? new \Illuminate\Support\HtmlString('<span class="text-danger-600 font-medium">⚠ NIM sudah dipakai</span>')
-                                                            : new \Illuminate\Support\HtmlString('<span class="text-success-600 font-medium">✓ NIM tersedia</span>');
+                                                            ? new HtmlString('<span class="text-danger-600 font-medium">⚠ NIM sudah dipakai</span>')
+                                                            : new HtmlString('<span class="text-success-600 font-medium">✓ NIM tersedia</span>');
                                                     })
                                                     ->live()
                                                     ->columnSpan(1),
@@ -294,77 +293,87 @@ class MahasiswaForm
                                     ->icon('heroicon-o-server-stack')
                                     ->schema([
                                         Section::make('Integrasi PDDikti')
-                                            ->icon('heroicon-o-arrow-path')
+                                            ->icon('heroicon-o-cloud')
                                             ->schema([
-                                                Grid::make(2)->schema([
-                                                    TextInput::make('id_pd_feeder')
-                                                        ->label('ID Mahasiswa Feeder')
-                                                        ->maxLength(36)
-                                                        ->nullable()
-                                                        ->helperText('UUID dari PDDikti. Jangan diubah manual jika tidak yakin.'),
+                                                TextInput::make('id_registrasi_mahasiswa')
+                                                    ->label('ID Registrasi Mahasiswa (PDDikti)')
+                                                    ->disabled()
+                                                    ->dehydrated(false)
+                                                    ->helperText('Terisi otomatis saat disinkronisasi dengan web service PDDikti.'),
+                                                
+                                                TextInput::make('nisn')
+                                                    ->label('NISN (Nomor Induk Siswa Nasional)')
+                                                    ->numeric()
+                                                    ->maxLength(20),
+                                                    
+                                                TextInput::make('npwp')
+                                                    ->label('NPWP')
+                                                    ->numeric()
+                                                    ->maxLength(20),
 
-                                                    Placeholder::make('last_synced_at')
-                                                        ->label('Terakhir Sinkronisasi')
-                                                        ->content(fn(?Mahasiswa $record): string => $record?->last_synced_at
-                                                            ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
-                                                            : 'Belum pernah sinkron'),
-                                                ]),
-                                            ]),
-                                    ])
-                                    ->visible(fn(?Mahasiswa $record) => $record !== null),
-                            ]),
-                    ])->columnSpan(['lg' => 2]),
+                                                Select::make('jenis_pendaftaran')
+                                                    ->label('Jenis Pendaftaran (Masuk)')
+                                                    ->options([
+                                                        '1' => 'Peserta Didik Baru',
+                                                        '2' => 'Pindahan',
+                                                        '11' => 'Alih Jenjang',
+                                                        '12' => 'Lintas Jalur',
+                                                    ])
+                                                    ->native(false)
+                                                    ->required(),
+                                                    
+                                                DatePicker::make('tanggal_masuk')
+                                                    ->label('Tanggal Masuk / Terdaftar')
+                                                    ->native(false)
+                                                    ->maxDate(now()),
+                                            ])
+                                            ->columns(2),
 
-                Group::make()
-                    ->schema([
-                        Section::make('Foto Profil')
-                            ->schema([
-                                FileUpload::make('person.photo_path')
-                                    ->label(false)
-                                    ->avatar()
-                                    ->image()
-                                    ->imageEditor()
-                                    ->directory('person-photos')
-                                    ->visibility('private'),
-                            ]),
-
-                        Section::make('Status')
-                            ->schema([
-                                TextEntry::make('created_at')
-                                    ->label('Terdaftar Sejak')
-                                    ->state(fn(?Mahasiswa $record) => $record?->created_at?->translatedFormat('d F Y') ?? '—'),
-                                TextEntry::make('updated_at')
-                                    ->label('Terakhir Diubah')
-                                    ->state(fn(?Mahasiswa $record) => $record?->updated_at?->diffForHumans() ?? '—'),
+                                        Section::make('Riwayat Pendidikan Asal')
+                                            ->icon('heroicon-o-building-office-2')
+                                            ->schema([
+                                                TextInput::make('asal_sekolah')
+                                                    ->label('Asal Sekolah / PT Asal')
+                                                    ->maxLength(255),
+                                                TextInput::make('jurusan_asal')
+                                                    ->label('Jurusan Asal')
+                                                    ->maxLength(255),
+                                            ])
+                                            ->columns(2),
+                                    ]),
                             ])
-                            ->visible(fn(?Mahasiswa $record) => $record !== null),
-                    ])->columnSpan(['lg' => 1]),
-            ])
-            ->columns(3);
+                    ])
+            ]);
     }
 
-    protected static function pendidikanOptions(): array
+    // ================= STATIC HELPERS FOR OPTIONS =================
+
+    public static function pendidikanOptions(): array
     {
         return [
-            'SD' => 'SD',
-            'SMP' => 'SMP',
-            'SMA' => 'SMA/SMK',
-            'D3' => 'D3',
-            'S1' => 'S1',
-            'S2' => 'S2',
-            'S3' => 'S3',
-            'TIDAK_SEKOLAH' => 'Tidak Sekolah',
+            'TIDAK_SEKOLAH' => 'Tidak/Belum Sekolah',
+            'SD' => 'SD / Sederajat',
+            'SMP' => 'SMP / Sederajat',
+            'SMA' => 'SMA / Sederajat',
+            'D1' => 'Diploma 1',
+            'D2' => 'Diploma 2',
+            'D3' => 'Diploma 3',
+            'D4' => 'Diploma 4 / Sarjana Terapan',
+            'S1' => 'S1 (Sarjana)',
+            'S2' => 'S2 (Magister)',
+            'S3' => 'S3 (Doktor)',
         ];
     }
 
-    protected static function penghasilanOptions(): array
+    public static function penghasilanOptions(): array
     {
         return [
-            'KURANG_500K' => '< Rp 500.000',
-            '500K_1JT' => 'Rp 500.000 - Rp 1.000.000',
-            '1JT_3JT' => 'Rp 1.000.000 - Rp 3.000.000',
-            '3JT_5JT' => 'Rp 3.000.000 - Rp 5.000.000',
-            'LEBIH_5JT' => '> Rp 5.000.000',
+            'TIDAK_BERPENGHASILAN' => 'Tidak Berpenghasilan',
+            'KURANG_1JT' => 'Kurang dari Rp 1.000.000',
+            '1JT_SD_3JT' => 'Rp 1.000.000 - Rp 3.000.000',
+            '3JT_SD_5JT' => 'Rp 3.000.000 - Rp 5.000.000',
+            '5JT_SD_10JT' => 'Rp 5.000.000 - Rp 10.000.000',
+            'LEBIH_10JT' => 'Lebih dari Rp 10.000.000',
         ];
     }
 }
