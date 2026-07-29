@@ -9,6 +9,7 @@ class PdfSignatureAuthority extends Model
     protected $fillable = [
         'document_type',
         'jabatan_id',
+        'scope',
         'urutan',
         'label',
         'is_active',

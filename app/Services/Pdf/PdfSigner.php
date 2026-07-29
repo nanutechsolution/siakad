@@ -15,7 +15,7 @@ class PdfSigner
      * Resolve daftar penandatangan (READ-ONLY) — dipanggil SEBELUM render,
      * supaya nama & jabatan bisa tampil di dalam dokumen.
      */
-    public function resolveSigners(PdfDocumentType $type): array
+    public function resolveSigners(PdfDocumentType $type, array $scope = []): array
     {
         $authorities = PdfSignatureAuthority::query()
             ->where('document_type', $type->value)
@@ -24,27 +24,47 @@ class PdfSigner
             ->get();
 
         if ($authorities->isEmpty()) {
-            throw new RuntimeException(
-                "Belum ada konfigurasi penandatangan (pdf_signature_authorities) untuk jenis dokumen [{$type->value}]."
-            );
+            throw new RuntimeException("Belum ada konfigurasi penandatangan (pdf_signature_authorities) untuk jenis dokumen [{$type->value}].");
         }
 
-        return $authorities->map(function (PdfSignatureAuthority $authority) {
-            $pejabat = DB::table('trx_person_jabatan')
+        return $authorities->map(function (PdfSignatureAuthority $authority) use ($scope) {
+            $query = DB::table('trx_person_jabatan')
                 ->join('ref_person', 'ref_person.id', '=', 'trx_person_jabatan.person_id')
                 ->where('trx_person_jabatan.jabatan_id', $authority->jabatan_id)
                 ->where('trx_person_jabatan.tanggal_mulai', '<=', now())
                 ->where(function ($q) {
                     $q->whereNull('trx_person_jabatan.tanggal_selesai')
                         ->orWhere('trx_person_jabatan.tanggal_selesai', '>=', now());
-                })
+                });
+
+            $scopeLabel = '';
+
+            if ($authority->scope === 'PRODI') {
+                if (empty($scope['prodi_id'])) {
+                    throw new RuntimeException(
+                        "Otoritas [{$authority->label}] dikonfigurasi scope PRODI, tapi dokumen ini tidak menyediakan prodi_id mahasiswa."
+                    );
+                }
+                $query->where('trx_person_jabatan.prodi_id', $scope['prodi_id']);
+                $scopeLabel = " (prodi_id: {$scope['prodi_id']})";
+            } elseif ($authority->scope === 'FAKULTAS') {
+                if (empty($scope['fakultas_id'])) {
+                    throw new RuntimeException(
+                        "Otoritas [{$authority->label}] dikonfigurasi scope FAKULTAS, tapi dokumen ini tidak menyediakan fakultas_id mahasiswa."
+                    );
+                }
+                $query->where('trx_person_jabatan.fakultas_id', $scope['fakultas_id']);
+                $scopeLabel = " (fakultas_id: {$scope['fakultas_id']})";
+            }
+
+            $pejabat = $query
                 ->orderByDesc('trx_person_jabatan.tanggal_mulai')
                 ->select(['ref_person.id as person_id', 'ref_person.nama_lengkap'])
                 ->first();
 
             if (! $pejabat) {
                 throw new RuntimeException(
-                    "Tidak ditemukan pejabat aktif untuk jabatan_id [{$authority->jabatan_id}] ({$authority->label}). " .
+                    "Tidak ditemukan pejabat aktif untuk jabatan_id [{$authority->jabatan_id}] ({$authority->label}){$scopeLabel}. " .
                         'Dokumen tidak dapat diterbitkan tanpa penandatangan yang sah.'
                 );
             }
@@ -58,7 +78,6 @@ class PdfSigner
             ];
         })->all();
     }
-
     /**
      * Simpan riwayat tanda tangan SETELAH dokumen berhasil dirender & disimpan.
      */

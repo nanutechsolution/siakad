@@ -46,4 +46,6 @@ final readonly class SuratAktifKuliahPdfData implements PdfDocumentDataInterface
     {
         return hash('sha256', json_encode([$this->riwayatStatusId, $this->sourceUpdatedAt]));
     }
+
+    
 }

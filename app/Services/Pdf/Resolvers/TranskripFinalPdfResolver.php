@@ -25,8 +25,10 @@ class TranskripFinalPdfResolver implements PdfDataResolverInterface
                 'ref_person.nama_lengkap as nama_mahasiswa',
                 'ref_person.tempat_lahir',
                 'ref_person.tanggal_lahir',
+                'ref_prodi.id as prodi_id_val',
                 'ref_prodi.nama_prodi',
                 'ref_prodi.jenjang',
+                'ref_fakultas.id as fakultas_id_val',
                 'ref_fakultas.nama_fakultas',
                 'master_kurikulums.nama_kurikulum',
                 'master_kurikulums.jumlah_sks_lulus',
@@ -83,6 +85,8 @@ class TranskripFinalPdfResolver implements PdfDataResolverInterface
 
         return new TranskripFinalPdfData(
             mahasiswaId: $mahasiswaId,
+            prodiId: (int) $mahasiswa->prodi_id_val,
+            fakultasId: (int) $mahasiswa->fakultas_id_val,
             nim: $mahasiswa->nim,
             namaMahasiswa: $mahasiswa->nama_mahasiswa,
             tempatLahir: $mahasiswa->tempat_lahir,

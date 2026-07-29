@@ -21,6 +21,7 @@ class PdfSignatureAuthoritiesTable
                     ->formatStateUsing(fn(string $state) => PdfDocumentType::from($state)->label())
                     ->searchable(),
                 TextColumn::make('jabatan.nama_jabatan')->label('Jabatan'),
+                TextColumn::make('scope')->label('Scope')->badge(),
                 TextColumn::make('label')->label('Label Tercetak'),
                 TextColumn::make('urutan')->label('Urutan')->alignCenter(),
                 IconColumn::make('is_active')->label('Aktif')->boolean(),

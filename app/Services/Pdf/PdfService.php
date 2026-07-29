@@ -95,7 +95,8 @@ class PdfService
         }
 
         if ($definition['requires_signature'] ?? false) {
-            $resolvedSigners = app(PdfSigner::class)->resolveSigners($type);
+            $scope = $dto instanceof \App\Contracts\Pdf\HasSignatureScopeInterface ? $dto->signatureScope() : [];
+            $resolvedSigners = app(PdfSigner::class)->resolveSigners($type, $scope);
             $viewData['signers'] = $resolvedSigners;
         }
         if ($definition['requires_qr'] ?? false) {

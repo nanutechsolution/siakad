@@ -27,7 +27,16 @@ class PdfSignatureAuthorityForm
                     ->searchable()
                     ->preload()
                     ->required(),
-
+                Select::make('scope')
+                    ->label('Scope Pencocokan')
+                    ->options([
+                        'NONE' => 'Institusi (satu untuk semua, mis. Rektor/BAUK)',
+                        'PRODI' => 'Per Program Studi (cocokkan ke prodi mahasiswa)',
+                        'FAKULTAS' => 'Per Fakultas (cocokkan ke fakultas mahasiswa)',
+                    ])
+                    ->default('NONE')
+                    ->required()
+                    ->helperText('Pilih PRODI/FAKULTAS jika jabatan ini dipegang berbeda-beda orang per unit (mis. tiap prodi punya Kaprodi sendiri).'),
                 TextInput::make('label')
                     ->label('Label Tercetak')
                     ->helperText('Teks yang tampil di atas nama penandatangan, mis. "Mengetahui, Kepala BAAK"')
