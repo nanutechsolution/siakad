@@ -76,6 +76,9 @@ class PdfService
             ->where('documentable_id', $documentableId)
             ->where('is_current', true)
             ->first();
+        dump($fingerprint);
+
+        dump($current?->metadata['fingerprint']);
 
         if ($current && ($current->metadata['fingerprint'] ?? null) === $fingerprint) {
             return $current;
