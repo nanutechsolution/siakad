@@ -57,7 +57,6 @@ class MahasiswaInfolist
             ->schema([
                 Grid::make(['default' => 1, 'md' => 12])
                     ->schema([
-                        TextEntry::make('person.photo_path'),
                         ImageEntry::make('person.photo_path')
                             ->label('')
                             ->imageHeight(140)
