@@ -102,8 +102,11 @@
             <table>
                 <tr>
                     <td class="logo">
-                        @if($kopSurat['logoAbsolutePath'])
-                        <img src="{{ $kopSurat['logoAbsolutePath'] }}" width="55">
+                        @if(
+                        !empty($kopSurat['logoAbsolutePath']) &&
+                        file_exists($kopSurat['logoAbsolutePath'])
+                        )
+                        <img src="file://{{ $kopSurat['logoAbsolutePath'] }}" width="55">
                         @endif
                     </td>
                     <td class="institusi">
