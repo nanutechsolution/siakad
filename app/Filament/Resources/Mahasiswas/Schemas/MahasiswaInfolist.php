@@ -611,44 +611,15 @@ class MahasiswaInfolist
                         TextEntry::make('person_id')->label('ID Person')->copyable(),
                         TextEntry::make('created_at')
                             ->label('Dibuat Pada')
-                            ->state(
-                                fn($record) => static::tanggalIndonesia(
-                                    $record->created_at,
-                                    'd F Y, H:i'
-                                ) . ' WITA'
-                            ),
+                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state, 'D MMMM YYYY, HH:mm')),
                         TextEntry::make('updated_at')
                             ->label('Diperbarui Pada')
-                            ->state(fn($record) => static::tanggalIndonesia($record->updated_at, 'd F Y, H:i') . ' WITA'),
-                        TextEntry::make('deleted_at')
-                            ->label('Status Hapus')
-                            ->badge()
-                            ->state(fn($state) => $state ? 'Dihapus (Soft Delete)' : 'Aktif')
-                            ->color(fn($state) => $state ? 'danger' : 'success'),
+                            ->formatStateUsing(fn($state) => static::tanggalIndonesia($state, 'D MMMM YYYY, HH:mm')),
                     ]),
-
             ]);
     }
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-    /*
+/*
     |--------------------------------------------------------------------
     | HELPER
     |--------------------------------------------------------------------
