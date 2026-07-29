@@ -62,10 +62,11 @@ class MahasiswaInfolist
                             ->disk('public')
                             ->imageHeight(140)
                             ->imageWidth(140)
-                            ->extraImgAttributes(['class' => 'rounded-2xl object-cover ring-4 ring-white shadow-md'])
-                            ->defaultImageUrl(fn() => asset('images/avatar-placeholder.png'))
+                            ->extraImgAttributes([
+                                'class' => 'rounded-2xl object-cover ring-4 ring-white shadow-md',
+                            ])
+                            ->defaultImageUrl(asset('images/avatar-placeholder.png'))
                             ->columnSpan(['default' => 1, 'md' => 2]),
-
                         Grid::make(['default' => 1, 'md' => 3])
                             ->columnSpan(['default' => 1, 'md' => 10])
                             ->schema([
@@ -619,7 +620,7 @@ class MahasiswaInfolist
             ]);
     }
 
-/*
+    /*
     |--------------------------------------------------------------------
     | HELPER
     |--------------------------------------------------------------------
