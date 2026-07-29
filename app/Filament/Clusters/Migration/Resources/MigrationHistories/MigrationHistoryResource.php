@@ -9,7 +9,6 @@ use App\Filament\Clusters\Migration\Resources\MigrationHistories\Schemas\Migrati
 use App\Filament\Clusters\Migration\Resources\MigrationHistories\Schemas\MigrationHistoryInfolist;
 use App\Filament\Clusters\Migration\Resources\MigrationHistories\Tables\MigrationHistoriesTable;
 use App\Models\MigrationBatch;
-use App\Models\MigrationHistory;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -19,9 +18,6 @@ use Filament\Tables\Table;
 class MigrationHistoryResource extends Resource
 {
     protected static ?string $model = MigrationBatch::class;
-
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedClock;
-
     protected static ?string $navigationLabel = 'Riwayat Migrasi';
 
     protected static ?string $modelLabel = 'Riwayat Migrasi';

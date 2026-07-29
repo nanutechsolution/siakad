@@ -22,7 +22,6 @@ class KrsResource extends Resource
 {
     protected static ?string $model = Krs::class;
 
-    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedRectangleStack;
     protected static string|UnitEnum|null $navigationGroup =  NavigationGroup::AKADEMIK->value;
     protected static ?string $navigationLabel = 'KRS Mahasiswa';
     protected static ?string $modelLabel = 'Kartu Rencana Studi';
