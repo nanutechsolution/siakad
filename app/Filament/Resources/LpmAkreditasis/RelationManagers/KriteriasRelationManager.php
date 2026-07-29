@@ -19,6 +19,7 @@ class KriteriasRelationManager extends RelationManager
 {
     protected static string $relationship = 'kriterias';
 
+    protected static ?string $title = 'Kriteria';
     public function form(Schema $schema): Schema
     {
         return $schema

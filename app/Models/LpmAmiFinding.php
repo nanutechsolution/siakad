@@ -70,6 +70,10 @@ class LpmAmiFinding extends Model
     {
         return $this->hasMany(LpmAmiEvidence::class, 'finding_id');
     }
+    public function buktiPelaksanaans(): HasMany
+    {
+        return $this->hasMany(LpmBuktiPelaksanaan::class, 'finding_id');
+    }
 
     public function discussions(): HasMany
     {

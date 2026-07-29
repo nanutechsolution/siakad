@@ -10,10 +10,4 @@ class ListLpmAkreditasiKriterias extends ListRecords
 {
     protected static string $resource = LpmAkreditasiKriteriaResource::class;
 
-    protected function getHeaderActions(): array
-    {
-        return [
-            CreateAction::make(),
-        ];
-    }
 }
