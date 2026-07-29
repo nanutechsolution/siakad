@@ -299,9 +299,9 @@ class MahasiswaForm
                                                         ->nullable()
                                                         ->helperText('UUID dari PDDikti. Jangan diubah manual jika tidak yakin.'),
 
-                                                    Placeholder::make('last_synced_at')
+                                                    TextEntry::make('last_synced_at')
                                                         ->label('Terakhir Sinkronisasi')
-                                                        ->content(fn(?Mahasiswa $record): string => $record?->last_synced_at
+                                                        ->state(fn(?Mahasiswa $record): string => $record?->last_synced_at
                                                             ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
                                                             : 'Belum pernah sinkron'),
                                                 ]),
