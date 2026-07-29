@@ -26,6 +26,7 @@ class SuratCutiPdfResolver implements PdfDataResolverInterface
                 'riwayat_status_mahasiswas.updated_at',
                 'mahasiswas.nim',
                 'ref_person.nama_lengkap as nama_mahasiswa',
+                'ref_prodi.id as prodi_id_val',
                 'ref_prodi.nama_prodi',
                 'ref_fakultas.nama_fakultas',
                 'ref_tahun_akademik.nama_tahun',
@@ -47,6 +48,7 @@ class SuratCutiPdfResolver implements PdfDataResolverInterface
 
         return new SuratCutiPdfData(
             riwayatStatusId: (int) $riwayat->id,
+            prodiId: (int) $riwayat->prodi_id_val,
             nim: $riwayat->nim,
             namaMahasiswa: $riwayat->nama_mahasiswa,
             namaProdi: $riwayat->nama_prodi,

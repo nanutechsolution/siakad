@@ -28,6 +28,7 @@ class SuratAktifKuliahPdfResolver implements PdfDataResolverInterface
                 'ref_person.nama_lengkap as nama_mahasiswa',
                 'ref_person.tempat_lahir',
                 'ref_person.tanggal_lahir',
+                'ref_prodi.id as prodi_id_val',
                 'ref_prodi.nama_prodi',
                 'ref_prodi.jenjang',
                 'ref_fakultas.nama_fakultas',
@@ -50,6 +51,7 @@ class SuratAktifKuliahPdfResolver implements PdfDataResolverInterface
 
         return new SuratAktifKuliahPdfData(
             riwayatStatusId: (int) $riwayat->id,
+            prodiId: (int) $riwayat->prodi_id_val,
             nim: $riwayat->nim,
             namaMahasiswa: $riwayat->nama_mahasiswa,
             tempatLahir: $riwayat->tempat_lahir,

@@ -2,12 +2,14 @@
 
 namespace App\DataTransferObjects\Pdf;
 
+use App\Contracts\Pdf\HasSignatureScopeInterface;
 use App\Contracts\Pdf\PdfDocumentDataInterface;
 
-final readonly class KwitansiPdfData implements PdfDocumentDataInterface
+final readonly class KwitansiPdfData implements PdfDocumentDataInterface, HasSignatureScopeInterface
 {
     public function __construct(
         public string $pembayaranId,
+        public int $prodiId,
         public string $nim,
         public string $namaMahasiswa,
         public string $namaProdi,
@@ -44,12 +46,15 @@ final readonly class KwitansiPdfData implements PdfDocumentDataInterface
 
     public function fingerprint(): string
     {
-        // Kwitansi ARCHIVED — fingerprint sengaja tidak melibatkan field yang
-        // bisa berubah setelah verifikasi. Sekali verified, isi kwitansi final.
         return hash('sha256', json_encode([
             $this->pembayaranId,
             $this->nominalBayar,
             $this->tanggalBayar,
         ]));
+    }
+
+    public function signatureScope(): array
+    {
+        return ['prodi_id' => $this->prodiId];
     }
 }

@@ -25,6 +25,7 @@ class SuratPindahProdiPdfResolver implements PdfDataResolverInterface
                 'mahasiswas.id as mahasiswa_id',
                 'mahasiswas.nim',
                 'ref_person.nama_lengkap as nama_mahasiswa',
+                'ref_prodi.id as prodi_tujuan_id_val',
                 'ref_prodi.nama_prodi as prodi_tujuan',
             ])
             ->first();
@@ -48,6 +49,7 @@ class SuratPindahProdiPdfResolver implements PdfDataResolverInterface
 
         return new SuratPindahProdiPdfData(
             riwayatProdiId: (int) $riwayat->id,
+            prodiTujuanId: (int) $riwayat->prodi_tujuan_id_val,
             nim: $riwayat->nim,
             namaMahasiswa: $riwayat->nama_mahasiswa,
             prodiAsal: $prodiAsal,

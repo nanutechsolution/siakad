@@ -50,6 +50,7 @@ class KwitansiPdfResolver implements PdfDataResolverInterface
                 'tagihan_mahasiswas.deskripsi',
                 'mahasiswas.nim',
                 'ref_person.nama_lengkap as nama_mahasiswa',
+                'ref_prodi.id as prodi_id_val',
                 'ref_prodi.nama_prodi',
                 'ref_tahun_akademik.nama_tahun',
             ])
@@ -61,6 +62,7 @@ class KwitansiPdfResolver implements PdfDataResolverInterface
 
         return new KwitansiPdfData(
             pembayaranId: $pembayaran->id,
+            prodiId: (int) $tagihan->prodi_id_val,
             nim: $tagihan->nim,
             namaMahasiswa: $tagihan->nama_mahasiswa,
             namaProdi: $tagihan->nama_prodi,

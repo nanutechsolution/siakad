@@ -2,12 +2,14 @@
 
 namespace App\DataTransferObjects\Pdf;
 
+use App\Contracts\Pdf\HasSignatureScopeInterface;
 use App\Contracts\Pdf\PdfDocumentDataInterface;
 
-final readonly class SuratPindahProdiPdfData implements PdfDocumentDataInterface
+final readonly class SuratPindahProdiPdfData implements PdfDocumentDataInterface, HasSignatureScopeInterface
 {
     public function __construct(
         public int $riwayatProdiId,
+        public int $prodiTujuanId,
         public string $nim,
         public string $namaMahasiswa,
         public string $prodiAsal,
@@ -37,5 +39,12 @@ final readonly class SuratPindahProdiPdfData implements PdfDocumentDataInterface
     public function fingerprint(): string
     {
         return hash('sha256', json_encode([$this->riwayatProdiId, $this->sourceUpdatedAt]));
+    }
+
+    public function signatureScope(): array
+    {
+        // Sengaja pakai prodi TUJUAN — begitu pindah, Kaprodi yang berwenang
+        // menandatangani adalah Kaprodi baru mahasiswa, bukan Kaprodi lama.
+        return ['prodi_id' => $this->prodiTujuanId];
     }
 }

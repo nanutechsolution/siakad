@@ -2,12 +2,14 @@
 
 namespace App\DataTransferObjects\Pdf;
 
+use App\Contracts\Pdf\HasSignatureScopeInterface;
 use App\Contracts\Pdf\PdfDocumentDataInterface;
 
-final readonly class SuratAktifKuliahPdfData implements PdfDocumentDataInterface
+final readonly class SuratAktifKuliahPdfData implements PdfDocumentDataInterface, HasSignatureScopeInterface
 {
     public function __construct(
         public int $riwayatStatusId,
+        public int $prodiId,
         public string $nim,
         public string $namaMahasiswa,
         public ?string $tempatLahir,
@@ -47,5 +49,8 @@ final readonly class SuratAktifKuliahPdfData implements PdfDocumentDataInterface
         return hash('sha256', json_encode([$this->riwayatStatusId, $this->sourceUpdatedAt]));
     }
 
-    
+    public function signatureScope(): array
+    {
+        return ['prodi_id' => $this->prodiId];
+    }
 }

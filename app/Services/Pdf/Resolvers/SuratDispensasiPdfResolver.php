@@ -28,6 +28,7 @@ class SuratDispensasiPdfResolver implements PdfDataResolverInterface
                 'dispensasi_akademiks.updated_at',
                 'mahasiswas.nim',
                 'ref_person.nama_lengkap as nama_mahasiswa',
+                'ref_prodi.id as prodi_id_val',
                 'ref_prodi.nama_prodi',
             ])
             ->first();
@@ -44,6 +45,7 @@ class SuratDispensasiPdfResolver implements PdfDataResolverInterface
 
         return new SuratDispensasiPdfData(
             dispensasiId: $dispensasi->id,
+            prodiId: (int) $dispensasi->prodi_id_val,
             nim: $dispensasi->nim,
             namaMahasiswa: $dispensasi->nama_mahasiswa,
             namaProdi: $dispensasi->nama_prodi,
