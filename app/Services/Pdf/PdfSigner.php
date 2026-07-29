@@ -56,11 +56,17 @@ class PdfSigner
                 $query->where('trx_person_jabatan.fakultas_id', $scope['fakultas_id']);
                 $scopeLabel = " (fakultas_id: {$scope['fakultas_id']})";
             }
-            $pejabat = $query
+            $person = $query
                 ->orderByDesc('trx_person_jabatan.tanggal_mulai')
                 ->select(['ref_person.id as person_id'])
-                ->with('gelars')
                 ->first();
+
+            $pejabat = null;
+
+            if ($person) {
+                $pejabat = \App\Models\RefPerson::with('gelars')
+                    ->find($person->person_id);
+            }
 
             if (! $pejabat) {
                 throw new RuntimeException(
