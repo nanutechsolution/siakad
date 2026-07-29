@@ -3,164 +3,372 @@
 
 <head>
     <meta charset="utf-8">
-    <title>@yield('title', 'Dokumen')</title>
+
+    <title>@yield('title', 'Dokumen Resmi')</title>
+
     <style>
         @page {
-            margin: 120px 40px 60px 40px;
-        }
-
-        header {
-            position: fixed;
-            top: -100px;
-            left: 0;
-            right: 0;
-            height: 90px;
+            margin: 125px 45px 65px 45px;
         }
 
         body {
             font-family: 'DejaVu Sans', sans-serif;
             font-size: 11px;
-            color: #1a1a1a;
+            color: #111;
         }
 
 
-        footer {
+        /*
+|--------------------------------------------------------------------------
+| HEADER
+|--------------------------------------------------------------------------
+*/
+
+        header {
             position: fixed;
-            bottom: -50px;
+            top: -105px;
             left: 0;
             right: 0;
-            height: 40px;
-            font-size: 9px;
-            color: #555;
-            border-top: 1px solid #999;
-            padding-top: 4px;
+            height: 95px;
         }
+
 
         .kop {
             width: 100%;
-            border-bottom: 3px double #000;
+            border-bottom: 4px double #000;
             padding-bottom: 8px;
-            margin-bottom: 15px;
         }
+
 
         .kop table {
-            width: 100%;
-        }
-
-        .kop .logo {
-            width: 80px;
-            text-align: center;
-        }
-
-        .kop .logo img {
-            width: 65px;
-        }
-
-        .kop .institusi {
-            text-align: center;
-        }
-
-        .kop .institusi h1 {
-            font-size: 16px;
-            font-weight: bold;
-            margin: 0;
-            text-transform: uppercase;
-        }
-
-        .kop .institusi .akreditasi {
-            font-size: 10px;
-            margin-top: 3px;
-        }
-
-        .kop .institusi p {
-            font-size: 9px;
-            margin: 2px 0;
-        }
-
-        table.data {
             width: 100%;
             border-collapse: collapse;
         }
 
-        table.data th,
-        table.data td {
-            border: 1px solid #999;
-            padding: 4px 6px;
-            font-size: 10px;
+
+        .logo {
+            width: 90px;
+            vertical-align: middle;
         }
 
-        table.data th {
-            background-color: #eee;
+
+        .logo img {
+            width: 70px;
         }
+
+
+        .institusi {
+            text-align: center;
+            vertical-align: middle;
+        }
+
+
+        .institusi h1 {
+
+            font-size: 17px;
+            font-weight: bold;
+
+            letter-spacing: .5px;
+
+            margin: 0;
+
+            text-transform: uppercase;
+
+        }
+
+
+        .institusi h2 {
+
+            font-size: 12px;
+
+            margin: 2px 0;
+
+            font-weight: bold;
+
+        }
+
+
+        .akreditasi {
+
+            font-size: 9px;
+
+            margin-top: 4px;
+
+        }
+
+
+        .alamat {
+
+            font-size: 9px;
+
+            line-height: 14px;
+
+        }
+
+
+        .kontak {
+
+            font-size: 8.5px;
+
+        }
+
+
+        /*
+|--------------------------------------------------------------------------
+| FOOTER
+|--------------------------------------------------------------------------
+*/
+
+
+        footer {
+
+            position: fixed;
+
+            bottom: -45px;
+
+            left: 0;
+
+            right: 0;
+
+            height: 35px;
+
+            border-top: 1px solid #aaa;
+
+            padding-top: 5px;
+
+            font-size: 8px;
+
+            color: #555;
+
+        }
+
+
+        .footer-left {
+
+            float: left;
+
+        }
+
+
+        .footer-right {
+
+            float: right;
+
+        }
+
+
+
+        /*
+|--------------------------------------------------------------------------
+| CONTENT
+|--------------------------------------------------------------------------
+*/
+
+
+        .content {
+
+            margin-top: 20px;
+
+        }
+
+
+        table.data {
+
+            width: 100%;
+
+            border-collapse: collapse;
+
+        }
+
+
+        table.data th {
+
+            background: #f0f0f0;
+
+            font-weight: bold;
+
+        }
+
+
+        table.data th,
+        table.data td {
+
+            border: 1px solid #999;
+
+            padding: 5px;
+
+            font-size: 10px;
+
+        }
+
+
 
         .text-center {
             text-align: center;
         }
 
+
         .text-right {
             text-align: right;
         }
 
-        .mt-10 {
-            margin-top: 10px;
-        }
 
-        .mt-20 {
-            margin-top: 20px;
-        }
-
-        .content {
-            margin-top: 25px;
+        .page-break {
+            page-break-after: always;
         }
     </style>
+
 </head>
 
+
 <body>
-    @php $kopSurat = app(\App\Services\Pdf\KopSuratResolver::class)->resolve(); @endphp
+
+
+    @php
+
+    $kopSurat = app(
+    \App\Services\Pdf\KopSuratResolver::class
+    )->resolve();
+
+    @endphp
+
+
 
     <header>
+
         <div class="kop">
+
             <table>
+
                 <tr>
+
+
                     <td class="logo">
-                        @if($kopSurat['logoAbsolutePath'] && file_exists($kopSurat['logoAbsolutePath']))
-                        <img src="data:image/png;base64,{{ base64_encode(file_get_contents($kopSurat['logoAbsolutePath'])) }}" width="55">
+
+                        @if(
+                        isset($kopSurat['logoAbsolutePath'])
+                        &&
+                        file_exists($kopSurat['logoAbsolutePath'])
+                        )
+
+                        <img src="data:image/png;base64,
+{{base64_encode(file_get_contents($kopSurat['logoAbsolutePath']))}}">
+
+
                         @endif
+
                     </td>
+
+
+
                     <td class="institusi">
 
-                        <h1>{{ $kopSurat['nama'] }}</h1>
+
+                        <h1>
+                            {{ strtoupper($kopSurat['nama']) }}
+                        </h1>
+
+
+                        <h2>
+                            SISTEM INFORMASI AKADEMIK
+                        </h2>
+
+
 
                         <div class="akreditasi">
-                            Terakreditasi {{ $kopSurat['akreditasi'] }}
+
+                            Terakreditasi
+                            {{ $kopSurat['akreditasi'] }}
+
                             @if(!empty($kopSurat['nomorAkreditasi']))
-                            | SK: {{ $kopSurat['nomorAkreditasi'] }}
+
+                            <br>
+
+                            Nomor SK :
+                            {{ $kopSurat['nomorAkreditasi'] }}
+
                             @endif
+
                         </div>
 
-                        <p>
-                            {{ $kopSurat['alamat'] }}
-                        </p>
 
-                        <p>
-                            Telp: {{ $kopSurat['telepon'] }}
+
+                        <div class="alamat">
+
+                            {{ $kopSurat['alamat'] }}
+
+                        </div>
+
+
+
+                        <div class="kontak">
+
+                            Telp:
+                            {{ $kopSurat['telepon'] }}
+
                             |
-                            Email: {{ $kopSurat['email'] }}
+
+                            Email:
+                            {{ $kopSurat['email'] }}
+
                             |
+
                             {{ $kopSurat['website'] }}
-                        </p>
+
+                        </div>
+
 
                     </td>
+
+
+                    <td width="40px"></td>
+
+
                 </tr>
+
             </table>
+
         </div>
+
+
     </header>
 
+
+
+
     <footer>
-        Dicetak melalui SIAKAD pada {{ now()->translatedFormat('d F Y H:i') }} — Dokumen ini sah tanpa tanda tangan basah selama dicetak dari sistem resmi.
+
+
+        <div class="footer-left">
+
+            SIAKAD UNMARIS
+
+        </div>
+
+
+        <div class="footer-right">
+
+            Dicetak:
+            {{ now()->translatedFormat('d F Y H:i') }}
+
+        </div>
+
+
     </footer>
 
-    @yield('content')
+
+
+
+
+    <div class="content">
+
+
+        @yield('content')
+
+
+    </div>
+
+
 </body>
 
 </html>
