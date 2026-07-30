@@ -24,7 +24,7 @@ class PendapatanPerPeriode extends Page implements HasForms, HasTable, ProvidesL
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;
     }
-
+    protected static bool $shouldRegisterNavigation = false;
     protected static ?string $cluster = LaporanKeuanganCluster::class;
 
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
