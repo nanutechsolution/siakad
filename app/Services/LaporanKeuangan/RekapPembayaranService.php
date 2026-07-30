@@ -17,30 +17,40 @@ final class RekapPembayaranService
 {
     public function query(array $filters): Builder
     {
-        $map = TagihanMapQuery::build();
+        // 1. Mulai dari model Pembayaran, BUKAN Mahasiswa
+        return PembayaranMahasiswaRecord::query()
+            ->from('pembayaran_mahasiswas as pm')
 
-        $query = MahasiswaInfoQuery::base()
-            ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
-            ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
+            // 2. Join ke pemetaan tagihan
+            ->joinSub(TagihanMapQuery::build(), 'tm', fn($join) => $join->on('tm.tagihan_id', '=', 'pm.tagihan_id'))
+
+            // 3. Join ke tabel mahasiswa dan relasi pendukungnya
+            ->join('mahasiswas as m', 'm.id', '=', 'tm.mahasiswa_id')
+            ->join('persons as p', 'p.id', '=', 'm.person_id')
+            ->join('ref_program_studis as pr', 'pr.id', '=', 'm.prodi_id')
+
+            // 4. Join status dan user
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('users as u', 'u.id', '=', 'pm.verified_by')
+
             ->whereNull('pm.deleted_at')
+
+            // 5. Terapkan filter Pembayaran
             ->when($filters['status_verifikasi_id'] ?? null, fn($q, $v) => $q->where('pm.status_verifikasi_id', $v))
             ->when($filters['metode_pembayaran'] ?? null, fn($q, $v) => $q->where('pm.metode_pembayaran', $v))
             ->when($filters['tanggal_dari'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '>=', $v))
-            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v));
+            ->when($filters['tanggal_sampai'] ?? null, fn($q, $v) => $q->whereDate('pm.tanggal_bayar', '<=', $v))
 
-        $query = MahasiswaInfoQuery::applyFilters($query, $filters);
+            // 6. Terapkan filter Mahasiswa (Fakultas & Prodi)
+            ->when($filters['prodi_id'] ?? null, fn($q, $v) => $q->where('m.prodi_id', $v))
+            ->when($filters['fakultas_id'] ?? null, fn($q, $v) => $q->where('pr.fakultas_id', $v))
 
-        return $query
-            ->distinct()
-            ->orderByDesc('pm.tanggal_bayar')
+            // 7. Pilih kolom secara spesifik
             ->select([
-                'pm.id as id',                   // 1. TAMBAHKAN INI: Jadikan ID pembayaran sebagai key utama baris
+                'pm.id', // WAJIB ADA untuk mencegah Livewire DOM Error
                 'pm.id as nomor_transaksi',
                 'pm.tanggal_bayar',
-                'mahasiswas.id as mahasiswa_id', // 2. UBAH INI: Alias-kan agar tidak menimpa kolom 'id' di atas
-                'mahasiswas.nim',
+                'm.nim',
                 'p.nama_lengkap',
                 'pr.nama_prodi',
                 'tm.jenis_tagihan',
@@ -48,7 +58,22 @@ final class RekapPembayaranService
                 'pm.metode_pembayaran',
                 'sv.nama as status_verifikasi',
                 'u.name as user_verifikasi'
-            ]);
+            ])
+
+            // 8. Kunci dengan Group By untuk menjamin tidak ada duplikasi mutlak
+            ->groupBy([
+                'pm.id',
+                'pm.tanggal_bayar',
+                'm.nim',
+                'p.nama_lengkap',
+                'pr.nama_prodi',
+                'tm.jenis_tagihan',
+                'pm.nominal_bayar',
+                'pm.metode_pembayaran',
+                'sv.nama',
+                'u.name'
+            ])
+            ->orderByDesc('pm.tanggal_bayar');
     }
 
     /**
