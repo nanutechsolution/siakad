@@ -42,7 +42,7 @@ class MidtransCheckoutController extends Controller
             'snapToken' => $hasil['snap_token'],
             'clientKey' => config('midtrans.client_key'),
             'isProduction' => config('midtrans.is_production'),
-            'kembaliUrl' => $request->query('kembali', '/'),
+            'kembaliUrl' => url('/pembayaran/midtrans/checkout/tagihan_non_reguler/' . $tagihan->id)
         ]);
     }
 
