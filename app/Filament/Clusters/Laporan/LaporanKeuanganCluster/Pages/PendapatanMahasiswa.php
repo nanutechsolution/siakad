@@ -85,7 +85,7 @@ class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLa
         return [
             'total' => TextColumn::make('total')->label('Total Pendapatan')->money('idr'),
             'jenis_tagihan' => TextColumn::make('jenis_tagihan')->label('Jenis Tagihan')
-                ->formatStateUsing(fn(string $s) => $s === 'SEMESTER' ? 'Semester' : 'Non-Reguler'),
+                ->formatStateUsing(fn(string $state) => $state === 'SEMESTER' ? 'Semester' : 'Non-Reguler'),
         ];
     }
 
