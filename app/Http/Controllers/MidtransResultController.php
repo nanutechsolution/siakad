@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\StatusVerifikasiPembayaran;
 use App\Models\MidtransTransaction;
 use App\Models\PembayaranMahasiswa;
 use Illuminate\Http\JsonResponse;
@@ -18,33 +19,30 @@ class MidtransResultController extends Controller
 
     public function status(string $orderId)
     {
-        $transaction = MidtransTransaction::where('order_id', $orderId)
-            ->first();
-
-        if (! $transaction) {
-            return response()->json([
-                'status' => 'not_found'
-            ]);
-        }
-
-
-        $pembayaran = PembayaranMahasiswa::where('tagihan_id', $transaction->tagihan_id)
-            ->where('tagihan_type', $transaction->tagihan_type)
+        $pembayaran = PembayaranMahasiswa::byMidtransOrder($orderId)
             ->latest()
             ->first();
 
 
-        if (! $pembayaran) {
+        if (!$pembayaran) {
             return response()->json([
-                'status' => 'pending'
+                'status' => 'pending',
             ]);
         }
 
 
         return response()->json([
-            'status' => $pembayaran->status_verifikasi_id == 2
-                ? 'settlement'
-                : 'pending',
+            'status' => match ($pembayaran->status_verifikasi_id) {
+
+                StatusVerifikasiPembayaran::VERIFIED
+                => 'settlement',
+
+                StatusVerifikasiPembayaran::REJECTED
+                => 'failed',
+
+                default
+                => 'pending',
+            },
         ]);
     }
 }

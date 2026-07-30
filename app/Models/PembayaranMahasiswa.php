@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
@@ -99,5 +100,18 @@ class PembayaranMahasiswa extends Model
     public function verifiedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'verified_by');
+    }
+
+
+    public function midtransTransaction(): HasOne
+    {
+        return $this->hasOne(
+            MidtransTransaction::class,
+            'tagihan_id',
+            'tagihan_id'
+        )->where(
+            'tagihan_type',
+            $this->tagihan_type
+        );
     }
 }
