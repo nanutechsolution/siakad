@@ -4,12 +4,11 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Verifikasi Keaslian Dokumen — {{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</title>
+    <title>Verifikasi Keaslian Dokumen — Sistem Informasi Akademik</title>
     <style>
         :root {
             --primary: #1e3a8a;
             --primary-dark: #1e293b;
-            --accent: #2563eb;
             --success-bg: #f0fdf4;
             --success-text: #166534;
             --success-border: #bbf7d0;
@@ -48,7 +47,7 @@
             box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05), 0 8px 10px -6px rgba(0, 0, 0, 0.03);
             border: 1px solid var(--border-color);
             overflow: hidden;
-            animation: fadeIn 0.5s ease-out;
+            animation: fadeIn 0.4s ease-out;
         }
 
         @keyframes fadeIn {
@@ -332,14 +331,14 @@
                         <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
                     </svg>
                 </div>
-                <div class="institution-name">{{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</div>
+                <div class="institution-name">{{ $institutionName ?? 'Universitas Negeri' }}</div>
                 <div class="unit-name">{{ $fakultas ?? 'Direktorat Administrasi Akademik' }}</div>
                 <div><span class="portal-title">Sistem Informasi Akademik</span></div>
             </div>
 
             <!-- Content Body -->
             <div class="content-body">
-                @if($valid ?? true)
+                @if($valid)
                 <!-- Status Valid -->
                 <div class="status-container">
                     <div class="badge valid">
@@ -355,73 +354,72 @@
                 <table class="info-table">
                     <tr>
                         <td class="info-label">Jenis Dokumen</td>
-                        <td class="info-value">{{ $documentType ?? 'Ijazah Kelulusan' }}</td>
+                        <td class="info-value">{{ $documentType }}</td>
                     </tr>
                     <tr>
                         <td class="info-label">Nomor Dokumen</td>
-                        <td class="info-value"><span class="code-style">{{ $nomorDokumen ?? '1234/UN.ABC/SK.01/2026' }}</span></td>
+                        <td class="info-value"><span class="code-style">{{ $nomorDokumen }}</span></td>
                     </tr>
+                    @isset($kodeVerifikasi)
                     <tr>
                         <td class="info-label">Kode Verifikasi</td>
-                        <td class="info-value"><span class="code-style">{{ $kodeVerifikasi ?? 'VER-98F2A1' }}</span></td>
+                        <td class="info-value"><span class="code-style">{{ $kodeVerifikasi }}</span></td>
                     </tr>
+                    @endisset
+                    @isset($namaPemilik)
                     <tr>
                         <td class="info-label">Nama Pemilik</td>
-                        <td class="info-value">{{ $namaPemilik ?? 'Ahmad Fauzi' }}</td>
+                        <td class="info-value">{{ $namaPemilik }}</td>
                     </tr>
+                    @endisset
+                    @isset($nim)
                     <tr>
                         <td class="info-label">NIM / NPM</td>
-                        <td class="info-value"><span class="code-style">{{ $nim ?? '2208107010001' }}</span></td>
+                        <td class="info-value"><span class="code-style">{{ $nim }}</span></td>
                     </tr>
+                    @endisset
+                    @isset($programStudi)
                     <tr>
                         <td class="info-label">Program Studi</td>
-                        <td class="info-value">{{ $programStudi ?? 'Teknik Informatika' }}</td>
+                        <td class="info-value">{{ $programStudi }}</td>
                     </tr>
+                    @endisset
+                    @isset($fakultas)
                     <tr>
                         <td class="info-label">Fakultas</td>
-                        <td class="info-value">{{ $fakultas ?? 'Fakultas Teknik' }}</td>
+                        <td class="info-value">{{ $fakultas }}</td>
                     </tr>
+                    @endisset
                     <tr>
                         <td class="info-label">Status Dokumen</td>
-                        <td class="info-value"><span style="color: var(--success-text);">Aktif / Sah</span></td>
+                        <td class="info-value"><span style="color: var(--success-text);">{{ strtoupper($status) }}</span></td>
                     </tr>
                     <tr>
                         <td class="info-label">Tanggal Diterbitkan</td>
-                        <td class="info-value">{{ $tanggalDiterbitkan ?? '15 Januari 2026' }}</td>
+                        <td class="info-value">{{ \Carbon\Carbon::parse($generatedAt)->translatedFormat('d F Y H:i') }} WIB</td>
                     </tr>
                 </table>
 
                 <!-- Informasi Penandatangan -->
+                @if($signatures->isNotEmpty())
                 <div class="section-title">Tanda Tangan Digital Tersertifikasi</div>
                 <div class="signature-grid">
-                    @if(isset($signatures) && is_iterable($signatures))
-                    @foreach($signatures as $sig)
+                    @foreach($signatures as $signature)
                     <div class="signature-card">
                         <div>
-                            <div class="signer-name">{{ $sig->nama_pejabat ?? 'Prof. Dr. Ir. Rektor, M.Sc.' }}</div>
-                            <div class="signer-title">{{ $sig->jabatan ?? 'Rektor Universitas' }}</div>
+                            <div class="signer-name">{{ $signature->nama_penandatangan_snapshot }}</div>
+                            <div class="signer-title">{{ $signature->jabatan_snapshot }}</div>
                         </div>
                         <div class="signer-time">
-                            {{ $sig->tanggal ?? '15 Jan 2026' }}<br>
-                            <span style="font-size: 0.75rem;">{{ $sig->waktu ?? '10:30 WIB' }}</span>
+                            {{ \Carbon\Carbon::parse($signature->signed_at)->translatedFormat('d M Y') }}<br>
+                            <span style="font-size: 0.75rem;">{{ \Carbon\Carbon::parse($signature->signed_at)->format('H:i') }} WIB</span>
                         </div>
                     </div>
                     @endforeach
-                    @else
-                    <div class="signature-card">
-                        <div>
-                            <div class="signer-name">Prof. Dr. Ir. H. Mangkubumi, M.Sc.</div>
-                            <div class="signer-title">Dekan Fakultas Teknik</div>
-                        </div>
-                        <div class="signer-time">
-                            15 Januari 2026<br>
-                            <span style="font-size: 0.75rem;">14:00 WIB</span>
-                        </div>
-                    </div>
-                    @endif
                 </div>
+                @endif
 
-                <!-- QR Code Verification -->
+                <!-- QR Code Verification Area -->
                 <div class="qr-section">
                     <div class="qr-box">
                         <svg viewBox="0 0 100 100">
@@ -450,7 +448,7 @@
 
             <!-- Footer Resmi -->
             <div class="footer">
-                <div class="footer-univ">{{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</div>
+                <div class="footer-univ">{{ $institutionName ?? 'Universitas Negeri' }}</div>
                 <div>&copy; {{ date('Y') }} &bull; Seluruh Hak Cipta Dilindungi</div>
                 <div style="margin-top: 6px;">Dokumen elektronik ini diterbitkan melalui Sistem Informasi Akademik resmi dan memiliki keabsahan digital.</div>
             </div>
