@@ -332,7 +332,7 @@
                         <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
                     </svg>
                 </div>
-                <div class="institution-name">{{ $institutionName ?? 'Universitas Indonesia' }}</div>
+                <div class="institution-name">{{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</div>
                 <div class="unit-name">{{ $fakultas ?? 'Direktorat Administrasi Akademik' }}</div>
                 <div><span class="portal-title">Sistem Informasi Akademik</span></div>
             </div>
