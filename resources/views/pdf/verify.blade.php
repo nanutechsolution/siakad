@@ -71,22 +71,24 @@
             border-bottom: 4px solid #3b82f6;
         }
 
-        .logo-placeholder {
-            width: 64px;
-            height: 64px;
-            background: rgba(255, 255, 255, 0.1);
+        .logo-container {
+            width: 72px;
+            height: 72px;
+            background: rgba(255, 255, 255, 0.95);
             border-radius: 50%;
             margin: 0 auto 16px;
             display: flex;
             align-items: center;
             justify-content: center;
-            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1);
+            border: 2px solid rgba(255, 255, 255, 0.3);
+            padding: 8px;
         }
 
-        .logo-placeholder svg {
-            width: 32px;
-            height: 32px;
-            fill: #ffffff;
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
         }
 
         .institution-name {
@@ -326,10 +328,8 @@
         <div class="card">
             <!-- Header Institusi -->
             <div class="institution-header">
-                <div class="logo-placeholder">
-                    <svg viewBox="0 0 24 24">
-                        <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
-                    </svg>
+                <div class="logo-container">
+                    <img src="{{ asset('images/logo-unmaris.png') }}" alt="Logo UNMARIS">
                 </div>
                 <div class="institution-name">{{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</div>
                 <div class="unit-name">{{ $fakultas ?? 'Direktorat Administrasi Akademik' }}</div>
@@ -396,7 +396,7 @@
                     </tr>
                     <tr>
                         <td class="info-label">Tanggal Diterbitkan</td>
-                        <td class="info-value">{{ \Carbon\Carbon::parse($generatedAt)->translatedFormat('d F Y H:i') }} WITA</td>
+                        <td class="info-value">{{ \Carbon\Carbon::parse($generatedAt)->translatedFormat('d F Y H:i') }} WIB</td>
                     </tr>
                 </table>
 
@@ -412,12 +412,23 @@
                         </div>
                         <div class="signer-time">
                             {{ \Carbon\Carbon::parse($signature->signed_at)->translatedFormat('d M Y') }}<br>
-                            <span style="font-size: 0.75rem;">{{ \Carbon\Carbon::parse($signature->signed_at)->format('H:i') }} WITA</span>
+                            <span style="font-size: 0.75rem;">{{ \Carbon\Carbon::parse($signature->signed_at)->format('H:i') }} WIB</span>
                         </div>
                     </div>
                     @endforeach
                 </div>
                 @endif
+
+                <!-- QR Code Verification Area -->
+                <div class="qr-section">
+                    <div class="qr-box">
+                        <svg viewBox="0 0 100 100">
+                            <path d="M10,10 h30 v30 h-30 z M20,20 h10 v10 h-10 z M50,10 h10 v10 h-10 z M70,10 h20 v20 h-20 z M50,30 h20 v10 h-20 z M10,50 h20 v20 h-20 z M40,50 h10 v20 h-10 z M60,50 h30 v10 h-30 z M70,70 h20 v20 h-20 z M10,80 h10 v10 h-10 z M30,80 h10 v10 h-10 z M50,80 h10 v10 h-10 z" fill="#1e293b" />
+                        </svg>
+                    </div>
+                    <div class="qr-text">Scan QR Code untuk memverifikasi dokumen ini</div>
+                </div>
+
                 @else
                 <!-- Status Tidak Valid -->
                 <div class="status-container" style="margin-bottom: 20px;">
