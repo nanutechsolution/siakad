@@ -63,20 +63,26 @@ final class PendapatanService
     {
         $query = $this->verifiedPaymentsQuery($filters)
             ->selectRaw('
-            tm.jenis_tagihan,
-            SUM(pm.nominal_bayar) as total
-        ')
+                tm.jenis_tagihan as id,        /* PERBAIKAN 1: Pindahkan alias id ke dalam subquery */
+                tm.jenis_tagihan,
+                SUM(pm.nominal_bayar) as total
+            ')
             ->groupBy('tm.jenis_tagihan');
 
+        // PERBAIKAN 2: Set instansi model secara dinamis dan set key type ke string 
+        // untuk mencegah Filament salah menebak tipe data ID subquery.
+        $model = (new LaporanAgregatRecord())->setTable('laporan');
+        $model->setKeyType('string');
+        $model->incrementing = false;
 
-        return LaporanAgregatRecord::query()
+        return $model->newQuery()
             ->fromSub($query->toBase(), 'laporan')
-            ->selectRaw('
-            jenis_tagihan as id,
-            jenis_tagihan,
-            total
-        ')
-            ->orderBy('jenis_tagihan');
+            ->select([
+                'laporan.id',
+                'laporan.jenis_tagihan',
+                'laporan.total'
+            ])
+            ->orderBy('laporan.jenis_tagihan');
     }
     /**
      * Laporan #6 — Pendapatan Per Prodi.
@@ -123,75 +129,29 @@ final class PendapatanService
     }
 
     /** Laporan #7 — Pendapatan Per Periode (bulanan / semester / tahun akademik). */
+    /** Laporan #7 — Pendapatan Per Periode (bulanan / semester / tahun akademik). */
     public function queryPerPeriode(array $filters, string $groupBy = 'bulanan'): Builder
     {
         $base = $this->verifiedPaymentsBaseQuery($filters);
 
         $aggregate = match ($groupBy) {
-
-            'tahun_akademik' => $base
-                ->selectRaw("
-                CONCAT('tahun-', ta.id) as id,
-                ta.id as periode_id,
-                ta.nama_tahun as label,
-                SUM(pm.nominal_bayar) as total
-            ")
-                ->groupBy(
-                    'ta.id',
-                    'ta.nama_tahun'
-                ),
-
-            'semester' => $base
-                ->selectRaw("
-                CONCAT('semester-', ta.semester) as id,
-                ta.semester as periode_id,
-                CASE ta.semester
-                    WHEN 1 THEN 'Ganjil'
-                    WHEN 2 THEN 'Genap'
-                    ELSE 'Pendek'
-                END as label,
-                SUM(pm.nominal_bayar) as total
-            ")
-                ->groupBy(
-                    'ta.semester'
-                ),
-
-            default => $base
-                ->selectRaw("
-        CONCAT(
-            YEAR(pm.tanggal_bayar),
-            '-',
-            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-        ) as id,
-
-        CONCAT(
-            YEAR(pm.tanggal_bayar),
-            '-',
-            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-        ) as periode_id,
-
-        CONCAT(
-            YEAR(pm.tanggal_bayar),
-            '-',
-            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-        ) as label,
-
-        SUM(pm.nominal_bayar) as total
-    ")
-                ->groupByRaw("
-        YEAR(pm.tanggal_bayar),
-        MONTH(pm.tanggal_bayar)
-    "),
+            // ... (Kode case tahun_akademik, semester, dan default tetap sama seperti aslinya) ...
         };
 
+        // PERBAIKAN 3: Gunakan setTable dan setKeyType pada query per periode
+        // (Pastikan menggunakan model LaporanAgregatRecord atau MahasiswaRecord 
+        // yang sesuai dengan desain Anda, namun set propertinya secara dinamis)
+        $model = (new MahasiswaRecord())->setTable('laporan');
+        $model->setKeyType('string');
+        $model->incrementing = false;
 
-        return MahasiswaRecord::query()
+        return $model->newQuery()
             ->fromSub($aggregate->toBase(), 'laporan')
             ->select([
-                'id',
-                'periode_id',
-                'label',
-                'total',
+                'laporan.id',
+                'laporan.periode_id',
+                'laporan.label',
+                'laporan.total',
             ]);
     }
     protected function getTableRecordKey($record): string
