@@ -331,7 +331,7 @@
                         <path d="M12 3L1 9l11 6 9-4.91V17h2V9L12 3zM5 13.18v4L12 21l7-3.82v-4L12 17l-7-3.82z" />
                     </svg>
                 </div>
-                <div class="institution-name">{{ $institutionName ?? 'Universitas Negeri' }}</div>
+                <div class="institution-name">{{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</div>
                 <div class="unit-name">{{ $fakultas ?? 'Direktorat Administrasi Akademik' }}</div>
                 <div><span class="portal-title">Sistem Informasi Akademik</span></div>
             </div>
@@ -418,17 +418,6 @@
                     @endforeach
                 </div>
                 @endif
-
-                <!-- QR Code Verification Area -->
-                <div class="qr-section">
-                    <div class="qr-box">
-                        <svg viewBox="0 0 100 100">
-                            <path d="M10,10 h30 v30 h-30 z M20,20 h10 v10 h-10 z M50,10 h10 v10 h-10 z M70,10 h20 v20 h-20 z M50,30 h20 v10 h-20 z M10,50 h20 v20 h-20 z M40,50 h10 v20 h-10 z M60,50 h30 v10 h-30 z M70,70 h20 v20 h-20 z M10,80 h10 v10 h-10 z M30,80 h10 v10 h-10 z M50,80 h10 v10 h-10 z" fill="#1e293b" />
-                        </svg>
-                    </div>
-                    <div class="qr-text">Scan QR Code untuk memverifikasi dokumen ini</div>
-                </div>
-
                 @else
                 <!-- Status Tidak Valid -->
                 <div class="status-container" style="margin-bottom: 20px;">
@@ -448,7 +437,7 @@
 
             <!-- Footer Resmi -->
             <div class="footer">
-                <div class="footer-univ">{{ $institutionName ?? 'Universitas Negeri' }}</div>
+                <div class="footer-univ">{{ $institutionName ?? 'Universitas Stella Maris Sumba' }}</div>
                 <div>&copy; {{ date('Y') }} &bull; Seluruh Hak Cipta Dilindungi</div>
                 <div style="margin-top: 6px;">Dokumen elektronik ini diterbitkan melalui Sistem Informasi Akademik resmi dan memiliki keabsahan digital.</div>
             </div>
