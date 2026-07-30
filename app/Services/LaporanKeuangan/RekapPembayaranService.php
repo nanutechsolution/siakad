@@ -33,12 +33,13 @@ final class RekapPembayaranService
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query
-            ->distinct() // <--- SOLUSI UTAMA: Menggabungkan baris ganda menjadi 1
+            ->distinct()
             ->orderByDesc('pm.tanggal_bayar')
-            ->select([ // <--- Ubah jadi bentuk select array agar menimpa select bawaan base() query
+            ->select([
+                'pm.id as id',                   // 1. TAMBAHKAN INI: Jadikan ID pembayaran sebagai key utama baris
                 'pm.id as nomor_transaksi',
                 'pm.tanggal_bayar',
-                'mahasiswas.id',
+                'mahasiswas.id as mahasiswa_id', // 2. UBAH INI: Alias-kan agar tidak menimpa kolom 'id' di atas
                 'mahasiswas.nim',
                 'p.nama_lengkap',
                 'pr.nama_prodi',
