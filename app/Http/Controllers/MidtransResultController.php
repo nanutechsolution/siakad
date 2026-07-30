@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\MidtransTransaction;
+use App\Models\PembayaranMahasiswa;
 use Illuminate\Http\JsonResponse;
 
 class MidtransResultController extends Controller
@@ -15,20 +16,35 @@ class MidtransResultController extends Controller
     }
 
 
-    public function status(string $orderId): JsonResponse
+    public function status(string $orderId)
     {
-        $trx = MidtransTransaction::where('order_id', $orderId)
+        $transaction = MidtransTransaction::where('order_id', $orderId)
             ->first();
 
-        if (!$trx) {
+        if (! $transaction) {
             return response()->json([
                 'status' => 'not_found'
             ]);
         }
 
 
+        $pembayaran = PembayaranMahasiswa::where('tagihan_id', $transaction->tagihan_id)
+            ->where('tagihan_type', $transaction->tagihan_type)
+            ->latest()
+            ->first();
+
+
+        if (! $pembayaran) {
+            return response()->json([
+                'status' => 'pending'
+            ]);
+        }
+
+
         return response()->json([
-            'status' => $trx->status ?? 'pending',
+            'status' => $pembayaran->status_verifikasi_id == 2
+                ? 'settlement'
+                : 'pending',
         ]);
     }
 }
