@@ -26,4 +26,7 @@ class MahasiswaRecord extends LaporanReadOnlyRecord
     public $timestamps = false;
 
     protected $guarded = ['*'];
+
+    protected $keyType = 'string';
+    public $incrementing = false;
 }
