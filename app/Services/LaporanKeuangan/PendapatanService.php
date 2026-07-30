@@ -169,7 +169,7 @@ final class PendapatanService
                     DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
                     SUM(pm.nominal_bayar) as total
                 ")
-                ->groupBy('id'),
+                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')"),
         };
 
         $model = (new MahasiswaRecord())->setTable('laporan');
