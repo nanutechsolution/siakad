@@ -12,6 +12,7 @@ class PdfDocument extends Model
     public $incrementing = false;
 
     protected $fillable = [
+        'id',
         'document_type',
         'classification',
         'documentable_type',
