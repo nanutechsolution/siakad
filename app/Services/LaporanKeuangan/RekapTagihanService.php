@@ -8,10 +8,8 @@ use App\Models\LaporanKeuangan\MahasiswaRecord;
 use App\Services\LaporanKeuangan\Support\MahasiswaInfoQuery;
 use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
-/**
- * Laporan #1 — Rekap Tagihan Mahasiswa.
- */
 final class RekapTagihanService
 {
     public function query(array $filters): Builder
@@ -33,11 +31,11 @@ final class RekapTagihanService
                 ),
         };
 
-        // PERBAIKAN 1: Ubah alias subquery dari 'mahasiswas' menjadi 'rekap_subquery'
-        // untuk mencegah bentrokan nama tabel internal.
+        // PERBAIKAN 1: Ganti alias 'mahasiswas' menjadi 'rekap' agar tidak bentrok
+        // dengan tabel fisik mahasiswas yang di-JOIN di dalam subquery.
         return MahasiswaRecord::query()
-            ->fromSub($union, 'rekap_subquery')
-            ->select('rekap_subquery.*')
+            ->fromSub($union, 'rekap')
+            ->select('rekap.*')
             ->orderBy('nama_lengkap');
     }
 
@@ -52,53 +50,52 @@ final class RekapTagihanService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        // PERBAIKAN 2: Gabungkan prefiks 'SEM-' pada ID agar primary key unik
-        // PERBAIKAN 3: Bungkus kolom numerik dengan COALESCE
-        return $query->selectRaw("
-            CONCAT('SEM-', t.id) as id, 
-            t.id as original_tagihan_id,
-            mahasiswas.id as mahasiswa_id,
-            mahasiswas.nim,
-            p.nama_lengkap,
-            pr.nama_prodi,
-            mahasiswas.angkatan_id,
-            '" . TagihanMapQuery::JENIS_SEMESTER . "' as jenis_tagihan,
-            ta.nama_tahun as periode,
-            COALESCE(t.total_tagihan, 0) as total_tagihan,
-            COALESCE(t.total_bayar, 0) as total_bayar,
-            COALESCE(t.sisa_tagihan, 0) as sisa_tagihan,
-            t.status_bayar
-        ");
+        // PERBAIKAN 2: Gunakan array select() eksplisit untuk menimpa select bawaan
+        // dari MahasiswaInfoQuery::base() dan menjamin urutan kolom UNION presisi.
+        return $query->select([
+            't.id as id',
+            'mahasiswas.id as mahasiswa_id',
+            'mahasiswas.nim',
+            'p.nama_lengkap',
+            'pr.nama_prodi',
+            'mahasiswas.angkatan_id',
+            DB::raw("'" . TagihanMapQuery::JENIS_SEMESTER . "' as jenis_tagihan"),
+            'ta.nama_tahun as periode',
+            't.total_tagihan',
+            't.total_bayar',
+            't.sisa_tagihan', // Langsung ambil dari Virtual Column MySQL
+            't.status_bayar',
+        ]);
     }
 
     private function nonRegulerQuery(array $filters): Builder
     {
         $query = MahasiswaInfoQuery::base()
             ->join('tagihan_non_regulers as t', 't.mahasiswa_id', '=', 'mahasiswas.id')
-            ->whereNull('t.deleted_at')
-            // PERBAIKAN 4: Sesuaikan penanganan filter jika tabel non-reguler punya relasi tahun akademik/periode
-            ->when($filters['tahun_akademik_id'] ?? null, function ($q, $v) {
-                // Hapus komentar baris berikut jika t.tahun_akademik_id ada di tabel non-reguler:
-                // $q->where('t.tahun_akademik_id', $v);
-            });
+            ->whereNull('t.deleted_at');
+
+        // PERBAIKAN 3: Tangani filter tahun akademik untuk non-reguler
+        // (Sesuaikan kolom 'tahun_akademik_id' jika ada di tabel tagihan_non_regulers)
+        if (!empty($filters['tahun_akademik_id'])) {
+            // $query->where('t.tahun_akademik_id', $filters['tahun_akademik_id']);
+        }
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        // PERBAIKAN 5: Gunakan prefiks 'NON-' untuk ID dan penanganan COALESCE saat pengurangan
-        return $query->selectRaw("
-            CONCAT('NON-', t.id) as id,
-            t.id as original_tagihan_id,
-            mahasiswas.id as mahasiswa_id,
-            mahasiswas.nim,
-            p.nama_lengkap,
-            pr.nama_prodi,
-            mahasiswas.angkatan_id,
-            '" . TagihanMapQuery::JENIS_NON_REGULER . "' as jenis_tagihan,
-            t.deskripsi as periode,
-            COALESCE(t.total_tagihan, 0) as total_tagihan,
-            COALESCE(t.total_bayar, 0) as total_bayar,
-            (COALESCE(t.total_tagihan, 0) - COALESCE(t.total_bayar, 0)) as sisa_tagihan,
-            t.status_bayar
-        ");
+        // Pastikan jumlah dan urutan kolom persis sama dengan semesterQuery
+        return $query->select([
+            't.id as id',
+            'mahasiswas.id as mahasiswa_id',
+            'mahasiswas.nim',
+            'p.nama_lengkap',
+            'pr.nama_prodi',
+            'mahasiswas.angkatan_id',
+            DB::raw("'" . TagihanMapQuery::JENIS_NON_REGULER . "' as jenis_tagihan"),
+            't.deskripsi as periode',
+            't.total_tagihan',
+            DB::raw('COALESCE(t.total_bayar, 0) as total_bayar'),
+            DB::raw('(t.total_tagihan - COALESCE(t.total_bayar, 0)) as sisa_tagihan'),
+            't.status_bayar',
+        ]);
     }
 }
