@@ -182,7 +182,6 @@
 
     <footer>
         Dicetak melalui SIAKAD pada {{ now()->translatedFormat('d F Y H:i') }} WITA<br>
-        Dokumen ini sah tanpa tanda tangan basah selama dicetak dari sistem resmi.
     </footer>
 
     <!-- Gunakan tag main dengan margin-top agar konten tidak tertutup header fixed -->
