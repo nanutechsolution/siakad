@@ -33,21 +33,21 @@ final class RekapPembayaranService
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query
+            ->distinct() // <--- SOLUSI UTAMA: Menggabungkan baris ganda menjadi 1
             ->orderByDesc('pm.tanggal_bayar')
-            ->selectRaw('
-                mahasiswas.id,
-                pm.id as nomor_transaksi,
-                pm.tanggal_bayar,
-                mahasiswas.nim,
-                mahasiswas.id,
-                p.nama_lengkap,
-                pr.nama_prodi,
-                tm.jenis_tagihan,
-                pm.nominal_bayar,
-                pm.metode_pembayaran,
-                sv.nama as status_verifikasi,
-                u.name as user_verifikasi
-            ');
+            ->select([ // <--- Ubah jadi bentuk select array agar menimpa select bawaan base() query
+                'pm.id as nomor_transaksi',
+                'pm.tanggal_bayar',
+                'mahasiswas.id',
+                'mahasiswas.nim',
+                'p.nama_lengkap',
+                'pr.nama_prodi',
+                'tm.jenis_tagihan',
+                'pm.nominal_bayar',
+                'pm.metode_pembayaran',
+                'sv.nama as status_verifikasi',
+                'u.name as user_verifikasi'
+            ]);
     }
 
     /**
