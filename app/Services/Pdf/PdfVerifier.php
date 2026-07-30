@@ -18,7 +18,8 @@ class PdfVerifier
 
         PdfVerification::create([
             'pdf_document_id' => $document?->id,
-            'nomor_dokumen_diminta' => $document->nomor_dokumen ?? $documentId,
+            // Perbaikan: Hindari memanggil property langsung pada objek yang mungkin null
+            'nomor_dokumen_diminta' => $document?->nomor_dokumen ?? $documentId,
             'ditemukan' => (bool) $document,
             'ip_address' => $ip,
             'user_agent' => $userAgent,
@@ -26,7 +27,20 @@ class PdfVerifier
         ]);
 
         if (! $document) {
-            return ['valid' => false, 'documentType' => null, 'nomorDokumen' => null, 'status' => null, 'generatedAt' => null, 'signatures' => collect()];
+            return [
+                'valid' => false,
+                'institutionName' => null,
+                'documentType' => null,
+                'nomorDokumen' => null,
+                'kodeVerifikasi' => null,
+                'namaPemilik' => null,
+                'nim' => null,
+                'programStudi' => null,
+                'fakultas' => null,
+                'status' => null,
+                'tanggalDiterbitkan' => null,
+                'signatures' => collect()
+            ];
         }
 
         $signatures = PdfSignature::query()
@@ -36,10 +50,16 @@ class PdfVerifier
 
         return [
             'valid' => true,
+            'institutionName' => $document->institution_name ?? 'Universitas Negeri',
             'documentType' => PdfDocumentType::from($document->document_type)->label(),
             'nomorDokumen' => $document->nomor_dokumen,
+            'kodeVerifikasi' => $document->kode_verifikasi ?? $document->id,
+            'namaPemilik' => $document->nama_pemilik ?? '-',
+            'nim' => $document->nim ?? '-',
+            'programStudi' => $document->program_studi ?? '-',
+            'fakultas' => $document->fakultas ?? '-',
             'status' => $document->status,
-            'generatedAt' => $document->generated_at,
+            'tanggalDiterbitkan' => $document->generated_at,
             'signatures' => $signatures,
         ];
     }
