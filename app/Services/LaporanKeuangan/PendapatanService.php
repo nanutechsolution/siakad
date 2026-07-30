@@ -163,12 +163,13 @@ final class PendapatanService
                 ),
 
             default => (clone $base)
+                ->reorder() 
                 ->selectRaw("
-                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
-                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
-                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
-                    SUM(pm.nominal_bayar) as total
-                ")
+        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
+        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
+        DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
+        SUM(pm.nominal_bayar) as total
+    ")
                 ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
         };
 
