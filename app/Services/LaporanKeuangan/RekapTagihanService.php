@@ -46,6 +46,7 @@ final class RekapTagihanService
 
     private function semesterQuery(array $filters): Builder
     {
+
         $query = MahasiswaInfoQuery::base()
             ->join('tagihan_mahasiswas as t', 't.mahasiswa_id', '=', 'mahasiswas.id')
             ->join('ref_tahun_akademik as ta', 'ta.id', '=', 't.tahun_akademik_id')
@@ -54,9 +55,9 @@ final class RekapTagihanService
             ->when($filters['semester'] ?? null, fn($q, $v) => $q->where('ta.semester', $v));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
-
         return $query->selectRaw("
-                mahasiswas.id,
+                t.id as id, 
+                mahasiswas.id as mahasiswa_id,
                 mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,
@@ -79,7 +80,8 @@ final class RekapTagihanService
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
         return $query->selectRaw("
-                mahasiswas.id,
+                t.id as id,
+                mahasiswas.id as mahasiswa_id,
                 mahasiswas.nim,
                 p.nama_lengkap,
                 pr.nama_prodi,

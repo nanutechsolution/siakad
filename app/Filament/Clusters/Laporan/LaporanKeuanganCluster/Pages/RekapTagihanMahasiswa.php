@@ -12,7 +12,6 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Tables\Columns\BadgeColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -101,7 +100,7 @@ class RekapTagihanMahasiswa extends Page implements HasForms, HasTable, Provides
             'total_bayar' => TextColumn::make('total_bayar')->label('Total Dibayar')->money('idr'),
             'sisa_tagihan' => TextColumn::make('sisa_tagihan')->label('Sisa Tagihan')->money('idr')
                 ->color(fn($state) => $state > 0 ? 'danger' : 'success'),
-            'status_bayar' => BadgeColumn::make('status_bayar')->label('Status Pembayaran')
+            'status_bayar' => TextColumn::make('status_bayar')->label('Status Pembayaran')->badge()
                 ->formatStateUsing(fn(string $state) => match ($state) {
                     'BELUM' => 'Belum Bayar',
                     'CICIL' => 'Cicilan',
@@ -113,7 +112,7 @@ class RekapTagihanMahasiswa extends Page implements HasForms, HasTable, Provides
                     'warning' => 'CICIL',
                     'success' => 'LUNAS',
                 ]),
-            'jenis_tagihan' => BadgeColumn::make('jenis_tagihan')->label('Jenis Tagihan')
+            'jenis_tagihan' => TextColumn::make('jenis_tagihan')->label('Jenis Tagihan')->badge()
                 ->formatStateUsing(fn(string $state) => $state === 'SEMESTER' ? 'Semester' : 'Non-Reguler')
                 ->colors([
                     'primary' => 'SEMESTER',
