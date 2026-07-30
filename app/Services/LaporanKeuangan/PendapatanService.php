@@ -162,19 +162,20 @@ final class PendapatanService
                     'ta.semester'
                 ),
 
-          default => (clone $base)
-    ->selectRaw("
+            default => (clone $base)
+                ->select([]) // reset select
+                ->selectRaw("
         YEAR(pm.tanggal_bayar) as tahun,
         MONTH(pm.tanggal_bayar) as bulan,
-        CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar), 2, '0')) as id,
-        CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar), 2, '0')) as periode_id,
-        CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar), 2, '0')) as label,
+        CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar),2,'0')) as id,
+        CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar),2,'0')) as periode_id,
+        CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar),2,'0')) as label,
         SUM(pm.nominal_bayar) as total
     ")
-    ->groupByRaw("
+                ->groupByRaw("
         YEAR(pm.tanggal_bayar),
         MONTH(pm.tanggal_bayar)
-    ")
+    "),
         };
 
         $model = (new MahasiswaRecord())->setTable('laporan');
