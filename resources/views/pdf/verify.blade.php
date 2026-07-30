@@ -419,16 +419,6 @@
                 </div>
                 @endif
 
-                <!-- QR Code Verification Area -->
-                <div class="qr-section">
-                    <div class="qr-box">
-                        <svg viewBox="0 0 100 100">
-                            <path d="M10,10 h30 v30 h-30 z M20,20 h10 v10 h-10 z M50,10 h10 v10 h-10 z M70,10 h20 v20 h-20 z M50,30 h20 v10 h-20 z M10,50 h20 v20 h-20 z M40,50 h10 v20 h-10 z M60,50 h30 v10 h-30 z M70,70 h20 v20 h-20 z M10,80 h10 v10 h-10 z M30,80 h10 v10 h-10 z M50,80 h10 v10 h-10 z" fill="#1e293b" />
-                        </svg>
-                    </div>
-                    <div class="qr-text">Scan QR Code untuk memverifikasi dokumen ini</div>
-                </div>
-
                 @else
                 <!-- Status Tidak Valid -->
                 <div class="status-container" style="margin-bottom: 20px;">
