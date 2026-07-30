@@ -34,13 +34,13 @@ final class RekapPembayaranService
             })
             ->orderByDesc('tanggal_bayar');
     }
-
     public function distinctMetodePembayaran(): Collection
     {
         return PembayaranMahasiswa::query()
             ->whereNull('deleted_at')
             ->distinct()
             ->orderBy('metode_pembayaran')
-            ->pluck('metode_pembayaran');
+            ->pluck('metode_pembayaran')
+            ->map(fn($item) => $item instanceof \App\Enums\MetodePembayaran ? $item->value : $item);
     }
 }
