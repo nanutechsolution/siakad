@@ -396,7 +396,7 @@
                     </tr>
                     <tr>
                         <td class="info-label">Tanggal Diterbitkan</td>
-                        <td class="info-value">{{ \Carbon\Carbon::parse($generatedAt)->translatedFormat('d F Y H:i') }} WIB</td>
+                        <td class="info-value">{{ \Carbon\Carbon::parse($generatedAt)->translatedFormat('d F Y H:i') }} WITA</td>
                     </tr>
                 </table>
 
@@ -412,7 +412,7 @@
                         </div>
                         <div class="signer-time">
                             {{ \Carbon\Carbon::parse($signature->signed_at)->translatedFormat('d M Y') }}<br>
-                            <span style="font-size: 0.75rem;">{{ \Carbon\Carbon::parse($signature->signed_at)->format('H:i') }} WIB</span>
+                            <span style="font-size: 0.75rem;">{{ \Carbon\Carbon::parse($signature->signed_at)->format('H:i') }} WITA</span>
                         </div>
                     </div>
                     @endforeach
