@@ -49,7 +49,16 @@ class TagihanNonRegulersTable
             ])
             ->recordActions([
                 ViewAction::make(),
-
+                Action::make('bayarMidtrans')
+                    ->label('Bayar via Midtrans')
+                    ->icon('heroicon-o-credit-card')
+                    ->color('primary')
+                    ->visible(fn(TagihanNonReguler $record) => $record->status_bayar !== 'LUNAS')
+                    ->url(fn(TagihanNonReguler $record) => route('midtrans.checkout', [
+                        'tagihanType' => 'tagihan_non_reguler',
+                        'tagihanId' => $record->id,
+                    ]))
+                    ->openUrlInNewTab(),
                 Action::make('uploadBuktiBayar')
                     ->label('Upload Bukti Bayar')
                     ->icon('heroicon-o-arrow-up-tray')

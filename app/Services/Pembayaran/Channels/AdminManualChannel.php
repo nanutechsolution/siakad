@@ -23,6 +23,7 @@ class AdminManualChannel implements PaymentChannelInterface
 
         $dto = PembayaranIntakeData::make(
             tagihanId: $payload['tagihan_id'],
+            tagihanType: $payload['tagihan_type'],
             nominalBayar: $payload['nominal_bayar'],
             tanggalBayar: Carbon::parse($payload['tanggal_bayar']),
             metodePembayaran: MetodePembayaran::ADMIN, // Khusus input Admin

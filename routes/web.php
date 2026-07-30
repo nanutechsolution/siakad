@@ -159,3 +159,12 @@ Route::middleware(['web', 'auth'])
 Route::get('/verify/{document}', [PdfVerificationController::class, 'show'])
     ->name('pdf.verify')
     ->middleware('throttle:30,1');
+
+
+
+use App\Http\Controllers\MidtransCheckoutController;
+
+Route::middleware('auth')->get(
+    '/pembayaran/midtrans/checkout/{tagihanType}/{tagihanId}',
+    [MidtransCheckoutController::class, 'show']
+)->name('midtrans.checkout');
