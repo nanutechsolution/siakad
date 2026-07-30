@@ -47,7 +47,7 @@ class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLa
 
     protected function getHeaderWidgets(): array
     {
-        return [PendapatanOverview::class, PendapatanPerPeriodeChart::class];
+        return [PendapatanOverview::class];
     }
 
     protected function getHeaderWidgetsData(): array
