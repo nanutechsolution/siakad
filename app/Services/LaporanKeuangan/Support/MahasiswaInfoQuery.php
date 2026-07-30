@@ -8,15 +8,11 @@ use App\Models\LaporanKeuangan\MahasiswaRecord;
 use Illuminate\Database\Eloquent\Builder;
 
 /**
- * Query dasar identitas mahasiswa, sekarang beranchor pada Eloquent Model
- * (MahasiswaRecord) alih-alih DB::table() murni — supaya hasil akhirnya
- * (setelah di-join berlapis oleh Service) tetap berupa Eloquent Builder
- * yang bisa dipaginate native oleh Filament (->paginate() dengan
- * LIMIT/OFFSET di level database).
- *
- * ->from('mahasiswas as m') dipakai (bukan default table Model) supaya
- * SEMUA query lain di codebase yang sudah pakai alias 'm.', 'p.', 'pr.',
- * 'f.' tetap jalan tanpa perlu ditulis ulang.
+ * Query dasar identitas mahasiswa berjangkar pada Eloquent Model (MahasiswaRecord).
+ * 
+ * Menggunakan tabel 'mahasiswas' (tanpa alias) beserta JOIN ke ref_person (p),
+ * ref_prodi (pr), dan ref_fakultas (f) agar konsisten digunakan oleh seluruh
+ * Laporan Keuangan.
  */
 final class MahasiswaInfoQuery
 {
@@ -29,6 +25,7 @@ final class MahasiswaInfoQuery
             ->join('ref_fakultas as f', 'f.id', '=', 'pr.fakultas_id')
             ->whereNull('mahasiswas.deleted_at');
     }
+
     public static function applyFilters(Builder $query, array $filters): Builder
     {
         return $query
