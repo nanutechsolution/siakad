@@ -80,7 +80,7 @@ class RekapPembayaran extends Page implements HasForms, HasTable, ProvidesLapora
             'nama_prodi' => TextColumn::make('tagihan.mahasiswa.prodi.nama_prodi')->label('Prodi'),
             'jenis_tagihan' => TextColumn::make('tagihan_type')->label('Jenis Pembayaran')
                 ->badge()
-                ->formatStateUsing(fn(string $state) => str_contains($state, 'Reguler') ? 'Non-Reguler' : 'Semester')
+                ->formatStateUsing(fn(string $state) => str_contains($state, 'tagihan_non_reguler') ? 'Non-Reguler' : 'Semester')
                 ->colors(['primary' => 'Semester', 'gray' => 'Non-Reguler']),
             'nominal_bayar' => TextColumn::make('nominal_bayar')->label('Nominal')->money('idr'),
             'metode_pembayaran' => TextColumn::make('metode_pembayaran')->label('Metode Pembayaran'),
