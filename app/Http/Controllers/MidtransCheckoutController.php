@@ -42,6 +42,7 @@ class MidtransCheckoutController extends Controller
             'snapToken' => $hasil['snap_token'],
             'clientKey' => config('midtrans.client_key'),
             'isProduction' => config('midtrans.is_production'),
+            'orderId' => $hasil['order_id'],
             'kembaliUrl' => route('midtrans.result', [
                 'orderId' => $hasil['order_id'],
             ])
