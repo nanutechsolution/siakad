@@ -162,9 +162,9 @@ final class PendapatanService
                     'ta.semester'
                 ),
 
-            default => (clone $base)
-                ->select([]) // reset select
-                ->selectRaw("
+           default => (clone $base)
+            ->select([]) // reset select
+            ->selectRaw("
                 YEAR(pm.tanggal_bayar) as tahun,
                 MONTH(pm.tanggal_bayar) as bulan,
                 CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar),2,'0')) as id,
@@ -172,7 +172,7 @@ final class PendapatanService
                 CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar),2,'0')) as label,
                 SUM(pm.nominal_bayar) as total
             ")
-                ->groupBy(DB::raw("YEAR(pm.tanggal_bayar)"), DB::raw("MONTH(pm.tanggal_bayar)")),
+            ->groupByRaw("YEAR(pm.tanggal_bayar), MONTH(pm.tanggal_bayar)"),
         };
 
         $model = (new MahasiswaRecord())->setTable('laporan');
