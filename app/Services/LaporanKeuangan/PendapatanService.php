@@ -133,7 +133,7 @@ final class PendapatanService
     {
         $base = $this->verifiedPaymentsBaseQuery($filters);
 
-       $aggregate = match ($groupBy) {
+        $aggregate = match ($groupBy) {
 
             'tahun_akademik' => $base
                 ->selectRaw("
@@ -181,7 +181,6 @@ final class PendapatanService
                     ) as label,
                     SUM(pm.nominal_bayar) as total
                 ")
-                // PERBAIKAN: Sertakan fungsi YEAR dan MONTH secara eksplisit di groupByRaw
                 ->groupByRaw("
                     YEAR(pm.tanggal_bayar),
                     MONTH(pm.tanggal_bayar)
