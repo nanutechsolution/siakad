@@ -43,6 +43,10 @@ class PendapatanPerPeriode extends Page implements HasForms, HasTable, ProvidesL
         $this->service = $service;
     }
 
+    protected function getHeaderWidgets(): array
+    {
+        return [PendapatanPerPeriodeChart::class];
+    }
 
     protected function getHeaderWidgetsData(): array
     {
