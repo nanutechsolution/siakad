@@ -168,3 +168,8 @@ Route::middleware('auth')->get(
     '/pembayaran/midtrans/checkout/{tagihanType}/{tagihanId}',
     [MidtransCheckoutController::class, 'show']
 )->name('midtrans.checkout');
+Route::get('/pembayaran/midtrans/result/{orderId}', function ($orderId) {
+    return view('midtrans.result', [
+        'orderId' => $orderId,
+    ]);
+})->name('midtrans.result');
