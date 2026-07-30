@@ -38,7 +38,7 @@ final class RekapTagihanService
                 ),
         };
 
-        return MahasiswaRecord::query()
+        return \App\Models\LaporanKeuangan\TagihanMahasiswaRecord::query()
             ->fromSub($union, 'mahasiswas')
             ->select('mahasiswas.*')
             ->orderBy('nama_lengkap');
