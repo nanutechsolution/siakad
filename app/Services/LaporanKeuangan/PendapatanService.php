@@ -164,27 +164,12 @@ final class PendapatanService
 
             default => $base
                 ->selectRaw("
-                    CONCAT(
-                        YEAR(pm.tanggal_bayar),
-                        '-',
-                        LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-                    ) as id,
-                    CONCAT(
-                        YEAR(pm.tanggal_bayar),
-                        '-',
-                        LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-                    ) as periode_id,
-                    CONCAT(
-                        YEAR(pm.tanggal_bayar),
-                        '-',
-                        LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-                    ) as label,
+                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
+                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
+                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
                     SUM(pm.nominal_bayar) as total
                 ")
-                ->groupByRaw("
-                    YEAR(pm.tanggal_bayar),
-                    MONTH(pm.tanggal_bayar)
-                "),
+                ->groupBy('id'),
         };
 
         $model = (new MahasiswaRecord())->setTable('laporan');
