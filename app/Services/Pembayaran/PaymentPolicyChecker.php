@@ -8,7 +8,6 @@ use App\Models\Mahasiswa;
 use App\Models\PaymentPolicy;
 use App\Models\TagihanMahasiswa;
 use App\Models\TagihanMahasiswaDetail;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 /**

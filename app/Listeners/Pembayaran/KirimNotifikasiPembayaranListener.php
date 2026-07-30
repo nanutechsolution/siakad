@@ -5,6 +5,8 @@ namespace App\Listeners\Pembayaran;
 use App\Events\PembayaranTerverifikasi;
 use App\Mail\CicilanTerverifikasiMailable;
 use App\Models\Mahasiswa;
+use App\Models\TagihanMahasiswa;
+use App\Models\TagihanNonReguler;
 use App\Services\Notifications\SmsService;
 use App\Services\Pembayaran\PaymentPolicyChecker;
 use Filament\Actions\Action;
@@ -34,16 +36,48 @@ class KirimNotifikasiPembayaranListener implements ShouldQueue
         $mahasiswa = $tagihan?->mahasiswa;
 
         if (!$mahasiswa) return;
+        if ($tagihan instanceof TagihanMahasiswa) {
 
-        $compliance = $this->policyChecker->cekKepatuhan($mahasiswa, $tagihan);
+            $compliance = $this->policyChecker->cekKepatuhan(
+                $mahasiswa,
+                $tagihan
+            );
 
-        // Jika masih berstatus PMB dan belum lulus syarat
-        if (Str::startsWith((string) $mahasiswa->nim, 'PMB') && !$compliance['passed']) {
-            $this->kirimNotifikasiCicilan($mahasiswa, $compliance['unmet']);
+            // Jika masih PMB dan belum memenuhi syarat
+            if (Str::startsWith((string) $mahasiswa->nim, 'PMB') && !$compliance['passed']) {
+                $this->kirimNotifikasiCicilan(
+                    $mahasiswa,
+                    $compliance['unmet']
+                );
+            }
+
+            // Jika sudah memenuhi syarat dan NIM sudah berubah
+            elseif (!Str::startsWith((string) $mahasiswa->nim, 'PMB') && $compliance['passed']) {
+                $this->kirimNotifikasiAktivasiNim(
+                    $mahasiswa,
+                    $mahasiswa->nim
+                );
+            }
         }
-        // Jika sudah lulus syarat dan NIM sudah berubah (NIM diganti oleh GenerateNimListener sebelumnya)
-        elseif (!Str::startsWith((string) $mahasiswa->nim, 'PMB') && $compliance['passed']) {
-            $this->kirimNotifikasiAktivasiNim($mahasiswa, $mahasiswa->nim);
+        // $compliance = $this->policyChecker->cekKepatuhan($mahasiswa, $tagihan);
+
+        // // Jika masih berstatus PMB dan belum lulus syarat
+        // if (Str::startsWith((string) $mahasiswa->nim, 'PMB') && !$compliance['passed']) {
+        //     $this->kirimNotifikasiCicilan($mahasiswa, $compliance['unmet']);
+        // }
+        // // Jika sudah lulus syarat dan NIM sudah berubah (NIM diganti oleh GenerateNimListener sebelumnya)
+        // elseif (!Str::startsWith((string) $mahasiswa->nim, 'PMB') && $compliance['passed']) {
+        //     $this->kirimNotifikasiAktivasiNim($mahasiswa, $mahasiswa->nim);
+        // }
+
+        if ($tagihan instanceof TagihanNonReguler) {
+
+            Log::info('Pembayaran tagihan non reguler terverifikasi', [
+                'tagihan_id' => $tagihan->id,
+                'mahasiswa_id' => $mahasiswa->id,
+            ]);
+
+            // kalau mau tambahkan notifikasi khusus non reguler di sini
         }
     }
 

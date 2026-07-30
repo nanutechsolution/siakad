@@ -57,7 +57,14 @@ class MidtransChannel
                 'gross_amount' => $grossAmount,
             ],
             'customer_details' => $customerDetails,
+            'callbacks' => [
+                'finish' => url('/mahasiswa'),
+                'unfinish' => url('/mahasiswa'),
+                'error' => url('/mahasiswa'),
+            ],
+
             'enabled_payments' => null, // biarkan semua metode yang aktif di akun Midtrans Anda muncul
+
         ]);
 
         MidtransTransaction::create([
