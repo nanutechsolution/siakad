@@ -10,9 +10,6 @@ use App\Services\LaporanKeuangan\Support\TagihanMapQuery;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 
-/**
- * Laporan #1 — Rekap Tagihan Mahasiswa.
- */
 final class RekapTagihanService
 {
     public function query(array $filters): Builder
@@ -34,9 +31,12 @@ final class RekapTagihanService
                 ),
         };
 
-        // PERBAIKAN 1: Gunakan alias 'rekap_tagihans' untuk subquery agar tidak
-        // bentrok dengan nama tabel fisik 'mahasiswas' yang di-JOIN di dalam query.
-        return MahasiswaRecord::query()
+        // PERBAIKAN UTAMA: Set tabel instansi Model ke 'rekap_tagihans'.
+        // Dengan ini, qualified key name yang dipanggil Filament/Laravel 
+        // akan berubah dari 'mahasiswas.id' menjadi 'rekap_tagihans.id'.
+        $model = (new MahasiswaRecord())->setTable('rekap_tagihans');
+
+        return $model->newQuery()
             ->fromSub($union, 'rekap_tagihans')
             ->select('rekap_tagihans.*')
             ->orderBy('nama_lengkap');
@@ -53,7 +53,6 @@ final class RekapTagihanService
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        // PERBAIKAN 2: t.sisa_tagihan diambil langsung dari Virtual Column MySQL
         return $query->select([
             't.id as id',
             'mahasiswas.id as mahasiswa_id',
@@ -75,15 +74,11 @@ final class RekapTagihanService
         $query = MahasiswaInfoQuery::base()
             ->join('tagihan_non_regulers as t', 't.mahasiswa_id', '=', 'mahasiswas.id')
             ->whereNull('t.deleted_at')
-            // PERBAIKAN 3: Karena tagihan_non_regulers TIDAK MEMILIKI tahun_akademik_id/semester,
-            // jika user memfilter berdasarkan tahun akademik, query non-reguler diabaikan (kosong).
             ->when($filters['tahun_akademik_id'] ?? null, fn($q) => $q->whereRaw('1 = 0'))
             ->when($filters['semester'] ?? null, fn($q) => $q->whereRaw('1 = 0'));
 
         $query = MahasiswaInfoQuery::applyFilters($query, $filters);
 
-        // PERBAIKAN 4: Sisa tagihan dihitung manual (t.total_tagihan - t.total_bayar)
-        // karena tabel tagihan_non_regulers tidak memiliki virtual column sisa_tagihan.
         return $query->select([
             't.id as id',
             'mahasiswas.id as mahasiswa_id',
