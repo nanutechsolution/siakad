@@ -162,20 +162,14 @@ final class PendapatanService
                     'ta.semester'
                 ),
 
-            default => DB::query()->fromSub(
-                (clone $base)->selectRaw("
-                    pm.tanggal_bayar,
-                    pm.nominal_bayar
-                "),
-                'sub_tanggal'
-            )
+            default => (clone $base)
                 ->selectRaw("
-                DATE_FORMAT(tanggal_bayar, '%Y-%m') as id,
-                DATE_FORMAT(tanggal_bayar, '%Y-%m') as periode_id,
-                DATE_FORMAT(tanggal_bayar, '%Y-%m') as label,
-                SUM(nominal_bayar) as total
-            ")
-                ->groupByRaw("DATE_FORMAT(tanggal_bayar, '%Y-%m')"),
+                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as id,
+                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as periode_id,
+                    DATE_FORMAT(pm.tanggal_bayar, '%Y-%m') as label,
+                    SUM(pm.nominal_bayar) as total
+                ")
+                ->groupByRaw("DATE_FORMAT(pm.tanggal_bayar, '%Y-%m')")
         };
 
         $model = (new MahasiswaRecord())->setTable('laporan');
