@@ -26,14 +26,10 @@ class RekapPembayaran extends Page implements HasForms, HasTable, ProvidesLapora
 
     protected static ?string $cluster = LaporanKeuanganCluster::class;
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-credit-card';
-
     protected static ?string $navigationLabel = 'Rekap Pembayaran';
-
     protected static ?string $title = 'Rekap Pembayaran';
-
     protected static ?int $navigationSort = 2;
-
-    protected  string $view = 'filament.pages.laporan-keuangan.report-page';
+    protected string $view = 'filament.pages.laporan-keuangan.report-page';
 
     protected RekapPembayaranService $service;
 
@@ -61,7 +57,7 @@ class RekapPembayaran extends Page implements HasForms, HasTable, ProvidesLapora
     public function tableHeadings(): array
     {
         return [
-            'nomor_transaksi' => 'Nomor Transaksi',
+            'id' => 'Nomor Transaksi',
             'tanggal_bayar' => 'Tanggal Pembayaran',
             'nim' => 'NIM',
             'nama_lengkap' => 'Nama Mahasiswa',
@@ -77,13 +73,19 @@ class RekapPembayaran extends Page implements HasForms, HasTable, ProvidesLapora
     protected function columnOverrides(): array
     {
         return [
+            'id' => TextColumn::make('id')->label('Nomor Transaksi')->searchable(),
             'tanggal_bayar' => TextColumn::make('tanggal_bayar')->label('Tanggal Pembayaran')->dateTime('d M Y H:i'),
-            'nominal_bayar' => TextColumn::make('nominal_bayar')->label('Nominal')->money('idr'),
-            'jenis_tagihan' => TextColumn::make('jenis_tagihan')->label('Jenis Pembayaran')
+            'nim' => TextColumn::make('tagihan.mahasiswa.nim')->label('NIM'),
+            'nama_lengkap' => TextColumn::make('tagihan.mahasiswa.person.nama_lengkap')->label('Nama Mahasiswa'),
+            'nama_prodi' => TextColumn::make('tagihan.mahasiswa.prodi.nama_prodi')->label('Prodi'),
+            'jenis_tagihan' => TextColumn::make('tagihan_type')->label('Jenis Pembayaran')
                 ->badge()
-                ->formatStateUsing(fn(string $state) => $state === 'SEMESTER' ? 'Semester' : 'Non-Reguler')
-                ->colors(['primary' => 'SEMESTER', 'gray' => 'NON_REGULER']),
-            'user_verifikasi' => TextColumn::make('user_verifikasi')->label('User Verifikasi')
+                ->formatStateUsing(fn(string $state) => str_contains($state, 'Reguler') ? 'Non-Reguler' : 'Semester')
+                ->colors(['primary' => 'Semester', 'gray' => 'Non-Reguler']),
+            'nominal_bayar' => TextColumn::make('nominal_bayar')->label('Nominal')->money('idr'),
+            'metode_pembayaran' => TextColumn::make('metode_pembayaran')->label('Metode Pembayaran'),
+            'status_verifikasi' => TextColumn::make('statusVerifikasi.nama')->label('Status Verifikasi'),
+            'user_verifikasi' => TextColumn::make('verifier.name')->label('User Verifikasi')
                 ->placeholder('Belum diverifikasi'),
         ];
     }

@@ -13,6 +13,7 @@ use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
+
 class PembayaranMahasiswa extends Model
 {
     use HasFactory, HasUuids, SoftDeletes, LogsActivity;
@@ -54,13 +55,6 @@ class PembayaranMahasiswa extends Model
             ->logOnlyDirty()
             ->useLogName('pembayaran_keuangan');
     }
-    // /**
-    //  * Get the bill this payment is applied to.
-    //  */
-    // public function tagihan(): BelongsTo
-    // {
-    //     return $this->belongsTo(TagihanMahasiswa::class, 'tagihan_id');
-    // }
     /**
      * Polymorphic ke TagihanMahasiswa ATAU TagihanNonReguler.
      * Wajib pakai morph map (lihat AppServiceProvider) supaya kolom
