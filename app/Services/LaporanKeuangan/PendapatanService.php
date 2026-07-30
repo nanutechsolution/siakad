@@ -133,15 +133,15 @@ final class PendapatanService
     {
         $base = $this->verifiedPaymentsBaseQuery($filters);
 
-        $aggregate = match ($groupBy) {
+       $aggregate = match ($groupBy) {
 
             'tahun_akademik' => $base
                 ->selectRaw("
-                CONCAT('tahun-', ta.id) as id,
-                ta.id as periode_id,
-                ta.nama_tahun as label,
-                SUM(pm.nominal_bayar) as total
-            ")
+                    CONCAT('tahun-', ta.id) as id,
+                    ta.id as periode_id,
+                    ta.nama_tahun as label,
+                    SUM(pm.nominal_bayar) as total
+                ")
                 ->groupBy(
                     'ta.id',
                     'ta.nama_tahun'
@@ -149,45 +149,43 @@ final class PendapatanService
 
             'semester' => $base
                 ->selectRaw("
-                CONCAT('semester-', ta.semester) as id,
-                ta.semester as periode_id,
-                CASE ta.semester
-                    WHEN 1 THEN 'Ganjil'
-                    WHEN 2 THEN 'Genap'
-                    ELSE 'Pendek'
-                END as label,
-                SUM(pm.nominal_bayar) as total
-            ")
+                    CONCAT('semester-', ta.semester) as id,
+                    ta.semester as periode_id,
+                    CASE ta.semester
+                        WHEN 1 THEN 'Ganjil'
+                        WHEN 2 THEN 'Genap'
+                        ELSE 'Pendek'
+                    END as label,
+                    SUM(pm.nominal_bayar) as total
+                ")
                 ->groupBy(
                     'ta.semester'
                 ),
 
             default => $base
                 ->selectRaw("
-        CONCAT(
-            YEAR(pm.tanggal_bayar),
-            '-',
-            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-        ) as id,
-
-        CONCAT(
-            YEAR(pm.tanggal_bayar),
-            '-',
-            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-        ) as periode_id,
-
-        CONCAT(
-            YEAR(pm.tanggal_bayar),
-            '-',
-            LPAD(MONTH(pm.tanggal_bayar), 2, '0')
-        ) as label,
-
-        SUM(pm.nominal_bayar) as total
-    ")
+                    CONCAT(
+                        YEAR(pm.tanggal_bayar),
+                        '-',
+                        LPAD(MONTH(pm.tanggal_bayar), 2, '0')
+                    ) as id,
+                    CONCAT(
+                        YEAR(pm.tanggal_bayar),
+                        '-',
+                        LPAD(MONTH(pm.tanggal_bayar), 2, '0')
+                    ) as periode_id,
+                    CONCAT(
+                        YEAR(pm.tanggal_bayar),
+                        '-',
+                        LPAD(MONTH(pm.tanggal_bayar), 2, '0')
+                    ) as label,
+                    SUM(pm.nominal_bayar) as total
+                ")
+                // PERBAIKAN: Sertakan fungsi YEAR dan MONTH secara eksplisit di groupByRaw
                 ->groupByRaw("
-        YEAR(pm.tanggal_bayar),
-        MONTH(pm.tanggal_bayar)
-    "),
+                    YEAR(pm.tanggal_bayar),
+                    MONTH(pm.tanggal_bayar)
+                "),
         };
 
         $model = (new MahasiswaRecord())->setTable('laporan');
