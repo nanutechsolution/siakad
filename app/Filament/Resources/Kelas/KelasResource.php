@@ -44,7 +44,6 @@ class KelasResource extends Resource
     {
         return [
             MahasiswasRelationManager::class,
-            DosenWaliRelationManager::class
         ];
     }
 

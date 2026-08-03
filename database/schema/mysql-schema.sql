@@ -1925,6 +1925,50 @@ CREATE TABLE `mahasiswa_kelas` (
   CONSTRAINT `mahasiswa_kelas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`dbuser`@`%`*/ /*!50003 TRIGGER `trg_mahasiswa_kelas_biu` BEFORE INSERT ON `mahasiswa_kelas` FOR EACH ROW BEGIN
+                IF NEW.tanggal_keluar IS NULL AND EXISTS (
+                    SELECT 1 FROM mahasiswa_kelas
+                    WHERE mahasiswa_id = NEW.mahasiswa_id AND tanggal_keluar IS NULL
+                ) THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Mahasiswa ini masih memiliki kelas aktif lain. Isi tanggal_keluar pada baris sebelumnya terlebih dahulu.';
+                END IF;
+            END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`dbuser`@`%`*/ /*!50003 TRIGGER `trg_mahasiswa_kelas_bu` BEFORE UPDATE ON `mahasiswa_kelas` FOR EACH ROW BEGIN
+                IF NEW.tanggal_keluar IS NULL AND EXISTS (
+                    SELECT 1 FROM mahasiswa_kelas
+                    WHERE mahasiswa_id = NEW.mahasiswa_id AND tanggal_keluar IS NULL AND id <> NEW.id
+                ) THEN
+                    SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Mahasiswa ini masih memiliki kelas aktif lain. Isi tanggal_keluar pada baris sebelumnya terlebih dahulu.';
+                END IF;
+            END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 DROP TABLE IF EXISTS `mahasiswas`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2366,12 +2410,73 @@ CREATE TABLE `pembimbing_akademik` (
   CONSTRAINT `pembimbing_akademik_deleted_by_foreign` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `pembimbing_akademik_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
   CONSTRAINT `pembimbing_akademik_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `pembimbing_akademik_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `pembimbing_akademik_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `pembimbing_akademik_semester_mulai_id_foreign` FOREIGN KEY (`semester_mulai_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `pembimbing_akademik_semester_selesai_id_foreign` FOREIGN KEY (`semester_selesai_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `pembimbing_akademik_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+  CONSTRAINT `pembimbing_akademik_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `chk_pembimbing_scope` CHECK ((((`jenis` = _utf8mb4'DOSEN_WALI') and (((`kelas_id` is not null) and (`mahasiswa_id` is null)) or ((`kelas_id` is null) and (`mahasiswa_id` is not null)))) or ((`jenis` <> _utf8mb4'DOSEN_WALI') and (`kelas_id` is null) and (`mahasiswa_id` is not null))))
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`dbuser`@`%`*/ /*!50003 TRIGGER `trg_pembimbing_akademik_biu` BEFORE INSERT ON `pembimbing_akademik` FOR EACH ROW BEGIN
+                IF NEW.jenis = 'DOSEN_WALI' AND NEW.is_primary = 1 AND NEW.status = 'AKTIF' THEN
+                    IF NEW.kelas_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM pembimbing_akademik
+                        WHERE kelas_id = NEW.kelas_id AND jenis = 'DOSEN_WALI' AND is_primary = 1 AND status = 'AKTIF'
+                    ) THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Kelas ini sudah memiliki dosen wali utama yang aktif.';
+                    END IF;
+                    IF NEW.mahasiswa_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM pembimbing_akademik
+                        WHERE mahasiswa_id = NEW.mahasiswa_id AND jenis = 'DOSEN_WALI' AND is_primary = 1 AND status = 'AKTIF'
+                    ) THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Mahasiswa ini sudah memiliki dosen wali utama yang aktif.';
+                    END IF;
+                END IF;
+            END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
+/*!50003 SET @saved_cs_client      = @@character_set_client */ ;
+/*!50003 SET @saved_cs_results     = @@character_set_results */ ;
+/*!50003 SET @saved_col_connection = @@collation_connection */ ;
+/*!50003 SET character_set_client  = utf8mb4 */ ;
+/*!50003 SET character_set_results = utf8mb4 */ ;
+/*!50003 SET collation_connection  = utf8mb4_unicode_ci */ ;
+/*!50003 SET @saved_sql_mode       = @@sql_mode */ ;
+/*!50003 SET sql_mode              = 'ONLY_FULL_GROUP_BY,STRICT_TRANS_TABLES,NO_ZERO_IN_DATE,NO_ZERO_DATE,ERROR_FOR_DIVISION_BY_ZERO,NO_ENGINE_SUBSTITUTION' */ ;
+DELIMITER ;;
+/*!50003 CREATE*/ /*!50017 DEFINER=`dbuser`@`%`*/ /*!50003 TRIGGER `trg_pembimbing_akademik_bu` BEFORE UPDATE ON `pembimbing_akademik` FOR EACH ROW BEGIN
+                IF NEW.jenis = 'DOSEN_WALI' AND NEW.is_primary = 1 AND NEW.status = 'AKTIF' THEN
+                    IF NEW.kelas_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM pembimbing_akademik
+                        WHERE kelas_id = NEW.kelas_id AND jenis = 'DOSEN_WALI' AND is_primary = 1 AND status = 'AKTIF' AND id <> NEW.id
+                    ) THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Kelas ini sudah memiliki dosen wali utama yang aktif.';
+                    END IF;
+                    IF NEW.mahasiswa_id IS NOT NULL AND EXISTS (
+                        SELECT 1 FROM pembimbing_akademik
+                        WHERE mahasiswa_id = NEW.mahasiswa_id AND jenis = 'DOSEN_WALI' AND is_primary = 1 AND status = 'AKTIF' AND id <> NEW.id
+                    ) THEN
+                        SIGNAL SQLSTATE '45000' SET MESSAGE_TEXT = 'Mahasiswa ini sudah memiliki dosen wali utama yang aktif.';
+                    END IF;
+                END IF;
+            END */;;
+DELIMITER ;
+/*!50003 SET sql_mode              = @saved_sql_mode */ ;
+/*!50003 SET character_set_client  = @saved_cs_client */ ;
+/*!50003 SET character_set_results = @saved_cs_results */ ;
+/*!50003 SET collation_connection  = @saved_col_connection */ ;
 DROP TABLE IF EXISTS `perkuliahan_absensi`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -3450,3 +3555,5 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (256,'2026_07_30_20
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (257,'2026_07_30_203643_create_midtrans_gateway_logs_table',18);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (258,'2026_08_03_123636_create_konfigurasi_pembimbing_akademik_table',19);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (259,'2026_08_03_123708_create_pembimbing_akademik_table',19);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (260,'2026_08_03_195654_add_integrity_constraints_to_pembimbing_akademik_table',20);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (261,'2026_08_03_195655_add_active_enrollment_guard_to_mahasiswa_kelas_table',20);

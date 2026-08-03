@@ -9,7 +9,7 @@ class DosenJadwalKuliahPolicy
 {
     public function nilaiKelas(User $user, JadwalKuliah $jadwalKuliah): bool
     {
-        $dosenId = $user->person?->trxDosen?->id;
+        $dosenId = $user->person?->dosen?->id;
 
         if (! $dosenId) {
             return false;
@@ -21,7 +21,7 @@ class DosenJadwalKuliahPolicy
 
     public function publishNilai(User $user, JadwalKuliah $jadwalKuliah): bool
     {
-        $dosenId = $user->person?->trxDosen?->id;
+        $dosenId = $user->person?->dosen?->id;
 
         if (! $dosenId) {
             return false;

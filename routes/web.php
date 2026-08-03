@@ -18,9 +18,6 @@ Route::get('/laporan-keuangan/export/pdf/{page}', [
     'pdf'
 ])->name('laporan.keuangan.export.pdf');
 
-Route::middleware(['web', 'auth'])->group(function () {
-    Route::get('/krs/{id}/cetak', CetakKrsController::class)->name('krs.cetak');
-});
 Route::get('/', function () {
     return view('welcome');
 });

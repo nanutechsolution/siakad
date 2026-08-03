@@ -8,6 +8,7 @@ use App\Models\JadwalKuliah;
 use App\Models\JadwalUjian;
 use App\Models\Mahasiswa;
 use App\Models\KrsDetail;
+use App\Services\Akademik\PembimbingAkademikResolver;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 use Illuminate\Support\Facades\Auth;
@@ -38,14 +39,8 @@ class DashboardDosenOverview extends BaseWidget
 
         // 2. STATS: Mahasiswa Perwalian (Dosen Wali Utama)
         // Menghitung mahasiswa yang berada di kelas di mana dosen ini diset sebagai is_primary di kelas_dosen_wali
-        $totalMahasiswaWali = Mahasiswa::query()
-            ->whereHas('kelas', function (Builder $q) use ($dosenId) {
-                $q->whereHas('kelasDosenWalis', function (Builder $dq) use ($dosenId) {
-                    $dq->where('dosen_id', $dosenId)->where('is_primary', true);
-                });
-            })
-            ->count();
-
+        $totalMahasiswaWali = app(PembimbingAkademikResolver::class)
+            ->jumlahMahasiswaBimbingan($dosenId);
         // 3. STATS: Agenda Mengawas Ujian Terdekat
         // Berdasarkan relasi jadwalUjian -> pengawas (tabel jadwal_ujian_pengawas mencari person_id)
         $agendaUjianMendatang = JadwalUjian::query()

@@ -11,10 +11,8 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
 /**
@@ -86,54 +84,6 @@ class Mahasiswa extends Model implements HasScopeStrategy
         };
     }
     /**
-     * Get the person data associated with the student.
-     */
-    // public function person(): BelongsTo
-    // {
-    //     return $this->belongsTo(RefPerson::class, 'person_id');
-    // }
-
-    /**
-     * Get the program study associated with the student.
-     */
-    // public function prodi(): BelongsTo
-    // {
-    //     return $this->belongsTo(RefProdi::class, 'prodi_id');
-    // }
-
-    /**
-     * Get the batch (angkatan) associated with the student.
-     */
-    // public function angkatan(): BelongsTo
-    // {
-    //     return $this->belongsTo(RefAngkatan::class, 'angkatan_id', 'id_tahun');
-    // }
-
-    /**
-     * Get the program class (e.g., Reguler, Eksekutif) associated with the student.
-     */
-    // public function program(): BelongsTo
-    // {
-    //     return $this->belongsTo(RefProgram::class, 'program_id');
-    // }
-
-    /**
-     * Get the curriculum associated with the student.
-     */
-    // public function kurikulum(): BelongsTo
-    // {
-    //     return $this->belongsTo(MasterKurikulum::class, 'kurikulum_id');
-    // }
-
-    /**
-     * Get the study plans (KRS) of the student.
-     */
-    // public function krs(): HasMany
-    // {
-    //     return $this->hasMany(Krs::class, 'mahasiswa_id');
-    // }
-
-    /**
      * Get the bills associated with the student.
      */
     public function tagihans(): HasMany
@@ -141,13 +91,7 @@ class Mahasiswa extends Model implements HasScopeStrategy
         return $this->hasMany(TagihanMahasiswa::class, 'mahasiswa_id');
     }
 
-    /**
-     * Get the status history of the student.
-     */
-    // public function riwayatStatus(): HasMany
-    // {
-    //     return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id')->orderBy('tahun_akademik_id');
-    // }
+    
     public function tagihanMahasiswas(): HasMany
     {
         return $this->hasMany(TagihanMahasiswa::class, 'mahasiswa_id');
@@ -227,16 +171,6 @@ class Mahasiswa extends Model implements HasScopeStrategy
     {
         return ($this->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
     }
-
-    // public function biodata(): HasOne
-    // {
-    //     return $this->hasOne(
-    //         MahasiswaBiodata::class,
-    //         'mahasiswa_id',
-    //         'id'
-    //     );
-    // }
-
     public function edomProgress()
     {
         return $this->hasMany(EdomProgress::class, 'mahasiswa_id');

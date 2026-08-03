@@ -47,14 +47,6 @@ class RiwayatKrsTable
                     type: PdfDocumentType::KRS,
                     contextResolver: fn($record) => ['krs_id' => $record->id],
                 ),
-                Action::make('cetak_krs')
-                    ->label('Cetak')
-                    ->icon('heroicon-o-printer')
-                    ->color('success')
-                    // Hanya bisa dicetak jika statusnya disetujui (opsional, sesuaikan dengan logic Anda)
-                    ->visible(fn ($record) => $record->status_krs === KrsStatusEnum::DISETUJUI)
-                    ->url(fn($record) => route('krs.cetak', $record->id))
-                    ->openUrlInNewTab(), // Buka di tab baru agar tidak menutup panel Filament
             ]);
     }
 }

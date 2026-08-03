@@ -49,7 +49,7 @@ class JadwalKuliah extends Model
     protected $casts = [
         'kuota_kelas' => 'integer',
         'isi_kelas' => 'integer',
-        // Jam biarkan string agar kompatibel dengan format 'H:i' di Filament TimePicker
+        // Jamdi biarkan string agar kompatibel dengan format 'H:i' di Filament TimePicker
     ];
 
     /** Urutan hari untuk sorting tampilan jadwal mingguan (Senin dulu). */

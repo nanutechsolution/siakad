@@ -15,8 +15,6 @@ class RekapAkademik extends Page
     protected static ?string $title = 'Rekap Akademik';
     protected static ?int $navigationSort = 4;
     public array $data = [];
-
-
     public function mount(NilaiAkademikService $service): void
     {
         $mahasiswa = $service->mahasiswaLogin();

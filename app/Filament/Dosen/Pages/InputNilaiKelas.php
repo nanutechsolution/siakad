@@ -22,7 +22,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Gate;
-use Override;
 
 class InputNilaiKelas extends Page implements HasTable
 {
@@ -32,7 +31,7 @@ class InputNilaiKelas extends Page implements HasTable
 
     protected static bool $shouldRegisterNavigation = false;
 
-    protected  string $view = 'filament.dosen.pages.input-nilai-kelas';
+    protected string $view = 'filament.dosen.pages.input-nilai-kelas';
 
     protected static ?string $slug = 'input-nilai-kelas/{record}';
 
@@ -40,37 +39,28 @@ class InputNilaiKelas extends Page implements HasTable
 
     public bool $isInputOpen = false;
 
-
     /**
-     * Cache komponen nilai kelas ini supaya tidak query berulang
-     * di table(), headerActions, dan recordActions.
+     * Cache komponen nilai kelas ini supaya tidak query berulang.
      *
-     * @var Collection<int, \App\Models\JadwalKomponenNilai>
+     * @var Collection<int, \App\Models\KurikulumKomponenNilai>
      */
     public Collection $komponenAktif;
 
-    // Tambahkan parameter $record = null di sini agar Livewire otomatis mengisinya
     public function mount($record = null): void
     {
-        // 1. Ambil dari argumen Livewire, kalau kosong ambil dari request URL
         $parameter = $record ?? request()->route('record');
 
-        // 2. Cek apakah wujudnya sudah berupa Model, atau masih String UUID
         if ($parameter instanceof JadwalKuliah) {
             $jadwal = $parameter;
         } else {
-            // Kalau masih string, kita query manual
             $jadwal = JadwalKuliah::find($parameter);
         }
 
-        // 3. Jika benar-benar tidak ada datanya, munculkan pesan khusus!
         if (! $jadwal) {
-            // Tampilkan apa isi parameternya agar mudah di-debug
             abort(404, "HALAMAN GAGAL DIMUAT: Parameter yang dibaca adalah [" . json_encode($parameter) . "]");
         }
 
-        // 4. Lanjut load relasi dan otorisasi
-        $jadwal->loadMissing('tahunAkademik');
+        $jadwal->loadMissing(['tahunAkademik', 'mataKuliah', 'kelas']);
         Gate::authorize('nilaiKelasDosen', $jadwal);
 
         $this->record = $jadwal;
@@ -79,36 +69,83 @@ class InputNilaiKelas extends Page implements HasTable
             ->where('kurikulum_id', $jadwal->kurikulum_id)
             ->get();
     }
+
     public function table(Table $table): Table
     {
+        if ($this->record) {
+            Gate::authorize('nilaiKelasDosen', $this->record);
+        }
+
         $columns = [
-            TextColumn::make('krs.mahasiswa.nim')->label('NIM')->searchable(),
-            TextColumn::make('krs.mahasiswa.person.nama_lengkap')->label('Nama Mahasiswa')->searchable(),
+            TextColumn::make('krs.mahasiswa.nim')
+                ->label('NIM')
+                ->searchable()
+                ->sortable(),
+            TextColumn::make('krs.mahasiswa.person.nama_lengkap')
+                ->label('Nama Mahasiswa')
+                ->searchable()
+                ->sortable(),
         ];
 
         foreach ($this->komponenAktif as $komponen) {
             $columns[] = TextInputColumn::make('komp_' . $komponen->komponen_id)
                 ->label($komponen->komponen->nama_komponen . ' (' . $komponen->bobot_persen . '%)')
                 ->rules(['numeric', 'min:0', 'max:100'])
-                ->disabled(false)
+                ->disabled(! $this->isInputOpen) // Otomatis disabled jika periode input ditutup
                 ->getStateUsing(fn(KrsDetail $record) => $record->getNilaiKomponen((int) $komponen->komponen_id))
                 ->updateStateUsing(function (KrsDetail $record, $state) use ($komponen) {
-                    if (!Gate::allows('inputNilaiDosen', $record)) {
-                        Notification::make()->danger()->title('Nilai tidak bisa diubah')->send();
+                    if (! Gate::allows('inputNilaiDosen', $record)) {
+                        Notification::make()
+                            ->danger()
+                            ->title('Gagal Menyimpan')
+                            ->body('Anda tidak memiliki akses untuk mengubah nilai mahasiswa ini atau kelas sudah dikunci.')
+                            ->send();
                         return;
                     }
+
                     \App\Models\KrsDetailNilai::updateOrCreate(
                         ['krs_detail_id' => $record->id, 'komponen_id' => $komponen->komponen_id],
                         ['nilai_angka' => (float) $state]
                     );
+
+                    // FEEDBACK UI/UX: Beri konfirmasi langsung saat nilai komponen disimpan
+                    Notification::make()
+                        ->success()
+                        ->title('Nilai Tersimpan')
+                        ->body("Nilai {$komponen->komponen->nama_komponen} berhasil diperbarui.")
+                        ->duration(2500)
+                        ->send();
                 });
         }
 
-        $columns[] = TextColumn::make('nilai_angka')->label('Angka akhir')->numeric(2);
-        $columns[] = TextColumn::make('nilai_huruf')->label('Huruf');
+        $columns[] = TextColumn::make('nilai_angka')
+            ->label('Nilai Akhir')
+            ->numeric(2)
+            ->placeholder('-')
+            ->tooltip('Klik tombol "Hitung Nilai Akhir" di atas jika angka belum ter-update')
+            ->sortable();
+
+        $columns[] = TextColumn::make('nilai_huruf')
+            ->label('Grade')
+            ->badge() // Visual yang lebih jelas berupa badge
+            ->color(fn($state) => match ($state) {
+                'A', 'A-' => 'success',
+                'B+', 'B', 'B-' => 'info',
+                'C+', 'C' => 'warning',
+                'D', 'E' => 'danger',
+                default => 'gray',
+            })
+            ->placeholder('-')
+            ->alignCenter();
+
         $columns[] = IconColumn::make('is_published')
-            ->label('Published')
-            ->boolean();
+            ->label('Status Kunci')
+            ->boolean()
+            ->trueIcon('heroicon-o-lock-closed')
+            ->falseIcon('heroicon-o-lock-open')
+            ->trueColor('danger')
+            ->falseColor('success')
+            ->tooltip(fn($state) => $state ? 'Nilai sudah dikunci (published)' : 'Nilai masih dapat diubah');
 
         return $table
             ->query(
@@ -120,24 +157,53 @@ class InputNilaiKelas extends Page implements HasTable
             ->columns($columns)
             ->recordActions([
                 Action::make('revisi_nilai')
-                    ->label('Ajukan revisi')
-                    ->icon('heroicon-o-document-text')
-                    ->visible(fn(KrsDetail $record) => Gate::allows('revisiNilaiDosen', $record))
+                    ->label('Revisi Nilai')
+                    ->icon('heroicon-o-pencil-square')
+                    ->color('warning')
+                    ->visible(function (KrsDetail $record) {
+                        // 1. Cek otorisasi dasar dari Gate
+                        $canRevisi = Gate::allows('revisiNilaiDosen', $record);
+
+                        // 2. Revisi HANYA logis jika nilai sudah dikunci/publish.
+                        // Jika belum dikunci, dosen harusnya menginput/mengubah nilai secara normal, bukan via revisi.
+                        $isPublished = $record->is_published === true;
+
+                        // 3. Gunakan nilai_huruf (A, B, C, dll) sebagai penanda otentik bahwa nilai sudah pernah dikalkulasi.
+                        // Jika masih null, berarti belum dihitung oleh GradeService.
+                        $hasGrade = filled($record->nilai_huruf);
+
+                        return $canRevisi && $isPublished && $hasGrade;
+                    })
+                    ->modalHeading('Pengajuan Revisi Nilai Mahasiswa')
+                    ->modalDescription('Nilai kelas ini telah dikunci. Pengisian form ini akan mengajukan perubahan nilai resmi ke Akademik.')
                     ->schema([
                         TextInput::make('new_nilai_angka')
-                            ->label('Nilai angka baru')
+                            ->label('Nilai Angka Baru (0 - 100)')
                             ->numeric()
                             ->required()
                             ->minValue(0)
                             ->maxValue(100),
                         TextInput::make('nomor_sk_perbaikan')
-                            ->label('Nomor SK perbaikan')
+                            ->label('Nomor SK / Surat Perbaikan (Opsional)')
+                            ->placeholder('Contoh: SK/001/FT/2026')
                             ->maxLength(255),
                         Textarea::make('alasan_perbaikan')
-                            ->label('Alasan revisi')
-                            ->required(),
+                            ->label('Alasan Revisi Nilai')
+                            ->placeholder('Tuliskan alasan perubahan nilai (misal: susulan tugas / koreksi Ujian)...')
+                            ->required()
+                            ->rows(3),
                     ])
                     ->action(function (KrsDetail $record, array $data, GradeService $service) {
+                        if (! filled($record->nilai_angka)) {
+                            Notification::make()
+                                ->danger()
+                                ->title('Gagal Revisi Nilai')
+                                ->body('Mahasiswa ini belum memiliki nilai awal. Silakan hitung nilai akhir terlebih dahulu.')
+                                ->send();
+
+                            return;
+                        }
+
                         if (! Gate::allows('revisiNilaiDosen', $record)) {
                             abort(403);
                         }
@@ -148,62 +214,63 @@ class InputNilaiKelas extends Page implements HasTable
                             nomorSkPerbaikan: $data['nomor_sk_perbaikan'] ?? null,
                             executedByUserId: (string) Auth::id(),
                         );
+
                         Notification::make()
                             ->success()
-                            ->title('Revisi nilai tersimpan')
+                            ->title('Pengajuan Revisi Berhasil')
+                            ->body('Revisi nilai telah disimpan dan diperbarui.')
                             ->send();
                     }),
             ])
             ->headerActions([
-                // 1. TOMBOL UTAMA: Biarkan tetap di luar agar mudah diakses dosen
                 Action::make('hitung_ulang')
-                    ->label('Hitung & simpan nilai akhir')
-                    ->color('warning')
+                    ->label('1. Hitung Nilai Akhir')
+                    ->icon('heroicon-o-calculator')
+                    ->color('primary')
+                    ->tooltip('Kalkulasi ulang Nilai Akhir dan Huruf (Grade) berdasarkan bobot komponen')
                     ->disabled(fn() => ! $this->isInputOpen)
-                    ->action(function (\App\Services\Dosen\GradeService $service) {
+                    ->action(function (GradeService $service) {
                         $service->calculateFinalGradesForClass($this->record);
                         Notification::make()
                             ->success()
-                            ->title('Nilai akhir berhasil dihitung ulang')
+                            ->title('Kalkulasi Selesai')
+                            ->body('Seluruh Nilai Akhir dan Grade mahasiswa telah dihitung ulang berdasarkan bobot komponen.')
                             ->send();
                     }),
 
-                // 2. TOMBOL UTAMA KEDUA: Tetap di luar untuk eksekusi akhir
                 Action::make('publish_nilai')
-                    ->label('Submit & publish kelas')
+                    ->label('2. Submit & Publish Kelas')
+                    ->icon('heroicon-o-check-badge')
                     ->color('danger')
                     ->requiresConfirmation()
-                    ->modalDescription('Aksi ini akan mengunci seluruh nilai mahasiswa di kelas ini. Perubahan selanjutnya wajib melalui form revisi.')
+                    ->modalHeading('Kunci & Publish Nilai Kelas?')
+                    ->modalDescription('PERHATIAN: Aksi ini akan mengunci seluruh nilai mahasiswa pada mata kuliah ini. Dosen tidak dapat mengubah nilai komponen secara langsung lagi setelah dipublish.')
+                    ->modalSubmitActionLabel('Ya, Publish & Kunci Nilai')
                     ->disabled(fn() => ! $this->isInputOpen)
                     ->visible(fn() => Gate::allows('publishNilaiDosen', $this->record))
-                    ->action(function (\App\Services\Dosen\GradeService $service) {
+                    ->action(function (GradeService $service) {
                         $count = $service->publishClassGrades($this->record);
                         Notification::make()
                             ->success()
-                            ->title("Berhasil publish nilai untuk {$count} mahasiswa")
+                            ->title('Kelas Berhasil Dipublish')
+                            ->body("Berhasil mengunci dan mempublikasikan nilai untuk {$count} mahasiswa.")
                             ->send();
                     }),
 
-                // 3. GROUP DROPDOWN: Satukan fitur Cetak & Export di sini agar hemat tempat!
                 ActionGroup::make([
-
-                    // Fitur Cetak PDF yang dibungkus
                     Action::make('print_pdf')
-                        ->label('Cetak PDF / Print')
+                        ->label('Cetak Presensi / Nilai (PDF)')
                         ->icon('heroicon-o-printer')
-                        ->color('gray')
                         ->action(function () {
                             $this->js("window.open('" . route('dosen.nilai.print', ['id' => $this->record->id]) . "', '_blank')");
                         }),
 
-                    // Fitur Export CSV/Excel yang dibungkus
                     Action::make('export_nilai')
-                        ->label('Export Excel/CSV')
+                        ->label('Export Data Nilai (CSV)')
                         ->icon('heroicon-o-arrow-down-tray')
-                        ->color('success')
                         ->action(function () {
                             $jadwal = $this->record;
-                            $filename = "Nilai_" . str_replace(' ', '_', $jadwal->mataKuliah?->nama_mk) . "_" . $jadwal->kelas?->nama_kelas . ".csv";
+                            $filename = "Nilai_" . str_replace(' ', '_', $jadwal->mataKuliah?->nama_mk ?? 'MK') . "_" . ($jadwal->kelas?->nama_kelas ?? 'Kelas') . ".csv";
 
                             return response()->streamDownload(function () use ($jadwal) {
                                 $output = fopen('php://output', 'w');
@@ -215,12 +282,8 @@ class InputNilaiKelas extends Page implements HasTable
                                 $header[] = 'Huruf';
                                 fputcsv($output, $header);
 
-                                $peserta = \App\Models\KrsDetail::query()
-                                    ->with([
-                                        'krs.mahasiswa.person',
-                                        'detailNilai',
-                                        'jadwalKuliah'
-                                    ])
+                                $peserta = KrsDetail::query()
+                                    ->with(['krs.mahasiswa.person', 'detailNilai', 'jadwalKuliah'])
                                     ->where('jadwal_kuliah_id', $jadwal->id)
                                     ->where('status_ambil', '!=', 'K')
                                     ->get();
@@ -240,12 +303,11 @@ class InputNilaiKelas extends Page implements HasTable
                                 'Content-Disposition' => 'attachment; filename="' . $filename . '"',
                             ]);
                         }),
-
                 ])
-                    ->label('Download / Cetak') // Nama tombol utama dropdown-nya
-                    ->icon('heroicon-m-ellipsis-vertical') // Icon titik tiga vertikal yang minimalis
+                    ->label('Opsi Lainnya')
+                    ->icon('heroicon-m-ellipsis-vertical')
                     ->color('gray')
-                    ->button(), // Mengubah tampilan grup menjadi tombol elegan, bukan sekadar teks link
+                    ->button(),
             ]);
     }
 }

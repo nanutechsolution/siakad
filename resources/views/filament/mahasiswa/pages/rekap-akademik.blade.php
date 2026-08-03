@@ -30,35 +30,51 @@
         <h3 class="mb-2 text-sm font-medium">Distribusi Nilai Huruf</h3>
         <div class="flex flex-wrap gap-2">
             @forelse ($data['distribusi_huruf'] as $huruf => $jumlah)
-                <span class="rounded-full bg-gray-100 px-3 py-1 text-xs dark:bg-gray-800">
-                    {{ $huruf }}: {{ $jumlah }}
-                </span>
+            <span class="rounded-full bg-gray-100 px-3 py-1 text-xs dark:bg-gray-800">
+                {{ $huruf }}: {{ $jumlah }}
+            </span>
             @empty
-                <span class="text-sm text-gray-400">Belum ada data.</span>
+            <span class="text-sm text-gray-400">Belum ada data.</span>
             @endforelse
         </div>
     </x-filament::section>
 
     @pushonce('scripts')
-        <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
-        <script>
-            function ipkChart(rows) {
-                return {
-                    init() {
-                        new Chart(this.$refs.canvas, {
-                            type: 'line',
-                            data: {
-                                labels: rows.map(r => r.label),
-                                datasets: [
-                                    { label: 'IPS', data: rows.map(r => r.ips), borderColor: '#6366f1', tension: 0.3 },
-                                    { label: 'IPK', data: rows.map(r => r.ipk), borderColor: '#22c55e', tension: 0.3 },
-                                ],
-                            },
-                            options: { scales: { y: { min: 0, max: 4 } } },
-                        });
-                    },
-                };
-            }
-        </script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4"></script>
+    <script>
+        function ipkChart(rows) {
+            return {
+                init() {
+                    new Chart(this.$refs.canvas, {
+                        type: 'line',
+                        data: {
+                            labels: rows.map(r => r.label),
+                            datasets: [{
+                                    label: 'IPS',
+                                    data: rows.map(r => r.ips),
+                                    borderColor: '#6366f1',
+                                    tension: 0.3
+                                },
+                                {
+                                    label: 'IPK',
+                                    data: rows.map(r => r.ipk),
+                                    borderColor: '#22c55e',
+                                    tension: 0.3
+                                },
+                            ],
+                        },
+                        options: {
+                            scales: {
+                                y: {
+                                    min: 0,
+                                    max: 4
+                                }
+                            }
+                        },
+                    });
+                },
+            };
+        }
+    </script>
     @endpushonce
 </x-filament-panels::page>

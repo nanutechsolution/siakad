@@ -27,12 +27,11 @@ class KelasSaya extends Page implements HasTable
 
     public function table(Table $table): Table
     {
-        $dosenId = Auth::user()?->person?->trxDosen?->id;
+        $dosenId = Auth::user()?->person?->dosen?->id;
 
         return $table
             ->query(
                 JadwalKuliah::query()
-                    // Pastikan merelasikan 'ruang' jika ada tabelnya, atau sesuaikan kodenya
                     ->with(['mataKuliah', 'kelas', 'tahunAkademik'])
                     ->whereHas('tahunAkademik', fn(Builder $q) => $q->where('is_active', true))
                     ->whereHas('dosenPengajar', function (Builder $q) use ($dosenId) {

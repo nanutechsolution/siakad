@@ -132,4 +132,12 @@ class PembimbingAkademik extends Model
     {
         return ! is_null($this->mahasiswa_id);
     }
+
+    public function scopeDosenWaliAktif($query)
+    {
+        return $query
+            ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
+            ->where('status', PembimbingAkademikStatus::AKTIF)
+            ->where('is_primary', true);
+    }
 }

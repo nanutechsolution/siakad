@@ -3,27 +3,16 @@
 namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
 use App\Enums\PembimbingAkademikJenis;
-use App\Enums\PembimbingAkademikStatus;
+use App\Enums\PembimbingAkademikMode;
+use App\Exceptions\PembimbingAkademikException;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\Kelas;
-use App\Models\KonfigurasiPembimbingAkademik;
 use App\Models\Mahasiswa;
-use App\Models\PembimbingAkademik;
-use App\Models\RefAngkatan;
 use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\PembimbingAkademikService;
 use BackedEnum;
-use Filament\Actions\Action;
-use Filament\Actions\BulkActionGroup;
-use Filament\Actions\DeleteAction;
-use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
-use Filament\Actions\ForceDeleteAction;
-use Filament\Actions\ForceDeleteBulkAction;
-use Filament\Actions\RestoreAction;
-use Filament\Actions\RestoreBulkAction;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -33,22 +22,14 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
-use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Components\Utilities\Get;
-use Filament\Schemas\Components\Utilities\Set;
+use Filament\Schemas\Components\Wizard;
+use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TrashedFilter;
-use Filament\Tables\Table;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\HtmlString;
 
 class PenugasanPembimbingPage extends Page implements HasForms, HasTable
 {
@@ -65,13 +46,18 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
     protected static ?string $cluster = PembimbingAkademikCluster::class;
 
     /**
-     * @var array<string, mixed>|null
+     * @var array<string, mixed>
      */
     public ?array $data = [];
 
+    /**
+     * Menandai submit sedang berjalan, dipakai blade untuk disable tombol
+     * & menampilkan spinner supaya user tidak klik dua kali (double submit).
+     */
+    public bool $isSubmitting = false;
+
     public function mount(): void
     {
-
         $this->form->fill([
             'jenis' => PembimbingAkademikJenis::DOSEN_WALI->value,
             'is_primary' => true,
@@ -84,472 +70,215 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
     {
         return $schema
             ->components([
-                Section::make('Aturan & Scope Konfigurasi')
-                    ->description('Pilih Prodi dan Angkatan. Sistem akan membaca aturan mode pembimbing secara otomatis.')
-                    ->columns(3)
-                    ->components([
-                        Select::make('prodi_id')
-                            ->label('Program Studi')
-                            ->options(fn() => RefProdi::query()->pluck('nama_prodi', 'id'))
-                            ->searchable()
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(fn(Set $set) => $set('mode_info', null)),
+                Wizard::make([
+                    Step::make('Jenis Pembimbing')
+                        ->description('Tentukan jenis penugasan')
+                        ->icon('heroicon-o-tag')
+                        ->components([
+                            Select::make('jenis')
+                                ->label('Jenis Pembimbing')
+                                ->options(PembimbingAkademikJenis::options())
+                                ->native(false)
+                                ->required()
+                                ->live()
+                                ->helperText('Pilih Dosen Wali bila ingin menugaskan wali kelas/mahasiswa. Jenis lain (skripsi, PKL, dll) selalu bersifat per-mahasiswa.'),
 
-                        Select::make('angkatan_id')
-                            ->label('Angkatan')
-                            ->options(fn() => RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun'))
-                            ->searchable()
-                            ->required()
-                            ->live()
-                            ->afterStateUpdated(function (Get $get, Set $set) {
-                                $prodiId = $get('prodi_id');
-                                $angkatanId = $get('angkatan_id');
+                            Select::make('prodi_id')
+                                ->label('Program Studi')
+                                ->options(fn() => RefProdi::query()->orderBy('nama_prodi')->pluck('nama_prodi', 'id'))
+                                ->searchable()
+                                ->live()
+                                ->required(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
+                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
+                                ->helperText('Dipakai untuk membaca konfigurasi mode penugasan (per kelas / per mahasiswa) yang berlaku.'),
 
-                                if (! $prodiId || ! $angkatanId) {
-                                    $set('mode', null);
-                                    $set('mode_info', null);
-                                    return;
-                                }
+                            Select::make('angkatan_id')
+                                ->label('Angkatan')
+                                ->options(fn() => \App\Models\RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun'))
+                                ->searchable()
+                                ->live()
+                                ->required(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
+                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value),
 
-                                $config = KonfigurasiPembimbingAkademik::query()
-                                    ->where('prodi_id', $prodiId)
-                                    ->where('angkatan_id', $angkatanId)
-                                    ->where('aktif', true)
-                                    ->first();
+                            Placeholder::make('info_konfigurasi')
+                                ->label('')
+                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value && $get('prodi_id') && $get('angkatan_id'))
+                                ->content(function ($get) {
+                                    $konfigurasi = app(PembimbingAkademikService::class)
+                                        ->konfigurasiAktif($get('prodi_id'), $get('angkatan_id'));
 
-                                if (! $config) {
-                                    $set('mode', null);
-                                    $set('mode_info', 'BELUM_DIKONFIGURASI');
-                                    Notification::make()
-                                        ->title('Konfigurasi Tidak Ditemukan')
-                                        ->body('Aturan pembimbing akademik untuk Prodi dan Angkatan ini belum aktif/dibuat.')
-                                        ->danger()
-                                        ->send();
-                                    return;
-                                }
-                                if (! $config) {
-                                    $set('mode', null);
-                                    $set('mode_info', 'BELUM_DIKONFIGURASI');
+                                    if (! $konfigurasi) {
+                                        return new HtmlString(
+                                            '<div class="rounded-lg bg-danger-50 dark:bg-danger-500/10 p-3 text-sm text-danger-700 dark:text-danger-400">
+                                                ⚠️ Belum ada konfigurasi mode yang <strong>aktif</strong> untuk kombinasi Program Studi &amp; Angkatan ini.
+                                                Atur dulu di menu <strong>Konfigurasi Pembimbing</strong> sebelum melanjutkan.
+                                            </div>'
+                                        );
+                                    }
 
-                                    Notification::make()
-                                        ->title('Konfigurasi Tidak Ditemukan')
-                                        ->body('Aturan pembimbing akademik untuk Prodi dan Angkatan ini belum aktif/dibuat.')
-                                        ->danger()
-                                        ->send();
+                                    $mode = $konfigurasi->mode;
 
-                                    return;
-                                }
+                                    return new HtmlString(
+                                        '<div class="rounded-lg bg-success-50 dark:bg-success-500/10 p-3 text-sm text-success-700 dark:text-success-400">
+                                            ✅ Mode aktif untuk kombinasi ini: <strong>' . e($mode->getLabel()) . '</strong>.
+                                            Langkah berikutnya akan menyesuaikan otomatis.
+                                        </div>'
+                                    );
+                                }),
+                        ]),
 
-                                $set('mode', $config->mode->value);
+                    Step::make('Target Penugasan')
+                        ->description('Kelas atau mahasiswa')
+                        ->icon('heroicon-o-user-group')
+                        ->components([
+                            Select::make('kelas_id')
+                                ->label('Kelas')
+                                ->searchable()
+                                ->options(function ($get) {
+                                    if (! $get('prodi_id') || ! $get('angkatan_id')) {
+                                        return [];
+                                    }
 
-                                $set(
-                                    'mode_info',
-                                    $config->mode->value === 'PER_KELAS'
-                                        ? 'MODE: PER KELAS (1 Dosen Wali / Kelas)'
-                                        : 'MODE: PER MAHASISWA (Individual)'
-                                );
-                            }),
-
-                        TextEntry::make('mode_info_placeholder')
-                            ->label('Status Mode Penugasan')
-                            ->state(fn(Get $get) => $get('mode_info') ?? 'Pilih Prodi & Angkatan dahulu'),
-                    ]),
-                Section::make('Target Penugasan')
-                    ->columns(2)
-                    ->components([
-                        Select::make('kelas_id')
-                            ->label('Kelas')
-                            ->searchable()
-                            ->options(fn(Get $get) => Kelas::query()
-                                ->where('prodi_id', $get('prodi_id'))
-                                ->where('angkatan_id', $get('angkatan_id'))
-                                ->orderBy('nama_kelas')
-                                ->pluck('nama_kelas', 'id'))
-                            ->visible(fn(Get $get) => $get('mode') === 'PER_KELAS')
-                            ->required(fn(Get $get) => $get('mode') === 'PER_KELAS'),
-                        Select::make('mahasiswa_id')
-                            ->label('Mahasiswa')
-                            ->searchable()
-                            ->getSearchResultsUsing(fn(string $search, Get $get) => Mahasiswa::query()
-                                ->where('prodi_id', $get('prodi_id'))
-                                ->where('angkatan_id', $get('angkatan_id'))
-                                ->where(function ($q) use ($search) {
-                                    $q->where('nim', 'like', "%{$search}%")
-                                        ->orWhereHas('person', fn($sq) => $sq->where('nama_lengkap', 'like', "%{$search}%"));
+                                    return app(PembimbingAkademikService::class)
+                                        ->kelasBelumPunyaWali((int) $get('prodi_id'), (int) $get('angkatan_id'));
                                 })
-                                ->limit(20)
-                                ->get()
-                                ->mapWithKeys(fn(Mahasiswa $m) => [$m->id => "{$m->nim} - {$m->person?->nama_lengkap}"]))
-                            ->getOptionLabelUsing(fn($value) => optional(Mahasiswa::find($value))->nim)
-                            ->visible(fn(Get $get) => $get('mode') === 'PER_MAHASISWA')
-                            ->required(fn(Get $get) => $get('mode') === 'PER_MAHASISWA'),
-                    ]),
+                                ->helperText('Hanya menampilkan kelas yang belum memiliki Dosen Wali aktif.')
+                                ->visible(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_KELAS)
+                                ->required(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_KELAS),
 
-                Section::make('Detail Pembimbing')
-                    ->columns(2)
-                    ->components([
-                        Select::make('jenis')
-                            ->label('Jenis Pembimbing')
-                            ->options(PembimbingAkademikJenis::options())
-                            ->native(false)
-                            ->required(),
-                        Select::make('dosen_id')
-                            ->label('Dosen Pembimbing')
-                            ->searchable()
-                            ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
-                                ->where('nidn', 'like', "%{$search}%")
-                                ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
-                                ->limit(20)
-                                ->get()
-                                ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                            ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))->person?->nama_lengkap)
-                            ->required(),
+                            Select::make('mahasiswa_id')
+                                ->label('Mahasiswa')
+                                ->searchable()
+                                ->getSearchResultsUsing(function (string $search, $get) {
+                                    return Mahasiswa::query()
+                                        ->when(
+                                            $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value && $get('prodi_id') && $get('angkatan_id'),
+                                            fn($q) => $q->where('prodi_id', $get('prodi_id'))->where('angkatan_id', $get('angkatan_id'))
+                                        )
+                                        ->where(fn($q) => $q
+                                            ->where('nim', 'like', "%{$search}%")
+                                            ->orWhereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%")))
+                                        ->limit(20)
+                                        ->get()
+                                        ->mapWithKeys(fn(Mahasiswa $m) => [$m->id => "{$m->nim} - {$m->person?->nama_lengkap}"]);
+                                })
+                                ->getOptionLabelUsing(fn($value) => optional(Mahasiswa::find($value))?->nim)
+                                ->visible(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_MAHASISWA)
+                                ->required(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_MAHASISWA),
+                        ]),
 
-                        Toggle::make('is_primary')
-                            ->label('Pembimbing Utama (Primary)')
-                            ->default(true),
+                    Step::make('Detail & Konfirmasi')
+                        ->description('Dosen, SK, dan ringkasan')
+                        ->icon('heroicon-o-clipboard-document-check')
+                        ->components([
+                            Select::make('dosen_id')
+                                ->label('Dosen')
+                                ->searchable()
+                                ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
+                                    ->where('nidn', 'like', "%{$search}%")
+                                    ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
+                                    ->limit(20)
+                                    ->get()
+                                    ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
+                                ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
+                                ->required(),
+                            Toggle::make('is_primary')
+                                ->label('Pembimbing Utama')
+                                ->default(true),
+                            Select::make('semester_mulai_id')
+                                ->label('Semester Mulai')
+                                ->searchable()
+                                ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
+                                ->required(),
+                            DatePicker::make('tanggal_mulai')
+                                ->label('Tanggal Mulai')
+                                ->default(now())
+                                ->required(),
+                            TextInput::make('nomor_sk')
+                                ->label('Nomor SK')
+                                ->maxLength(255),
+                            DatePicker::make('tanggal_sk')
+                                ->label('Tanggal SK'),
+                            Textarea::make('keterangan')
+                                ->label('Keterangan')
+                                ->columnSpanFull()
+                                ->rows(3),
 
-                        Select::make('semester_mulai_id')
-                            ->label('Semester Mulai')
-                            ->searchable()
-                            ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
-                            ->required(),
+                            Placeholder::make('ringkasan')
+                                ->label('Ringkasan')
+                                ->columnSpanFull()
+                                ->content(function ($get) {
+                                    $jenis = $get('jenis') ? PembimbingAkademikJenis::from($get('jenis'))->label() : '-';
 
-                        DatePicker::make('tanggal_mulai')
-                            ->label('Tanggal Mulai Penugasan')
-                            ->default(now())
-                            ->required(),
+                                    $target = $get('kelas_id')
+                                        ? 'Kelas: ' . (Kelas::find($get('kelas_id'))?->nama_kelas ?? '-')
+                                        : 'Mahasiswa: ' . (Mahasiswa::find($get('mahasiswa_id'))?->nim ?? '-');
 
-                        TextInput::make('nomor_sk')
-                            ->label('Nomor SK Penugasan')
-                            ->maxLength(255),
+                                    $dosen = $get('dosen_id') ? (TrxDosen::find($get('dosen_id'))?->person?->nama_lengkap ?? '-') : '-';
 
-                        DatePicker::make('tanggal_sk')
-                            ->label('Tanggal SK Penugasan'),
-
-                        Textarea::make('keterangan')
-                            ->label('Keterangan Tambahan')
-                            ->columnSpanFull()
-                            ->rows(3),
-                    ]),
+                                    return new HtmlString(
+                                        '<div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm space-y-1">
+                                            <div><strong>Jenis:</strong> ' . e($jenis) . '</div>
+                                            <div><strong>Target:</strong> ' . e($target) . '</div>
+                                            <div><strong>Dosen:</strong> ' . e($dosen) . '</div>
+                                        </div>'
+                                    );
+                                }),
+                        ]),
+                ])
+                    ->columnSpanFull(),
             ])
             ->statePath('data');
     }
 
-    public function submit(PembimbingAkademikService $service): void
+    /**
+     * Mode efektif berdasarkan jenis + konfigurasi aktif prodi/angkatan.
+     * Dipakai berulang kali di form() untuk show/hide & required field.
+     */
+    public function modeSaatIni($get): PembimbingAkademikMode
     {
-        $state = $this->form->getState();
+        $jenisValue = $get('jenis');
+
+        if (! $jenisValue) {
+            return PembimbingAkademikMode::PER_MAHASISWA;
+        }
+
+        $jenis = PembimbingAkademikJenis::from($jenisValue);
+        $konfigurasi = app(PembimbingAkademikService::class)->konfigurasiAktif($get('prodi_id'), $get('angkatan_id'));
+
+        return app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
+    }
+
+    public function submit(): void
+    {
+        $this->isSubmitting = true;
 
         try {
-            $service->assignPembimbing($state);
+            $data = $this->form->getState();
+
+            app(PembimbingAkademikService::class)->tugaskan($data);
 
             Notification::make()
-                ->title('Penugasan Berhasil')
-                ->body('Dosen pembimbing akademik telah berhasil ditugaskan.')
+                ->title('Pembimbing akademik berhasil ditugaskan')
                 ->success()
                 ->send();
 
             $this->form->fill([
-                'prodi_id' => $state['prodi_id'],
-                'angkatan_id' => $state['angkatan_id'],
-                'mode' => $state['mode'] ?? null,
-                'jenis' => $state['jenis'],
+                'jenis' => $data['jenis'],
+                'prodi_id' => $data['prodi_id'] ?? null,
+                'angkatan_id' => $data['angkatan_id'] ?? null,
                 'is_primary' => true,
                 'tanggal_mulai' => now()->toDateString(),
-                'semester_mulai_id' => $state['semester_mulai_id'],
+                'semester_mulai_id' => $data['semester_mulai_id'],
             ]);
-        } catch (\DomainException | \InvalidArgumentException $e) {
+        } catch (PembimbingAkademikException $e) {
             Notification::make()
-                ->title('Gagal Memproses Penugasan')
+                ->title('Tidak bisa menyimpan')
                 ->body($e->getMessage())
-                ->danger()
+                ->warning()
                 ->send();
-        } catch (\Throwable $e) {
-            Notification::make()
-                ->title('Sistem Error')
-                ->body('Terjadi kesalahan internal. Silakan hubungi Administrator.')
-                ->danger()
-                ->send();
+        } finally {
+            $this->isSubmitting = false;
         }
-    }
-
-
-    protected function getHeaderActions(): array
-    {
-        return [
-            Action::make('generateOtomatis')
-                ->label('Generate Massal')
-                ->icon('heroicon-o-cpu-chip')
-                ->color('success')
-                ->schema([
-                    Select::make('prodi_id')
-                        ->label('Program Studi')
-                        ->options(fn() => RefProdi::query()->pluck('nama_prodi', 'id'))
-                        ->required(),
-
-                    Select::make('angkatan_id')
-                        ->label('Angkatan')
-                        ->options(fn() => RefAngkatan::query()->orderByDesc('tahun')->pluck('tahun', 'id'))
-                        ->required(),
-
-                    Select::make('dosen_id')
-                        ->label('Dosen Pembimbing Target')
-                        ->searchable()
-                        ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
-                            ->where('nidn', 'like', "%{$search}%")
-                            ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
-                            ->limit(20)
-                            ->get()
-                            ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                        ->required(),
-
-                    Select::make('jenis')
-                        ->label('Jenis Pembimbing')
-                        ->options(PembimbingAkademikJenis::class)
-                        ->default(PembimbingAkademikJenis::DOSEN_WALI->value)
-                        ->required(),
-
-                    Select::make('semester_mulai_id')
-                        ->label('Semester Mulai')
-                        ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
-                        ->required(),
-
-                    DatePicker::make('tanggal_mulai')
-                        ->label('Tanggal Mulai')
-                        ->default(now())
-                        ->required(),
-
-                    TextInput::make('nomor_sk')->label('Nomor SK'),
-                    DatePicker::make('tanggal_sk')->label('Tanggal SK'),
-                ])
-                ->action(function (array $data, PembimbingAkademikService $service) {
-                    try {
-                        $count = $service->generateOtomatis(
-                            (int) $data['prodi_id'],
-                            (int) $data['angkatan_id'],
-                            (int) $data['dosen_id'],
-                            $data['jenis'],
-                            (int) $data['semester_mulai_id'],
-                            $data['tanggal_mulai'],
-                            $data['nomor_sk'] ?? null,
-                            $data['tanggal_sk'] ?? null
-                        );
-
-                        Notification::make()
-                            ->title('Generate Berhasil')
-                            ->body("Berhasil menugaskan {$count} data pembimbing akademik secara otomatis.")
-                            ->success()
-                            ->send();
-                    } catch (\Throwable $e) {
-                        Notification::make()
-                            ->title('Generate Gagal')
-                            ->body($e->getMessage())
-                            ->danger()
-                            ->send();
-                    }
-                }),
-
-            Action::make('importExcel')
-                ->label('Import Excel')
-                ->icon('heroicon-o-arrow-up-tray')
-                ->color('gray')
-                ->schema([
-                    FileUpload::make('attachment')
-                        ->label('File Excel (.xlsx)')
-                        ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'])
-                        ->required(),
-                ])
-                ->action(function (array $data) {
-                    Notification::make()
-                        ->title('Import Terjadwal')
-                        ->body('File Excel telah masuk ke antrean background queue processor.')
-                        ->info()
-                        ->send();
-                }),
-        ];
-    }
-
-    public function table(Table $table): Table
-    {
-        return $table
-            ->query(
-                PembimbingAkademik::query()
-                    ->with(['kelas', 'mahasiswa.person', 'dosen.person', 'semesterMulai'])
-                    ->latest()
-            )
-            ->columns([
-                TextColumn::make('target')
-                    ->label('Target Penugasan')
-                    ->state(function (PembimbingAkademik $record): string {
-                        if ($record->kelas_id) {
-                            return "Kelas: {$record->kelas?->nama_kelas}";
-                        }
-                        return "Mahasiswa: {$record->mahasiswa?->nim} - {$record->mahasiswa?->person?->nama_lengkap}";
-                    })
-                    ->searchable(query: function (Builder $query, string $search) {
-                        $query->whereHas('kelas', fn($q) => $q->where('nama_kelas', 'like', "%{$search}%"))
-                            ->orWhereHas('mahasiswa', fn($q) => $q->where('nim', 'like', "%{$search}%")
-                                ->orWhereHas('person', fn($sq) => $sq->where('nama_lengkap', 'like', "%{$search}%")));
-                    })
-                    ->sortable(),
-
-                TextColumn::make('jenis')
-                    ->label('Jenis')
-                    ->badge()
-                    ->sortable(),
-
-                TextColumn::make('dosen.person.nama_lengkap')
-                    ->label('Dosen Pembimbing')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('semesterMulai.nama_tahun')
-                    ->label('Semester Mulai')
-                    ->sortable(),
-
-                TextColumn::make('tanggal_mulai')
-                    ->label('Tgl Mulai')
-                    ->date('d M Y')
-                    ->sortable(),
-
-                TextColumn::make('status')
-                    ->label('Status')
-                    ->badge()
-                    ->sortable(),
-
-                IconColumn::make('is_primary')
-                    ->label('Primary')
-                    ->boolean()
-                    ->sortable(),
-            ])
-            ->filters([
-                SelectFilter::make('jenis')
-                    ->options(PembimbingAkademikJenis::class),
-
-                SelectFilter::make('status')
-                    ->options(PembimbingAkademikStatus::class),
-
-                TrashedFilter::make(),
-            ])
-            ->recordActions([
-                EditAction::make()
-                    ->authorize(fn(PembimbingAkademik $record) => Gate::allows('update', $record)),
-                Action::make('mutasi')
-                    ->label('Mutasi Pembimbing')
-                    ->icon('heroicon-o-arrows-right-left')
-                    ->color('warning')
-                    ->visible(fn(PembimbingAkademik $record) => $record->status === PembimbingAkademikStatus::AKTIF)
-                    ->authorize(fn(PembimbingAkademik $record) => Gate::allows('update', $record))
-                    ->schema([
-                        Select::make('dosen_baru_id')
-                            ->label('Dosen Pembimbing Baru')
-                            ->searchable()
-                            ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
-                                ->where('nidn', 'like', "%{$search}%")
-                                ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
-                                ->limit(20)
-                                ->get()
-                                ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                            ->required(),
-
-                        Select::make('semester_selesai_id')
-                            ->label('Semester Pergantian')
-                            ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
-                            ->required(),
-
-                        DatePicker::make('tanggal_selesai')
-                            ->label('Tanggal Efektif Mutasi')
-                            ->default(now())
-                            ->required(),
-
-                        Textarea::make('alasan')
-                            ->label('Alasan Mutasi')
-                            ->required(),
-                    ])
-                    ->action(function (PembimbingAkademik $record, array $data, PembimbingAkademikService $service) {
-                        try {
-                            $service->mutasiPembimbing(
-                                $record,
-                                (int) $data['dosen_baru_id'],
-                                (int) $data['semester_selesai_id'],
-                                $data['tanggal_selesai'],
-                                $data['alasan']
-                            );
-
-                            Notification::make()
-                                ->title('Mutasi Pembimbing Berhasil')
-                                ->success()
-                                ->send();
-                        } catch (\Throwable $e) {
-                            Notification::make()
-                                ->title('Gagal Mutasi')
-                                ->body($e->getMessage())
-                                ->danger()
-                                ->send();
-                        }
-                    }),
-
-                Action::make('selesai')
-                    ->label('Selesaikan Penugasan')
-                    ->icon('heroicon-o-check-circle')
-                    ->color('info')
-                    ->requiresConfirmation()
-                    ->visible(fn(PembimbingAkademik $record) => $record->status === PembimbingAkademikStatus::AKTIF)
-                    ->schema([
-                        Select::make('semester_selesai_id')
-                            ->label('Semester Selesai')
-                            ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
-                            ->required(),
-                        DatePicker::make('tanggal_selesai')
-                            ->label('Tanggal Selesai')
-                            ->default(now())
-                            ->required(),
-                        Textarea::make('alasan')
-                            ->label('Alasan Selesai'),
-                    ])
-                    ->action(function (PembimbingAkademik $record, array $data) {
-                        $record->update([
-                            'status' => PembimbingAkademikStatus::SELESAI,
-                            'semester_selesai_id' => $data['semester_selesai_id'],
-                            'tanggal_selesai' => $data['tanggal_selesai'],
-                            'alasan' => $data['alasan'] ?? null,
-                            'updated_by' => auth()->id(),
-                        ]);
-
-                        Notification::make()
-                            ->title('Penugasan Diselesaikan')
-                            ->success()
-                            ->send();
-                    }),
-
-                Action::make('batalkan')
-                    ->label('Batalkan Penugasan')
-                    ->icon('heroicon-o-x-circle')
-                    ->color('danger')
-                    ->requiresConfirmation()
-                    ->visible(fn(PembimbingAkademik $record) => $record->status === PembimbingAkademikStatus::AKTIF)
-                    ->action(function (PembimbingAkademik $record) {
-                        $record->update([
-                            'status' => PembimbingAkademikStatus::DIBATALKAN,
-                            'updated_by' => auth()->id(),
-                        ]);
-
-                        Notification::make()
-                            ->title('Penugasan Dibatalkan')
-                            ->success()
-                            ->send();
-                    }),
-                DeleteAction::make(),
-                RestoreAction::make(),
-                ForceDeleteAction::make(),
-            ])
-            ->toolbarActions([
-                BulkActionGroup::make([
-                    DeleteBulkAction::make(),
-                    RestoreBulkAction::make(),
-                    ForceDeleteBulkAction::make(),
-                ]),
-            ]);
     }
 }

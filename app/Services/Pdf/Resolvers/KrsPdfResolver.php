@@ -4,6 +4,8 @@ namespace App\Services\Pdf\Resolvers;
 
 use App\Contracts\Pdf\PdfDataResolverInterface;
 use App\DataTransferObjects\Pdf\KrsPdfData;
+use App\Models\Mahasiswa;
+use App\Services\Akademik\PembimbingAkademikResolver;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -41,23 +43,30 @@ class KrsPdfResolver implements PdfDataResolverInterface
         }
 
         // Dosen wali diambil dari mahasiswa_kelas -> kelas_dosen_wali (is_primary),
-        // BUKAN dari krs.dosen_wali_id — konsisten dengan logika KrsTable.php.
+        $dosenWali = null;
+
+        $mahasiswa = Mahasiswa::find($krs->mahasiswa_id);
+
+        if ($mahasiswa) {
+            $pembimbing = app(PembimbingAkademikResolver::class)
+                ->dosenWaliAktif($mahasiswa);
+
+            if ($pembimbing) {
+                $dosenWali = DB::table('trx_dosen')
+                    ->join('ref_person', 'ref_person.id', '=', 'trx_dosen.person_id')
+                    ->where('trx_dosen.id', $pembimbing->dosen_id)
+                    ->select([
+                        'ref_person.nama_lengkap',
+                        'trx_dosen.nidn',
+                    ])
+                    ->first();
+            }
+        }
         $kelasId = DB::table('mahasiswa_kelas')
             ->where('mahasiswa_id', $krs->mahasiswa_id)
             ->orderBy('id')
             ->value('kelas_id');
 
-        $dosenWali = null;
-
-        if ($kelasId) {
-            $dosenWali = DB::table('kelas_dosen_wali')
-                ->join('trx_dosen', 'trx_dosen.id', '=', 'kelas_dosen_wali.dosen_id')
-                ->join('ref_person', 'ref_person.id', '=', 'trx_dosen.person_id')
-                ->where('kelas_dosen_wali.kelas_id', $kelasId)
-                ->orderByDesc('kelas_dosen_wali.is_primary')
-                ->select(['ref_person.nama_lengkap', 'trx_dosen.nidn'])
-                ->first();
-        }
 
         $details = DB::table('krs_detail')
             ->where('krs_id', $krsId)

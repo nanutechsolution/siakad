@@ -7,6 +7,7 @@ use App\Models\DosenDokumen;
 use App\Models\DosenProfileChangeRequest;
 use App\Models\RefDokumenDosen;
 use App\Models\TrxDosen;
+use App\Services\Akademik\PembimbingAkademikResolver;
 use BackedEnum;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -122,14 +123,9 @@ class ProfilSaya extends Page implements HasForms
             ->when($tahunAktif, fn($q) => $q->where('jadwal_kuliah.tahun_akademik_id', $tahunAktif->id))
             ->whereNull('jadwal_kuliah.deleted_at')
             ->count();
+        $resolver = app(PembimbingAkademikResolver::class);
 
-        $jumlahMahasiswaWali = DB::table('kelas_dosen_wali')
-            ->join('mahasiswa_kelas', 'mahasiswa_kelas.kelas_id', '=', 'kelas_dosen_wali.kelas_id')
-            ->where('kelas_dosen_wali.dosen_id', $dosenId)
-            ->whereNull('mahasiswa_kelas.tanggal_keluar')
-            ->distinct('mahasiswa_kelas.mahasiswa_id')
-            ->count('mahasiswa_kelas.mahasiswa_id');
-
+        $jumlahMahasiswaWali = $resolver->jumlahMahasiswaBimbingan($dosenId);
         $jumlahPenelitianKetua = DB::table('lppm_usulans')
             ->where('dosen_ketua_id', $dosenId)
             ->whereNull('deleted_at')

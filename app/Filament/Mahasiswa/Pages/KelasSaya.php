@@ -5,6 +5,7 @@ namespace App\Filament\Mahasiswa\Pages;
 use App\Enums\MahasiswaNavigationGroup;
 use App\Filament\Mahasiswa\Concerns\ResolvesMahasiswa;
 use App\Models\MahasiswaKelas;
+use App\Services\Akademik\PembimbingAkademikResolver;
 use Filament\Pages\Page;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\Computed;
@@ -37,14 +38,16 @@ class KelasSaya extends Page
             ->with([
                 'kelas.prodi',
                 'kelas.program',
-                'kelas.dosenWali' => fn($q) => $q->wherePivot('is_primary', true),
-                'kelas.dosenWali.person',
             ])
             ->where('mahasiswa_id', $this->currentMahasiswa()->id)
             ->aktif()
             ->get();
     }
-
+    public function dosenWali()
+    {
+        return app(PembimbingAkademikResolver::class)
+            ->dosenWaliAktif($this->currentMahasiswa());
+    }
     /**
      * Nama-nama teman sekelas (tanpa data pribadi lain) untuk satu kelas
      * tertentu. Dipanggil per kelas dari view, di-cache per request supaya

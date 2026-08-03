@@ -3,11 +3,13 @@
 namespace App\Services\Mahasiswa;
 
 use App\Models\Mahasiswa;
+use App\Models\MasterKurikulum;
 use App\Models\RefSkalaNilai;
 use App\Models\RiwayatStatusMahasiswa;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
 class NilaiAkademikService
@@ -46,8 +48,8 @@ class NilaiAkademikService
             ->with([
                 'krs.tahunAkademik',
                 'mataKuliah',
-                'jadwalKuliah.dosenPengampu.dosen.person',
-                'nilaiKomponen.komponen',
+                'jadwalKuliah.dosenPengampu.person',
+                'nilaiKomponen.komponenNilai',
             ]);
     }
 
@@ -117,7 +119,33 @@ class NilaiAkademikService
             'status_terakhir' => $statusTerakhir,
         ];
     }
+    private function resolveKurikulum(Mahasiswa $mahasiswa): ?MasterKurikulum
+    {
+        // 1. Dari mahasiswa
+        if ($mahasiswa->kurikulum) {
+            return $mahasiswa->kurikulum;
+        }
 
+        // 2. Dari KRS terakhir
+        $kurikulumId = DB::table('krs_detail')
+            ->join('krs', 'krs.id', '=', 'krs_detail.krs_id')
+            ->join('jadwal_kuliah', 'jadwal_kuliah.id', '=', 'krs_detail.jadwal_kuliah_id')
+            ->where('krs.mahasiswa_id', $mahasiswa->id)
+            ->orderByDesc('krs.tahun_akademik_id')
+            ->value('jadwal_kuliah.kurikulum_id');
+
+        if ($kurikulumId) {
+            return MasterKurikulum::find($kurikulumId);
+        }
+
+
+        // 3. Fallback dari prodi
+        return MasterKurikulum::query()
+            ->where('prodi_id', $mahasiswa->prodi_id)
+            ->where('aktif', true)
+            ->latest('tahun_mulai')
+            ->first();
+    }
     /**
      * Data Rekap Akademik: gabungan progres IPK per semester (untuk grafik)
      * dan progres SKS lulus vs total SKS wajib kelulusan kurikulum.
@@ -128,8 +156,8 @@ class NilaiAkademikService
             ->with('tahunAkademik')
             ->orderBy('tahun_akademik_id')
             ->get();
-
-        $totalSksWajib = $mahasiswa->kurikulum?->jumlah_sks_lulus ?? 0;
+        $kurikulum = $this->resolveKurikulum($mahasiswa);
+        $totalSksWajib = $kurikulum?->jumlah_sks_lulus ?? 0;
         $sksLulusSaatIni = $riwayatPerSemester->last()?->sks_total ?? 0;
         return [
             'riwayat_per_semester' => $riwayatPerSemester,

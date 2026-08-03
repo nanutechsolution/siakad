@@ -4,10 +4,12 @@ namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
+use App\Exceptions\PembimbingAkademikException;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\PembimbingAkademik;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
+use App\Services\PembimbingAkademikService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
@@ -20,6 +22,7 @@ use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class MutasiPembimbingPage extends Page implements HasTable
 {
@@ -34,7 +37,6 @@ class MutasiPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'mutasi-pembimbing-akademik';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
-
     public function table(Table $table): Table
     {
         return $table
@@ -69,21 +71,26 @@ class MutasiPembimbingPage extends Page implements HasTable
                     ->icon('heroicon-o-arrow-path-rounded-square')
                     ->color('warning')
                     ->modalHeading(fn(PembimbingAkademik $record) => 'Mutasi Pembimbing: ' . ($record->mahasiswa?->nim ?? $record->kelas?->nama_kelas))
-                    ->schema([
+                    ->form(fn(PembimbingAkademik $record) => [
                         Select::make('dosen_id')
                             ->label('Dosen Pengganti')
                             ->searchable()
                             ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
-                                ->where('nidn', 'like', "%{$search}%")
-                                ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
+                                ->where('id', '!=', $record->dosen_id)
+                                ->where(fn($q) => $q
+                                    ->where('nidn', 'like', "%{$search}%")
+                                    ->orWhereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%")))
                                 ->limit(20)
                                 ->get()
                                 ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                            ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))->nidn)
+                            ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
+                            ->helperText('Dosen yang sedang aktif tidak muncul di pilihan ini.')
                             ->required(),
                         DatePicker::make('tanggal_mulai')
                             ->label('Tanggal Mulai Penugasan Baru')
                             ->default(now())
+                            ->minDate($record->tanggal_mulai)
+                            ->helperText('Tidak boleh lebih awal dari tanggal mulai penugasan saat ini (' . optional($record->tanggal_mulai)->format('d M Y') . ').')
                             ->required(),
                         Select::make('semester_mulai_id')
                             ->label('Semester Mulai')
@@ -98,33 +105,49 @@ class MutasiPembimbingPage extends Page implements HasTable
                         Textarea::make('alasan')
                             ->label('Alasan Mutasi')
                             ->rows(2)
-                            ->required(),
+                            ->required()
+                            ->minLength(5),
                     ])
+                    ->requiresConfirmation()
+                    ->modalDescription(fn(PembimbingAkademik $record) => new HtmlString(
+                        'Penugasan saat ini (<strong>' . e($record->dosen?->person?->nama_lengkap) . '</strong>) akan ditutup otomatis dan diganti dosen baru. Riwayat tetap tersimpan di menu Riwayat Pembimbing.'
+                    ))
                     ->action(function (array $data, PembimbingAkademik $record): void {
-                        $record->update([
-                            'status' => PembimbingAkademikStatus::SELESAI,
-                            'tanggal_selesai' => $data['tanggal_mulai'],
-                            'semester_selesai_id' => $data['semester_mulai_id'],
-                            'updated_by' => auth()->id(),
-                        ]);
+                        try {
+                            app(PembimbingAkademikService::class)->mutasi($record, $data);
 
-                        PembimbingAkademik::create([
-                            'kelas_id' => $record->kelas_id,
-                            'mahasiswa_id' => $record->mahasiswa_id,
-                            'dosen_id' => $data['dosen_id'],
-                            'jenis' => $record->jenis,
-                            'is_primary' => $record->is_primary,
-                            'semester_mulai_id' => $data['semester_mulai_id'],
-                            'tanggal_mulai' => $data['tanggal_mulai'],
-                            'nomor_sk' => $data['nomor_sk'] ?? null,
-                            'tanggal_sk' => $data['tanggal_sk'] ?? null,
-                            'alasan' => $data['alasan'],
-                            'status' => PembimbingAkademikStatus::AKTIF,
-                            'created_by' => auth()->id(),
-                        ]);
+                            Notification::make()
+                                ->title('Mutasi pembimbing berhasil disimpan')
+                                ->success()
+                                ->send();
+                        } catch (PembimbingAkademikException $e) {
+                            Notification::make()
+                                ->title('Tidak bisa memproses mutasi')
+                                ->body($e->getMessage())
+                                ->warning()
+                                ->send();
+                        }
+                    }),
+
+                Action::make('batalkan')
+                    ->label('Batalkan')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->form([
+                        Textarea::make('alasan')
+                            ->label('Alasan Pembatalan')
+                            ->required()
+                            ->minLength(5)
+                            ->rows(2),
+                    ])
+                    ->requiresConfirmation()
+                    ->modalHeading('Batalkan Penugasan Pembimbing')
+                    ->modalDescription('Penugasan akan diakhiri tanpa pengganti. Aksi ini tidak menghapus data, hanya mengubah status menjadi Dibatalkan.')
+                    ->action(function (array $data, PembimbingAkademik $record): void {
+                        app(PembimbingAkademikService::class)->batalkan($record, $data['alasan']);
 
                         Notification::make()
-                            ->title('Mutasi pembimbing berhasil disimpan')
+                            ->title('Penugasan berhasil dibatalkan')
                             ->success()
                             ->send();
                     }),

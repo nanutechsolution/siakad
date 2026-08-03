@@ -12,7 +12,6 @@ class ListNilaiSayas extends ListRecords
 
     protected function getHeaderActions(): array
     {
-        return [
-        ];
+        return [];
     }
 }

@@ -92,14 +92,6 @@ class Kelas extends Model implements HasScopeStrategy
     }
 
     /**
-     * Get the class advisory mapping.
-     */
-    public function kelasDosenWalis(): HasMany
-    {
-        return $this->hasMany(KelasDosenWali::class, 'kelas_id');
-    }
-
-    /**
      * Get the study schedules assigned to this class.
      */
     public function jadwalKuliahs(): HasMany
@@ -144,11 +136,6 @@ class Kelas extends Model implements HasScopeStrategy
             ->withTimestamps();
     }
 
-    public function dosenWaliUtama(): HasOne
-    {
-        return $this->hasOne(KelasDosenWali::class, 'kelas_id')
-            ->where('is_primary', true);
-    }
 
     public function getPrimaryDosenWali(): ?TrxDosen
     {

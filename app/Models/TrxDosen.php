@@ -132,11 +132,6 @@ class TrxDosen extends Model implements HasScopeStrategy
     {
         return $this->hasMany(TrxPersonJabatan::class, 'person_id', 'person_id');
     }
-
-    public function kelasPerwalian(): HasMany
-    {
-        return $this->hasMany(KelasDosenWali::class, 'dosen_id', 'id');
-    }
     public function biodata()
     {
         return $this->hasOne(DosenBiodata::class, 'dosen_id');

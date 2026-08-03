@@ -313,10 +313,11 @@ class PengisianKrsPage extends Page implements HasForms
         DB::beginTransaction();
         try {
             $krsId = Str::uuid()->toString();
-            $kelas = \App\Models\Kelas::with('dosenWaliUtama')
-                ->findOrFail($this->activeKelasId);
+            $pembimbingAkademik = app(\App\Services\Akademik\PembimbingAkademikResolver::class)
+                ->dosenWaliAktif($this->mahasiswa);
+            $dosenWaliId = $pembimbingAkademik?->dosen_id;
 
-            $dosenWaliId = $kelas->dosenWaliUtama?->dosen_id;
+            $isPaket = ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
             $isPaket = ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
             // 1. Insert Header KRS (Tabel KRS menggunakan UUID di kolom id)
             DB::table('krs')->insert([

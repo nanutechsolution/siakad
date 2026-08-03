@@ -54,10 +54,6 @@ class RefPerson extends Model
         return $this->hasOne(TrxDosen::class, 'person_id');
     }
 
-    public function trxDosen()
-    {
-        return $this->hasOne(TrxDosen::class, 'person_id');
-    }
     public function jabatans(): HasMany
     {
         return $this->hasMany(TrxPersonJabatan::class, 'person_id');

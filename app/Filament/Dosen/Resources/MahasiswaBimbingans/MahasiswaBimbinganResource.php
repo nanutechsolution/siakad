@@ -1,7 +1,7 @@
 <?php
 
 namespace App\Filament\Dosen\Resources\MahasiswaBimbingans;
- 
+
 use App\Filament\Dosen\Resources\MahasiswaBimbingans\Pages\ListMahasiswaBimbingans;
 use App\Filament\Dosen\Resources\MahasiswaBimbingans\Pages\ViewMahasiswaBimbingan;
 use App\Filament\Dosen\Resources\MahasiswaBimbingans\Schemas\MahasiswaBimbinganForm;
@@ -10,6 +10,7 @@ use App\Filament\Dosen\Resources\MahasiswaBimbingans\Tables\MahasiswaBimbingansT
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
+use App\Services\Akademik\PembimbingAkademikResolver;
 use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
@@ -45,31 +46,29 @@ class MahasiswaBimbinganResource extends Resource
         return false; // Dosen tidak membuat data mahasiswa
     }
     /**
-     * Optimasi Query (Mencegah N+1 dan memfilter data)
+     * Optimasi Query (Mencegah N+1 dan memfilter data).
+     * Sumber kebenaran siapa mahasiswa bimbingan dosen ini didelegasikan
+     * ke PembimbingAkademikResolver — mendukung mode PER_KELAS & PER_MAHASISWA
+     * tanpa perubahan kode di sini jika konfigurasi prodi berubah.
      */
     public static function getEloquentQuery(): Builder
     {
-        $user = Auth::user();
-        $dosenId = $user->person?->dosen?->id;
-
-        // Ambil ID Tahun Akademik Aktif sekali saja
+        $dosenId = Auth::user()?->person?->dosen?->id;
         $activeTaId = RefTahunAkademik::where('is_active', 1)->value('id');
 
-        return parent::getEloquentQuery()
-            // Eager load relasi yang dibutuhkan untuk mencegah N+1 di Tabel
+        $query = parent::getEloquentQuery()
             ->with([
                 'person',
                 'prodi',
                 'angkatan',
-                'krs' => fn($q) => $q->where('tahun_akademik_id', $activeTaId) // Hanya ambil KRS aktif
-            ])
-            // Filter Mahasiswa bimbingannya saja
-            ->whereHas('kelas', function ($query) use ($dosenId) {
-                $query->whereHas('kelasDosenWalis', function ($q) use ($dosenId) {
-                    $q->where('dosen_id', $dosenId)
-                        ->where('is_primary', 1);
-                });
-            });
+                'krs' => fn($q) => $q->where('tahun_akademik_id', $activeTaId),
+            ]);
+
+        if (! $dosenId) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return app(PembimbingAkademikResolver::class)->scopeMahasiswaBimbingan($query, $dosenId);
     }
     public static function form(Schema $schema): Schema
     {

@@ -3,17 +3,13 @@
 namespace App\Filament\Mahasiswa\Resources\NilaiSayas;
 
 use App\Enums\MahasiswaNavigationGroup;
-use App\Filament\Mahasiswa\Resources\NilaiSayas\Pages\CreateNilaiSaya;
-use App\Filament\Mahasiswa\Resources\NilaiSayas\Pages\EditNilaiSaya;
 use App\Filament\Mahasiswa\Resources\NilaiSayas\Pages\ListNilaiSayas;
 use App\Filament\Mahasiswa\Resources\NilaiSayas\Schemas\NilaiSayaForm;
 use App\Filament\Mahasiswa\Resources\NilaiSayas\Tables\NilaiSayasTable;
 use App\Models\KrsDetail;
 use App\Services\Mahasiswa\NilaiAkademikService;
-use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
-use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
@@ -24,6 +20,8 @@ class NilaiSayaResource extends Resource
     protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::NILAI->value;
     protected static ?string $navigationLabel = 'Nilai Saya';
     protected static ?string $modelLabel = 'Nilai';
+    protected static ?string $pluralModelLabel = 'Nilai Saya';
+    protected static ?string $slug = 'nilai-saya';
     protected static ?int $navigationSort = 1;
 
     public static function getEloquentQuery(): Builder

@@ -10,7 +10,7 @@ class DosenNilaiPolicy
 
     public function inputNilai(User $user, KrsDetail $detail): bool
     {
-        $dosenId = $user->person?->trxDosen?->id;
+        $dosenId = $user->person?->dosen?->id;
 
         if (! $dosenId) {
             return false;
@@ -29,7 +29,7 @@ class DosenNilaiPolicy
 
     public function revisiNilai(User $user, KrsDetail $detail): bool
     {
-        $dosenId = $user->person?->trxDosen?->id;
+        $dosenId = $user->person?->dosen?->id;
 
         if (! $dosenId) {
             return false;

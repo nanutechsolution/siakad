@@ -77,7 +77,6 @@ class AppServiceProvider extends ServiceProvider
         );
         TrxPersonJabatan::observe(TrxPersonJabatanObserver::class);
         TrxDosen::observe(TrxDosenObserver::class);
-        KelasDosenWali::observe(KelasDosenWaliObserver::class);
         Mahasiswa::observe(MahasiswaObserver::class);
         PerkuliahanSesi::observe(PerkuliahanSesiObserver::class);
         RefTahunAkademik::observe(TahunAkademikObserver::class);

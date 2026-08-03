@@ -9,6 +9,7 @@ use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
+use Filament\Support\Exceptions\Halt;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -130,6 +131,8 @@ class MahasiswaBimbingansTable
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
                     ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
+
+
                         try {
                             $krs = $record->krs->first();
                             $approvalService->approve($krs, $data['catatan_dosen'] ?? null);
@@ -155,39 +158,50 @@ class MahasiswaBimbingansTable
                         $action->cancel();
                     }),
 
-                // Tombol Tolak
+
+
                 Action::make('reject')
                     ->label('Tolak KRS')
                     ->color('danger')
                     ->icon('heroicon-o-x-circle')
-                    ->requiresConfirmation()
-                    ->close()
                     ->visible(
                         fn(Model $record) =>
                         $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
                     )
-                    ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
-                        if (empty(trim($data['catatan_dosen'] ?? ''))) {
-                            Notification::make()->title('Catatan wajib diisi saat menolak KRS.')->warning()->send();
-                            return; // Hentikan proses jika catatan kosong (jangan tutup modal)
-                        }
-
+                    ->schema([
+                        Textarea::make('alasan_penolakan')
+                            ->label('Alasan Penolakan')
+                            ->placeholder('Jelaskan alasan kenapa KRS mahasiswa ini ditolak...')
+                            ->required()
+                            ->rows(3),
+                    ])
+                    ->modalHeading('Tolak Pengajuan KRS')
+                    ->modalDescription('Apakah Anda yakin ingin menolak KRS ini?')
+                    ->modalSubmitActionLabel('Ya, Tolak KRS')
+                    ->action(function (array $data, Model $record, KrsApprovalService $approvalService) {
                         try {
                             $krs = $record->krs->first();
-                            $approvalService->reject($krs, $data['catatan_dosen']);
+                            $approvalService->reject($krs, $data['alasan_penolakan']);
+
+                            if ($userAkun = $record->akunUser()) {
+                                $userAkun->notify(new \App\Notifications\KrsStatusNotification(
+                                    status: 'DITOLAK',
+                                    catatan: $data['alasan_penolakan'],
+                                    tahunAkademik: $krs->tahunAkademik?->nama_tahun,
+                                ));
+                            }
 
                             Notification::make()->title('KRS berhasil ditolak')->success()->send();
+
+                            // HENTIKAN ACTION & TUTUP MODAL
+                            throw new Halt();
                         } catch (\Throwable $e) {
-                            if ($e instanceof \Filament\Support\Exceptions\Halt) {
-                                throw $e;
+                            if ($e instanceof Halt) {
+                                throw $e; // Biarkan Halt lewat untuk menutup modal
                             }
 
                             Notification::make()->title('Gagal: ' . $e->getMessage())->danger()->send();
-                            return; // Hentikan proses jika benar-benar gagal
                         }
-
-                        // Tutup modal dengan aman di luar blok try-catch
-                        $action->cancel();
                     }),
             ]);
     }
