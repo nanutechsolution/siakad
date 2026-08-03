@@ -179,7 +179,7 @@ class RiwayatPresensi extends Page implements HasTable
 
                 return (object) [
                     'pertemuan_ke' => $sesi->pertemuan_ke,
-                    'tanggal' => $sesi->tanggal_efektif,
+                    'tanggal' => $sesi->waktu_mulai_realisasi,
                     'status_label' => $absensi?->status_label ?? 'Belum Tercatat',
                     'status_kehadiran' => $absensi?->status_kehadiran,
                     'waktu_check_in' => $absensi?->waktu_check_in,
