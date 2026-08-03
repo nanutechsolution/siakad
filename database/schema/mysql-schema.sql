@@ -816,6 +816,27 @@ CREATE TABLE `keuangan_skema_tarif` (
   CONSTRAINT `keuangan_skema_tarif_program_kelas_id_foreign` FOREIGN KEY (`program_kelas_id`) REFERENCES `ref_program` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `konfigurasi_pembimbing_akademik`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `konfigurasi_pembimbing_akademik` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `prodi_id` bigint unsigned NOT NULL,
+  `angkatan_id` int NOT NULL,
+  `mode` enum('PER_KELAS','PER_MAHASISWA') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PER_KELAS',
+  `aktif` tinyint(1) NOT NULL DEFAULT '1',
+  `keterangan` text COLLATE utf8mb4_unicode_ci,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uniq_konfigurasi_pembimbing` (`prodi_id`,`angkatan_id`),
+  KEY `konfigurasi_pembimbing_akademik_angkatan_id_foreign` (`angkatan_id`),
+  KEY `konfigurasi_pembimbing_akademik_mode_index` (`mode`),
+  KEY `konfigurasi_pembimbing_akademik_aktif_index` (`aktif`),
+  CONSTRAINT `konfigurasi_pembimbing_akademik_angkatan_id_foreign` FOREIGN KEY (`angkatan_id`) REFERENCES `ref_angkatan` (`id_tahun`) ON DELETE RESTRICT,
+  CONSTRAINT `konfigurasi_pembimbing_akademik_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`) ON DELETE RESTRICT
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `krs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2302,6 +2323,55 @@ CREATE TABLE `pembayaran_mahasiswas` (
   CONSTRAINT `pembayaran_mahasiswas_verified_by_foreign` FOREIGN KEY (`verified_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `pembimbing_akademik`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `pembimbing_akademik` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `kelas_id` bigint unsigned DEFAULT NULL,
+  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jenis` enum('DOSEN_WALI','PEMBIMBING_PKL','PEMBIMBING_MBKM','PEMBIMBING_SKRIPSI','PEMBIMBING_TESIS','PEMBIMBING_DISERTASI','PENGUJI_SKRIPSI') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DOSEN_WALI',
+  `is_primary` tinyint(1) NOT NULL DEFAULT '1',
+  `semester_mulai_id` bigint unsigned NOT NULL,
+  `semester_selesai_id` bigint unsigned DEFAULT NULL,
+  `tanggal_mulai` date NOT NULL,
+  `tanggal_selesai` date DEFAULT NULL,
+  `nomor_sk` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `tanggal_sk` date DEFAULT NULL,
+  `alasan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `keterangan` text COLLATE utf8mb4_unicode_ci,
+  `created_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('AKTIF','SELESAI','DIBATALKAN') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'AKTIF',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `pembimbing_akademik_semester_selesai_id_foreign` (`semester_selesai_id`),
+  KEY `pembimbing_akademik_created_by_foreign` (`created_by`),
+  KEY `pembimbing_akademik_updated_by_foreign` (`updated_by`),
+  KEY `pembimbing_akademik_deleted_by_foreign` (`deleted_by`),
+  KEY `pembimbing_akademik_kelas_id_index` (`kelas_id`),
+  KEY `pembimbing_akademik_mahasiswa_id_index` (`mahasiswa_id`),
+  KEY `pembimbing_akademik_dosen_id_index` (`dosen_id`),
+  KEY `pembimbing_akademik_jenis_index` (`jenis`),
+  KEY `pembimbing_akademik_status_index` (`status`),
+  KEY `pembimbing_akademik_semester_mulai_id_semester_selesai_id_index` (`semester_mulai_id`,`semester_selesai_id`),
+  KEY `pembimbing_akademik_mahasiswa_id_jenis_status_index` (`mahasiswa_id`,`jenis`,`status`),
+  KEY `pembimbing_akademik_kelas_id_jenis_status_index` (`kelas_id`,`jenis`,`status`),
+  KEY `pembimbing_akademik_dosen_id_status_index` (`dosen_id`,`status`),
+  CONSTRAINT `pembimbing_akademik_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `pembimbing_akademik_deleted_by_foreign` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `pembimbing_akademik_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `pembimbing_akademik_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `pembimbing_akademik_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `pembimbing_akademik_semester_mulai_id_foreign` FOREIGN KEY (`semester_mulai_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `pembimbing_akademik_semester_selesai_id_foreign` FOREIGN KEY (`semester_selesai_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `pembimbing_akademik_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `perkuliahan_absensi`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -3378,3 +3448,5 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (254,'2026_07_30_01
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (255,'2026_07_30_011729_create_midtrans_settings',17);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (256,'2026_07_30_203542_create_midtrans_transactions_table',18);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (257,'2026_07_30_203643_create_midtrans_gateway_logs_table',18);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (258,'2026_08_03_123636_create_konfigurasi_pembimbing_akademik_table',19);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (259,'2026_08_03_123708_create_pembimbing_akademik_table',19);

@@ -266,4 +266,10 @@ class Mahasiswa extends Model implements HasScopeStrategy
     {
         return $this->person?->nama_lengkap;
     }
+
+
+    public function pembimbingAkademik()
+    {
+        return $this->hasMany(PembimbingAkademik::class, 'mahasiswa_id');
+    }
 }

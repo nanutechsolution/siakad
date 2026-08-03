@@ -3,8 +3,6 @@
 namespace App\Filament\Clusters\PdfCenter\Resources\PdfDocuments;
 
 use App\Filament\Clusters\PdfCenter\PdfCenterCluster;
-use App\Filament\Clusters\PdfCenter\Resources\PdfDocuments\Pages\CreatePdfDocument;
-use App\Filament\Clusters\PdfCenter\Resources\PdfDocuments\Pages\EditPdfDocument;
 use App\Filament\Clusters\PdfCenter\Resources\PdfDocuments\Pages\ListPdfDocuments;
 use App\Filament\Clusters\PdfCenter\Resources\PdfDocuments\Pages\ViewPdfDocument;
 use App\Filament\Clusters\PdfCenter\Resources\PdfDocuments\Schemas\PdfDocumentForm;
