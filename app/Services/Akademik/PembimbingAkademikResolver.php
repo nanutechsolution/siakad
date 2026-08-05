@@ -155,9 +155,15 @@ class PembimbingAkademikResolver
                         ->join('pembimbing_akademik as pa', 'pa.kelas_id', '=', 'mk.kelas_id')
                         ->whereColumn('mk.mahasiswa_id', 'mahasiswas.id')
                         ->whereNull('mk.tanggal_keluar')
-                        ->where('pa.jenis', 'DOSEN_WALI')
+                        ->where(
+                            'pa.jenis',
+                            PembimbingAkademikJenis::DOSEN_WALI->value
+                        )
+                        ->where(
+                            'pa.status',
+                            PembimbingAkademikStatus::AKTIF->value
+                        )
                         ->where('pa.is_primary', 1)
-                        ->where('pa.status', 'AKTIF')
                         ->where('pa.dosen_id', $dosenId)
                         ->whereNull('pa.deleted_at');
                 });

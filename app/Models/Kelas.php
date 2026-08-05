@@ -4,6 +4,8 @@ namespace App\Models;
 
 use App\Domain\Authorization\Contracts\HasScopeStrategy;
 use App\Domain\Authorization\Enums\ScopeStrategy;
+use App\Enums\PembimbingAkademikJenis;
+use App\Enums\PembimbingAkademikStatus;
 use App\Models\Concerns\VisibleToUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -112,18 +114,6 @@ class Kelas extends Model implements HasScopeStrategy
         return $this->mahasiswaAktif()->count();
     }
 
-    // public function mahasiswas(): BelongsToMany
-    // {
-    //     return $this->belongsToMany(Mahasiswa::class, 'mahasiswa_kelas', 'kelas_id', 'mahasiswa_id')
-    //         ->withPivot('id', 'tanggal_masuk', 'tanggal_keluar')
-    //         ->withTimestamps();
-    // }
-    // public function dosens(): BelongsToMany
-    // {
-    //     return $this->belongsToMany(TrxDosen::class, 'kelas_dosen_wali', 'kelas_id', 'dosen_id')
-    //         ->withPivot('id', 'is_primary')
-    //         ->withTimestamps();
-    // }
     public function dosenWali(): BelongsToMany
     {
         return $this->belongsToMany(
@@ -135,7 +125,23 @@ class Kelas extends Model implements HasScopeStrategy
             ->withPivot('id', 'is_primary')
             ->withTimestamps();
     }
-
+    public function pembimbingAkademik()
+    {
+        return $this->hasMany(
+            PembimbingAkademik::class,
+            'kelas_id'
+        );
+    }
+    public function dosenWaliUtama()
+    {
+        return $this->hasOne(
+            PembimbingAkademik::class,
+            'kelas_id'
+        )
+            ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
+            ->where('status', PembimbingAkademikStatus::AKTIF)
+            ->where('is_primary', true);
+    }
 
     public function getPrimaryDosenWali(): ?TrxDosen
     {

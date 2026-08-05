@@ -7,6 +7,7 @@ use App\Enums\Pdf\PdfDocumentType;
 use App\Filament\Actions\Pdf\PdfDownloadAction;
 use App\Models\Krs;
 use App\Models\KrsStatusLog;
+use App\Services\Akademik\PembimbingAkademikResolver;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -40,10 +41,13 @@ class KrsTable
                     ->label('Nama Mahasiswa')
                     ->searchable()
                     ->sortable()
-                    ->description(function (Krs $record): string {
-                        $prodi = $record->mahasiswa->prodi->nama_prodi ?? 'Prodi tidak ditemukan';
-                        $kelas = $record->mahasiswa->kelas->first()?->nama_kelas ?? 'Belum ada kelas';
-                        return $prodi . ' • Kelas: ' . $kelas;
+                    ->description(function (Krs $record) {
+
+                        $resolver = app(PembimbingAkademikResolver::class);
+                        $pa = $resolver->dosenWaliAktif($record->mahasiswa);
+                        return $pa?->dosen?->nidn
+                            ? "NIDN : {$pa->dosen->nidn}"
+                            : null;
                     })
                     ->wrap(),
 
@@ -78,33 +82,26 @@ class KrsTable
 
                 TextColumn::make('dosen_wali')
                     ->label('Dosen Wali')
-                    ->getStateUsing(function (Krs $record): string {
-                        // 1. Ambil kelas pertama mahasiswa
-                        $kelas = $record->mahasiswa?->kelas?->first();
-                        if (!$kelas) return 'Belum Masuk Kelas';
+                    ->getStateUsing(function (Krs $record) {
 
-                        // 2. Ambil dosen wali utama (is_primary = 1)
-                        $dosenWali = $kelas->dosenWali?->where('pivot.is_primary', 1)->first()
-                            ?? $kelas->dosenWali?->first();
+                        $resolver = app(PembimbingAkademikResolver::class);
 
-                        // 3. Panggil accessor 'nama_dengan_gelar' dari model RefPerson
-                        return $dosenWali?->person?->nama_dengan_gelar ?? 'Belum di-set';
-                    })
-                    ->description(function (Krs $record): ?string {
-                        $kelas = $record->mahasiswa?->kelas?->first();
-                        if (!$kelas) return null;
+                        $pa = $resolver->dosenWaliAktif($record->mahasiswa);
 
-                        $dosenWali = $kelas->dosenWali?->where('pivot.is_primary', 1)->first()
-                            ?? $kelas->dosenWali?->first();
-                        return $dosenWali?->nidn ? 'NIDN: ' . $dosenWali->nidn : null;
+                        return $pa?->dosen?->person?->nama_dengan_gelar
+                            ?? 'Belum di-set';
                     })
-                    // Kolom pencarian tetap diarahkan ke 'nama_lengkap' di database agar SQL LIKE bekerja
-                    ->searchable(query: function (Builder $query, string $search): Builder {
-                        return $query->whereHas('mahasiswa.kelas.dosenWali.person', function ($q) use ($search) {
-                            $q->where('nama_lengkap', 'like', "%{$search}%");
-                        });
+                    ->description(function (Krs $record) {
+
+                        $resolver = app(PembimbingAkademikResolver::class);
+
+                        $pa = $resolver->dosenWaliAktif($record->mahasiswa);
+
+                        return $pa?->dosen?->nidn
+                            ? "NIDN : {$pa->dosen->nidn}"
+                            : null;
                     })
-                    ->toggleable(),
+                    ->toggleable()
             ])
             ->filters([
                 SelectFilter::make('tahun_akademik_id')
@@ -119,9 +116,6 @@ class KrsTable
                         'DITOLAK' => 'Ditolak',
                         'DIBATALKAN' => 'Dibatalkan',
                     ]),
-                SelectFilter::make('dosen_wali_id')
-                    ->label('Dosen Wali')
-                    ->relationship('dosenWali.person', 'nama_lengkap'),
             ])
             ->recordActions([
                 ActionGroup::make([

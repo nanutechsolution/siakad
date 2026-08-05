@@ -51,9 +51,9 @@ class KrsResource extends Resource
     {
         return parent::getEloquentQuery()
             ->with([
+                'mahasiswa.person',
                 'mahasiswa.prodi',
-                'mahasiswa.kelas.dosenWali.person.gelars',
-                'mahasiswa.tagihanMahasiswas'
+                'mahasiswa.tagihanMahasiswas',
             ]);
     }
 
