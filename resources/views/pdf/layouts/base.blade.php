@@ -185,7 +185,7 @@
     </footer>
 
     <!-- Gunakan tag main dengan margin-top agar konten tidak tertutup header fixed -->
-    <main style="padding-top: 10px;">
+    <main style="padding-top: 25px;">
         @yield('content')
     </main>
 </body>
