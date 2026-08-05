@@ -62,9 +62,9 @@ final class BeasiswaService
                         ON dt.komponen_biaya_id = bd.komponen_biaya_id
                        AND dt.skema_tarif_id = (
                             SELECT st.id FROM keuangan_skema_tarif st
-                            WHERE st.angkatan_id = m.angkatan_id
-                              AND st.prodi_id = m.prodi_id
-                              AND st.program_kelas_id = m.program_id
+                            WHERE st.angkatan_id = mahasiswas.angkatan_id
+                              AND st.prodi_id = mahasiswas.prodi_id
+                              AND st.program_kelas_id = mahasiswas.program_id
                               AND st.is_active = 1
                             LIMIT 1
                        )
