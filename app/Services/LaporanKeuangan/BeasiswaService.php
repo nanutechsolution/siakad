@@ -43,6 +43,7 @@ final class BeasiswaService
         return $query
             ->orderBy('p.nama_lengkap')
             ->selectRaw("
+               mahasiswas.id,
                 mahasiswas.id as mahasiswa_id,
                 p.nama_lengkap,
                 mbe.nama_beasiswa,
