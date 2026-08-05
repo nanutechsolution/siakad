@@ -235,12 +235,6 @@ class KrsTable
                         type: PdfDocumentType::KRS,
                         contextResolver: fn(Krs $record) => ['krs_id' => $record->id],
                     ),
-                    Action::make('cetak')
-                        ->label('Cetak PDF')
-                        ->icon('heroicon-o-printer')
-                        ->color('success')
-                        ->url(fn(Krs $record) => route('krs.cetak', $record->id))
-                        ->openUrlInNewTab(),
                 ])
             ])
             ->toolbarActions([
