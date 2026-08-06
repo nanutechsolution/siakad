@@ -63,10 +63,7 @@ class MahasiswaAccountWidget extends Widget
          */
         $pembimbingAkademik = app(PembimbingAkademikResolver::class)
             ->dosenWaliAktif($mahasiswa);
-
         $dosenWali = $pembimbingAkademik?->dosen?->person;
-
-
         return [
             'mahasiswa' => $mahasiswa,
             'user' => $user,

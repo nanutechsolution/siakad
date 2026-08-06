@@ -30,6 +30,7 @@ class DokumenAkademikController extends Controller
 
         $khs = $this->service->khsData($mahasiswa, $tahunAkademikId);
 
+        dd($khs);
         $pdf = Pdf::loadView('pdf.mhs.khs', [
             'mahasiswa' => $mahasiswa,
             'khs' => $khs,
