@@ -4,6 +4,7 @@ namespace App\Providers\Filament;
 
 use App\Enums\DosenNavigation;
 use App\Filament\Dosen\Pages\Auth\LoginDosen;
+use App\Http\Middleware\ForcePasswordChange;
 use Filament\Enums\ThemeMode;
 use Filament\Http\Middleware\Authenticate;
 use Filament\Http\Middleware\AuthenticateSession;
@@ -77,6 +78,7 @@ class DosenPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                ForcePasswordChange::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
