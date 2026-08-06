@@ -6,6 +6,7 @@ use App\Enums\NavigationGroup;
 use App\Filament\Resources\Kelas\Pages\CreateKelas;
 use App\Filament\Resources\Kelas\Pages\EditKelas;
 use App\Filament\Resources\Kelas\Pages\ListKelas;
+use App\Filament\Resources\Kelas\Pages\PlottingMahasiswa;
 use App\Filament\Resources\Kelas\Pages\ViewKelas;
 use App\Filament\Resources\Kelas\RelationManagers\DosenWaliRelationManager;
 use App\Filament\Resources\Kelas\RelationManagers\MahasiswasRelationManager;
@@ -53,6 +54,7 @@ class KelasResource extends Resource
         return [
             'index' => ListKelas::route('/'),
             'create' => CreateKelas::route('/create'),
+            'plotting' => PlottingMahasiswa::route('/plotting'),
             'view' => ViewKelas::route('/{record}'),
             'edit' => EditKelas::route('/{record}/edit'),
         ];
