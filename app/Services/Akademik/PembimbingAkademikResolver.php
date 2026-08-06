@@ -106,6 +106,7 @@ class PembimbingAkademikResolver
      */
     public function scopeMahasiswaBimbingan(Builder $query, string $dosenId): Builder
     {
+        dd($dosenId);
         return $query->where(function (Builder $q) use ($dosenId) {
             $q->where(function (Builder $perMahasiswa) use ($dosenId) {
                 $perMahasiswa->whereExists(function ($sub) {
