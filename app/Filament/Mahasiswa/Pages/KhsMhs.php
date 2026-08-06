@@ -53,14 +53,6 @@ class KhsMhs extends Page
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('cetak-khs')
-                ->label('Cetak KHS')
-                ->icon('heroicon-o-printer')
-                ->url(fn() => route('mahasiswa.khs.download', [
-                    'tahunAkademikId' => $this->tahunAkademikId,
-                ]))
-                ->openUrlInNewTab()
-                ->disabled(fn() => blank($this->tahunAkademikId)),
             Action::make('cetak')
                 ->label('Cetak PDF')
                 ->icon('heroicon-o-printer')
