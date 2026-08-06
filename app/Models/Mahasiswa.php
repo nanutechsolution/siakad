@@ -91,7 +91,7 @@ class Mahasiswa extends Model implements HasScopeStrategy
         return $this->hasMany(TagihanMahasiswa::class, 'mahasiswa_id');
     }
 
-    
+
     public function tagihanMahasiswas(): HasMany
     {
         return $this->hasMany(TagihanMahasiswa::class, 'mahasiswa_id');
@@ -124,14 +124,13 @@ class Mahasiswa extends Model implements HasScopeStrategy
     {
         return $this->hasMany(MahasiswaKelas::class, 'mahasiswa_id', 'id');
     }
-
-    // /**
-    //  * Helper scope untuk mengambil kelas yang saat ini sedang aktif saja.
-    //  */
-    // public function kelasAktif()
-    // {
-    //     return $this->mahasiswaKelas()->whereNull('tanggal_keluar');
-    // }
+    public function scopeBelumBerkelas(Builder $query): Builder
+    {
+        return $query->whereDoesntHave(
+            'mahasiswaKelas',
+            fn(Builder $q) => $q->whereNull('tanggal_keluar')
+        );
+    }
     /**
      * Status risiko akademik sederhana berdasar IPK terakhir & tren IPS.
      * Sesuaikan ambang batas (2.00) dengan aturan akademik kampusmu.
