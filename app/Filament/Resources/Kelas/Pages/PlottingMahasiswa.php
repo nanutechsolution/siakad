@@ -30,6 +30,7 @@ class PlottingMahasiswa extends Page implements HasTable
     protected static ?string $title = 'Plotting Mahasiswa';
     protected static ?string $navigationLabel = 'Plotting Mahasiswa';
     protected string $view = 'filament.resources.kelas.pages.plotting-mahasiswa';
+    protected static bool $shouldRegisterNavigation = false;
     public ?int $tahunAkademikId = null;
     public ?int $prodiId = null;
     public ?int $programId = null;
