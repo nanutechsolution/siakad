@@ -9,9 +9,8 @@ class CreateKelas extends CreateRecord
 {
     protected static string $resource = KelasResource::class;
 
-
-    protected function getRedirectUrl(): string
-    {
-        return static::getResource()::getUrl('list', array_filter(request()->query()));
-    }
+    // protected function getRedirectUrl(): string
+    // {
+    //     return $this->getResource()::getUrl('index');
+    // }
 }

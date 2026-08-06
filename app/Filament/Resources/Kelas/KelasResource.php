@@ -5,11 +5,7 @@ namespace App\Filament\Resources\Kelas;
 use App\Enums\NavigationGroup;
 use App\Filament\Resources\Kelas\Pages\CreateKelas;
 use App\Filament\Resources\Kelas\Pages\EditKelas;
-use App\Filament\Resources\Kelas\Pages\GenerateKelasWizard;
 use App\Filament\Resources\Kelas\Pages\ListKelas;
-use App\Filament\Resources\Kelas\Pages\PilihKonteks;
-use App\Filament\Resources\Kelas\Pages\PlottingMahasiswa;
-use App\Filament\Resources\Kelas\Pages\ViewKelas;
 use App\Filament\Resources\Kelas\RelationManagers\DosenWaliRelationManager;
 use App\Filament\Resources\Kelas\RelationManagers\MahasiswasRelationManager;
 use App\Filament\Resources\Kelas\Schemas\KelasForm;
@@ -54,12 +50,8 @@ class KelasResource extends Resource
     public static function getPages(): array
     {
         return [
-            'index' => PilihKonteks::route('/'),
-            'list' => ListKelas::route('/list'),
+            'index' => ListKelas::route('/'),
             'create' => CreateKelas::route('/create'),
-            'generate' => GenerateKelasWizard::route('/generate'),
-            'plotting' => PlottingMahasiswa::route('/plotting'),
-            'view' => ViewKelas::route('/{record}'),
             'edit' => EditKelas::route('/{record}/edit'),
         ];
     }
