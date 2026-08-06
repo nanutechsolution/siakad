@@ -62,7 +62,7 @@ class PlottingMahasiswa extends Page implements HasTable
 
         // Sesuaikan nama tabel/model referensi tahun akademik dengan skema Anda.
         $this->tahunAkademikLabel = $this->tahunAkademikId
-            ? (DB::table('ref_tahun_akademik')->where('id', $this->tahunAkademikId)->value('nama') ?? '-')
+            ? (DB::table('ref_tahun_akademik')->where('id', $this->tahunAkademikId)->value('nama_tahun') ?? '-')
             : '-';
     }
 
