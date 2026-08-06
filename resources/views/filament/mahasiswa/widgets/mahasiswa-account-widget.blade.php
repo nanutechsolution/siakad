@@ -31,7 +31,6 @@
 
             <!-- Bagian Bawah: Informasi Akademik (Grid) -->
             <div class="grid grid-cols-2 gap-4 md:grid-cols-4">
-                @if($kelasAktif)
                 <div class="flex flex-col">
                     <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Kelas</span>
                     <span class="mt-1 font-medium text-gray-900 dark:text-white truncate">{{ $kelasAktif->nama_kelas ?? 'Kelas Belum Diset' }}</span>
@@ -40,7 +39,6 @@
                     <span class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Angkatan</span>
                     <span class="mt-1 font-medium text-gray-900 dark:text-white truncate">{{ $kelasAktif->angkatan_id ?? 'Angkatan Belum Diset' }}</span>
                 </div>
-                @endif
 
                 @if($mahasiswa->kurikulum)
                 <div class="flex flex-col">
