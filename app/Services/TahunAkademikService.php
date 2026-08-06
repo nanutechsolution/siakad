@@ -14,8 +14,11 @@ class TahunAkademikService
 
     public function getActive(): RefTahunAkademik
     {
-        return RefTahunAkademik::where('is_active', true)->first()
-            ?? RefTahunAkademik::orderByDesc('tahun_keluar')
+        return RefTahunAkademik::query()
+            ->where('is_active', true)
+            ->first()
+            ?? RefTahunAkademik::query()
+            ->orderByDesc('kode_tahun')
             ->orderByDesc('semester')
             ->firstOrFail();
     }
