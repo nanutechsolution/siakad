@@ -73,43 +73,70 @@ class KelasTable
             ->toolbarActions([
                 ActionsBulkActionGroup::make([
                     ActionsDeleteBulkAction::make()
-                        // KUNCI: Matikan notifikasi sukses bawaan Filament agar tidak bentrok
+                        ->label('Hapus Kelas')
+                        ->icon('heroicon-o-trash')
+                        ->color('danger')
+                        ->requiresConfirmation()
+                        ->modalHeading('Hapus Kelas')
+                        ->modalDescription('Hanya kelas yang belum pernah digunakan yang dapat dihapus.')
                         ->successNotification(null)
                         ->action(function (Collection $records) {
-                            $gagalHapus = 0;
-                            $berhasilHapus = 0;
+
+                            $berhasil = 0;
+                            $gagal = [];
 
                             foreach ($records as $record) {
-                                // Cek apakah kelas ini masih memiliki mahasiswa aktif ATAU dosen wali terikat
-                                // Pastikan di model Kelas Anda sudah ada relasi 'dosenWali' atau sesuaikan namanya
-                                $hasMahasiswaAktif = $record->mahasiswaKelasAktif()->exists();
-                                $hasDosenWali = method_exists($record, 'dosenWali') ? $record->dosenWali()->exists() : false;
 
-                                if ($hasMahasiswaAktif || $hasDosenWali) {
-                                    $gagalHapus++;
-                                    continue; // Lewati data ini, jangan di-delete
+                                $alasan = [];
+
+                                if ($record->mahasiswaKelas()->exists()) {
+                                    $alasan[] = 'masih memiliki riwayat mahasiswa';
+                                }
+
+                                if ($record->pembimbingAkademik()->exists()) {
+                                    $alasan[] = 'masih memiliki pembimbing akademik';
+                                }
+
+                                if (method_exists($record, 'jadwalKuliah') && $record->jadwalKuliah()->exists()) {
+                                    $alasan[] = 'masih memiliki jadwal kuliah';
+                                }
+
+                                if (method_exists($record, 'krsDetail') && $record->krsDetail()->exists()) {
+                                    $alasan[] = 'sudah digunakan pada KRS';
+                                }
+
+                                if (count($alasan)) {
+                                    $gagal[] = [
+                                        'nama'   => $record->nama_kelas,
+                                        'alasan' => implode(', ', $alasan),
+                                    ];
+
+                                    continue;
                                 }
 
                                 $record->delete();
-                                $berhasilHapus++;
+                                $berhasil++;
                             }
 
-                            // Kondisi 1: Jika ada yang gagal dihapus
-                            if ($gagalHapus > 0) {
+                            if ($berhasil > 0) {
                                 Notification::make()
-                                    ->title('Beberapa kelas gagal dihapus')
-                                    ->body("Ada {$gagalHapus} kelas yang tidak bisa dihapus karena masih memiliki mahasiswa aktif atau dosen wali terikat.")
-                                    ->warning()
-                                    ->persistent()
+                                    ->title('Berhasil')
+                                    ->body("{$berhasil} kelas berhasil dihapus.")
+                                    ->success()
                                     ->send();
                             }
 
-                            // Kondisi 2: Hanya muncul jika memang ada record yang benar-benar terhapus
-                            if ($berhasilHapus > 0 && $gagalHapus === 0) {
+                            if (count($gagal)) {
+
+                                $body = collect($gagal)
+                                    ->map(fn($item) => "• {$item['nama']} ({$item['alasan']})")
+                                    ->implode("\n");
+
                                 Notification::make()
-                                    ->title('Berhasil')
-                                    ->body("Sebanyak {$berhasilHapus} kelas berhasil dihapus.")
-                                    ->success()
+                                    ->title(count($gagal) . ' kelas tidak dapat dihapus')
+                                    ->body($body)
+                                    ->warning()
+                                    ->persistent()
                                     ->send();
                             }
                         }),

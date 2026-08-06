@@ -12,7 +12,7 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany; 
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -94,9 +94,17 @@ class Kelas extends Model implements HasScopeStrategy
     {
         return match ($strategy) {
             ScopeStrategy::OWNERSHIP_MAHASISWA => $query->where('person_id', $user->person_id),
-            ScopeStrategy::DOSEN_WALI => $query->whereHas('dosenWali', function (Builder $q) use ($user) {
-                $q->where('person_id', $user->person_id);
-            }),
+            ScopeStrategy::DOSEN_WALI => $query->whereHas(
+                'pembimbingAkademik',
+                function (Builder $q) use ($user) {
+                    $q->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
+                        ->where('status', PembimbingAkademikStatus::AKTIF)
+                        ->where('is_primary', true)
+                        ->whereHas('dosen', function (Builder $dosen) use ($user) {
+                            $dosen->where('person_id', $user->person_id);
+                        });
+                }
+            ),
             default => throw new \LogicException("Mahasiswa tidak mendukung strategy {$strategy->value}"),
         };
     }
@@ -137,17 +145,6 @@ class Kelas extends Model implements HasScopeStrategy
         return $this->mahasiswaAktif()->count();
     }
 
-    public function dosenWali(): BelongsToMany
-    {
-        return $this->belongsToMany(
-            TrxDosen::class,
-            'kelas_dosen_wali',
-            'kelas_id',
-            'dosen_id'
-        )
-            ->withPivot('id', 'is_primary')
-            ->withTimestamps();
-    }
     public function pembimbingAkademik()
     {
         return $this->hasMany(
