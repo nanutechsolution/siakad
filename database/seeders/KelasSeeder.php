@@ -61,7 +61,7 @@ class KelasSeeder extends Seeder
                     'nama_kelas'  => $kelas,
                     'prodi_id'    => $prodi->id,
                     'program_id'  => $programReguler->id,
-                    'angkatan_id' => $angkatan2025->id,
+                    'angkatan_id' => $angkatan2025->id_tahun,
                 ],
                 [
                     'kapasitas' => 40,
