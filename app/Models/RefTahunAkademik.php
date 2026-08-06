@@ -2,45 +2,24 @@
 
 namespace App\Models;
 
-use Carbon\Carbon;
+use App\Enums\TahunAkademikStatus;
+use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Spatie\Activitylog\Models\Concerns\LogsActivity;
-use Spatie\Activitylog\Support\LogOptions;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema as DbSchema;
+use RuntimeException;
 
 class RefTahunAkademik extends Model
 {
-    use LogsActivity;
-
-    /**
-     * Nama tabel di database.
-     */
     protected $table = 'ref_tahun_akademik';
-    public $timestamps = false;
-    /**
-     * Kolom-kolom yang dapat diisi (sesuai persis dengan skema .sql).
-     *
-     * @var array<int, string>
-     */
+
     protected $fillable = [
         'kode_tahun',
         'nama_tahun',
         'semester',
         'tanggal_mulai',
         'tanggal_selesai',
-        'is_active',
-        'buka_krs',
-        'is_locked_krs',
-        'buka_input_nilai',
-        'is_locked_nilai',
-        'feeder_semester_id',
-        'last_sync_at',
-        'is_feeder_locked',
-        'config',
-        'created_by',
-        'updated_by',
-        'activated_by',
-        'activated_at',
         'tgl_mulai_krs',
         'tgl_selesai_krs',
         'tgl_mulai_perkuliahan',
@@ -51,15 +30,12 @@ class RefTahunAkademik extends Model
         'tgl_selesai_uas',
         'tgl_mulai_input_nilai',
         'tgl_selesai_input_nilai',
-        'tgl_publish_nilai',
+        'feeder_semester_id',
+        'config',
     ];
 
-    /**
-     * Konversi tipe data kolom secara otomatis (sesuai tipe data di .sql).
-     *
-     * @var array<string, string>
-     */
     protected $casts = [
+        'status' => TahunAkademikStatus::class,
         'semester' => 'integer',
         'tanggal_mulai' => 'date',
         'tanggal_selesai' => 'date',
@@ -68,9 +44,9 @@ class RefTahunAkademik extends Model
         'is_locked_krs' => 'boolean',
         'buka_input_nilai' => 'boolean',
         'is_locked_nilai' => 'boolean',
-        'last_sync_at' => 'datetime',
         'is_feeder_locked' => 'boolean',
-        'config' => 'array', // JSON type in DB
+        'last_sync_at' => 'datetime',
+        'config' => 'array',
         'activated_at' => 'datetime',
         'tgl_mulai_krs' => 'date',
         'tgl_selesai_krs' => 'date',
@@ -83,74 +59,219 @@ class RefTahunAkademik extends Model
         'tgl_mulai_input_nilai' => 'date',
         'tgl_selesai_input_nilai' => 'date',
         'tgl_publish_nilai' => 'date',
+        'krs_dibuka_at' => 'datetime',
+        'krs_ditutup_at' => 'datetime',
+        'nilai_dikunci_at' => 'datetime',
+        'nilai_dipublish_at' => 'datetime',
+        'semester_ditutup_at' => 'datetime',
     ];
+
+    protected static function booted(): void
+    {
+        static::creating(function (self $model) {
+            $model->status ??= TahunAkademikStatus::Draft;
+            $model->created_by ??= Auth::id();
+        });
+
+        static::updating(function (self $model) {
+            $model->updated_by = Auth::id();
+        });
+    }
+
+    // ---------------------------------------------------------------
+    // Relasi
+    // ---------------------------------------------------------------
+
+    public function createdBy()
+    {
+        return $this->belongsTo(config('auth.providers.users.model'), 'created_by');
+    }
+
+    public function updatedBy()
+    {
+        return $this->belongsTo(config('auth.providers.users.model'), 'updated_by');
+    }
+
+    public function activatedBy()
+    {
+        return $this->belongsTo(config('auth.providers.users.model'), 'activated_by');
+    }
+
+    public function ditutupBy()
+    {
+        return $this->belongsTo(config('auth.providers.users.model'), 'ditutup_by');
+    }
+
+    // ---------------------------------------------------------------
+    // Workflow — satu-satunya jalur resmi mengubah status.
+    // Setiap method memvalidasi transisi lewat TahunAkademikStatus::canTransitionTo()
+    // sehingga tidak mungkin loncat tahap meski dipanggil dari luar Action.
+    // ---------------------------------------------------------------
+
+    public function bukaKrs(): void
+    {
+        DB::transaction(function () {
+            // Pastikan hanya satu semester yang aktif dalam satu waktu.
+            static::where('id', '!=', $this->id)->where('is_active', true)->update(['is_active' => false]);
+
+            $this->transitionTo(TahunAkademikStatus::KrsBuka, [
+                'buka_krs' => true,
+                'is_locked_krs' => false,
+                'is_active' => true,
+                'krs_dibuka_at' => now(),
+            ], 'Membuka KRS');
+        });
+    }
+
+    public function tutupKrs(): void
+    {
+        $this->transitionTo(TahunAkademikStatus::KrsTutup, [
+            'buka_krs' => false,
+            'is_locked_krs' => true,
+            'krs_ditutup_at' => now(),
+        ], 'Menutup KRS');
+    }
+
+    public function mulaiPerkuliahan(): void
+    {
+        $this->transitionTo(TahunAkademikStatus::Perkuliahan, [], 'Memulai periode perkuliahan');
+    }
+
+    public function mulaiInputNilai(): void
+    {
+        $this->transitionTo(TahunAkademikStatus::InputNilai, [
+            'buka_input_nilai' => true,
+            'tgl_mulai_input_nilai' => $this->tgl_mulai_input_nilai ?? now()->toDateString(),
+        ], 'Membuka periode input nilai');
+    }
+
+    public function lockNilai(): void
+    {
+        $this->transitionTo(TahunAkademikStatus::NilaiTerkunci, [
+            'buka_input_nilai' => false,
+            'is_locked_nilai' => true,
+            'nilai_dikunci_at' => now(),
+        ], 'Mengunci input nilai');
+    }
+
+    public function publishNilai(): void
+    {
+        DB::transaction(function () {
+            $this->transitionTo(TahunAkademikStatus::NilaiPublish, [
+                'tgl_publish_nilai' => now()->toDateString(),
+                'nilai_dipublish_at' => now(),
+            ], 'Mempublish nilai (KHS)');
+
+            // TODO: dispatch(new GenerateKhsJob($this));
+        });
+    }
+
+    public function tutupSemester(): void
+    {
+        DB::transaction(function () {
+            $this->transitionTo(TahunAkademikStatus::Selesai, [
+                'is_active' => false,
+                'semester_ditutup_at' => now(),
+                'ditutup_by' => Auth::id(),
+            ], 'Menutup semester');
+
+            // TODO: dispatch(new HitungIpsIpkJob($this));
+            // TODO: dispatch(new GenerateRiwayatAkademikJob($this));
+        });
+    }
+
     /**
-     * Konfigurasi Activity Log.
+     * KHUSUS untuk import data historis (angkatan lama yang semesternya sudah lewat).
+     * Tidak lewat transitionTo() karena data lama tidak perlu "dijalani ulang" dari Draft —
+     * langsung ditandai final. Jangan pernah dipanggil dari Action/UI biasa.
      */
-    public function getActivitylogOptions(): LogOptions
+    public static function importHistorical(array $data): self
     {
-        return LogOptions::defaults()
-            ->useLogName('Tahun Akademik')
-            ->logFillable()
-            ->logOnlyDirty()
-            ->setDescriptionForEvent(fn(string $eventName) => match ($eventName) {
-                'created' => 'Menambahkan Tahun Akademik',
-                'updated' => 'Mengubah Tahun Akademik',
-                'deleted' => 'Menghapus Tahun Akademik',
-                default => $eventName,
-            });
-    }
-    /**
-     * Relasi ke tabel users (Berdasarkan FOREIGN KEY di schema).
-     */
-    public function creator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'created_by');
-    }
+        $record = new self();
+        $record->forceFill(array_merge($data, [
+            'status' => TahunAkademikStatus::Selesai,
+            'is_active' => false,
+        ]));
+        $record->save();
 
-    public function updater(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'updated_by');
-    }
-
-    public function activator(): BelongsTo
-    {
-        return $this->belongsTo(User::class, 'activated_by');
-    }
-
-    public function jadwalKuliah(): \Illuminate\Database\Eloquent\Relations\HasMany
-    {
-        return $this->hasMany(JadwalKuliah::class, 'tahun_akademik_id');
-    }
-
-    public function isInputNilaiOpen(): bool
-    {
-        if ($this->is_locked_nilai) {
-            return false;
+        if (function_exists('activity')) {
+            activity('tahun_akademik')->performedOn($record)->log('Import data historis');
         }
 
-        if ($this->buka_input_nilai) {
-            return true;
-        }
-
-        if (!$this->tgl_mulai_input_nilai || !$this->tgl_selesai_input_nilai) {
-            return false;
-        }
-
-        $today = Carbon::today();
-        return $today->betweenIncluded($this->tgl_mulai_input_nilai, $this->tgl_selesai_input_nilai);
+        return $record;
     }
 
-    public function inputNilaiStatusLabel(): string
+    protected function transitionTo(TahunAkademikStatus $target, array $extra, string $logMessage): void
     {
-        if ($this->is_locked_nilai) return 'Terkunci oleh Admin';
-        if ($this->isInputNilaiOpen()) return 'Terbuka';
-        return 'Sudah Ditutup';
+        if (! $this->status->canTransitionTo($target)) {
+            throw new RuntimeException(
+                "Transisi status tidak valid: {$this->status->value} -> {$target->value}"
+            );
+        }
+
+        $this->forceFill($extra);
+
+        $missing = [];
+        foreach ($target->requiredFields() as $field => $label) {
+            if (blank($this->{$field})) {
+                $missing[] = $label;
+            }
+        }
+
+        if ($missing !== []) {
+            throw new RuntimeException(
+                'Tanggal berikut wajib diisi terlebih dahulu (lewat Edit): ' . implode(', ', $missing)
+            );
+        }
+
+        $this->status = $target;
+        $this->save();
+
+        if (function_exists('activity')) {
+            activity('tahun_akademik')
+                ->performedOn($this)
+                ->causedBy(Auth::user())
+                ->log($logMessage);
+        }
     }
 
+    // ---------------------------------------------------------------
+    // Statistik — dibungkus try/catch supaya widget/tabel tidak error
+    // sebelum relasi krs/kelas/nilai disambungkan ke skema Anda.
+    // ---------------------------------------------------------------
 
-    public function scopeAktif($query)
+    public function statistik(): array
     {
-        return $query->where('is_active', true);
+        return cache()->remember("tahun_akademik.{$this->id}.stats", now()->addMinutes(5), function () {
+            return [
+                'mahasiswa_aktif' => $this->safeCount('krs', 'mahasiswa_id'),
+                'krs_disetujui' => $this->safeCount('krs', where: ['status' => 'disetujui']),
+                'persen_nilai_masuk' => $this->safePercent(),
+                'belum_publish' => 0,
+            ];
+        });
+    }
+
+    protected function safeCount(string $relation, ?string $distinctColumn = null, array $where = []): int
+    {
+        if (! method_exists($this, $relation) || ! DbSchema::hasTable((new static)->getTable())) {
+            return 0;
+        }
+
+        try {
+            $query = $this->{$relation}();
+            foreach ($where as $col => $val) {
+                $query->where($col, $val);
+            }
+
+            return $distinctColumn ? $query->distinct($distinctColumn)->count($distinctColumn) : $query->count();
+        } catch (\Throwable) {
+            return 0;
+        }
+    }
+
+    protected function safePercent(): int
+    {
+        return 0; // TODO: hitung dari relasi nilai/kelas riil
     }
 }

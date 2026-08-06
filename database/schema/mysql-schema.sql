@@ -588,24 +588,6 @@ CREATE TABLE `kelas` (
   CONSTRAINT `kelas_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `ref_program` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
-DROP TABLE IF EXISTS `kelas_dosen_wali`;
-/*!40101 SET @saved_cs_client     = @@character_set_client */;
-/*!50503 SET character_set_client = utf8mb4 */;
-CREATE TABLE `kelas_dosen_wali` (
-  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
-  `kelas_id` bigint unsigned NOT NULL,
-  `dosen_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `is_primary` tinyint(1) NOT NULL DEFAULT '1',
-  `created_at` timestamp NULL DEFAULT NULL,
-  `updated_at` timestamp NULL DEFAULT NULL,
-  PRIMARY KEY (`id`),
-  UNIQUE KEY `uniq_primary_wali_per_kelas` (`kelas_id`,`is_primary`),
-  KEY `kelas_dosen_wali_kelas_id_foreign` (`kelas_id`),
-  KEY `kelas_dosen_wali_dosen_id_foreign` (`dosen_id`),
-  CONSTRAINT `kelas_dosen_wali_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `kelas_dosen_wali_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`)
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
-/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `keuangan_adjustments`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -823,9 +805,9 @@ CREATE TABLE `konfigurasi_pembimbing_akademik` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `prodi_id` bigint unsigned NOT NULL,
   `angkatan_id` int NOT NULL,
-  `mode` enum('PER_KELAS','PER_MAHASISWA') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PER_KELAS',
+  `mode` enum('PER_KELAS','PER_MAHASISWA') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'PER_KELAS',
   `aktif` tinyint(1) NOT NULL DEFAULT '1',
-  `keterangan` text COLLATE utf8mb4_unicode_ci,
+  `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
@@ -2052,9 +2034,9 @@ DROP TABLE IF EXISTS `midtrans_gateway_logs`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `midtrans_gateway_logs` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `order_id` varchar(100) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `transaction_status` varchar(50) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `order_id` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `transaction_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `payload` json NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
@@ -2065,13 +2047,13 @@ DROP TABLE IF EXISTS `midtrans_transactions`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
 CREATE TABLE `midtrans_transactions` (
-  `id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `order_id` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tagihan_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `tagihan_type` varchar(100) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `order_id` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tagihan_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `tagihan_type` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `mahasiswa_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nominal` decimal(19,2) NOT NULL,
-  `snap_token` text COLLATE utf8mb4_unicode_ci,
+  `snap_token` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
   PRIMARY KEY (`id`),
   UNIQUE KEY `midtrans_transactions_order_id_unique` (`order_id`),
@@ -2283,7 +2265,7 @@ CREATE TABLE `pdf_signature_authorities` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `document_type` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `jabatan_id` bigint unsigned NOT NULL,
-  `scope` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NONE',
+  `scope` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'NONE',
   `urutan` tinyint unsigned NOT NULL DEFAULT '1',
   `label` varchar(150) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
@@ -2373,22 +2355,22 @@ DROP TABLE IF EXISTS `pembimbing_akademik`;
 CREATE TABLE `pembimbing_akademik` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `kelas_id` bigint unsigned DEFAULT NULL,
-  `mahasiswa_id` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
-  `jenis` enum('DOSEN_WALI','PEMBIMBING_PKL','PEMBIMBING_MBKM','PEMBIMBING_SKRIPSI','PEMBIMBING_TESIS','PEMBIMBING_DISERTASI','PENGUJI_SKRIPSI') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DOSEN_WALI',
+  `mahasiswa_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `dosen_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jenis` enum('DOSEN_WALI','PEMBIMBING_PKL','PEMBIMBING_MBKM','PEMBIMBING_SKRIPSI','PEMBIMBING_TESIS','PEMBIMBING_DISERTASI','PENGUJI_SKRIPSI') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DOSEN_WALI',
   `is_primary` tinyint(1) NOT NULL DEFAULT '1',
   `semester_mulai_id` bigint unsigned NOT NULL,
   `semester_selesai_id` bigint unsigned DEFAULT NULL,
   `tanggal_mulai` date NOT NULL,
   `tanggal_selesai` date DEFAULT NULL,
-  `nomor_sk` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `nomor_sk` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tanggal_sk` date DEFAULT NULL,
-  `alasan` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `keterangan` text COLLATE utf8mb4_unicode_ci,
-  `created_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `updated_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `deleted_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
-  `status` enum('AKTIF','SELESAI','DIBATALKAN') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'AKTIF',
+  `alasan` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `created_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `updated_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `status` enum('AKTIF','SELESAI','DIBATALKAN') CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'AKTIF',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
@@ -2844,6 +2826,7 @@ CREATE TABLE `ref_tahun_akademik` (
   `kode_tahun` varchar(5) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nama_tahun` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `semester` int NOT NULL COMMENT '1=Ganjil, 2=Genap, 3=Pendek',
+  `status` varchar(20) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'draft',
   `tanggal_mulai` date DEFAULT NULL,
   `tanggal_selesai` date DEFAULT NULL,
   `is_active` tinyint(1) NOT NULL DEFAULT '0',
@@ -2872,6 +2855,12 @@ CREATE TABLE `ref_tahun_akademik` (
   `tgl_mulai_input_nilai` date DEFAULT NULL COMMENT 'Tanggal mulai input nilai',
   `tgl_selesai_input_nilai` date DEFAULT NULL COMMENT 'Batas akhir input nilai',
   `tgl_publish_nilai` date DEFAULT NULL COMMENT 'Tanggal publish nilai/KHS',
+  `krs_dibuka_at` timestamp NULL DEFAULT NULL,
+  `krs_ditutup_at` timestamp NULL DEFAULT NULL,
+  `nilai_dikunci_at` timestamp NULL DEFAULT NULL,
+  `nilai_dipublish_at` timestamp NULL DEFAULT NULL,
+  `semester_ditutup_at` timestamp NULL DEFAULT NULL,
+  `ditutup_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ref_tahun_akademik_kode_tahun_unique` (`kode_tahun`),
   KEY `ref_tahun_akademik_is_active_index` (`is_active`),
@@ -2879,8 +2868,11 @@ CREATE TABLE `ref_tahun_akademik` (
   KEY `ref_tahun_akademik_updated_by_foreign` (`updated_by`),
   KEY `ref_tahun_akademik_activated_by_foreign` (`activated_by`),
   KEY `ref_tahun_akademik_tgl_publish_nilai_index` (`tgl_publish_nilai`),
+  KEY `ref_tahun_akademik_ditutup_by_foreign` (`ditutup_by`),
+  KEY `ref_tahun_akademik_status_index` (`status`),
   CONSTRAINT `ref_tahun_akademik_activated_by_foreign` FOREIGN KEY (`activated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `ref_tahun_akademik_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `ref_tahun_akademik_ditutup_by_foreign` FOREIGN KEY (`ditutup_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `ref_tahun_akademik_updated_by_foreign` FOREIGN KEY (`updated_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3540,10 +3532,6 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (241,'2026_07_26_21
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (242,'2026_07_27_121048_create_lpm_bukti_pelaksanaans_table',9);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (243,'2026_07_27_121115_create_lpm_riwayat_peningkatans_table',9);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (244,'2026_07_27_121926_create_pdf_verifications_table',9);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (245,'2026_07_16_002854_create_kampus_settings',10);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (246,'2026_07_16_002855_add_reset_nim_tahunan_to_kampus_settings',10);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (247,'2026_07_16_002856_add_neo_feeder_to_kampus_settings',10);
-INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (248,'2026_07_16_002857_add_pro_settings_to_kampus_settings',10);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (249,'2026_07_29_193029_add_scope_to_pdf_signature_authorities_table',11);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (250,'2026_07_30_005123_create_payment_gateway_transactions_table',12);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (251,'2026_07_30_005156_create_payment_gateway_webhook_logs_table',13);
@@ -3557,3 +3545,9 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (258,'2026_08_03_12
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (259,'2026_08_03_123708_create_pembimbing_akademik_table',19);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (260,'2026_08_03_195654_add_integrity_constraints_to_pembimbing_akademik_table',20);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (261,'2026_08_03_195655_add_active_enrollment_guard_to_mahasiswa_kelas_table',20);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (262,'2026_07_16_002854_create_kampus_settings',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (263,'2026_07_16_002855_add_reset_nim_tahunan_to_kampus_settings',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (264,'2026_07_16_002856_add_neo_feeder_to_kampus_settings',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (265,'2026_07_16_002857_add_pro_settings_to_kampus_settings',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (266,'2026_08_03_204039_drop_kelas_dosen_wali_table',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (267,'2026_08_06_095815_add_status_state_machine_to_ref_tahun_akademik',21);

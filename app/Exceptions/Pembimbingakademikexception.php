@@ -7,6 +7,8 @@ use Exception;
 /**
  * Exception domain khusus untuk aturan bisnis modul Pembimbing Akademik.
  *
+ * Pesannya didesain agar aman ditampilkan langsung ke user lewat
+ * Filament\Notifications\Notification (bukan pesan teknis/stack trace).
  */
 class PembimbingAkademikException extends Exception
 {
@@ -28,6 +30,11 @@ class PembimbingAkademikException extends Exception
     public static function dosenPenggantiSama(): self
     {
         return new self('Dosen pengganti tidak boleh sama dengan dosen yang sedang aktif saat ini.');
+    }
+
+    public static function sudahDicoverWaliKelas(): self
+    {
+        return new self('Mahasiswa ini sudah tercakup oleh Dosen Wali tingkat kelas yang aktif (kemungkinan besar konfigurasi mode berubah dari Per Kelas ke Per Mahasiswa). Batalkan dulu wali tingkat kelasnya di menu Mutasi bila memang ingin memberi wali individual terpisah.');
     }
 
     public static function tanggalMulaiTidakValid(): self

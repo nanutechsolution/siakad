@@ -32,7 +32,12 @@ class TahunAkademikService
         return RefTahunAkademik::findOrFail($id);
     }
 
-
+    public function current(): ?RefTahunAkademik
+    {
+        return RefTahunAkademik::query()
+            ->where('is_active', true)
+            ->first();
+    }
     public function getActiveId(): int
     {
         return Cache::remember(

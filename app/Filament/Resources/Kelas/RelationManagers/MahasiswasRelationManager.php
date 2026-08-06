@@ -2,6 +2,8 @@
 
 namespace App\Filament\Resources\Kelas\RelationManagers;
 
+use App\Exports\Kelas\MahasiswaKelasExport;
+use App\Imports\Kelas\MahasiswaKelasImport;
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaKelas;
 use App\Services\MahasiswaPlottingService;
@@ -18,7 +20,10 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Carbon\Carbon;
 use Filament\Actions\DeleteAction as ActionsDeleteAction;
+use Filament\Forms\Components\FileUpload;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MahasiswasRelationManager extends RelationManager
 {
@@ -40,6 +45,65 @@ class MahasiswasRelationManager extends RelationManager
                     ->color(fn($state) => $state === 'AKTIF' ? 'success' : 'gray'),
             ])
             ->headerActions([
+                Action::make('export')
+                    ->label('Export Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('success')
+                    ->action(fn() => Excel::download(
+                        new MahasiswaKelasExport($this->getOwnerRecord()),
+                        'kelas-' . $this->getOwnerRecord()->id . '.xlsx'
+                    )),
+
+                // 2. Import Excel Action
+                Action::make('import_excel')
+                    ->label('Import Excel')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('info')
+                    ->schema([
+                        FileUpload::make('file')
+                            ->label('File Excel (.xlsx)')
+                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'])
+                            ->required()
+                            ->storeFiles(false),
+                    ])
+                    ->action(function (array $data, MahasiswaPlottingService $service) {
+                        try {
+                            DB::beginTransaction();
+
+                            Excel::import(
+                                new MahasiswaKelasImport($this->getOwnerRecord()->id, $service),
+                                $data['file']
+                            );
+
+                            DB::commit();
+
+                            Notification::make()
+                                ->title('Import Berhasil')
+                                ->body('Data mahasiswa berhasil diplot ke dalam kelas.')
+                                ->success()
+                                ->send();
+                        } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
+                            DB::rollBack();
+                            $failures = $e->failures();
+                            $errorMessage = collect($failures)->map(fn($f) => "Baris {$f->row()}: " . implode(', ', $f->errors()))->implode('<br>');
+
+                            Notification::make()
+                                ->title('Gagal Validasi Import')
+                                ->body($errorMessage)
+                                ->danger()
+                                ->persistent()
+                                ->send();
+                        } catch (\Exception $e) {
+                            DB::rollBack();
+                            Log::error('Import Error: ' . $e->getMessage());
+
+                            Notification::make()
+                                ->title('Import Gagal')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
                 Action::make('plot_mahasiswa')
                     ->label('Plotting Mahasiswa')
                     ->icon('heroicon-o-user-plus')

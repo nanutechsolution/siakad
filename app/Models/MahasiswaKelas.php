@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -33,10 +34,6 @@ class MahasiswaKelas extends Model
         return $this->mahasiswa?->nim;
     }
 
-    public function scopeNonAktif($query)
-    {
-        return $query->whereNotNull('tanggal_keluar');
-    }
     protected $casts = [
         'tanggal_masuk' => 'date',
         'tanggal_keluar' => 'date',
@@ -52,8 +49,14 @@ class MahasiswaKelas extends Model
         return $this->belongsTo(Mahasiswa::class, 'mahasiswa_id', 'id');
     }
 
-    public function scopeAktif($query)
+
+    public function scopeAktif(Builder $query): Builder
     {
         return $query->whereNull('tanggal_keluar');
+    }
+
+    public function scopeNonAktif(Builder $query): Builder
+    {
+        return $query->whereNotNull('tanggal_keluar');
     }
 }
