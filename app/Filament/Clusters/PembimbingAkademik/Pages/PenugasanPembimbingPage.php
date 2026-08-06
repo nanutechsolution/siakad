@@ -101,7 +101,25 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                 ->searchable()
                                 ->live()
                                 ->required(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
-                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value),
+                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
+                                ->rule(function ($get) {
+                                    return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                        if ($get('jenis') !== PembimbingAkademikJenis::DOSEN_WALI->value) {
+                                            return;
+                                        }
+
+                                        if (! $get('prodi_id') || ! $value) {
+                                            return;
+                                        }
+
+                                        $konfigurasi = app(PembimbingAkademikService::class)
+                                            ->konfigurasiAktif($get('prodi_id'), $value);
+
+                                        if (! $konfigurasi) {
+                                            $fail('Konfigurasi mode untuk kombinasi Program Studi & Angkatan ini belum aktif — tidak bisa lanjut. Atur dulu di menu Konfigurasi Pembimbing.');
+                                        }
+                                    };
+                                }),
 
                             Placeholder::make('info_konfigurasi')
                                 ->label('')
@@ -265,15 +283,24 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
      * Mode efektif berdasarkan jenis + konfigurasi aktif prodi/angkatan.
      * Dipakai berulang kali di form() untuk show/hide & required field.
      */
-    public function modeSaatIni($get): PembimbingAkademikMode
+    public function modeSaatIni($get): ?PembimbingAkademikMode
     {
         $jenisValue = $get('jenis');
 
         if (! $jenisValue) {
-            return PembimbingAkademikMode::PER_MAHASISWA;
+            return null;
         }
 
         $jenis = PembimbingAkademikJenis::from($jenisValue);
+
+        if ($jenis !== PembimbingAkademikJenis::DOSEN_WALI) {
+            return PembimbingAkademikMode::PER_MAHASISWA;
+        }
+
+        // Untuk Dosen Wali, null berarti konfigurasi belum aktif — sengaja
+        // TIDAK fallback ke mode manapun, supaya field target di Step 2
+        // (kelas_ids / mahasiswa_ids) sama-sama tersembunyi dan tidak bisa
+        // diisi sampai konfigurasi benar-benar diatur.
         $konfigurasi = app(PembimbingAkademikService::class)->konfigurasiAktif($get('prodi_id'), $get('angkatan_id'));
 
         return app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
@@ -295,6 +322,20 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             $jenis = PembimbingAkademikJenis::from($data['jenis']);
             $konfigurasi = app(PembimbingAkademikService::class)->konfigurasiAktif($data['prodi_id'] ?? null, $data['angkatan_id'] ?? null);
             $mode = app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
+
+            // Lapis pertahanan tambahan (form->getState() di atas seharusnya
+            // sudah menolak lewat rule() di field angkatan_id kalau konfigurasi
+            // belum aktif, tapi tetap dijaga di sini kalau-kalau validasi
+            // ter-bypass, mis. dipanggil lewat cara lain).
+            if ($jenis === PembimbingAkademikJenis::DOSEN_WALI && ! $mode) {
+                Notification::make()
+                    ->title('Konfigurasi belum aktif untuk kombinasi ini')
+                    ->body('Atur dulu mode di menu Konfigurasi Pembimbing sebelum menugaskan Dosen Wali.')
+                    ->warning()
+                    ->send();
+
+                return;
+            }
 
             $targetIds = $mode === PembimbingAkademikMode::PER_KELAS
                 ? array_values($data['kelas_ids'] ?? [])

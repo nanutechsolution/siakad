@@ -49,13 +49,17 @@ class PembimbingAkademikService
      * (mengikuti konfigurasi). Jenis lain (pembimbing skripsi/tesis/PKL/dst)
      * secara alami selalu per mahasiswa karena sifatnya individual.
      */
-    public function modeUntuk(PembimbingAkademikJenis $jenis, ?KonfigurasiPembimbingAkademik $konfigurasi): PembimbingAkademikMode
+    public function modeUntuk(PembimbingAkademikJenis $jenis, ?KonfigurasiPembimbingAkademik $konfigurasi): ?PembimbingAkademikMode
     {
         if ($jenis !== PembimbingAkademikJenis::DOSEN_WALI) {
             return PembimbingAkademikMode::PER_MAHASISWA;
         }
 
-        return $konfigurasi?->mode ?? PembimbingAkademikMode::PER_MAHASISWA;
+        // SENGAJA null (bukan fallback ke PER_MAHASISWA) kalau konfigurasi
+        // belum aktif — supaya semua pemanggil (UI & tugaskan()) WAJIB
+        // menangani kasus "belum ada mode", bukan diam-diam meloloskan
+        // penugasan lewat jalur per-mahasiswa tanpa konfigurasi sama sekali.
+        return $konfigurasi?->mode;
     }
 
     public function sudahPunyaPembimbingAktif(PembimbingAkademikJenis $jenis, ?int $kelasId, ?string $mahasiswaId): bool
@@ -124,18 +128,37 @@ class PembimbingAkademikService
             throw PembimbingAkademikException::targetKosong();
         }
 
-        // Validasi ulang di server (defense in depth): kalau jenis Dosen Wali
-        // dan modenya PER_KELAS, harus benar-benar ada konfigurasi aktif.
-        if ($jenis === PembimbingAkademikJenis::DOSEN_WALI && $kelasId) {
+        // Validasi ulang di server (defense in depth, TIDAK BOLEH dilewati
+        // lewat manipulasi request/UI): Dosen Wali WAJIB punya konfigurasi
+        // mode aktif untuk kombinasi prodi+angkatan-nya, apa pun target-nya
+        // (kelas ATAU mahasiswa) — sebelumnya celah ini hanya dicek saat
+        // targetnya kelas, sehingga jalur mahasiswa lolos tanpa konfigurasi.
+        if ($jenis === PembimbingAkademikJenis::DOSEN_WALI) {
             $konfigurasi = $this->konfigurasiAktif($data['prodi_id'] ?? null, $data['angkatan_id'] ?? null);
+            $modeEfektif = $this->modeUntuk($jenis, $konfigurasi);
 
-            if (! $konfigurasi || $konfigurasi->mode !== PembimbingAkademikMode::PER_KELAS) {
+            if (! $modeEfektif) {
+                throw PembimbingAkademikException::konfigurasiBelumDiatur();
+            }
+
+            if ($modeEfektif === PembimbingAkademikMode::PER_KELAS && ! $kelasId) {
+                throw PembimbingAkademikException::konfigurasiBelumDiatur();
+            }
+
+            if ($modeEfektif === PembimbingAkademikMode::PER_MAHASISWA && ! $mahasiswaId) {
                 throw PembimbingAkademikException::konfigurasiBelumDiatur();
             }
         }
 
         if ($this->sudahPunyaPembimbingAktif($jenis, $kelasId, $mahasiswaId)) {
             throw PembimbingAkademikException::sudahAdaPembimbingAktif();
+        }
+
+        // Jaga-jaga terhadap sisa data dari perubahan mode konfigurasi:
+        // jangan sampai mahasiswa yang kelasnya masih punya wali aktif
+        // (dari era mode PER_KELAS) diberi wali individual lagi.
+        if ($jenis === PembimbingAkademikJenis::DOSEN_WALI && $mahasiswaId && $this->kelasMahasiswaSudahPunyaWali($mahasiswaId)) {
+            throw PembimbingAkademikException::sudahDicoverWaliKelas();
         }
 
         return DB::transaction(fn() => PembimbingAkademik::create([
@@ -210,6 +233,53 @@ class PembimbingAkademikService
         return $record;
     }
 
+    /**
+     * Cek apakah kelas dari seorang mahasiswa masih memiliki Dosen Wali
+     * aktif tingkat kelas — dipakai untuk mencegah duplikasi saat mode
+     * konfigurasi berubah dari PER_KELAS ke PER_MAHASISWA di tengah jalan.
+     */
+    protected function kelasMahasiswaSudahPunyaWali(string $mahasiswaId): bool
+    {
+        // Relasi mahasiswa <-> kelas lewat tabel pivot `mahasiswa_kelas`
+        // (bukan kolom langsung di `mahasiswas`). tanggal_keluar null berarti
+        // keanggotaan kelas tersebut masih berlaku saat ini.
+        $kelasIds = DB::table('mahasiswa_kelas')
+            ->where('mahasiswa_id', $mahasiswaId)
+            ->whereNull('tanggal_keluar')
+            ->pluck('kelas_id');
+
+        if ($kelasIds->isEmpty()) {
+            return false;
+        }
+
+        return PembimbingAkademik::query()
+            ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
+            ->where('status', PembimbingAkademikStatus::AKTIF)
+            ->whereIn('kelas_id', $kelasIds)
+            ->exists();
+    }
+
+    /**
+     * Total penugasan Dosen Wali AKTIF yang "bergantung" pada kombinasi
+     * prodi + angkatan tertentu (baik lewat kelas maupun mahasiswa).
+     * Dipakai untuk menampilkan peringatan dampak sebelum admin
+     * mengubah/menghapus KonfigurasiPembimbingAkademik.
+     */
+    public function totalPenugasanAktifUntukKombinasi(?int $prodiId, $angkatanId): int
+    {
+        if (! $prodiId || ! $angkatanId) {
+            return 0;
+        }
+
+        return PembimbingAkademik::query()
+            ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
+            ->where('status', PembimbingAkademikStatus::AKTIF)
+            ->where(fn(Builder $q) => $q
+                ->whereHas('kelas', fn(Builder $k) => $k->where('prodi_id', $prodiId)->where('angkatan_id', $angkatanId))
+                ->orWhereHas('mahasiswa', fn(Builder $m) => $m->where('prodi_id', $prodiId)->where('angkatan_id', $angkatanId)))
+            ->count();
+    }
+
     public function totalMahasiswaAktif(): int
     {
         return Mahasiswa::query()->whereNull('deleted_at')->count();
@@ -261,15 +331,5 @@ class PembimbingAkademikService
             ])
             ->filter(fn(array $row) => $row['dosen'] !== null)
             ->values();
-    }
-
-    public function queryMahasiswaBimbingan(string $dosenId): Builder
-    {
-        return Mahasiswa::query()
-            ->whereHas('pembimbingAkademik', function (Builder $q) use ($dosenId) {
-                $q->where('dosen_id', $dosenId)
-                    ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
-                    ->where('status', PembimbingAkademikStatus::AKTIF);
-            });
     }
 }

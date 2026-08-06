@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\PembimbingAkademikJenis;
+use App\Models\Dosen;
 use App\Models\Mahasiswa;
 use App\Models\TrxDosen;
 use Illuminate\Support\Collection;
