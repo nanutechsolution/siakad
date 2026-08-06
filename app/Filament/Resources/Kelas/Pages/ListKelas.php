@@ -25,6 +25,11 @@ class ListKelas extends ListRecords
                 ->tooltip(fn() => $this->konteksAktif()['program_id'] ?? null
                     ? null
                     : 'Pilih Program dan Angkatan terlebih dahulu'),
+            Action::make('ubah_konteks')
+                ->label('Ubah Konteks')
+                ->icon('heroicon-o-arrow-path')
+                ->color('gray')
+                ->url(fn() => KelasResource::getUrl('index', array_filter(request()->query()))),
         ];
     }
 

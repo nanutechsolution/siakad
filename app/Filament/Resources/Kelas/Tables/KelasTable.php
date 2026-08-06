@@ -21,8 +21,14 @@ class KelasTable
     public static function configure(Table $table): Table
     {
         return $table
-            // PERBAIKAN: Eager load relasi prodi dan program untuk menghabisi N+1 query pada list table
-            ->modifyQueryUsing(fn(Builder $query) => $query->with(['prodi', 'program']))
+            ->modifyQueryUsing(fn(Builder $query) => $query
+                ->with(['prodi', 'program'])
+                // Konteks dari PilihKonteks (lewat query string) mempersempit
+                // daftar kelas sejak awal — filter di bawah tetap bisa
+                // mempersempit lebih jauh atau mengubahnya sementara.
+                ->when(request()->integer('prodi_id') ?: null, fn($q, $prodiId) => $q->where('prodi_id', $prodiId))
+                ->when(request()->integer('program_id') ?: null, fn($q, $programId) => $q->where('program_id', $programId))
+                ->when(request()->integer('angkatan_id') ?: null, fn($q, $angkatanId) => $q->where('angkatan_id', $angkatanId)))
             ->columns([
                 TextColumn::make('nama_kelas')
                     ->label('Nama Kelas')
