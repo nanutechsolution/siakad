@@ -4,6 +4,7 @@ namespace App\Filament\Mahasiswa\Concerns;
 
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
+use App\Services\TahunAkademikService;
 use Illuminate\Support\Facades\Auth;
 use Symfony\Component\HttpKernel\Exception\AccessDeniedHttpException;
 
@@ -67,9 +68,7 @@ trait ResolvesMahasiswa
 
         $this->tahunAkademikResolved = true;
 
-        return $this->cachedTahunAkademikAktif = RefTahunAkademik::query()
-            ->aktif()
-            ->orderByDesc('tanggal_mulai')
-            ->first();
+        return $this->cachedTahunAkademikAktif =
+            app(TahunAkademikService::class)->current();
     }
 }
