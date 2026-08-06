@@ -26,6 +26,7 @@ class KurikulumMataKuliahsTable
                 TextColumn::make('mataKuliah.kode_mk')
                     ->label('Kode')
                     ->sortable()
+                    ->copyable()
                     ->searchable()
                     ->weight('bold'),
 
