@@ -76,7 +76,6 @@ class UsersTable
                     ->label('Reset Password')
                     ->icon('heroicon-o-key')
                     ->color('warning')
-                    ->authorize('resetPassword')
                     ->requiresConfirmation()
                     ->modalHeading('Reset Password Pengguna')
                     ->modalDescription('Password baru yang kuat akan di-generate. User akan dipaksa mengganti password saat login berikutnya.')
