@@ -5,6 +5,7 @@ namespace App\Filament\Resources\Kelas;
 use App\Enums\NavigationGroup;
 use App\Filament\Resources\Kelas\Pages\CreateKelas;
 use App\Filament\Resources\Kelas\Pages\EditKelas;
+use App\Filament\Resources\Kelas\Pages\GenerateKelasWizard;
 use App\Filament\Resources\Kelas\Pages\ListKelas;
 use App\Filament\Resources\Kelas\Pages\PilihKonteks;
 use App\Filament\Resources\Kelas\Pages\PlottingMahasiswa;
@@ -56,6 +57,7 @@ class KelasResource extends Resource
             'index' => PilihKonteks::route('/'),
             'list' => ListKelas::route('/list'),
             'create' => CreateKelas::route('/create'),
+            'generate' => GenerateKelasWizard::route('/generate'),
             'plotting' => PlottingMahasiswa::route('/plotting'),
             'view' => ViewKelas::route('/{record}'),
             'edit' => EditKelas::route('/{record}/edit'),
