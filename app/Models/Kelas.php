@@ -12,12 +12,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
-use Illuminate\Database\Eloquent\Relations\HasMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany; 
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class Kelas extends Model implements HasScopeStrategy
 {
     use HasFactory, VisibleToUser;
+    use LogsActivity;
 
     /**
      * The table associated with the model.
@@ -45,7 +47,28 @@ class Kelas extends Model implements HasScopeStrategy
             'kapasitas' => 'integer',
         ];
     }
-
+    /**
+     * Activity Log Configuration
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('kelas')
+            ->logOnly([
+                'nama_kelas',
+                'prodi_id',
+                'program_id',
+                'angkatan_id',
+                'kapasitas',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn(string $eventName) => match ($eventName) {
+                'created' => 'Membuat data kelas',
+                'updated' => 'Mengubah data kelas',
+                'deleted' => 'Menghapus data kelas',
+                default => $eventName,
+            });
+    }
 
     public static function getSupportedScopeStrategies(): array
     {

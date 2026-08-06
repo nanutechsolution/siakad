@@ -103,6 +103,8 @@ class AppServiceProvider extends ServiceProvider
             'ref_tahun_akademik' => \App\Models\RefTahunAkademik::class,
             'pembimbing_akademik' => \App\Models\PembimbingAkademik::class,
             'konfigurasi_pembimbing_akademik' => \App\Models\KonfigurasiPembimbingAkademik::class,
+            'Kelas' => \App\Models\Kelas::class,
+            'mahasiswa_kelas' => \App\Models\MahasiswaKelas::class,
         ]);
     }
 }

@@ -5,9 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class MahasiswaKelas extends Model
 {
+    use LogsActivity;
     protected $table = 'mahasiswa_kelas';
 
     protected $fillable = [
@@ -19,6 +22,31 @@ class MahasiswaKelas extends Model
     protected $with = [
         'mahasiswa.person',
     ];
+
+    /**
+     * Activity Log
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('mahasiswa_kelas')
+            ->logOnly([
+                'mahasiswa_id',
+                'kelas_id',
+                'tanggal_masuk',
+                'tanggal_keluar',
+            ])
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(function (string $event) {
+                return match ($event) {
+                    'created' => 'Mahasiswa masuk ke kelas',
+                    'updated' => 'Data keanggotaan kelas diubah',
+                    'deleted' => 'Riwayat kelas dihapus',
+                    default => $event,
+                };
+            });
+    }
+
     public function getStatusAttribute(): string
     {
         return $this->tanggal_keluar
