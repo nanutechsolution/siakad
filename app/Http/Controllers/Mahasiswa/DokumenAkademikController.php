@@ -26,9 +26,8 @@ class DokumenAkademikController extends Controller
         abort_unless($tahunAkademikId > 0, 404, 'Tahun akademik tidak valid.');
 
         $khs = $this->service->khsData($mahasiswa, $tahunAkademikId);
-
-        abort_if($khs['ringkasan'] === null && $khs['mata_kuliah']->isEmpty(), 404, 'Data KHS tidak ditemukan.');
         dd($khs['ringkasan']);
+        abort_if($khs['ringkasan'] === null && $khs['mata_kuliah']->isEmpty(), 404, 'Data KHS tidak ditemukan.');
         $pdf = Pdf::loadView('pdf.mhs.khs', [
             'mahasiswa' => $mahasiswa,
             'khs' => $khs,
