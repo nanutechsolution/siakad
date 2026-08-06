@@ -4,9 +4,13 @@ namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
+use App\Exports\MahasiswaTanpaWaliExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
+use App\Filament\Widgets\PembimbingStatsWidget;
 use App\Models\Mahasiswa;
+use App\Services\PembimbingAkademikService;
 use BackedEnum;
+use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -14,6 +18,8 @@ use Filament\Tables\Contracts\HasTable;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
+use Maatwebsite\Excel\Facades\Excel;
 
 class MonitoringPembimbingPage extends Page implements HasTable
 {
@@ -29,41 +35,33 @@ class MonitoringPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'monitoring-pembimbing-akademik';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
-    public function getTotalMahasiswaAktif(): int
+    protected function getHeaderWidgets(): array
     {
-        return Mahasiswa::query()->whereNull('deleted_at')->count();
+        return [
+            PembimbingStatsWidget::class,
+        ];
     }
 
-    public function getTotalTerbimbing(): int
+    protected function service(): PembimbingAkademikService
     {
-        return Mahasiswa::query()
-            ->whereNull('deleted_at')
-            ->whereHas('pembimbingAkademik', fn(Builder $q) => $q
-                ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
-                ->where('status', PembimbingAkademikStatus::AKTIF))
-            ->count();
+        return app(PembimbingAkademikService::class);
     }
 
-    public function getTotalBelumTerbimbing(): int
+    /**
+     * @return Collection<int, array{dosen: \App\Models\Dosen, total: int}>
+     */
+    public function getBebanDosenTerbanyak(): Collection
     {
-        return $this->getTotalMahasiswaAktif() - $this->getTotalTerbimbing();
+        return $this->service()->bebanDosenTerbanyak(5);
     }
 
     public function table(Table $table): Table
     {
         return $table
-            ->query(
-                Mahasiswa::query()
-                    ->whereNull('deleted_at')
-                    ->whereDoesntHave('pembimbingAkademik', fn(Builder $q) => $q
-                        ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
-                        ->where('status', PembimbingAkademikStatus::AKTIF))
-            )
+            ->query($this->service()->queryMahasiswaTanpaWali())
             ->heading('Mahasiswa Tanpa Dosen Wali Aktif')
             ->columns([
-                TextColumn::make('nim')
-                    ->searchable()
-                    ->sortable(),
+                TextColumn::make('nim')->searchable()->sortable(),
                 TextColumn::make('person.nama_lengkap')
                     ->label('Nama')
                     ->searchable(),
@@ -81,6 +79,19 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->searchable()
                     ->preload(),
             ])
+            ->headerActions([
+                Action::make('export')
+                    ->label('Export Excel')
+                    ->icon('heroicon-o-arrow-down-tray')
+                    ->color('gray')
+                    ->action(fn() => Excel::download(
+                        new MahasiswaTanpaWaliExport($this->service()->queryMahasiswaTanpaWali()),
+                        'mahasiswa-tanpa-wali-' . now()->format('Ymd-His') . '.xlsx'
+                    )),
+            ])
+            ->emptyStateHeading('Semua mahasiswa sudah punya Dosen Wali 🎉')
+            ->emptyStateDescription('Tidak ada tindak lanjut yang diperlukan saat ini.')
+            ->emptyStateIcon('heroicon-o-check-circle')
             ->defaultSort('nim');
     }
 }

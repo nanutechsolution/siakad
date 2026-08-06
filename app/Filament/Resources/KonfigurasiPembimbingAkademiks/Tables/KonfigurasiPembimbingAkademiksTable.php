@@ -4,6 +4,7 @@ namespace App\Filament\Resources\KonfigurasiPembimbingAkademiks\Tables;
 
 use App\Enums\PembimbingAkademikMode;
 use Filament\Actions\BulkActionGroup;
+use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Tables\Columns\IconColumn;
@@ -70,12 +71,18 @@ class KonfigurasiPembimbingAkademiksTable
 
             ])
             ->recordActions([
-                EditAction::make(),
+                EditAction::make()->slideOver(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ])->defaultSort('updated_at', 'desc');
+            ])->emptyStateHeading('Belum ada konfigurasi pembimbing')
+            ->emptyStateDescription('Buat konfigurasi supaya kombinasi Program Studi & Angkatan ini bisa dipakai untuk Penugasan/Generate Massal Dosen Wali.')
+            ->emptyStateIcon('heroicon-o-adjustments-horizontal')
+            ->emptyStateActions([
+                CreateAction::make()->slideOver(),
+            ])
+            ->defaultSort('updated_at', 'desc');
     }
 }

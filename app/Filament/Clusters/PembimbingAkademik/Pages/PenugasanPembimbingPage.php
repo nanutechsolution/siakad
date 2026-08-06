@@ -174,13 +174,13 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                             Select::make('dosen_id')
                                 ->label('Dosen')
                                 ->searchable()
-                                ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
+                                ->getSearchResultsUsing(fn(string $search) => Dosen::query()
                                     ->where('nidn', 'like', "%{$search}%")
                                     ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
                                     ->limit(20)
                                     ->get()
-                                    ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                                ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
+                                    ->mapWithKeys(fn(Dosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
+                                ->getOptionLabelUsing(fn($value) => optional(Dosen::find($value))?->nidn)
                                 ->required(),
                             Toggle::make('is_primary')
                                 ->label('Pembimbing Utama')
@@ -214,7 +214,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                         ? 'Kelas: ' . (Kelas::find($get('kelas_id'))?->nama_kelas ?? '-')
                                         : 'Mahasiswa: ' . (Mahasiswa::find($get('mahasiswa_id'))?->nim ?? '-');
 
-                                    $dosen = $get('dosen_id') ? (TrxDosen::find($get('dosen_id'))?->person?->nama_lengkap ?? '-') : '-';
+                                    $dosen = $get('dosen_id') ? (Dosen::find($get('dosen_id'))?->person?->nama_lengkap ?? '-') : '-';
 
                                     return new HtmlString(
                                         '<div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm space-y-1">
