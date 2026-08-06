@@ -33,7 +33,7 @@ class KhsMhs extends Page
 
         // Default: tahun akademik paling baru yang punya data.
         $this->tahunAkademikId = $this->daftarTahunAkademik->first()?->id;
-
+        dd($this->daftarTahunAkademik);
         $this->loadKhs($service);
     }
 
