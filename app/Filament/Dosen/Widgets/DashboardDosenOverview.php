@@ -22,7 +22,7 @@ class DashboardDosenOverview extends BaseWidget
         $user = Auth::user();
 
         // Pengambilan ID berdasarkan pola data user -> person -> trxDosen Anda
-        $dosenId = $user?->person?->trxDosen?->id;
+        $dosenId = $user?->person?->dosen?->id;
         $personId = $user?->person?->id;
 
         if (!$dosenId || !$personId) {
