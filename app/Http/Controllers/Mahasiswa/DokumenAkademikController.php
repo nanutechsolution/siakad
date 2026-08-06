@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Mahasiswa;
 
 use App\Http\Controllers\Controller;
+use App\Models\RefTahunAkademik;
 use App\Services\Mahasiswa\NilaiAkademikService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
@@ -22,9 +23,13 @@ class DokumenAkademikController extends Controller
         $mahasiswa = $this->service->mahasiswaLogin();
 
         $tahunAkademikId = (int) $request->query('tahunAkademikId');
-        abort_unless($tahunAkademikId > 0, 404, 'Tahun akademik tidak valid.');
+
+        $tahunAkademik = RefTahunAkademik::find($tahunAkademikId);
+
+        abort_unless($tahunAkademik, 404, 'Tahun akademik tidak ditemukan.');
+
         $khs = $this->service->khsData($mahasiswa, $tahunAkademikId);
-        abort_if($khs['ringkasan'] === null && $khs['mata_kuliah']->isEmpty(), 404, 'Data KHS tidak ditemukan.');
+
         $pdf = Pdf::loadView('pdf.mhs.khs', [
             'mahasiswa' => $mahasiswa,
             'khs' => $khs,
