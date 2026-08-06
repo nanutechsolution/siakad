@@ -34,20 +34,6 @@ class KhsMhs extends Page
         // Default: tahun akademik paling baru yang punya data.
         $this->tahunAkademikId = $this->daftarTahunAkademik->first()?->id;
 
-        dd([
-            'user_id' => auth()->id(),
-            'person_id' => auth()->user()?->person_id,
-
-            'mahasiswa_login' => [
-                'id' => $this->mahasiswa->id,
-                'nim' => $this->mahasiswa->nim,
-                'person_id' => $this->mahasiswa->person_id,
-            ],
-
-            'jumlah_krs' => $this->mahasiswa->krs()->count(),
-
-            'tahun' => $service->daftarTahunAkademikMahasiswa($this->mahasiswa),
-        ]);
         $this->loadKhs($service);
     }
 
