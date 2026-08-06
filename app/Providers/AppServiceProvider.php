@@ -100,6 +100,9 @@ class AppServiceProvider extends ServiceProvider
             'trx_pegawai' => \App\Models\TrxPegawai::class,
             'payment_policy' => \App\Models\PaymentPolicy::class,
             'pdf_document' => PdfDocument::class,
+            'ref_tahun_akademik' => \App\Models\RefTahunAkademik::class,
+            'pembimbing_akademik' => \App\Models\PembimbingAkademik::class,
+            'konfigurasi_pembimbing_akademik' => \App\Models\KonfigurasiPembimbingAkademik::class,
         ]);
     }
 }

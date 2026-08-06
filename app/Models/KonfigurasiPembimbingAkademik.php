@@ -5,9 +5,12 @@ namespace App\Models;
 use App\Enums\PembimbingAkademikMode;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class KonfigurasiPembimbingAkademik extends Model
 {
+    use LogsActivity;
     protected $table = 'konfigurasi_pembimbing_akademik';
 
     protected $fillable = [
@@ -23,6 +26,29 @@ class KonfigurasiPembimbingAkademik extends Model
         'aktif' => 'boolean',
     ];
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('konfigurasi-pembimbing-akademik')
+            ->logOnly([
+                'prodi_id',
+                'angkatan_id',
+                'mode',
+                'aktif',
+                'keterangan',
+            ])
+            ->logOnlyDirty();
+    }
+
+    public function getDescriptionForEvent(string $eventName): string
+    {
+        return match ($eventName) {
+            'created' => 'Menambahkan konfigurasi pembimbing akademik',
+            'updated' => 'Mengubah konfigurasi pembimbing akademik',
+            'deleted' => 'Menghapus konfigurasi pembimbing akademik',
+            default => $eventName,
+        };
+    }
     /*
     |--------------------------------------------------------------------------
     | Relationships

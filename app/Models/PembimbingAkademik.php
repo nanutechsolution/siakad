@@ -7,10 +7,12 @@ use App\Enums\PembimbingAkademikStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class PembimbingAkademik extends Model
 {
-    use SoftDeletes;
+    use SoftDeletes, LogsActivity;
 
     protected $table = 'pembimbing_akademik';
 
@@ -42,6 +44,40 @@ class PembimbingAkademik extends Model
         'tanggal_selesai' => 'date',
         'tanggal_sk' => 'date',
     ];
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('pembimbing-akademik')
+            ->logOnly([
+                'kelas_id',
+                'mahasiswa_id',
+                'dosen_id',
+                'jenis',
+                'is_primary',
+                'semester_mulai_id',
+                'semester_selesai_id',
+                'tanggal_mulai',
+                'tanggal_selesai',
+                'nomor_sk',
+                'tanggal_sk',
+                'alasan',
+                'keterangan',
+                'status',
+            ])
+            ->logOnlyDirty();
+    }
+
+    public function getDescriptionForEvent(string $eventName): string
+    {
+        return match ($eventName) {
+            'created' => 'Menambahkan pembimbing akademik',
+            'updated' => 'Mengubah data pembimbing akademik',
+            'deleted' => 'Menghapus pembimbing akademik',
+            'restored' => 'Memulihkan pembimbing akademik',
+            default => $eventName,
+        };
+    }
 
 
     /*

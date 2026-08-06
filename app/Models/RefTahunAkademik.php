@@ -5,9 +5,13 @@ namespace App\Models;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class RefTahunAkademik extends Model
 {
+    use LogsActivity;
+
     /**
      * Nama tabel di database.
      */
@@ -80,7 +84,22 @@ class RefTahunAkademik extends Model
         'tgl_selesai_input_nilai' => 'date',
         'tgl_publish_nilai' => 'date',
     ];
-
+    /**
+     * Konfigurasi Activity Log.
+     */
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->useLogName('Tahun Akademik')
+            ->logFillable()
+            ->logOnlyDirty()
+            ->setDescriptionForEvent(fn(string $eventName) => match ($eventName) {
+                'created' => 'Menambahkan Tahun Akademik',
+                'updated' => 'Mengubah Tahun Akademik',
+                'deleted' => 'Menghapus Tahun Akademik',
+                default => $eventName,
+            });
+    }
     /**
      * Relasi ke tabel users (Berdasarkan FOREIGN KEY di schema).
      */
@@ -129,7 +148,7 @@ class RefTahunAkademik extends Model
         return 'Sudah Ditutup';
     }
 
-    
+
     public function scopeAktif($query)
     {
         return $query->where('is_active', true);
