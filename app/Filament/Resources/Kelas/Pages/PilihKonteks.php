@@ -41,7 +41,7 @@ class PilihKonteks extends Page implements HasForms
                 // Sesuaikan nama tabel/kolom referensi ini dengan skema Anda.
                 Select::make('tahun_akademik_id')
                     ->label('Tahun Akademik')
-                    ->options(fn() => DB::table('ref_tahun_akademik')->pluck('nama', 'id'))
+                    ->options(fn() => DB::table('ref_tahun_akademik')->pluck('nama_tahun', 'id'))
                     ->required(),
 
                 Select::make('prodi_id')
