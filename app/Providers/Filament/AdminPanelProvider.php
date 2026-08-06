@@ -20,6 +20,7 @@ use App\Enums\NavigationGroup as AppNavigationGroup;
 use App\Filament\Pages\Auth\Login;
 use App\Filament\Pages\PilihKonteksKerja;
 use App\Http\Middleware\EnsureOrganizationContext;
+use App\Http\Middleware\ForcePasswordChange;
 use Filament\Enums\ThemeMode;
 use Filament\FontProviders\GoogleFontProvider;
 use Filament\Navigation\NavigationGroup;
@@ -110,6 +111,7 @@ class AdminPanelProvider extends PanelProvider
                 SubstituteBindings::class,
                 DisableBladeIconComponents::class,
                 DispatchServingFilamentEvent::class,
+                ForcePasswordChange::class,
             ])
             ->authMiddleware([
                 Authenticate::class,
