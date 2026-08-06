@@ -13,6 +13,7 @@ use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\PembimbingAkademikService;
 use BackedEnum;
+use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
@@ -60,6 +61,8 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
     {
         $this->form->fill([
             'jenis' => PembimbingAkademikJenis::DOSEN_WALI->value,
+            'kelas_ids' => [],
+            'mahasiswa_ids' => [],
             'is_primary' => true,
             'tanggal_mulai' => now()->toDateString(),
             'semester_mulai_id' => RefTahunAkademik::query()->where('is_active', true)->value('id'),
@@ -128,12 +131,19 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                         ]),
 
                     Step::make('Target Penugasan')
-                        ->description('Kelas atau mahasiswa')
+                        ->description('Bisa pilih lebih dari satu')
                         ->icon('heroicon-o-user-group')
                         ->components([
-                            Select::make('kelas_id')
-                                ->label('Kelas')
-                                ->searchable()
+                            Placeholder::make('info_multi_target')
+                                ->label('')
+                                ->content(new HtmlString(
+                                    '<div class="rounded-lg bg-primary-50 dark:bg-primary-500/10 p-3 text-sm text-primary-700 dark:text-primary-400">
+                                        💡 Pilih lebih dari satu kelas/mahasiswa di sini — semuanya akan ditugaskan ke dosen yang sama pada langkah berikutnya dalam satu kali submit.
+                                    </div>'
+                                )),
+
+                            CheckboxList::make('kelas_ids')
+                                ->label('Kelas (bisa pilih lebih dari satu)')
                                 ->options(function ($get) {
                                     if (! $get('prodi_id') || ! $get('angkatan_id')) {
                                         return [];
@@ -142,12 +152,16 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                     return app(PembimbingAkademikService::class)
                                         ->kelasBelumPunyaWali((int) $get('prodi_id'), (int) $get('angkatan_id'));
                                 })
-                                ->helperText('Hanya menampilkan kelas yang belum memiliki Dosen Wali aktif.')
+                                ->searchable()
+                                ->bulkToggleable()
+                                ->columns(2)
+                                ->helperText('Hanya menampilkan kelas yang belum memiliki Dosen Wali aktif. Gunakan "Pilih Semua" untuk menugaskan satu dosen ke semua kelas sekaligus.')
                                 ->visible(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_KELAS)
                                 ->required(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_KELAS),
 
-                            Select::make('mahasiswa_id')
-                                ->label('Mahasiswa')
+                            Select::make('mahasiswa_ids')
+                                ->label('Mahasiswa (bisa pilih lebih dari satu)')
+                                ->multiple()
                                 ->searchable()
                                 ->getSearchResultsUsing(function (string $search, $get) {
                                     return Mahasiswa::query()
@@ -158,11 +172,15 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                         ->where(fn($q) => $q
                                             ->where('nim', 'like', "%{$search}%")
                                             ->orWhereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%")))
-                                        ->limit(20)
+                                        ->limit(30)
                                         ->get()
                                         ->mapWithKeys(fn(Mahasiswa $m) => [$m->id => "{$m->nim} - {$m->person?->nama_lengkap}"]);
                                 })
-                                ->getOptionLabelUsing(fn($value) => optional(Mahasiswa::find($value))?->nim)
+                                ->getOptionLabelsUsing(fn(array $values) => Mahasiswa::query()
+                                    ->whereIn('id', $values)
+                                    ->get()
+                                    ->mapWithKeys(fn(Mahasiswa $m) => [$m->id => "{$m->nim} - {$m->person?->nama_lengkap}"]))
+                                ->helperText('Ketik untuk mencari, klik beberapa nama sekaligus — semuanya akan ditugaskan ke dosen yang sama.')
                                 ->visible(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_MAHASISWA)
                                 ->required(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_MAHASISWA),
                         ]),
@@ -174,13 +192,14 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                             Select::make('dosen_id')
                                 ->label('Dosen')
                                 ->searchable()
-                                ->getSearchResultsUsing(fn(string $search) => Dosen::query()
+                                ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
                                     ->where('nidn', 'like', "%{$search}%")
                                     ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
                                     ->limit(20)
                                     ->get()
-                                    ->mapWithKeys(fn(Dosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                                ->getOptionLabelUsing(fn($value) => optional(Dosen::find($value))?->nidn)
+                                    ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
+                                ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
+                                ->helperText('Satu dosen ini akan diterapkan ke SEMUA target yang dipilih di langkah sebelumnya.')
                                 ->required(),
                             Toggle::make('is_primary')
                                 ->label('Pembimbing Utama')
@@ -210,11 +229,22 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                 ->content(function ($get) {
                                     $jenis = $get('jenis') ? PembimbingAkademikJenis::from($get('jenis'))->label() : '-';
 
-                                    $target = $get('kelas_id')
-                                        ? 'Kelas: ' . (Kelas::find($get('kelas_id'))?->nama_kelas ?? '-')
-                                        : 'Mahasiswa: ' . (Mahasiswa::find($get('mahasiswa_id'))?->nim ?? '-');
+                                    $kelasIds = array_values($get('kelas_ids') ?? []);
+                                    $mahasiswaIds = array_values($get('mahasiswa_ids') ?? []);
 
-                                    $dosen = $get('dosen_id') ? (Dosen::find($get('dosen_id'))?->person?->nama_lengkap ?? '-') : '-';
+                                    if ($kelasIds !== []) {
+                                        $nama = Kelas::query()->whereIn('id', $kelasIds)->pluck('nama_kelas');
+                                        $preview = $nama->take(5)->implode(', ') . ($nama->count() > 5 ? ' dan ' . ($nama->count() - 5) . ' lainnya' : '');
+                                        $target = count($kelasIds) . ' kelas dipilih: ' . $preview;
+                                    } elseif ($mahasiswaIds !== []) {
+                                        $nama = Mahasiswa::query()->whereIn('id', $mahasiswaIds)->pluck('nim');
+                                        $preview = $nama->take(5)->implode(', ') . ($nama->count() > 5 ? ' dan ' . ($nama->count() - 5) . ' lainnya' : '');
+                                        $target = count($mahasiswaIds) . ' mahasiswa dipilih: ' . $preview;
+                                    } else {
+                                        $target = 'Belum ada target dipilih';
+                                    }
+
+                                    $dosen = $get('dosen_id') ? (TrxDosen::find($get('dosen_id'))?->person?->nama_lengkap ?? '-') : '-';
 
                                     return new HtmlString(
                                         '<div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm space-y-1">
@@ -249,6 +279,12 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
         return app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
     }
 
+    /**
+     * Menugaskan ke SEMUA target terpilih (kelas_ids atau mahasiswa_ids)
+     * dalam satu submit. Setiap target diproses independen (try/catch)
+     * supaya satu target yang gagal (mis. sudah punya wali aktif) tidak
+     * menggagalkan target lain yang valid.
+     */
     public function submit(): void
     {
         $this->isSubmitting = true;
@@ -256,27 +292,70 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
         try {
             $data = $this->form->getState();
 
-            app(PembimbingAkademikService::class)->tugaskan($data);
+            $jenis = PembimbingAkademikJenis::from($data['jenis']);
+            $konfigurasi = app(PembimbingAkademikService::class)->konfigurasiAktif($data['prodi_id'] ?? null, $data['angkatan_id'] ?? null);
+            $mode = app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
 
-            Notification::make()
-                ->title('Pembimbing akademik berhasil ditugaskan')
-                ->success()
-                ->send();
+            $targetIds = $mode === PembimbingAkademikMode::PER_KELAS
+                ? array_values($data['kelas_ids'] ?? [])
+                : array_values($data['mahasiswa_ids'] ?? []);
+
+            if ($targetIds === []) {
+                Notification::make()->title('Pilih minimal satu target')->warning()->send();
+
+                return;
+            }
+
+            $service = app(PembimbingAkademikService::class);
+            $berhasil = 0;
+            $dilewati = 0;
+
+            foreach ($targetIds as $targetId) {
+                try {
+                    $service->tugaskan([
+                        'jenis' => $data['jenis'],
+                        'kelas_id' => $mode === PembimbingAkademikMode::PER_KELAS ? $targetId : null,
+                        'mahasiswa_id' => $mode === PembimbingAkademikMode::PER_MAHASISWA ? $targetId : null,
+                        'dosen_id' => $data['dosen_id'],
+                        'is_primary' => $data['is_primary'] ?? true,
+                        'semester_mulai_id' => $data['semester_mulai_id'],
+                        'tanggal_mulai' => $data['tanggal_mulai'],
+                        'nomor_sk' => $data['nomor_sk'] ?? null,
+                        'tanggal_sk' => $data['tanggal_sk'] ?? null,
+                        'keterangan' => $data['keterangan'] ?? null,
+                        'prodi_id' => $data['prodi_id'] ?? null,
+                        'angkatan_id' => $data['angkatan_id'] ?? null,
+                    ]);
+                    $berhasil++;
+                } catch (PembimbingAkademikException) {
+                    $dilewati++;
+                }
+            }
+
+            $banyak = count($targetIds) > 1;
+
+            $notification = Notification::make()
+                ->title($banyak
+                    ? "{$berhasil} penugasan berhasil dibuat" . ($dilewati > 0 ? ", {$dilewati} dilewati (sudah ada pembimbing aktif)" : '')
+                    : 'Pembimbing akademik berhasil ditugaskan')
+                ->success();
+
+            if ($banyak) {
+                $notification->persistent();
+            }
+
+            $notification->send();
 
             $this->form->fill([
                 'jenis' => $data['jenis'],
                 'prodi_id' => $data['prodi_id'] ?? null,
                 'angkatan_id' => $data['angkatan_id'] ?? null,
+                'kelas_ids' => [],
+                'mahasiswa_ids' => [],
                 'is_primary' => true,
                 'tanggal_mulai' => now()->toDateString(),
                 'semester_mulai_id' => $data['semester_mulai_id'],
             ]);
-        } catch (PembimbingAkademikException $e) {
-            Notification::make()
-                ->title('Tidak bisa menyimpan')
-                ->body($e->getMessage())
-                ->warning()
-                ->send();
         } finally {
             $this->isSubmitting = false;
         }
