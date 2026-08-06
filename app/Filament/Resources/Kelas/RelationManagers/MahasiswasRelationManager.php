@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Kelas\RelationManagers;
 
 use App\Exports\Kelas\MahasiswaKelasExport;
+use App\Exports\Kelas\MahasiswaKelasImport as KelasMahasiswaKelasImport;
 use App\Imports\Kelas\MahasiswaKelasImport;
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaKelas;
@@ -13,12 +14,9 @@ use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Actions\DeleteAction;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Carbon\Carbon;
 use Filament\Actions\DeleteAction as ActionsDeleteAction;
 use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\Facades\DB;
@@ -71,7 +69,7 @@ class MahasiswasRelationManager extends RelationManager
                             DB::beginTransaction();
 
                             Excel::import(
-                                new MahasiswaKelasImport($this->getOwnerRecord()->id, $service),
+                                new KelasMahasiswaKelasImport($this->getOwnerRecord()->id, $service),
                                 $data['file']
                             );
 

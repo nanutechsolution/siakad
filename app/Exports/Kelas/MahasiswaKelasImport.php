@@ -1,6 +1,7 @@
 <?php
 
-namespace App\Imports\Kelas;
+
+namespace App\Exports\Kelas;
 
 use App\Models\Mahasiswa;
 use App\Services\MahasiswaPlottingService;
@@ -18,14 +19,23 @@ class MahasiswaKelasImport implements ToModel, WithHeadingRow, WithValidation, W
         protected int $kelasId,
         protected MahasiswaPlottingService $plottingService
     ) {}
+    public function prepareForValidation(array $data, int $index): array
+    {
+        if (isset($data['nim'])) {
+            $data['nim'] = preg_replace('/[^0-9]/', '', (string) $data['nim']);
+        }
+
+        return $data;
+    }
 
     public function model(array $row)
     {
-        $nim = trim((string) $row['nim']);
+        $nim = preg_replace('/[^0-9]/', '', (string) $row['nim']);
+
         $mahasiswa = Mahasiswa::where('nim', $nim)->first();
 
-        if (!$mahasiswa) {
-            return null;
+        if (! $mahasiswa) {
+            throw new \RuntimeException("NIM {$nim} tidak ditemukan.");
         }
 
         // Parse tanggal masuk
