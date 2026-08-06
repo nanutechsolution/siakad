@@ -8,7 +8,20 @@ use Illuminate\Auth\Access\HandlesAuthorization;
 class UserPolicy
 {
     use HandlesAuthorization;
-    
+    public function impersonate(AuthUser $admin, AuthUser $target): bool
+    {
+        // Cegah impersonate diri sendiri atau super-admin lain
+        if ($admin->id === $target->id || $target->hasRole('super_admin')) {
+            return false;
+        }
+
+        return $admin->hasAnyRole(['super_admin', 'BAAK']);
+    }
+
+    public function resetPassword(AuthUser $admin, AuthUser $target): bool
+    {
+        return $admin->can('update users');
+    }
     public function viewAny(AuthUser $authUser): bool
     {
         return $authUser->can('ViewAny:User');
@@ -68,5 +81,4 @@ class UserPolicy
     {
         return $authUser->can('Reorder:User');
     }
-
 }

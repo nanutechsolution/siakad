@@ -2,11 +2,15 @@
 
 namespace App\Filament\Resources\Users\Tables;
 
+use App\Helpers\SecurityHelper;
+use App\Models\User;
+use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
@@ -68,6 +72,33 @@ class UsersTable
             ])
             ->recordActions([
                 EditAction::make(),
+                Action::make('reset_password')
+                    ->label('Reset Password')
+                    ->icon('heroicon-o-key')
+                    ->color('warning')
+                    ->authorize('resetPassword')
+                    ->requiresConfirmation()
+                    ->modalHeading('Reset Password Pengguna')
+                    ->modalDescription('Password baru yang kuat akan di-generate. User akan dipaksa mengganti password saat login berikutnya.')
+                    ->action(function (User $record) {
+                        $newPassword = SecurityHelper::generateStrongPassword();
+                        $record->update([
+                            'password' => bcrypt($newPassword),
+                            'must_change_password' => true,
+                            'failed_login_attempts' => 0, // Reset percobaan login
+                            'locked_at' => null // Unlock account
+                        ]);
+
+                        // Menggunakan Persistent Notification agar Admin bisa mencopy password
+                        Notification::make()
+                            ->title('Password Berhasil Direset')
+                            ->body("Password baru untuk **{$record->username}** adalah: \n\n **`{$newPassword}`** \n\n Harap segera berikan kepada user.")
+                            ->success()
+                            ->persistent()
+                            ->send();
+
+                        activity()->performedOn($record)->log('Password reset by Admin');
+                    }),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
