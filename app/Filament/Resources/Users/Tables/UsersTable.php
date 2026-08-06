@@ -16,7 +16,8 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
-
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 class UsersTable
 {
     public static function configure(Table $table): Table
@@ -85,13 +86,23 @@ class UsersTable
                             'password' => bcrypt($newPassword),
                             'must_change_password' => true,
                             'failed_login_attempts' => 0, // Reset percobaan login
-                            'locked_at' => null // Unlock account
+                            'locked_at' => null, // Unlock account
+                            'remember_token' => Str::random(60),
                         ]);
+                        if (config('session.driver') === 'database') {
+                            DB::table(config('session.table', 'sessions'))
+                                ->where('user_id', $record->id)
+                                ->delete();
+                        }
 
                         // Menggunakan Persistent Notification agar Admin bisa mencopy password
                         Notification::make()
                             ->title('Password Berhasil Direset')
-                            ->body("Password baru untuk **{$record->username}** adalah: \n\n **`{$newPassword}`** \n\n Harap segera berikan kepada user.")
+                            ->body(
+                                "Username: {$record->username}\n" .
+                                    "Password Baru: {$newPassword}\n\n" .
+                                    "Silakan salin password ini dan berikan kepada pengguna. Password hanya ditampilkan sekali."
+                            )
                             ->success()
                             ->persistent()
                             ->send();
