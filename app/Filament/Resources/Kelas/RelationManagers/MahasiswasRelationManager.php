@@ -165,7 +165,7 @@ class MahasiswasRelationManager extends RelationManager
                         DatePicker::make('tanggal_mutasi')->default(now())->required(),
                     ])
                     ->action(fn($record, array $data, MahasiswaMutasiService $srv) =>
-                    $srv->mutasi($record, $data['target_kelas_id'], $data['tanggal_mutasi'])),
+                    $srv->pindahKelas($record, $data['target_kelas_id'], $data['tanggal_mutasi'])),
 
                 ActionsDeleteAction::make('hapus_plotting')
                     ->before(function ($record, MahasiswaPlottingService $srv, $action) {

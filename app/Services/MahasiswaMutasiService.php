@@ -6,7 +6,7 @@ use App\Models\MahasiswaKelas;
 use App\Models\Kelas;
 use Illuminate\Support\Facades\DB;
 
-class ManajemenKelasService
+class MahasiswaMutasiService
 {
     protected $plottingService;
 
