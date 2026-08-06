@@ -105,7 +105,7 @@
             <td class="label">NIM</td>
             <td>: {{ $mahasiswa->nim }}</td>
             <td class="label">Tahun Akademik</td>
-            <td>: {{ $khs['ringkasan']?->tahunAkademik?->nama_tahun }}</td>
+            <td>: {{ $tahunAkademik?->nama_tahun ?? '-' }}</td>
         </tr>
     </table>
 
