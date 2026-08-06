@@ -29,7 +29,7 @@ class KelasSeeder extends Seeder
                     'nama_kelas'  => $kelas,
                     'prodi_id'    => $prodi->id,
                     'program_id'  => $programReguler->id,
-                    'angkatan_id' => $angkatan2024->id,
+                    'angkatan_id' => $angkatan2024->id_tahun,
                 ],
                 [
                     'kapasitas' => 40,
@@ -45,7 +45,7 @@ class KelasSeeder extends Seeder
                 'nama_kelas'  => 'EKSTENSI-WKB',
                 'prodi_id'    => $prodi->id,
                 'program_id'  => $programEkstensi->id,
-                'angkatan_id' => $angkatan2024->id,
+                'angkatan_id' => $angkatan2024->id_tahun,
             ],
             [
                 'kapasitas' => 40,
