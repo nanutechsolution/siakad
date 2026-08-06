@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-// use Illuminate\Contracts\Auth\MustVerifyEmail;
 
 use App\Models\Concerns\HasCurrentOrganization;
 use Database\Factories\UserFactory;
