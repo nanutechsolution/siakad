@@ -57,189 +57,189 @@
 
 <body>
 
-@php
+    @php
     // Karena riwayatStatus adalah hasMany
     $status = $krs->mahasiswa->riwayatStatus->first();
-@endphp
+    @endphp
 
 
-@include('pdf.partials.header', [
+    @include('pdf.partials.header', [
     'judulDokumen' => 'KARTU HASIL STUDI (KHS)',
     'infoBaris' => [
-        'Semester: ' . ($krs->tahunAkademik->nama_tahun ?? '-'),
+    'Semester: ' . ($krs->tahunAkademik->nama_tahun ?? '-'),
     ],
-])
+    ])
 
 
-<table class="info-table">
-    <tr>
-        <td width="20%">
-            <strong>NIM</strong>
-        </td>
-
-        <td>
-            : {{ $krs->mahasiswa->nim ?? '-' }}
-        </td>
-
-        <td width="20%">
-            <strong>Program Studi</strong>
-        </td>
-
-        <td>
-            : {{ $krs->mahasiswa->prodi->nama_prodi ?? '-' }}
-        </td>
-    </tr>
-
-
-    <tr>
-        <td>
-            <strong>Nama</strong>
-        </td>
-
-        <td>
-            : {{ $krs->mahasiswa->person->nama_lengkap ?? '-' }}
-        </td>
-
-        <td>
-            <strong>Status</strong>
-        </td>
-
-        <td>
-            : Aktif
-        </td>
-    </tr>
-</table>
-
-
-
-<table class="nilai-table">
-
-    <thead>
+    <table class="info-table">
         <tr>
-            <th>No</th>
-            <th>Kode</th>
-            <th>Mata Kuliah</th>
-            <th>SKS</th>
-            <th>Nilai</th>
-            <th>Indeks</th>
-        </tr>
-    </thead>
-
-
-    <tbody>
-
-    @forelse($krs->details as $index => $detail)
-
-        <tr>
-
-            <td class="text-center">
-                {{ $index + 1 }}
+            <td width="20%">
+                <strong>NIM</strong>
             </td>
-
-
-            <td class="text-center">
-                {{ $detail->mataKuliah->kode_mk ?? '-' }}
-            </td>
-
 
             <td>
-                {{ $detail->nama_mk_snapshot ?? '-' }}
+                : {{ $krs->mahasiswa->nim ?? '-' }}
             </td>
 
-
-            <td class="text-center">
-                {{ $detail->sks_snapshot ?? 0 }}
+            <td width="20%">
+                <strong>Program Studi</strong>
             </td>
 
-
-            <td class="text-center">
-                {{ $detail->nilai_huruf ?? '-' }}
+            <td>
+                : {{ $krs->mahasiswa->prodi->nama_prodi ?? '-' }}
             </td>
-
-
-            <td class="text-center">
-                {{ $detail->nilai_indeks ?? '-' }}
-            </td>
-
         </tr>
 
-
-    @empty
 
         <tr>
-            <td colspan="6" class="text-center">
-                Tidak ada mata kuliah.
+            <td>
+                <strong>Nama</strong>
+            </td>
+
+            <td>
+                : {{ $krs->mahasiswa->person->nama_lengkap ?? '-' }}
+            </td>
+
+            <td>
+                <strong>Status</strong>
+            </td>
+
+            <td>
+                : Aktif
             </td>
         </tr>
-
-    @endforelse
-
-    </tbody>
-
-
-    <tfoot>
-
-        <tr>
-
-            <td colspan="3" style="text-align:right">
-                <strong>Total SKS</strong>
-            </td>
-
-            <td class="text-center">
-                <strong>
-                    {{ $krs->details->sum('sks_snapshot') }}
-                </strong>
-            </td>
-
-            <td colspan="2"></td>
-
-        </tr>
-
-    </tfoot>
-
-</table>
+    </table>
 
 
 
-<div class="footer">
+    <table class="nilai-table">
 
-    <p>
-        <strong>
-            IPS:
-            {{ $status->ips ?? '-' }}
-        </strong>
-
-        |
-
-        <strong>
-            IPK:
-            {{ $status->ipk ?? '-' }}
-        </strong>
-    </p>
+        <thead>
+            <tr>
+                <th>No</th>
+                <th>Kode</th>
+                <th>Mata Kuliah</th>
+                <th>SKS</th>
+                <th>Nilai</th>
+                <th>Indeks</th>
+            </tr>
+        </thead>
 
 
+        <tbody>
 
-    <div class="ttd-box">
+            @forelse($krs->details as $index => $detail)
 
-        <p>
-            Dicetak pada:
-            {{ date('d-m-Y') }}
-        </p>
+            <tr>
 
-        <br>
-        <br>
-        <br>
+                <td class="text-center">
+                    {{ $index + 1 }}
+                </td>
 
+
+                <td class="text-center">
+                    {{ $detail->mataKuliah->kode_mk ?? '-' }}
+                </td>
+
+
+                <td>
+                    {{ $detail->nama_mk_snapshot ?? '-' }}
+                </td>
+
+
+                <td class="text-center">
+                    {{ $detail->sks_snapshot ?? 0 }}
+                </td>
+
+
+                <td class="text-center">
+                    {{ $detail->nilai_huruf ?? '-' }}
+                </td>
+
+
+                <td class="text-center">
+                    {{ $detail->nilai_indeks ?? '-' }}
+                </td>
+
+            </tr>
+
+
+            @empty
+
+            <tr>
+                <td colspan="6" class="text-center">
+                    Tidak ada mata kuliah.
+                </td>
+            </tr>
+
+            @endforelse
+
+        </tbody>
+
+
+        <tfoot>
+
+            <tr>
+
+                <td colspan="3" style="text-align:right">
+                    <strong>Total SKS</strong>
+                </td>
+
+                <td class="text-center">
+                    <strong>
+                        {{ $krs->details->sum('sks_snapshot') }}
+                    </strong>
+                </td>
+
+                <td colspan="2"></td>
+
+            </tr>
+
+        </tfoot>
+
+    </table>
+
+
+
+    <div class="footer">
 
         <p>
             <strong>
-                ( Bagian Akademik )
+                IPS:
+                {{ $status->ips ?? '-' }}
+            </strong>
+
+            |
+
+            <strong>
+                IPK:
+                {{ $status->ipk ?? '-' }}
             </strong>
         </p>
 
-    </div>
 
-</div>
+
+        <div class="ttd-box">
+
+            <p>
+                Dicetak pada:
+                {{ date('d-m-Y') }}
+            </p>
+
+            <br>
+            <br>
+            <br>
+
+
+            <p>
+                <strong>
+                    ( Bagian Akademik )
+                </strong>
+            </p>
+
+        </div>
+
+    </div>
 
 
 </body>
