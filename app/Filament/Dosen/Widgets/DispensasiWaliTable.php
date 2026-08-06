@@ -10,7 +10,6 @@ use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget as BaseWidget;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Database\Eloquent\Builder;
 
 class DispensasiWaliTable extends BaseWidget
 {
@@ -20,7 +19,7 @@ class DispensasiWaliTable extends BaseWidget
 
     public function table(Table $table): Table
     {
-        $dosenId = Auth::user()?->person?->trxDosen?->id;
+        $dosenId = Auth::user()?->person?->dosen?->id;
 
         return $table
             ->query(
