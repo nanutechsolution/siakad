@@ -106,7 +106,9 @@ class PembimbingAkademikResolver
      */
     public function scopeMahasiswaBimbingan(Builder $query, string $dosenId): Builder
     {
-        dd($dosenId);
+        if (blank($dosenId)) {
+            return $query->whereRaw('1 = 0');
+        }
         return $query->where(function (Builder $q) use ($dosenId) {
             $q->where(function (Builder $perMahasiswa) use ($dosenId) {
                 $perMahasiswa->whereExists(function ($sub) {
@@ -173,12 +175,17 @@ class PembimbingAkademikResolver
     }
 
 
-    public function jumlahMahasiswaBimbingan(string $dosenId): int
+    public function jumlahMahasiswaBimbingan(?string $dosenId): int
     {
+        if (blank($dosenId)) {
+            return 0;
+        }
+
         return $this->scopeMahasiswaBimbingan(
             Mahasiswa::query(),
             $dosenId
-        )->distinct('mahasiswas.id')
+        )
+            ->distinct('mahasiswas.id')
             ->count('mahasiswas.id');
     }
 }
