@@ -7,6 +7,7 @@ use App\Models\Kelas;
 use Filament\Actions\BulkActionGroup as ActionsBulkActionGroup;
 use Filament\Actions\DeleteBulkAction as ActionsDeleteBulkAction;
 use Filament\Actions\EditAction as ActionsEditAction;
+use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
@@ -68,6 +69,8 @@ class KelasTable
                     ->options(fn() => DB::table('ref_angkatan')->pluck('id_tahun', 'id_tahun')->toArray()),
             ])
             ->recordActions([
+                ViewAction::make()
+                    ->label('Lihat'),
                 ActionsEditAction::make(),
             ])
             ->toolbarActions([
