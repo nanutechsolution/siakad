@@ -2,7 +2,7 @@
 
 namespace App\Exports;
 
-use App\Models\MahasiswaBeasiswa;
+use App\Models\KeuanganMahasiswaBeasiswa;
 use Maatwebsite\Excel\Concerns\FromQuery;
 use Maatwebsite\Excel\Concerns\WithHeadings;
 use Maatwebsite\Excel\Concerns\WithMapping;
@@ -11,7 +11,7 @@ class MahasiswaBeasiswaExport implements FromQuery, WithHeadings, WithMapping
 {
     public function query()
     {
-        return MahasiswaBeasiswa::query()
+        return KeuanganMahasiswaBeasiswa::query()
             ->with(['mahasiswa.person', 'beasiswa', 'tahunAkademikMulai', 'tahunAkademikAkhir']);
     }
 

@@ -3,6 +3,8 @@
 namespace App\Imports;
 
 use App\Models\Beasiswa;
+use App\Models\KeuanganMahasiswaBeasiswa;
+use App\Models\KeuanganMasterBeasiswa;
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaBeasiswa;
 use App\Models\RefTahunAkademik;
@@ -21,7 +23,7 @@ class MahasiswaBeasiswaImport implements ToModel, WithHeadingRow, WithValidation
         $tahunSelesaiNama = isset($row['tahun_akademik_selesai']) ? trim((string) $row['tahun_akademik_selesai']) : null;
 
         $mahasiswa = Mahasiswa::where('nim', $nim)->first();
-        $beasiswa = Beasiswa::where('nama_beasiswa', $namaBeasiswa)->first();
+        $beasiswa = KeuanganMasterBeasiswa::where('nama_beasiswa', $namaBeasiswa)->first();
         $tahunMulai = RefTahunAkademik::where('nama_tahun', $tahunMulaiNama)->first();
         $tahunSelesai = $tahunSelesaiNama ? RefTahunAkademik::where('nama_tahun', $tahunSelesaiNama)->first() : null;
 
@@ -31,7 +33,7 @@ class MahasiswaBeasiswaImport implements ToModel, WithHeadingRow, WithValidation
 
         $isActive = strtolower(trim((string) ($row['status_aktif'] ?? 'ya'))) === 'ya';
 
-        return new MahasiswaBeasiswa([
+        return new KeuanganMahasiswaBeasiswa([
             'mahasiswa_id' => $mahasiswa->id,
             'beasiswa_id' => $beasiswa->id,
             'tahun_akademik_mulai_id' => $tahunMulai->id,
