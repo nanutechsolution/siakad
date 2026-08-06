@@ -147,7 +147,7 @@ class JadwalKuliahsTable
                 Action::make('exportPdf')
                     ->label('Export PDF')
                     ->icon('heroicon-o-document-arrow-down')
-                    ->color('blue')
+                    ->color('info')
                     ->action(function ($livewire) {
                         $jadwals = $livewire->getFilteredTableQuery()
                             ->with(['mataKuliah', 'kelas.prodi', 'ruang', 'dosenPengajars.dosen.person', 'tahunAkademik'])

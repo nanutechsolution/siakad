@@ -152,7 +152,7 @@ class MahasiswasRelationManager extends RelationManager
                 Action::make('mutasi')
                     ->icon('heroicon-o-arrows-right-left')->color('warning')
                     ->visible(fn($record) => $record->tanggal_keluar === null)
-                    ->form([
+                    ->schema([
                         Select::make('target_kelas_id')
                             ->options(fn() => \App\Models\Kelas::query()
                                 ->where('id', '!=', $this->getOwnerRecord()->id)
