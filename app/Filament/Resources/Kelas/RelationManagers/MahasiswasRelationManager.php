@@ -2,23 +2,20 @@
 
 namespace App\Filament\Resources\Kelas\RelationManagers;
 
-use App\Exports\Kelas\MahasiswaKelasExport;
 use App\Exports\Kelas\MahasiswaKelasImport as KelasMahasiswaKelasImport;
-use App\Imports\Kelas\MahasiswaKelasImport;
-use App\Models\Mahasiswa;
 use App\Models\MahasiswaKelas;
-use App\Services\MahasiswaPlottingService;
 use App\Services\MahasiswaMutasiService;
+use App\Services\MahasiswaPlottingService;
 use Filament\Actions\Action;
+use Filament\Actions\DeleteAction as ActionsDeleteAction;
 use Filament\Forms\Components\DatePicker;
+use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
-use Filament\Actions\DeleteAction as ActionsDeleteAction;
-use Filament\Forms\Components\FileUpload;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
@@ -28,6 +25,12 @@ class MahasiswasRelationManager extends RelationManager
     protected static string $relationship = 'mahasiswaKelas';
     protected static ?string $title = 'Anggota Kelas';
 
+    /**
+     * RelationManager ini fokus mengelola mahasiswa yang SUDAH berada di kelas ini.
+     * Plotting mahasiswa baru (tambah_mahasiswa) sudah dipindah ke header action
+     * ViewKelas, dan export dipindah ke header action ViewKelas — supaya tidak
+     * ada aksi yang muncul dobel antara halaman detail kelas dan relation manager ini.
+     */
     public function table(Table $table): Table
     {
         return $table
@@ -43,16 +46,9 @@ class MahasiswasRelationManager extends RelationManager
                     ->color(fn($state) => $state === 'AKTIF' ? 'success' : 'gray'),
             ])
             ->headerActions([
-                Action::make('export')
-                    ->label('Export Excel')
-                    ->icon('heroicon-o-arrow-down-tray')
-                    ->color('success')
-                    ->action(fn() => Excel::download(
-                        new MahasiswaKelasExport($this->getOwnerRecord()),
-                        'kelas-' . $this->getOwnerRecord()->id . '.xlsx'
-                    )),
-
-                // 2. Import Excel Action
+                // Hanya import_excel yang dipertahankan di sini: alur ini spesifik
+                // untuk memasukkan data dari file eksternal ke kelas ini, berbeda
+                // dari alur "tambah_mahasiswa" pilih-dari-daftar di ViewKelas.
                 Action::make('import_excel')
                     ->label('Import Excel')
                     ->icon('heroicon-o-arrow-up-tray')
@@ -60,7 +56,10 @@ class MahasiswasRelationManager extends RelationManager
                     ->schema([
                         FileUpload::make('file')
                             ->label('File Excel (.xlsx)')
-                            ->acceptedFileTypes(['application/vnd.openxmlformats-officedocument.spreadsheetml.sheet', 'application/vnd.ms-excel'])
+                            ->acceptedFileTypes([
+                                'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+                                'application/vnd.ms-excel',
+                            ])
                             ->required()
                             ->storeFiles(false),
                     ])
@@ -83,7 +82,9 @@ class MahasiswasRelationManager extends RelationManager
                         } catch (\Maatwebsite\Excel\Validators\ValidationException $e) {
                             DB::rollBack();
                             $failures = $e->failures();
-                            $errorMessage = collect($failures)->map(fn($f) => "Baris {$f->row()}: " . implode(', ', $f->errors()))->implode('<br>');
+                            $errorMessage = collect($failures)
+                                ->map(fn($f) => "Baris {$f->row()}: " . implode(', ', $f->errors()))
+                                ->implode('<br>');
 
                             Notification::make()
                                 ->title('Gagal Validasi Import')
@@ -102,57 +103,15 @@ class MahasiswasRelationManager extends RelationManager
                                 ->send();
                         }
                     }),
-                Action::make('plot_mahasiswa')
-                    ->label('Plotting Mahasiswa')
-                    ->icon('heroicon-o-user-plus')
-                    ->modalWidth('xl')
-                    ->schema([
-                        Select::make('mahasiswa_ids')
-                            ->multiple()
-                            ->searchable()
-                            ->required()
-                            ->getSearchResultsUsing(function (string $search) {
-                                $kelas = $this->getOwnerRecord();
-                                return Mahasiswa::query()
-                                    ->where('angkatan_id', $kelas->angkatan_id) // Filter Angkatan
-                                    ->whereDoesntHave('mahasiswaKelas', fn($q) => $q->whereNull('tanggal_keluar'))
-                                    ->where(fn($q) => $q->whereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%"))
-                                        ->orWhere('nim', 'like', "%{$search}%"))
-                                    ->limit(30)
-                                    ->pluck('nim', 'id')
-                                    ->map(fn($nim, $id) => $nim . ' - ' . Mahasiswa::find($id)->person->nama_lengkap);
-                            })
-                            ->getOptionLabelsUsing(fn(array $values): array =>
-                            Mahasiswa::whereIn('id', $values)->with('person')->get()
-                                ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])->toArray()),
-                        DatePicker::make('tanggal_masuk')->default(now())->required(),
-                    ])
-                    ->action(function (array $data, MahasiswaPlottingService $service) {
-                        $sukses = 0;
-                        $gagal = 0;
-                        $errorLog = [];
-                        foreach ($data['mahasiswa_ids'] as $id) {
-                            try {
-                                $service->plot($id, $this->getOwnerRecord()->id, $data['tanggal_masuk']);
-                                $sukses++;
-                            } catch (\Exception $e) {
-                                $gagal++;
-                                Log::error("Plotting Error: " . $e->getMessage());
-                                $errorLog[] = $e->getMessage();
-                            }
-                        }
-                        Notification::make()
-                            ->title($gagal == 0 ? 'Berhasil' : 'Selesai dengan Catatan')
-                            ->body("Sukses: $sukses, Gagal: $gagal. " . ($gagal > 0 ? "Pesan error: " . implode(', ', array_unique($errorLog)) : ""))
-                            ->status($gagal == 0 ? 'success' : 'warning')
-                            ->send();
-                    }),
             ])
             ->recordActions([
+                // Aksi cepat per-baris: masih relevan karena mahasiswa & kelas asal
+                // sudah diketahui dari $record, jadi operator cukup pilih kelas tujuan.
                 Action::make('mutasi')
-                    ->icon('heroicon-o-arrows-right-left')->color('warning')
+                    ->icon('heroicon-o-arrows-right-left')
+                    ->color('warning')
                     ->visible(fn($record) => $record->tanggal_keluar === null)
-                    ->form([
+                    ->schema([
                         Select::make('target_kelas_id')
                             ->options(fn() => \App\Models\Kelas::query()
                                 ->where('id', '!=', $this->getOwnerRecord()->id)
@@ -168,10 +127,15 @@ class MahasiswasRelationManager extends RelationManager
                 ActionsDeleteAction::make('hapus_plotting')
                     ->before(function ($record, MahasiswaPlottingService $srv, $action) {
                         if (!$srv->canDelete($record)) {
-                            Notification::make()->danger()->title('Gagal Hapus')->body('Data memiliki histori akademik!')->send();
-                            $action->cancel(); // Stop proses delete
+                            Notification::make()
+                                ->danger()
+                                ->title('Gagal Hapus')
+                                ->body('Data memiliki histori akademik!')
+                                ->send();
+
+                            $action->cancel();
                         }
-                    })
+                    }),
             ]);
     }
 }
