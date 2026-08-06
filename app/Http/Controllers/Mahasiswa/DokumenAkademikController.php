@@ -28,7 +28,7 @@ class DokumenAkademikController extends Controller
         $khs = $this->service->khsData($mahasiswa, $tahunAkademikId);
 
         abort_if($khs['ringkasan'] === null && $khs['mata_kuliah']->isEmpty(), 404, 'Data KHS tidak ditemukan.');
-
+        dd($khs['ringkasan']);
         $pdf = Pdf::loadView('pdf.mhs.khs', [
             'mahasiswa' => $mahasiswa,
             'khs' => $khs,
