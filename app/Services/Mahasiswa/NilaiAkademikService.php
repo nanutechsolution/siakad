@@ -142,7 +142,7 @@ class NilaiAkademikService
         // 3. Fallback dari prodi
         return MasterKurikulum::query()
             ->where('prodi_id', $mahasiswa->prodi_id)
-            ->where('aktif', true)
+            ->where('is_active', true)
             ->latest('tahun_mulai')
             ->first();
     }
