@@ -9,6 +9,7 @@ use App\Filament\Dosen\Resources\JadwalMengajars\Schemas\JadwalMengajarForm;
 use App\Filament\Dosen\Resources\JadwalMengajars\Schemas\JadwalMengajarInfolist;
 use App\Filament\Dosen\Resources\JadwalMengajars\Tables\JadwalMengajarsTable;
 use App\Models\JadwalKuliah;
+use App\Models\TrxDosen;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
@@ -47,7 +48,7 @@ class JadwalMengajarResource extends Resource
     public static function currentDosenId(): string
     {
         /** @var TrxDosen|null $dosen */
-        $dosen = auth()->user()?->person?->trxDosen;
+        $dosen = auth()->user()?->person?->dosen;
 
         abort_unless($dosen, 403, 'Akun Anda tidak terhubung ke data dosen. Hubungi administrator.');
 
