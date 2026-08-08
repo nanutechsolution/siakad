@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use App\Exports\PembimbingAkademikExport;
@@ -38,14 +39,15 @@ class RiwayatPembimbingPage extends Page implements HasTable
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
 
-    public static function getEloquentQuery(): Builder
-    {
-        return parent::getEloquentQuery()->visibleTo(auth()->user());
-    }
+
     public function table(Table $table): Table
     {
         return $table
-            ->query(PembimbingAkademik::query()->withTrashed())
+            ->query(
+                PembimbingAkademik::query()
+                    ->withTrashed()
+                    ->visibleTo(auth()->user())
+            )
             ->columns([
                 TextColumn::make('jenis')
                     ->badge()
@@ -100,7 +102,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(fn() => RefProdi::query()->orderBy('nama_prodi')->pluck('nama_prodi', 'id'))
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->query(function (Builder $query, array $data) {
                         if (! $data['value']) {

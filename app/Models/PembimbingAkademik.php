@@ -47,6 +47,11 @@ class PembimbingAkademik extends Model implements HasScopeStrategy
         'tanggal_selesai' => 'date',
         'tanggal_sk' => 'date',
     ];
+    /*
+    |--------------------------------------------------------------------------
+    | Authorization / Scope Strategy
+    |--------------------------------------------------------------------------
+    */
 
     public static function getSupportedScopeStrategies(): array
     {
@@ -60,25 +65,51 @@ class PembimbingAkademik extends Model implements HasScopeStrategy
     }
     public static function getFakultasScopeColumn(): ?string
     {
-        return 'prodi.fakultas_id';
+        return null;
     }
 
     public static function getProdiScopeColumn(): ?string
     {
-        return 'prodi_id';
+        return null;
     }
 
-    public static function applyOwnershipScope(Builder $query, User $user, ScopeStrategy $strategy): Builder
-    {
+    /**
+     * Apply scope berdasarkan ownership.
+     */
+    public static function applyOwnershipScope(
+        Builder $query,
+        User $user,
+        ScopeStrategy $strategy
+    ): Builder {
         return match ($strategy) {
-            ScopeStrategy::OWNERSHIP_MAHASISWA => $query->where('person_id', $user->person_id),
-            ScopeStrategy::DOSEN_WALI => $query->whereHas('kelas.dosenWali', function (Builder $q) use ($user) {
-                $q->whereHas('dosen', fn(Builder $d) => $d->where('person_id', $user->person_id));
-            }),
-            default => throw new \LogicException("Mahasiswa tidak mendukung strategy {$strategy->value}"),
+            /*
+             * Mahasiswa hanya boleh melihat penugasan
+             * yang ditujukan langsung kepada dirinya.
+             */
+            ScopeStrategy::OWNERSHIP_MAHASISWA =>
+            $query->whereHas(
+                'mahasiswa',
+                fn(Builder $mahasiswa) =>
+                $mahasiswa->where('person_id', $user->person_id)
+            ),
+
+            /*
+             * Dosen hanya boleh melihat mahasiswa/kelas
+             * yang memang menjadi tanggung jawabnya
+             * melalui pembimbing_akademik.
+             *
+             * Tidak lagi menggunakan kelas.dosenWali.
+             */
+            ScopeStrategy::DOSEN_WALI =>
+            $query
+                ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
+                ->where('dosen_id', $user->dosen?->id),
+
+            default => throw new \LogicException(
+                "PembimbingAkademik tidak mendukung strategy {$strategy->value}"
+            ),
         };
     }
-
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
