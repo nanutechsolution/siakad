@@ -9,6 +9,7 @@ use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\PembimbingAkademik;
 use App\Models\RefProdi;
 use App\Services\PembimbingAkademikPdfService;
+use App\Support\Utf8;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
@@ -37,7 +38,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'riwayat-pembimbing-akademik';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
-
     public function table(Table $table): Table
     {
         return $table
@@ -49,16 +49,18 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 TextColumn::make('mahasiswa.nim')
                     ->label('Mahasiswa')
                     ->placeholder('-')
-                    ->description(fn(?PembimbingAkademik $record) => $record?->mahasiswa?->person?->nama_lengkap)
+                    ->description(fn(?PembimbingAkademik $record) => Utf8::clean($record?->mahasiswa?->person?->nama_lengkap))
                     ->searchable(),
                 TextColumn::make('kelas.nama_kelas')
                     ->label('Kelas')
                     ->placeholder('-')
+                    ->formatStateUsing(fn(?string $state) => $state ? Utf8::clean($state) : null)
                     ->searchable(),
-                TextColumn::make('dosen.person.nama_lengkap')
+                TextColumn::make('dosen_nama')
                     ->label('Dosen')
+                    ->getStateUsing(fn(PembimbingAkademik $record) => Utf8::clean($record->dosen?->person?->nama_lengkap))
                     ->description(fn(?PembimbingAkademik $record) => $record?->dosen?->nidn)
-                    ->searchable(),
+                    ->searchable(query: fn($query, string $search) => $query->whereHas('dosen.person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))),
                 TextColumn::make('tanggal_mulai')
                     ->label('Mulai')
                     ->date('d M Y')

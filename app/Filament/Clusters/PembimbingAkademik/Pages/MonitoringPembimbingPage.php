@@ -8,7 +8,9 @@ use App\Exports\MahasiswaTanpaWaliExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Filament\Widgets\PembimbingStatsWidget;
 use App\Models\Mahasiswa;
+use App\Models\RefProdi;
 use App\Services\PembimbingAkademikService;
+use App\Support\Utf8;
 use BackedEnum;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
@@ -35,18 +37,18 @@ class MonitoringPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'monitoring-pembimbing-akademik';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
-    protected function getHeaderWidgets(): array
+   protected function getHeaderWidgets(): array
     {
         return [
             PembimbingStatsWidget::class,
         ];
     }
-
+ 
     protected function service(): PembimbingAkademikService
     {
         return app(PembimbingAkademikService::class);
     }
-
+ 
     /**
      * @return Collection<int, array{dosen: \App\Models\Dosen, total: int}>
      */
@@ -54,7 +56,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
     {
         return $this->service()->bebanDosenTerbanyak(5);
     }
-
+ 
     public function table(Table $table): Table
     {
         return $table
@@ -62,11 +64,13 @@ class MonitoringPembimbingPage extends Page implements HasTable
             ->heading('Mahasiswa Tanpa Dosen Wali Aktif')
             ->columns([
                 TextColumn::make('nim')->searchable()->sortable(),
-                TextColumn::make('person.nama_lengkap')
+                TextColumn::make('nama_mahasiswa')
                     ->label('Nama')
-                    ->searchable(),
+                    ->getStateUsing(fn ($record) => Utf8::clean($record->person?->nama_lengkap))
+                    ->searchable(query: fn ($query, string $search) => $query->whereHas('person', fn ($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))),
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
+                    ->formatStateUsing(fn (?string $state) => $state ? Utf8::clean($state) : null)
                     ->searchable(),
                 TextColumn::make('angkatan_id')
                     ->label('Angkatan')
@@ -75,18 +79,17 @@ class MonitoringPembimbingPage extends Page implements HasTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
-                    ->searchable()
-                    ->preload(),
+                    ->options(fn () => RefProdi::query()->orderBy('nama_prodi')->pluck('nama_prodi', 'id')->map(fn (?string $n) => Utf8::clean($n)))
+                    ->searchable(),
             ])
             ->headerActions([
                 Action::make('export')
                     ->label('Export Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->action(fn() => Excel::download(
+                    ->action(fn () => Excel::download(
                         new MahasiswaTanpaWaliExport($this->service()->queryMahasiswaTanpaWali()),
-                        'mahasiswa-tanpa-wali-' . now()->format('Ymd-His') . '.xlsx'
+                        'mahasiswa-tanpa-wali-'.now()->format('Ymd-His').'.xlsx'
                     )),
             ])
             ->emptyStateHeading('Semua mahasiswa sudah punya Dosen Wali 🎉')
@@ -95,3 +98,5 @@ class MonitoringPembimbingPage extends Page implements HasTable
             ->defaultSort('nim');
     }
 }
+ 
+

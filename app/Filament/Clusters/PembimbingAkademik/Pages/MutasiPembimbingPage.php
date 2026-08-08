@@ -10,7 +10,9 @@ use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\PembimbingAkademik;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
+use App\Services\PembimbingAkademikPdfService;
 use App\Services\PembimbingAkademikService;
+use App\Support\Utf8;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -42,20 +44,21 @@ class MutasiPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'mutasi-pembimbing-akademik';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
+
     protected function dosenSelectField(string $name, string $label, ?string $excludeDosenId = null): Select
     {
         return Select::make($name)
             ->label($label)
             ->searchable()
-            ->getSearchResultsUsing(fn (string $search) => TrxDosen::query()
-                ->when($excludeDosenId, fn ($q) => $q->where('id', '!=', $excludeDosenId))
-                ->where(fn ($q) => $q
+            ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
+                ->when($excludeDosenId, fn($q) => $q->where('id', '!=', $excludeDosenId))
+                ->where(fn($q) => $q
                     ->where('nidn', 'like', "%{$search}%")
-                    ->orWhereHas('person', fn ($p) => $p->where('nama_lengkap', 'like', "%{$search}%")))
+                    ->orWhereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%")))
                 ->limit(20)
                 ->get()
-                ->mapWithKeys(fn (TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-            ->getOptionLabelUsing(fn ($value) => optional(TrxDosen::find($value))?->nidn)
+                ->mapWithKeys(fn(TrxDosen $d) => [$d->id => Utf8::clean("{$d->person?->nama_lengkap} ({$d->nidn})")]))
+            ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
             ->required();
     }
 
@@ -67,17 +70,19 @@ class MutasiPembimbingPage extends Page implements HasTable
                 TextColumn::make('jenis')
                     ->label('Jenis')
                     ->badge()
-                    ->formatStateUsing(fn (PembimbingAkademikJenis $state) => $state->label()),
+                    ->formatStateUsing(fn(PembimbingAkademikJenis $state) => $state->label()),
                 TextColumn::make('kelas.nama_kelas')
                     ->label('Kelas')
-                    ->placeholder('-'),
+                    ->placeholder('-')
+                    ->formatStateUsing(fn(?string $state) => $state ? Utf8::clean($state) : null),
                 TextColumn::make('mahasiswa.nim')
                     ->label('Mahasiswa')
                     ->placeholder('-')
-                    ->description(fn (?PembimbingAkademik $record) => $record?->mahasiswa?->person?->nama_lengkap),
-                TextColumn::make('dosen.person.nama_lengkap')
+                    ->description(fn(?PembimbingAkademik $record) => Utf8::clean($record?->mahasiswa?->person?->nama_lengkap)),
+                TextColumn::make('dosen_nama')
                     ->label('Dosen Saat Ini')
-                    ->description(fn (?PembimbingAkademik $record) => $record?->dosen?->nidn),
+                    ->getStateUsing(fn(PembimbingAkademik $record) => Utf8::clean($record->dosen?->person?->nama_lengkap))
+                    ->description(fn(?PembimbingAkademik $record) => $record?->dosen?->nidn),
                 TextColumn::make('tanggal_mulai')
                     ->label('Sejak')
                     ->date('d M Y')
@@ -92,31 +97,37 @@ class MutasiPembimbingPage extends Page implements HasTable
                     ->label('Export Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->action(fn () => Excel::download(
+                    ->action(fn() => Excel::download(
                         new PembimbingAkademikExport(PembimbingAkademik::query()->where('status', PembimbingAkademikStatus::AKTIF)),
-                        'pembimbing-aktif-'.now()->format('Ymd-His').'.xlsx'
+                        'pembimbing-aktif-' . now()->format('Ymd-His') . '.xlsx'
                     )),
             ])
             ->recordActions([
+                Action::make('cetakSk')
+                    ->label('Cetak SK')
+                    ->icon('heroicon-o-printer')
+                    ->color('gray')
+                    ->action(fn(PembimbingAkademik $record) => app(PembimbingAkademikPdfService::class)->downloadSkPenugasan($record)),
+
                 Action::make('mutasi')
                     ->label('Mutasi')
                     ->icon('heroicon-o-arrow-path-rounded-square')
                     ->color('warning')
                     ->slideOver()
-                    ->modalHeading(fn (PembimbingAkademik $record) => 'Mutasi Pembimbing: '.($record->mahasiswa?->nim ?? $record->kelas?->nama_kelas))
-                    ->form(fn (PembimbingAkademik $record) => [
+                    ->modalHeading(fn(PembimbingAkademik $record) => 'Mutasi Pembimbing: ' . Utf8::clean($record->mahasiswa?->nim ?? $record->kelas?->nama_kelas))
+                    ->form(fn(PembimbingAkademik $record) => [
                         $this->dosenSelectField('dosen_id', 'Dosen Pengganti', $record->dosen_id)
                             ->helperText('Dosen yang sedang aktif tidak muncul di pilihan ini.'),
                         DatePicker::make('tanggal_mulai')
                             ->label('Tanggal Mulai Penugasan Baru')
                             ->default(now())
                             ->minDate($record->tanggal_mulai)
-                            ->helperText('Tidak boleh lebih awal dari tanggal mulai penugasan saat ini ('.optional($record->tanggal_mulai)->format('d M Y').').')
+                            ->helperText('Tidak boleh lebih awal dari tanggal mulai penugasan saat ini (' . optional($record->tanggal_mulai)->format('d M Y') . ').')
                             ->required(),
                         Select::make('semester_mulai_id')
                             ->label('Semester Mulai')
                             ->searchable()
-                            ->options(fn () => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
+                            ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
                             ->required(),
                         TextInput::make('nomor_sk')
                             ->label('Nomor SK Mutasi')
@@ -130,8 +141,8 @@ class MutasiPembimbingPage extends Page implements HasTable
                             ->minLength(5),
                     ])
                     ->requiresConfirmation()
-                    ->modalDescription(fn (PembimbingAkademik $record) => new HtmlString(
-                        'Penugasan saat ini (<strong>'.e($record->dosen?->person?->nama_lengkap).'</strong>) akan ditutup otomatis dan diganti dosen baru. Riwayat tetap tersimpan di menu Riwayat Pembimbing.'
+                    ->modalDescription(fn(PembimbingAkademik $record) => new HtmlString(
+                        'Penugasan saat ini (<strong>' . e(Utf8::clean($record->dosen?->person?->nama_lengkap)) . '</strong>) akan ditutup otomatis dan diganti dosen baru. Riwayat tetap tersimpan di menu Riwayat Pembimbing.'
                     ))
                     ->action(function (array $data, PembimbingAkademik $record): void {
                         try {
@@ -190,7 +201,7 @@ class MutasiPembimbingPage extends Page implements HasTable
                             Select::make('semester_mulai_id')
                                 ->label('Semester Mulai')
                                 ->searchable()
-                                ->options(fn () => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
+                                ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
                                 ->required(),
                             Textarea::make('alasan')
                                 ->label('Alasan Mutasi')
@@ -245,7 +256,7 @@ class MutasiPembimbingPage extends Page implements HasTable
                             }
 
                             Notification::make()
-                                ->title($records->count().' penugasan berhasil dibatalkan')
+                                ->title($records->count() . ' penugasan berhasil dibatalkan')
                                 ->success()
                                 ->send();
                         })
