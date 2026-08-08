@@ -8,7 +8,6 @@ use App\Exports\PembimbingAkademikExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\PembimbingAkademik;
 use App\Models\RefProdi;
-use App\Services\PembimbingAkademikPdfService;
 use App\Support\Utf8;
 use BackedEnum;
 use Filament\Actions\Action;
@@ -38,6 +37,11 @@ class RiwayatPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'riwayat-pembimbing-akademik';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     public function table(Table $table): Table
     {
         return $table
