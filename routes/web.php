@@ -23,7 +23,6 @@ Route::get('/', function () {
 });
 
 Route::get('/mahasiswa/photo/{person}', function ($person) {
-
     $path = $person->photo_path;
 
     if (!Storage::disk('private')->exists($path)) {
@@ -176,3 +175,11 @@ Route::get('/pembayaran/midtrans/status/{orderId}', [
     MidtransResultController::class,
     'status'
 ])->name('midtrans.status');
+
+use App\Http\Controllers\PembimbingAkademikPdfController;
+Route::middleware(['auth'])
+    ->get(
+        '/akademik/pembimbing/{pembimbingAkademik}/sk',
+        [PembimbingAkademikPdfController::class, 'downloadSk']
+    )
+    ->name('pembimbing-akademik.sk');

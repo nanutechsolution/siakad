@@ -132,8 +132,11 @@ class RiwayatPembimbingPage extends Page implements HasTable
                     ->icon('heroicon-o-printer')
                     ->color('gray')
                     ->visible(fn(PembimbingAkademik $record) => ! $record->trashed())
-                    ->action(fn(PembimbingAkademik $record) => app(PembimbingAkademikPdfService::class)->downloadSkPenugasan($record)),
-
+                    ->url(
+                        fn(PembimbingAkademik $record): string =>
+                        route('pembimbing-akademik.sk', $record)
+                    )
+                    ->openUrlInNewTab(),
                 Action::make('pulihkan')
                     ->label('Pulihkan')
                     ->icon('heroicon-o-arrow-uturn-left')
