@@ -4,6 +4,7 @@ namespace App\Models;
 
 use App\Domain\Authorization\Contracts\HasScopeStrategy;
 use App\Domain\Authorization\Enums\ScopeStrategy;
+use App\Domain\Authorization\Services\OrganizationResolver;
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use Illuminate\Database\Eloquent\Builder;
@@ -72,12 +73,26 @@ class PembimbingAkademik extends Model implements HasScopeStrategy
     {
         return null;
     }
-    public function scopeVisibleTo(Builder $query, User $user): Builder
-    {
-        // Implementasi harus mengikuti resolver authorization
-        // yang kamu gunakan di project.
+    public function scopeVisibleTo(
+        Builder $query,
+        User $user
+    ): Builder {
+        $prodiIds = app(OrganizationResolver::class)
+            ->accessibleProdiIds($user);
 
-        return $query;
+        if ($prodiIds === []) {
+            return $query->whereRaw('1 = 0');
+        }
+
+        return $query->where(function (Builder $q) use ($prodiIds) {    
+            $q
+                ->whereHas('kelas', function (Builder $kelas) use ($prodiIds) {
+                    $kelas->whereIn('prodi_id', $prodiIds);
+                })
+                ->orWhereHas('mahasiswa', function (Builder $mahasiswa) use ($prodiIds) {
+                    $mahasiswa->whereIn('prodi_id', $prodiIds);
+                });
+        });
     }
     /**
      * Apply scope berdasarkan ownership.

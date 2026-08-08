@@ -3,6 +3,7 @@
 namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
 use App\Domain\Authorization\Services\FormResolver;
+use App\Domain\Authorization\Services\OrganizationResolver;
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use App\Exports\PembimbingAkademikExport;
@@ -45,6 +46,11 @@ class RiwayatPembimbingPage extends Page implements HasTable
         return $table
             ->query(
                 PembimbingAkademik::query()
+                    ->with([
+                        'mahasiswa.person',
+                        'kelas',
+                        'dosen.person',
+                    ])
                     ->withTrashed()
                     ->visibleTo(auth()->user())
             )
