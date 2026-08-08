@@ -72,7 +72,13 @@ class PembimbingAkademik extends Model implements HasScopeStrategy
     {
         return null;
     }
+    public function scopeVisibleTo(Builder $query, User $user): Builder
+    {
+        // Implementasi harus mengikuti resolver authorization
+        // yang kamu gunakan di project.
 
+        return $query;
+    }
     /**
      * Apply scope berdasarkan ownership.
      */
