@@ -8,6 +8,7 @@ use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\RefTahunAkademik;
 use App\Services\PembimbingAkademikService;
 use App\Services\PenugasanImportParser;
+use App\Support\Utf8;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -91,8 +92,7 @@ class ImportPenugasanPage extends Page implements HasForms
         $sheets = Excel::toArray([], $fullPath);
         $rows = $sheets[0] ?? [];
 
-        $heading = array_map(fn($h) => strtolower(trim((string) $h)), array_shift($rows) ?? []);
-
+        $heading = array_map(fn($h) => strtolower(Utf8::clean(trim((string) $h))), array_shift($rows) ?? []);
         $rows = collect($rows)
             ->filter(fn($row) => collect($row)->filter(fn($cell) => $cell !== null && $cell !== '')->isNotEmpty())
             ->map(fn($row) => array_combine($heading, array_pad(array_slice($row, 0, count($heading)), count($heading), null)))
