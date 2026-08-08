@@ -197,108 +197,38 @@ class TrxDosenForm
                                                     ->columnSpanFull(),
                                             ]),
 
-                                        Section::make('Riwayat Jabatan')
-                                            ->icon('heroicon-o-user-group')
-                                            ->description('Catatan riwayat jabatan dan penugasan struktural personel.')
-                                            ->schema([
-                                                Repeater::make('atribusiJabatan')
-                                                    ->relationship()
-                                                    ->schema([
-                                                        Select::make('jabatan_id')
-                                                            ->label('Jabatan')
-                                                            ->relationship('jabatan', 'nama_jabatan')
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->required()
-                                                            ->columnSpan(2),
-
-                                                        Select::make('fakultas_id')
-                                                            ->label('Fakultas')
-                                                            ->relationship('fakultas', 'nama_fakultas')
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->live()
-                                                            ->afterStateUpdated(function (Set $set) {
-                                                                $set('prodi_id', null);
-                                                            }),
-
-                                                        Select::make('prodi_id')
-                                                            ->label('Program Studi')
-                                                            ->relationship(
-                                                                'prodi',
-                                                                'nama_prodi',
-                                                                modifyQueryUsing: function (Builder $query, Get $get) {
-                                                                    $fakultasId = $get('fakultas_id');
-
-                                                                    if ($fakultasId) {
-                                                                        $query->where('fakultas_id', $fakultasId);
-                                                                    }
-                                                                }
-                                                            )
-                                                            ->searchable()
-                                                            ->preload()
-                                                            ->disabled(fn(Get $get): bool => blank($get('fakultas_id')))
-                                                            ->helperText(
-                                                                fn(Get $get): string =>
-                                                                blank($get('fakultas_id'))
-                                                                    ? 'Pilih fakultas terlebih dahulu.'
-                                                                    : 'Opsional, jika jabatan terkait program studi.'
-                                                            ),
-
-                                                        DatePicker::make('tanggal_mulai')
-                                                            ->label('Mulai Menjabat')
-                                                            ->native(false)
-                                                            ->displayFormat('d F Y')
-                                                            ->required(),
-
-                                                        DatePicker::make('tanggal_selesai')
-                                                            ->label('Selesai Menjabat')
-                                                            ->native(false)
-                                                            ->displayFormat('d F Y')
-                                                            ->after('tanggal_mulai')
-                                                            ->helperText('Kosongkan jika masih menjabat.'),
-
-                                                        TextEntry::make('status_jabatan')
-                                                            ->label('Status')
-                                                            ->state(function (Get $get): string {
-                                                                return blank($get('tanggal_selesai'))
-                                                                    ? 'Aktif'
-                                                                    : 'Selesai';
-                                                            })
-                                                            ->badge()
-                                                            ->color(function (Get $get): string {
-                                                                return blank($get('tanggal_selesai'))
-                                                                    ? 'success'
-                                                                    : 'gray';
-                                                            }),
-                                                    ])
-                                                    ->columns(2)
-                                                    ->collapsible()
-                                                    ->cloneable()
-                                                    ->itemLabel(function (array $state): ?string {
-                                                        $jabatan = $state['jabatan_id'] ?? null;
-                                                        $mulai = $state['tanggal_mulai'] ?? null;
-                                                        $selesai = $state['tanggal_selesai'] ?? null;
-
-                                                        if (! $jabatan) {
-                                                            return 'Riwayat Jabatan Baru';
-                                                        }
-
-                                                        $label = "Jabatan #{$jabatan}";
-
-                                                        if ($mulai) {
-                                                            $label .= " • {$mulai}";
-                                                        }
-
-                                                        if (! $selesai) {
-                                                            $label .= ' • Aktif';
-                                                        }
-
-                                                        return $label;
-                                                    })
-                                                    ->addActionLabel('Tambah Riwayat Jabatan')
-                                                    ->columnSpanFull(),
-                                            ]),
+                                        Section::make('Riwayat Jabatan')->icon('heroicon-o-user-group')->description('Riwayat jabatan struktural dan fungsional personel.')->schema([Repeater::make('atribusiJabatan')->relationship()->schema([Select::make('jabatan_id')->label('Jabatan')->relationship('jabatan', 'nama_jabatan')->searchable()->preload()->required()->columnSpan(2), Select::make('fakultas_id')->label('Fakultas')->relationship('fakultas', 'nama_fakultas')->searchable()->preload()->live()->afterStateUpdated(function (Set $set) {
+                                            $set('prodi_id', null);
+                                        }), Select::make('prodi_id')->label('Program Studi')->relationship('prodi', 'nama_prodi', modifyQueryUsing: function (Builder $query, Get $get) {
+                                            $fakultasId = $get('fakultas_id');
+                                            if ($fakultasId) {
+                                                $query->where('fakultas_id', $fakultasId);
+                                            }
+                                        })->searchable()->preload()->disabled(fn(Get $get): bool => blank($get('fakultas_id')))->helperText(fn(Get $get): string => blank($get('fakultas_id')) ? 'Pilih fakultas terlebih dahulu.' : 'Kosongkan jika jabatan tidak terkait program studi.'), DatePicker::make('tanggal_mulai')->label('Mulai Menjabat')->native(false)->required()->live()->afterStateUpdated(function ($state, Get $get, Set $set) {
+                                            $tanggalSelesai = $get('tanggal_selesai');
+                                            if (filled($tanggalSelesai) && filled($state) && $tanggalSelesai < $state) {
+                                                $set('tanggal_selesai', null);
+                                            }
+                                        }), DatePicker::make('tanggal_selesai')->label('Selesai Menjabat')->native(false)->nullable()->live()->rule(function (Get $get) {
+                                            return function (string $attribute, $value, \Closure $fail) use ($get) {
+                                                $tanggalMulai = $get('tanggal_mulai');
+                                                if (filled($value) && filled($tanggalMulai) && $value < $tanggalMulai) {
+                                                    $fail('Tanggal selesai tidak boleh lebih awal dari tanggal mulai.');
+                                                }
+                                            };
+                                        })->helperText('Kosongkan jika masih menjabat.'), TextEntry::make('status_jabatan')->label('Status')->state(fn(Get $get): string => blank($get('tanggal_selesai')) ? 'Aktif' : 'Selesai')->badge()->color(fn(Get $get): string => blank($get('tanggal_selesai')) ? 'success' : 'gray'),])->columns(2)->collapsible()->cloneable()->itemLabel(function (array $state): string {
+                                            if (blank($state['jabatan_id'] ?? null)) {
+                                                return 'Riwayat Jabatan Baru';
+                                            }
+                                            $label = 'Jabatan #' . $state['jabatan_id'];
+                                            if (filled($state['tanggal_mulai'] ?? null)) {
+                                                $label .= ' • ' . $state['tanggal_mulai'];
+                                            }
+                                            if (blank($state['tanggal_selesai'] ?? null)) {
+                                                $label .= ' • Aktif';
+                                            }
+                                            return $label;
+                                        })->addActionLabel('Tambah Riwayat Jabatan')->columnSpanFull(),]),
                                     ]),
 
                                 // ================= TAB 3: BIODATA & ID AKADEMIK =================
