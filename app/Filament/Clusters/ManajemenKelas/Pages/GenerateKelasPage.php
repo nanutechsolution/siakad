@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\ManajemenKelas\Pages;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Filament\Clusters\ManajemenKelas\ManajemenKelasCluster;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -17,6 +18,7 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 
 class GenerateKelasPage extends Page implements HasForms
@@ -33,6 +35,11 @@ class GenerateKelasPage extends Page implements HasForms
 
     protected static ?int $navigationSort = 2;
     protected string $view = 'filament.clusters.manajemen-kelas.pages.generate-kelas-page';
+
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     /** @var array<string, mixed> */
     public ?array $data = [];
 
@@ -53,7 +60,7 @@ class GenerateKelasPage extends Page implements HasForms
             ->components([
                 Select::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(fn() => RefProdi::query()->orderBy('nama_prodi')->pluck('nama_prodi', 'id'))
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->live()
                     ->required(),
