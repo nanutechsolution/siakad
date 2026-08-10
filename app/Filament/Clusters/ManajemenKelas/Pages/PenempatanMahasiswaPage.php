@@ -61,58 +61,61 @@ class PenempatanMahasiswaPage extends Page implements HasTable
             ->label($label)
             ->searchable()
             ->preload()
+
+            /*
+         * PENTING:
+         * Kelas hanya boleh berasal dari Prodi yang boleh diakses
+         * oleh user berdasarkan FormResolver.
+         */
             ->getSearchResultsUsing(function (string $search): array {
-                $service = app(ManajemenKelasService::class);
+                $user = auth()->user();
+
+                if (! $user) {
+                    return [];
+                }
+
+                $resolver = app(FormResolver::class);
+
+                $prodiIds = $resolver->accessibleProdiIds($user);
+
+                if ($prodiIds === []) {
+                    return [];
+                }
 
                 return Kelas::query()
-                    ->with([
-                        'prodi:id,nama_prodi',
-                        'program:id,nama_program',
-                    ])
+                    ->whereIn('prodi_id', $prodiIds)
+
                     ->where(function (Builder $query) use ($search) {
                         $query
                             ->where('nama_kelas', 'like', "%{$search}%")
-                            ->orWhere('angkatan_id', 'like', "%{$search}%")
-                            ->orWhereHas(
-                                'prodi',
-                                fn(Builder $q) => $q->where(
-                                    'nama_prodi',
-                                    'like',
-                                    "%{$search}%"
-                                )
-                            );
+                            ->orWhere('angkatan_id', 'like', "%{$search}%");
                     })
+
                     ->orderByDesc('angkatan_id')
                     ->orderBy('nama_kelas')
+
                     ->limit(30)
+
                     ->get()
-                    ->mapWithKeys(function (Kelas $kelas) use ($service): array {
+
+                    ->mapWithKeys(function (Kelas $kelas): array {
+                        $service = app(ManajemenKelasService::class);
+
                         $jumlah = $service->jumlahAnggotaAktif($kelas->id);
 
                         $kapasitas = $kelas->kapasitas !== null
                             ? "/{$kelas->kapasitas}"
                             : '';
 
-                        $prodi = $kelas->prodi?->nama_prodi
-                            ? Utf8::clean($kelas->prodi->nama_prodi)
-                            : null;
-
-                        $program = $kelas->program?->nama_program
-                            ? Utf8::clean($kelas->program->nama_program)
-                            : null;
-
-                        $detail = collect([
-                            $prodi,
-                            $program,
-                            'Angkatan ' . $kelas->angkatan_id,
-                        ])
-                            ->filter()
-                            ->implode(' • ');
-
+                        /*
+                     * Contoh:
+                     *
+                     * Kelas A — Angkatan 2024 (18/30)
+                     */
                         $label = sprintf(
-                            '%s — %s (%d%s)',
+                            '%s — Angkatan %s (%d%s)',
                             Utf8::clean($kelas->nama_kelas),
-                            $detail,
+                            $kelas->angkatan_id,
                             $jumlah,
                             $kapasitas
                         );
@@ -123,16 +126,32 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                     })
                     ->all();
             })
+
+            /*
+         * Ketika value sudah tersimpan/terpilih,
+         * tetap pastikan kelas berasal dari Prodi yang boleh diakses.
+         */
             ->getOptionLabelUsing(function ($value): ?string {
                 if (blank($value)) {
                     return null;
                 }
 
+                $user = auth()->user();
+
+                if (! $user) {
+                    return null;
+                }
+
+                $resolver = app(FormResolver::class);
+
+                $prodiIds = $resolver->accessibleProdiIds($user);
+
+                if ($prodiIds === []) {
+                    return null;
+                }
+
                 $kelas = Kelas::query()
-                    ->with([
-                        'prodi:id,nama_prodi',
-                        'program:id,nama_program',
-                    ])
+                    ->whereIn('prodi_id', $prodiIds)
                     ->find($value);
 
                 if (! $kelas) {
@@ -147,30 +166,18 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                     ? "/{$kelas->kapasitas}"
                     : '';
 
-                $detail = collect([
-                    $kelas->prodi?->nama_prodi
-                        ? Utf8::clean($kelas->prodi->nama_prodi)
-                        : null,
-
-                    $kelas->program?->nama_program
-                        ? Utf8::clean($kelas->program->nama_program)
-                        : null,
-
-                    'Angkatan ' . $kelas->angkatan_id,
-                ])
-                    ->filter()
-                    ->implode(' • ');
-
                 return sprintf(
-                    '%s — %s (%d%s)',
+                    '%s — Angkatan %s (%d%s)',
                     Utf8::clean($kelas->nama_kelas),
-                    $detail,
+                    $kelas->angkatan_id,
                     $jumlah,
                     $kapasitas
                 );
             })
+
             ->required();
     }
+
 
     public function table(Table $table): Table
     {
