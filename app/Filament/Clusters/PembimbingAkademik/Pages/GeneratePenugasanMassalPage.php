@@ -13,6 +13,7 @@ use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\PembimbingAkademikService;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Placeholder;
@@ -32,6 +33,7 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
 {
     use InteractsWithForms;
 
+    use HasPageShield;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-bolt';
 
     protected static ?string $navigationLabel = 'Generate Massal';

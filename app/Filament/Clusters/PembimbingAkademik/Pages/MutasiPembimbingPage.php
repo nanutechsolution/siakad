@@ -13,6 +13,7 @@ use App\Models\TrxDosen;
 use App\Services\PembimbingAkademikPdfService;
 use App\Services\PembimbingAkademikService;
 use App\Support\Utf8;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -34,6 +35,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class MutasiPembimbingPage extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasPageShield;
     protected string $view = 'filament.clusters.pembimbing-akademik.pages.mutasi-pembimbing-page';
     protected static ?string $navigationLabel = 'Mutasi Pembimbing Akademik';
     protected static ?string $modelLabel = 'Mutasi Pembimbing Akademik';

@@ -11,6 +11,7 @@ use App\Filament\Widgets\PembimbingStatsWidget;
 use App\Services\PembimbingAkademikService;
 use App\Support\Utf8;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -24,7 +25,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class MonitoringPembimbingPage extends Page implements HasTable
 {
     use InteractsWithTable;
-
+    use HasPageShield;
     protected  string $view =
     'filament.clusters.pembimbing-akademik.pages.monitoring-pembimbing-page';
 

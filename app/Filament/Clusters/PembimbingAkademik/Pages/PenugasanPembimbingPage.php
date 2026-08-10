@@ -13,6 +13,7 @@ use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\PembimbingAkademikService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -36,6 +37,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
 {
     use InteractsWithForms;
     use InteractsWithTable;
+    use HasPageShield;
 
     protected string $view = 'filament.clusters.pembimbing-akademik.pages.penugasan-pembimbing-page';
     protected static ?string $navigationLabel = 'Penugasan Pembimbing Akademik';

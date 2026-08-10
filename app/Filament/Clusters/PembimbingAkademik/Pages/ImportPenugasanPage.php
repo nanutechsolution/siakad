@@ -9,6 +9,7 @@ use App\Models\RefTahunAkademik;
 use App\Services\PembimbingAkademikService;
 use App\Services\PenugasanImportParser;
 use App\Support\Utf8;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
@@ -20,6 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class ImportPenugasanPage extends Page implements HasForms
 {
+    use HasPageShield;
     use InteractsWithForms;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-up-tray';

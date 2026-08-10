@@ -12,6 +12,7 @@ use App\Models\PembimbingAkademik;
 use App\Models\RefProdi;
 use App\Support\Utf8;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -28,6 +29,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class RiwayatPembimbingPage extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasPageShield;
 
     protected static ?string $navigationLabel = 'Riwayat Pembimbing Akademik';
     protected static ?string $modelLabel = 'Riwayat Pembimbing Akademik';

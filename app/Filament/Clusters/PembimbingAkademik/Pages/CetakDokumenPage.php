@@ -9,6 +9,7 @@ use App\Models\RefAngkatan;
 use App\Models\RefProdi;
 use App\Models\TrxDosen;
 use App\Services\PembimbingAkademikPdfService;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Actions\Contracts\HasActions;
@@ -21,6 +22,7 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
 {
     use InteractsWithActions;
     use InteractsWithForms;
+    use HasPageShield;
     protected string $view = 'filament.clusters.pembimbing-akademik.pages.cetak-dokumen-page';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-printer';
     protected static ?int $navigationSort = 7;
