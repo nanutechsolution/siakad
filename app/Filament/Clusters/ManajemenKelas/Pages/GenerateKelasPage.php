@@ -13,6 +13,7 @@ use App\Models\RefAngkatan;
 use App\Models\RefProdi;
 use App\Models\RefProgram;
 use App\Services\Kelas\ManajemenKelasService;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -23,6 +24,7 @@ use Illuminate\Support\HtmlString;
 
 class GenerateKelasPage extends Page implements HasForms
 {
+    use HasPageShield;
     use InteractsWithForms;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-bolt';

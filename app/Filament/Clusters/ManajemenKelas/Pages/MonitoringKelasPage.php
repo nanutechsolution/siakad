@@ -11,6 +11,7 @@ use App\Models\Mahasiswa;
 use App\Models\RefAngkatan;
 use App\Services\Kelas\ManajemenKelasService;
 use App\Support\Utf8;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
@@ -22,7 +23,7 @@ use Illuminate\Database\Eloquent\Builder;
 class MonitoringKelasPage extends Page implements HasTable
 {
     use InteractsWithTable;
-
+    use HasPageShield;
     protected static ?string $cluster = ManajemenKelasCluster::class;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-chart-bar';

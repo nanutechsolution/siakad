@@ -10,6 +10,7 @@ use App\Models\Mahasiswa;
 use App\Models\RefAngkatan;
 use App\Services\Kelas\ManajemenKelasService;
 use App\Support\Utf8;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
@@ -29,7 +30,7 @@ use Illuminate\Database\Eloquent\Collection;
 class PenempatanMahasiswaPage extends Page implements HasTable
 {
     use InteractsWithTable;
-
+    use HasPageShield;
     protected static string|\BackedEnum|null $navigationIcon =
     'heroicon-o-user-group';
 
