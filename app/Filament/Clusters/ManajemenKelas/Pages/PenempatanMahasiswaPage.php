@@ -151,6 +151,7 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                 }
 
                 $kelas = Kelas::query()
+                    ->with('prodi')
                     ->whereIn('prodi_id', $prodiIds)
                     ->find($value);
 
@@ -166,15 +167,19 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                     ? "/{$kelas->kapasitas}"
                     : '';
 
+                $kodeProdi = $kelas->prodi?->kode_prodi_internal
+                    ? Utf8::clean($kelas->prodi->kode_prodi_internal)
+                    : '-';
+
                 return sprintf(
-                    '%s — Angkatan %s (%d%s)',
+                    '%s — %s — Angkatan %s (%d%s)',
+                    $kodeProdi,
                     Utf8::clean($kelas->nama_kelas),
                     $kelas->angkatan_id,
                     $jumlah,
                     $kapasitas
                 );
             })
-
             ->required();
     }
 

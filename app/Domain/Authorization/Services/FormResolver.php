@@ -109,7 +109,10 @@ final class FormResolver
         return in_array($fakultasId, $this->organizationResolver->accessibleFakultasIds($user), true);
     }
     /**
-     * @return array<int>
+     * ID Prodi yang boleh diakses user. 
+     * Dipakai untuk filtering query/resource yang berhubungan 
+     * dengan Prodi, termasuk Kelas. * 
+     * @return array<int, int> 
      */
     public function accessibleProdiIds(User $user): array
     {
