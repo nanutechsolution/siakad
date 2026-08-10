@@ -63,9 +63,8 @@ class PenempatanMahasiswaPage extends Page implements HasTable
             ->preload()
 
             /*
-         * PENTING:
-         * Kelas hanya boleh berasal dari Prodi yang boleh diakses
-         * oleh user berdasarkan FormResolver.
+         * Kelas hanya boleh berasal dari Prodi
+         * yang dapat diakses oleh user.
          */
             ->getSearchResultsUsing(function (string $search): array {
                 $user = auth()->user();
@@ -83,21 +82,26 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                 }
 
                 return Kelas::query()
+                    ->with('prodi')
                     ->whereIn('prodi_id', $prodiIds)
-
                     ->where(function (Builder $query) use ($search) {
                         $query
                             ->where('nama_kelas', 'like', "%{$search}%")
-                            ->orWhere('angkatan_id', 'like', "%{$search}%");
+                            ->orWhere('angkatan_id', 'like', "%{$search}%")
+                            ->orWhereHas(
+                                'prodi',
+                                fn(Builder $q) => $q
+                                    ->where(
+                                        'kode_prodi_internal',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                            );
                     })
-
                     ->orderByDesc('angkatan_id')
                     ->orderBy('nama_kelas')
-
                     ->limit(30)
-
                     ->get()
-
                     ->mapWithKeys(function (Kelas $kelas): array {
                         $service = app(ManajemenKelasService::class);
 
@@ -107,13 +111,13 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                             ? "/{$kelas->kapasitas}"
                             : '';
 
-                        /*
-                     * Contoh:
-                     *
-                     * Kelas A — Angkatan 2024 (18/30)
-                     */
+                        $kodeProdi = $kelas->prodi?->kode_prodi_internal
+                            ? Utf8::clean($kelas->prodi->kode_prodi_internal)
+                            : '-';
+
                         $label = sprintf(
-                            '%s — Angkatan %s (%d%s)',
+                            '%s — %s — Angkatan %s (%d%s)',
+                            $kodeProdi,
                             Utf8::clean($kelas->nama_kelas),
                             $kelas->angkatan_id,
                             $jumlah,
@@ -128,8 +132,9 @@ class PenempatanMahasiswaPage extends Page implements HasTable
             })
 
             /*
-         * Ketika value sudah tersimpan/terpilih,
-         * tetap pastikan kelas berasal dari Prodi yang boleh diakses.
+         * Label untuk value yang sudah terpilih.
+         *
+         * Tetap divalidasi terhadap Prodi yang boleh diakses user.
          */
             ->getOptionLabelUsing(function ($value): ?string {
                 if (blank($value)) {
@@ -182,6 +187,7 @@ class PenempatanMahasiswaPage extends Page implements HasTable
             })
             ->required();
     }
+
 
 
     public function table(Table $table): Table
