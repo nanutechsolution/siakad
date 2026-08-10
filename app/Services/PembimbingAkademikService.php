@@ -308,28 +308,502 @@ class PembimbingAkademikService
                 ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
                 ->where('status', PembimbingAkademikStatus::AKTIF));
     }
+    /**
+     * Top-N dosen dengan beban Dosen Wali aktif terbanyak.
+     *
+     * Beban dihitung berdasarkan mahasiswa yang benar-benar tercakup:
+     *
+     * - assignment PER_MAHASISWA -> 1 assignment = 1 mahasiswa
+     * - assignment PER_KELAS     -> jumlah mahasiswa aktif dalam kelas
+     *
+     * Catatan:
+     * Query ini sengaja dipisahkan dari monitoringStats()
+     * karena halaman monitoring membutuhkan ranking detail.
+     *
+     * @return Collection<int, array{dosen: TrxDosen, total: int}>
+     */
+    public function bebanDosenTerbanyak(
+        int $limit = 5,
+        array $prodiIds = [],
+    ): Collection {
+        /*
+     * Ambil assignment Dosen Wali aktif.
+     */
+        $assignments = PembimbingAkademik::query()
+            ->where(
+                'jenis',
+                PembimbingAkademikJenis::DOSEN_WALI
+            )
+            ->where(
+                'status',
+                PembimbingAkademikStatus::AKTIF
+            )
+            ->when(
+                $prodiIds !== [],
+                function (Builder $query) use ($prodiIds) {
+                    $query->where(function (Builder $q) use ($prodiIds) {
+                        $q
+                            ->whereHas(
+                                'kelas',
+                                fn(Builder $kelas) =>
+                                $kelas->whereIn(
+                                    'prodi_id',
+                                    $prodiIds
+                                )
+                            )
+                            ->orWhereHas(
+                                'mahasiswa',
+                                fn(Builder $mahasiswa) =>
+                                $mahasiswa->whereIn(
+                                    'prodi_id',
+                                    $prodiIds
+                                )
+                            );
+                    });
+                }
+            )
+            ->with([
+                'dosen',
+                'kelas',
+            ])
+            ->get();
+
+        if ($assignments->isEmpty()) {
+            return collect();
+        }
+
+        $kelasIds = $assignments
+            ->whereNotNull('kelas_id')
+            ->pluck('kelas_id')
+            ->unique()
+            ->values();
+
+        /*
+     * Hitung mahasiswa aktif per kelas SEKALI saja.
+     *
+     * Jangan panggil jumlah anggota kelas dalam foreach.
+     */
+        $jumlahMahasiswaPerKelas = $kelasIds->isEmpty()
+            ? collect()
+            : DB::table('mahasiswa_kelas')
+            ->select(
+                'kelas_id',
+                DB::raw('COUNT(*) as total')
+            )
+            ->whereIn('kelas_id', $kelasIds)
+            ->whereNull('tanggal_keluar')
+            ->groupBy('kelas_id')
+            ->pluck('total', 'kelas_id');
+
+        return $assignments
+            ->groupBy('dosen_id')
+            ->map(function (Collection $rows) use (
+                $jumlahMahasiswaPerKelas
+            ) {
+                $total = 0;
+
+                foreach ($rows as $assignment) {
+                    /*
+                 * Assignment langsung ke mahasiswa.
+                 */
+                    if ($assignment->mahasiswa_id !== null) {
+                        $total++;
+
+                        continue;
+                    }
+
+                    /*
+                 * Assignment ke kelas.
+                 */
+                    if ($assignment->kelas_id !== null) {
+                        $total += (int) (
+                            $jumlahMahasiswaPerKelas[$assignment->kelas_id] ?? 0
+                        );
+                    }
+                }
+
+                return [
+                    'dosen' => $rows->first()->dosen,
+                    'total' => $total,
+                ];
+            })
+            ->sortByDesc('total')
+            ->take($limit)
+            ->values();
+    }
+
 
     /**
-     * Top-N dosen dengan beban bimbingan (Dosen Wali aktif) terbanyak.
-     * Berguna di halaman Monitoring untuk melihat distribusi beban.
+     * Statistik utama monitoring Pembimbing Akademik.
      *
-     * @return Collection<int, array{dosen: Dosen, total: int}>
+     * Semua statistik sudah dibatasi berdasarkan Program Studi
+     * yang boleh diakses user.
+     *
+     * @return array{
+     *     total_mahasiswa_aktif:int,
+     *     mahasiswa_sudah_punya_wali:int,
+     *     mahasiswa_belum_punya_wali:int,
+     *     dosen_wali_aktif:int,
+     *     dosen_beban_tinggi:int,
+     *     assignment_berakhir:int,
+     *     kelas_per_kelas:int,
+     *     kelas_dengan_wali:int,
+     *     persentase_kelas_dengan_wali:float
+     * }
      */
-    public function bebanDosenTerbanyak(int $limit = 5): Collection
-    {
-        return PembimbingAkademik::query()
-            ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
-            ->where('status', PembimbingAkademikStatus::AKTIF)
-            ->selectRaw('dosen_id, count(*) as total')
-            ->groupBy('dosen_id')
-            ->orderByDesc('total')
-            ->limit($limit)
-            ->get()
-            ->map(fn($row) => [
-                'dosen' => TrxDosen::find($row->dosen_id),
-                'total' => (int) $row->total,
-            ])
-            ->filter(fn(array $row) => $row['dosen'] !== null)
-            ->values();
+    public function monitoringStats(
+        array $prodiIds,
+    ): array {
+        if ($prodiIds === []) {
+            return [
+                'total_mahasiswa_aktif' => 0,
+                'mahasiswa_sudah_punya_wali' => 0,
+                'mahasiswa_belum_punya_wali' => 0,
+                'dosen_wali_aktif' => 0,
+                'dosen_beban_tinggi' => 0,
+                'assignment_berakhir' => 0,
+                'kelas_per_kelas' => 0,
+                'kelas_dengan_wali' => 0,
+                'persentase_kelas_dengan_wali' => 100.0,
+            ];
+        }
+
+        /*
+     * ================================================================
+     * 1. TOTAL MAHASISWA AKTIF
+     * ================================================================
+     */
+
+        $mahasiswaAktif = Mahasiswa::query()
+            ->whereNull('deleted_at')
+            ->whereIn('prodi_id', $prodiIds);
+
+        $totalMahasiswa = (clone $mahasiswaAktif)
+            ->count();
+
+        /*
+     * ================================================================
+     * 2. MAHASISWA SUDAH PUNYA DOSEN WALI
+     * ================================================================
+     *
+     * PER_MAHASISWA:
+     * langsung punya assignment mahasiswa_id.
+     *
+     * PER_KELAS:
+     * mahasiswa dianggap sudah memiliki wali apabila kelas
+     * aktifnya memiliki assignment Dosen Wali aktif.
+     *
+     * Ini penting.
+     *
+     * Jangan hanya:
+     *
+     * whereHas('pembimbingAkademik')
+     *
+     * karena mahasiswa dalam mode PER_KELAS tidak mempunyai
+     * baris pembimbing_akademik langsung.
+     */
+
+        $mahasiswaDenganWaliIndividual = Mahasiswa::query()
+            ->whereNull('deleted_at')
+            ->whereIn('prodi_id', $prodiIds)
+            ->whereHas(
+                'pembimbingAkademik',
+                fn(Builder $query) =>
+                $query
+                    ->where(
+                        'jenis',
+                        PembimbingAkademikJenis::DOSEN_WALI
+                    )
+                    ->where(
+                        'status',
+                        PembimbingAkademikStatus::AKTIF
+                    )
+            )
+            ->count();
+
+        /*
+     * Mahasiswa yang kelas aktifnya mempunyai wali.
+     */
+        $mahasiswaDenganWaliKelas = Mahasiswa::query()
+            ->whereNull('deleted_at')
+            ->whereIn('prodi_id', $prodiIds)
+            ->whereDoesntHave(
+                'pembimbingAkademik',
+                fn(Builder $query) =>
+                $query
+                    ->where(
+                        'jenis',
+                        PembimbingAkademikJenis::DOSEN_WALI
+                    )
+                    ->where(
+                        'status',
+                        PembimbingAkademikStatus::AKTIF
+                    )
+            )
+            ->whereHas(
+                'mahasiswaKelas',
+                function (Builder $query) {
+                    $query
+                        ->whereNull('tanggal_keluar')
+                        ->whereHas(
+                            'kelas',
+                            fn(Builder $kelas) =>
+                            $kelas->whereHas(
+                                'pembimbingAkademik',
+                                fn(Builder $wali) =>
+                                $wali
+                                    ->where(
+                                        'jenis',
+                                        PembimbingAkademikJenis::DOSEN_WALI
+                                    )
+                                    ->where(
+                                        'status',
+                                        PembimbingAkademikStatus::AKTIF
+                                    )
+                            )
+                        );
+                }
+            )
+            ->count();
+
+        $mahasiswaSudahPunyaWali =
+            $mahasiswaDenganWaliIndividual
+            + $mahasiswaDenganWaliKelas;
+
+        /*
+     * Hindari kemungkinan double count.
+     */
+        $mahasiswaSudahPunyaWali = min(
+            $mahasiswaSudahPunyaWali,
+            $totalMahasiswa
+        );
+
+        $mahasiswaBelumPunyaWali =
+            max(
+                0,
+                $totalMahasiswa - $mahasiswaSudahPunyaWali
+            );
+
+        /*
+     * ================================================================
+     * 3. DOSEN WALI AKTIF
+     * ================================================================
+     */
+
+        $dosenWaliAktif = PembimbingAkademik::query()
+            ->where(
+                'jenis',
+                PembimbingAkademikJenis::DOSEN_WALI
+            )
+            ->where(
+                'status',
+                PembimbingAkademikStatus::AKTIF
+            )
+            ->where(function (Builder $query) use ($prodiIds) {
+                $query
+                    ->whereHas(
+                        'kelas',
+                        fn(Builder $kelas) =>
+                        $kelas->whereIn(
+                            'prodi_id',
+                            $prodiIds
+                        )
+                    )
+                    ->orWhereHas(
+                        'mahasiswa',
+                        fn(Builder $mahasiswa) =>
+                        $mahasiswa->whereIn(
+                            'prodi_id',
+                            $prodiIds
+                        )
+                    );
+            })
+            ->distinct('dosen_id')
+            ->count('dosen_id');
+
+        /*
+     * ================================================================
+     * 4. ASSIGNMENT YANG SUDAH BERAKHIR
+     * ================================================================
+     *
+     * Hanya assignment yang secara database masih AKTIF,
+     * tetapi tanggal_selesai sudah lewat.
+     */
+
+        $assignmentBerakhir = PembimbingAkademik::query()
+            ->where(
+                'jenis',
+                PembimbingAkademikJenis::DOSEN_WALI
+            )
+            ->where(
+                'status',
+                PembimbingAkademikStatus::AKTIF
+            )
+            ->whereNotNull('tanggal_selesai')
+            ->whereDate(
+                'tanggal_selesai',
+                '<',
+                now()->toDateString()
+            )
+            ->where(function (Builder $query) use ($prodiIds) {
+                $query
+                    ->whereHas(
+                        'kelas',
+                        fn(Builder $kelas) =>
+                        $kelas->whereIn(
+                            'prodi_id',
+                            $prodiIds
+                        )
+                    )
+                    ->orWhereHas(
+                        'mahasiswa',
+                        fn(Builder $mahasiswa) =>
+                        $mahasiswa->whereIn(
+                            'prodi_id',
+                            $prodiIds
+                        )
+                    );
+            })
+            ->count();
+
+        /*
+     * ================================================================
+     * 5. KELAS MODE PER_KELAS
+     * ================================================================
+     *
+     * Hanya kelas yang memang konfigurasi pembimbingnya
+     * menggunakan PER_KELAS.
+     */
+
+        $kelasPerKelasQuery = DB::table('kelas')
+            ->join(
+                'konfigurasi_pembimbing_akademik as konfigurasi',
+                function ($join) {
+                    $join
+                        ->on(
+                            'konfigurasi.prodi_id',
+                            '=',
+                            'kelas.prodi_id'
+                        )
+                        ->on(
+                            'konfigurasi.angkatan_id',
+                            '=',
+                            'kelas.angkatan_id'
+                        );
+                }
+            )
+            ->whereIn(
+                'kelas.prodi_id',
+                $prodiIds
+            )
+            ->where(
+                'konfigurasi.aktif',
+                true
+            )
+            ->where(
+                'konfigurasi.mode',
+                PembimbingAkademikMode::PER_KELAS->value
+            );
+
+        $kelasPerKelas = (clone $kelasPerKelasQuery)
+            ->count();
+
+        /*
+     * ================================================================
+     * 6. KELAS YANG SUDAH PUNYA WALI
+     * ================================================================
+     */
+
+        $kelasDenganWali = (clone $kelasPerKelasQuery)
+            ->whereExists(
+                function ($query) {
+                    $query
+                        ->select(DB::raw(1))
+                        ->from(
+                            'pembimbing_akademik'
+                        )
+                        ->whereColumn(
+                            'pembimbing_akademik.kelas_id',
+                            'kelas.id'
+                        )
+                        ->where(
+                            'pembimbing_akademik.jenis',
+                            PembimbingAkademikJenis::DOSEN_WALI->value
+                        )
+                        ->where(
+                            'pembimbing_akademik.status',
+                            PembimbingAkademikStatus::AKTIF->value
+                        );
+                }
+            )
+            ->count();
+
+        $persentaseKelasDenganWali =
+            $kelasPerKelas > 0
+            ? round(
+                ($kelasDenganWali / $kelasPerKelas) * 100,
+                1
+            )
+            : 100.0;
+
+        /*
+     * ================================================================
+     * 7. BEBAN DOSEN TINGGI
+     * ================================================================
+     *
+     * Threshold awal: > 40 mahasiswa.
+     *
+     * Jangan menganggap jumlah assignment = jumlah mahasiswa.
+     * Assignment PER_KELAS harus dikonversi menjadi jumlah
+     * mahasiswa aktif dalam kelas.
+     */
+
+        $bebanDosen = $this->bebanDosenTerbanyak(
+            limit: PHP_INT_MAX,
+            prodiIds: $prodiIds,
+        );
+
+        $dosenBebanTinggi = $bebanDosen
+            ->where(
+                'total',
+                '>',
+                40
+            )
+            ->count();
+
+        /*
+     * ================================================================
+     * RETURN
+     * ================================================================
+     */
+
+        return [
+            'total_mahasiswa_aktif' =>
+            $totalMahasiswa,
+
+            'mahasiswa_sudah_punya_wali' =>
+            $mahasiswaSudahPunyaWali,
+
+            'mahasiswa_belum_punya_wali' =>
+            $mahasiswaBelumPunyaWali,
+
+            'dosen_wali_aktif' =>
+            $dosenWaliAktif,
+
+            'dosen_beban_tinggi' =>
+            $dosenBebanTinggi,
+
+            'assignment_berakhir' =>
+            $assignmentBerakhir,
+
+            'kelas_per_kelas' =>
+            $kelasPerKelas,
+
+            'kelas_dengan_wali' =>
+            $kelasDenganWali,
+
+            'persentase_kelas_dengan_wali' =>
+            $persentaseKelasDenganWali,
+        ];
     }
 }
