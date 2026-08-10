@@ -106,18 +106,68 @@ class PenempatanMahasiswaPage extends Page implements HasTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user())),
+                    ->options(
+                        fn() => app(FormResolver::class)
+                            ->prodiOptions(auth()->user())
+                    ),
+
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
-                    ->options(fn() => RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun')),
+                    ->options(
+                        fn() => RefAngkatan::query()
+                            ->orderByDesc('id_tahun')
+                            ->pluck('id_tahun', 'id_tahun')
+                    ),
+
+                SelectFilter::make('kelas_id')
+                    ->label('Kelas Saat Ini')
+                    ->searchable()
+                    ->options(function () {
+                        $user = auth()->user();
+                        $resolver = app(FormResolver::class);
+
+                        $prodiIds = $resolver->accessibleProdiIds($user);
+
+                        if ($prodiIds === []) {
+                            return [];
+                        }
+
+                        return Kelas::query()
+                            ->whereIn('prodi_id', $prodiIds)
+                            ->orderBy('nama_kelas')
+                            ->pluck('nama_kelas', 'id')
+                            ->all();
+                    })
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (blank($data['value'] ?? null)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas(
+                            'mahasiswaKelas',
+                            fn($q) => $q
+                                ->where('kelas_id', $data['value'])
+                                ->whereNull('tanggal_keluar')
+                        );
+                    }),
+
                 TernaryFilter::make('punya_kelas')
                     ->label('Status Kelas')
                     ->placeholder('Semua')
                     ->trueLabel('Sudah punya kelas')
                     ->falseLabel('Belum punya kelas')
                     ->queries(
-                        true: fn(Builder $query) => $query->whereHas('mahasiswaKelas', fn($q) => $q->whereNull('tanggal_keluar')),
-                        false: fn(Builder $query) => $query->whereDoesntHave('mahasiswaKelas', fn($q) => $q->whereNull('tanggal_keluar')),
+                        true: fn(Builder $query) =>
+                        $query->whereHas(
+                            'mahasiswaKelas',
+                            fn($q) => $q->whereNull('tanggal_keluar')
+                        ),
+
+                        false: fn(Builder $query) =>
+                        $query->whereDoesntHave(
+                            'mahasiswaKelas',
+                            fn($q) => $q->whereNull('tanggal_keluar')
+                        ),
                     ),
             ])
             ->recordActions([
