@@ -134,8 +134,16 @@ class PenempatanMahasiswaPage extends Page implements HasTable
 
                         return Kelas::query()
                             ->whereIn('prodi_id', $prodiIds)
+                            ->orderBy('angkatan_id', 'desc')
                             ->orderBy('nama_kelas')
-                            ->pluck('nama_kelas', 'id')
+                            ->get()
+                            ->mapWithKeys(fn(Kelas $kelas) => [
+                                $kelas->id => sprintf(
+                                    '%s — Angkatan %s',
+                                    Utf8::clean($kelas->nama_kelas),
+                                    $kelas->angkatan_id
+                                ),
+                            ])
                             ->all();
                     })
                     ->query(function (Builder $query, array $data): Builder {
