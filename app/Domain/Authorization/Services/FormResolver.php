@@ -52,7 +52,7 @@ final class FormResolver
      */
     public function prodiOptions(User $user): array
     {
-        
+
         $ids = $this->organizationResolver->accessibleProdiIds($user);
 
         if ($ids === []) {
@@ -107,6 +107,13 @@ final class FormResolver
     public function isFakultasAccessible(User $user, int $fakultasId): bool
     {
         return in_array($fakultasId, $this->organizationResolver->accessibleFakultasIds($user), true);
+    }
+    /**
+     * @return array<int>
+     */
+    public function accessibleProdiIds(User $user): array
+    {
+        return $this->organizationResolver->accessibleProdiIds($user);
     }
 
     /**
