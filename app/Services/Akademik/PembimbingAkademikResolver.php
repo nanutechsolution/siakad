@@ -45,20 +45,13 @@ class PembimbingAkademikResolver
         return $this->konfigurasiCache[$cacheKey];
     }
 
-    public function resolveMode(Mahasiswa $mahasiswa): PembimbingAkademikMode
+    public function resolveMode(Mahasiswa $mahasiswa): ?PembimbingAkademikMode
     {
         $konfig = $this->getKonfigurasi((int) $mahasiswa->prodi_id, (int) $mahasiswa->angkatan_id);
-
         if (! $konfig) {
-            Log::warning('Konfigurasi pembimbing akademik belum diset, fallback ke PER_KELAS.', [
-                'mahasiswa_id' => $mahasiswa->id,
-                'prodi_id' => $mahasiswa->prodi_id,
-                'angkatan_id' => $mahasiswa->angkatan_id,
-            ]);
-
-            return PembimbingAkademikMode::PER_KELAS;
+            Log::warning('Konfigurasi pembimbing akademik belum diset.', ['mahasiswa_id' => $mahasiswa->id, 'prodi_id' => $mahasiswa->prodi_id, 'angkatan_id' => $mahasiswa->angkatan_id,]);
+            return null;
         }
-
         return $konfig->mode;
     }
 
@@ -68,7 +61,9 @@ class PembimbingAkademikResolver
     public function dosenWaliAktif(Mahasiswa $mahasiswa): ?PembimbingAkademik
     {
         $mode = $this->resolveMode($mahasiswa);
-
+        if ($mode === null) {
+            return null;
+        }
         if ($mode === PembimbingAkademikMode::PER_MAHASISWA) {
             return PembimbingAkademik::query()
                 ->dosenWaliAktif()
