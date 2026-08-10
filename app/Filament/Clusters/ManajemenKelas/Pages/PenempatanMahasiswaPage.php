@@ -60,44 +60,115 @@ class PenempatanMahasiswaPage extends Page implements HasTable
         return Select::make($name)
             ->label($label)
             ->searchable()
-            ->getSearchResultsUsing(
-                fn(string $search) =>
-                Kelas::query()
-                    ->where(
-                        'nama_kelas',
-                        'like',
-                        "%{$search}%"
-                    )
-                    ->limit(20)
-                    ->get()
-                    ->mapWithKeys(
-                        fn(Kelas $k) => [
-                            $k->id =>
-                            Utf8::clean(
-                                $k->nama_kelas
-                            )
-                                . ' ('
-                                . app(
-                                    ManajemenKelasService::class
-                                )->jumlahAnggotaAktif($k->id)
-                                . (
-                                    $k->kapasitas
-                                    ? "/{$k->kapasitas}"
-                                    : ''
-                                )
-                                . ')',
-                        ]
-                    )
-            )
-            ->getOptionLabelUsing(
-                function ($value) {
-                    $kelas = Kelas::find($value);
+            ->preload()
+            ->getSearchResultsUsing(function (string $search): array {
+                $service = app(ManajemenKelasService::class);
 
-                    return $kelas
-                        ? Utf8::clean($kelas->nama_kelas)
-                        : null;
+                return Kelas::query()
+                    ->with([
+                        'prodi:id,nama_prodi',
+                        'program:id,nama_program',
+                    ])
+                    ->where(function (Builder $query) use ($search) {
+                        $query
+                            ->where('nama_kelas', 'like', "%{$search}%")
+                            ->orWhere('angkatan_id', 'like', "%{$search}%")
+                            ->orWhereHas(
+                                'prodi',
+                                fn(Builder $q) => $q->where(
+                                    'nama_prodi',
+                                    'like',
+                                    "%{$search}%"
+                                )
+                            );
+                    })
+                    ->orderByDesc('angkatan_id')
+                    ->orderBy('nama_kelas')
+                    ->limit(30)
+                    ->get()
+                    ->mapWithKeys(function (Kelas $kelas) use ($service): array {
+                        $jumlah = $service->jumlahAnggotaAktif($kelas->id);
+
+                        $kapasitas = $kelas->kapasitas !== null
+                            ? "/{$kelas->kapasitas}"
+                            : '';
+
+                        $prodi = $kelas->prodi?->nama_prodi
+                            ? Utf8::clean($kelas->prodi->nama_prodi)
+                            : null;
+
+                        $program = $kelas->program?->nama_program
+                            ? Utf8::clean($kelas->program->nama_program)
+                            : null;
+
+                        $detail = collect([
+                            $prodi,
+                            $program,
+                            'Angkatan ' . $kelas->angkatan_id,
+                        ])
+                            ->filter()
+                            ->implode(' • ');
+
+                        $label = sprintf(
+                            '%s — %s (%d%s)',
+                            Utf8::clean($kelas->nama_kelas),
+                            $detail,
+                            $jumlah,
+                            $kapasitas
+                        );
+
+                        return [
+                            $kelas->id => $label,
+                        ];
+                    })
+                    ->all();
+            })
+            ->getOptionLabelUsing(function ($value): ?string {
+                if (blank($value)) {
+                    return null;
                 }
-            )
+
+                $kelas = Kelas::query()
+                    ->with([
+                        'prodi:id,nama_prodi',
+                        'program:id,nama_program',
+                    ])
+                    ->find($value);
+
+                if (! $kelas) {
+                    return null;
+                }
+
+                $service = app(ManajemenKelasService::class);
+
+                $jumlah = $service->jumlahAnggotaAktif($kelas->id);
+
+                $kapasitas = $kelas->kapasitas !== null
+                    ? "/{$kelas->kapasitas}"
+                    : '';
+
+                $detail = collect([
+                    $kelas->prodi?->nama_prodi
+                        ? Utf8::clean($kelas->prodi->nama_prodi)
+                        : null,
+
+                    $kelas->program?->nama_program
+                        ? Utf8::clean($kelas->program->nama_program)
+                        : null,
+
+                    'Angkatan ' . $kelas->angkatan_id,
+                ])
+                    ->filter()
+                    ->implode(' • ');
+
+                return sprintf(
+                    '%s — %s (%d%s)',
+                    Utf8::clean($kelas->nama_kelas),
+                    $detail,
+                    $jumlah,
+                    $kapasitas
+                );
+            })
             ->required();
     }
 
