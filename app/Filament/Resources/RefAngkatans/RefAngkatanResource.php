@@ -46,8 +46,6 @@ class RefAngkatanResource extends Resource
     {
         return [
             'index' => ListRefAngkatans::route('/'),
-            'create' => CreateRefAngkatan::route('/create'),
-            'edit' => EditRefAngkatan::route('/{record}/edit'),
         ];
     }
 }

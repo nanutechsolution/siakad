@@ -3,9 +3,6 @@
 namespace App\Filament\Resources\TrxDosens;
 
 use App\Enums\NavigationGroup;
-use App\Filament\Resources\Pegawais\RelationManagers\AtribusiGelarRelationManager;
-use App\Filament\Resources\Pegawais\RelationManagers\RiwayatJabatanRelationManager;
-use App\Filament\Resources\Pegawais\RelationManagers\RiwayatRoleRelationManager;
 use App\Filament\Resources\TrxDosens\Pages\CreateTrxDosen;
 use App\Filament\Resources\TrxDosens\Pages\EditTrxDosen;
 use App\Filament\Resources\TrxDosens\Pages\ListTrxDosens;

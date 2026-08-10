@@ -6,6 +6,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class AkademikGradeRevisionLog extends Model
 {
@@ -30,6 +32,13 @@ class AkademikGradeRevisionLog extends Model
         'created_at' => 'datetime',
     ];
 
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll();
+    }
     /**
      * Detail KRS (mata kuliah yang diambil mahasiswa) yang nilainya direvisi.
      */

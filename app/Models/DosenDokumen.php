@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class DosenDokumen extends Model
 {
@@ -23,7 +25,13 @@ class DosenDokumen extends Model
     protected $casts = [
         'reviewed_at' => 'datetime',
     ];
+    use LogsActivity;
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll();
+    }
     public function dosen()
     {
         return $this->belongsTo(TrxDosen::class, 'dosen_id');

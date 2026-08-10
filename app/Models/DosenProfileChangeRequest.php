@@ -3,21 +3,36 @@
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class DosenProfileChangeRequest extends Model
 {
     protected $table = 'dosen_profile_change_requests';
 
     protected $fillable = [
-        'dosen_id', 'field_name', 'old_value', 'new_value',
-        'reason', 'attachment_path', 'status',
-        'reviewed_by', 'reviewed_at', 'rejection_note',
+        'dosen_id',
+        'field_name',
+        'old_value',
+        'new_value',
+        'reason',
+        'attachment_path',
+        'status',
+        'reviewed_by',
+        'reviewed_at',
+        'rejection_note',
     ];
 
     protected $casts = [
         'reviewed_at' => 'datetime',
     ];
+    use LogsActivity;
 
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll();
+    }
     public function dosen()
     {
         return $this->belongsTo(TrxDosen::class, 'dosen_id');
@@ -67,7 +82,7 @@ class DosenProfileChangeRequest extends Model
 
         $this->notifyPemohon(
             title: 'Pengajuan perubahan data ditolak',
-            body: 'Alasan: '.($note ?? '-'),
+            body: 'Alasan: ' . ($note ?? '-'),
             success: false,
         );
     }

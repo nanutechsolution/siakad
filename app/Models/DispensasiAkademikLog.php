@@ -6,6 +6,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class DispensasiAkademikLog extends Model
 {
@@ -28,6 +30,13 @@ class DispensasiAkademikLog extends Model
         'created_at' => 'datetime',
     ];
 
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll();
+    }
     public function dispensasi(): BelongsTo
     {
         return $this->belongsTo(DispensasiAkademik::class, 'dispensasi_id');

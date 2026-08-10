@@ -1,9 +1,12 @@
 <?php
+
 namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Spatie\Activitylog\Models\Concerns\LogsActivity;
+use Spatie\Activitylog\Support\LogOptions;
 
 class JadwalUjian extends Model
 {
@@ -17,6 +20,13 @@ class JadwalUjian extends Model
         'jam_selesai' => 'datetime:H:i',
     ];
 
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll();
+    }
     public function pengawas(): HasMany
     {
         // Hubungkan ke model JadwalUjianPengawas dengan foreign key 'jadwal_ujian_id'

@@ -88,7 +88,7 @@ final class DataVisibilityResolver
     {
         foreach ($modelClass::getSupportedScopeStrategies() as $strategy) {
             $roles = config("jabatan_role.strategy_roles.{$strategy->value}", []);
-          
+
             if ($roles !== [] && $user->hasAnyRole($roles)) {
                 return $strategy;
             }
