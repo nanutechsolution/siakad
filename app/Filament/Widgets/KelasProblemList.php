@@ -34,7 +34,7 @@ class KelasProblemList extends TableWidget
                 Tables\Columns\TextColumn::make('program.nama_program')
                     ->label('Program'),
 
-                Tables\Columns\TextColumn::make('angkatan.nama')
+                Tables\Columns\TextColumn::make('angkatan.id_tahun')
                     ->label('Angkatan'),
 
                 Tables\Columns\TextColumn::make('mahasiswa_aktif_count')
