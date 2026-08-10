@@ -96,7 +96,14 @@ class AdminProdiPermissionSeeder extends Seeder
             'View:AkademikKrsPendingList',
             'View:AkademikOverview',
             'View:AkademikProdiChart',
-
+            'VIEW:CetakDokumenPage',
+            'VIEW:GenerateKelasPage',
+            'VIEW:MonitoringKelasPage',
+            'VIEW:PenempatanMahasiswaPage',
+            'VIEW:KelasOverview',
+            'VIEW:KelasHealthCheck',
+            'VIEW:KelasDistribution',
+            'VIEW:KelasProblemList',
             // Widgets
             'View:LatestActivityWidget',
         ];
@@ -106,8 +113,8 @@ class AdminProdiPermissionSeeder extends Seeder
             'name',
             $permissions
         )
-        ->where('guard_name', 'web')
-        ->get();
+            ->where('guard_name', 'web')
+            ->get();
 
 
         $role->syncPermissions($existingPermissions);

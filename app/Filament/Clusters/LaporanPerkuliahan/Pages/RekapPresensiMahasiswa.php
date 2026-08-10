@@ -10,6 +10,7 @@ use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\LaporanPerkuliahan\PresensiMahasiswaService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RekapPresensiMahasiswa extends Page implements HasTable
 {
+    use HasPageShield;
     use InteractsWithTable;
 
     protected string $view = 'filament.clusters.laporan-perkuliahan.pages.rekap-presensi-mahasiswa';

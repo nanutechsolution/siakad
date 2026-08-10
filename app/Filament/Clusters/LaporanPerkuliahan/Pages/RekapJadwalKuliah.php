@@ -12,6 +12,7 @@ use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\LaporanPerkuliahan\JadwalKuliahReportService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -25,7 +26,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class RekapJadwalKuliah extends Page implements HasTable
 {
     use InteractsWithTable;
-
+    use HasPageShield;
     protected string $view = 'filament.clusters.laporan-perkuliahan.pages.rekap-jadwal-kuliah';
 
     protected static ?string $cluster = LaporanPerkuliahanCluster::class;

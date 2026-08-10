@@ -3,10 +3,12 @@
 namespace App\Filament\Widgets;
 
 use App\Services\Kelas\KelasDashboardService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\ChartWidget;
 
 class KelasDistribution extends ChartWidget
 {
+    use HasWidgetShield;
     protected static ?int $sort = 3;
 
     protected ?string $heading = 'Distribusi Kelas per Program Studi';

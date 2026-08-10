@@ -10,6 +10,7 @@ use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Services\LaporanPerkuliahan\BebanMengajarService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -23,6 +24,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class BebanMengajarDosen extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasPageShield;
 
     protected string $view = 'filament.clusters.laporan-perkuliahan.pages.beban-mengajar-dosen';
     protected static ?string $navigationLabel = 'Beban Mengajar Dosen';

@@ -9,6 +9,7 @@ use App\Filament\Traits\HasLaporanFilters;
 use App\Services\Laporan\RekapKhsService;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
@@ -20,6 +21,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class RekapKhsPage extends Page implements HasTable
 {
     use HasLaporanFilters;
+    use HasPageShield;
     use InteractsWithTable;
     protected string $view = 'filament.clusters.laporan-akademik.pages.rekap-khs-page';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-document-chart-bar';

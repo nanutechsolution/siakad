@@ -10,6 +10,7 @@ use App\Filament\Widgets\LaporanKeuangan\PendapatanPerPeriodeChart;
 use App\Services\LaporanKeuangan\PendapatanService;
 use App\Services\LaporanKeuangan\Support\FilterOptions;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
@@ -23,6 +24,7 @@ use Illuminate\Support\Collection;
 class PendapatanMahasiswa extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
     use HasLaporanFilterAndExport;
+    use HasPageShield;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;
     }

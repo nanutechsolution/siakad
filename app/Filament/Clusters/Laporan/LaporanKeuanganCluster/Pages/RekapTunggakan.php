@@ -8,6 +8,7 @@ use App\Filament\Pages\LaporanKeuangan\Contracts\ProvidesLaporanData;
 use App\Services\LaporanKeuangan\Support\FilterOptions;
 use App\Services\LaporanKeuangan\TunggakanService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -19,6 +20,7 @@ use Illuminate\Support\Collection;
 
 class RekapTunggakan extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
+    use HasPageShield;
     use HasLaporanFilterAndExport;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;

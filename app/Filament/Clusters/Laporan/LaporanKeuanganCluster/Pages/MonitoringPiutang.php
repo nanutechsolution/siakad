@@ -9,6 +9,7 @@ use App\Filament\Widgets\LaporanKeuangan\MonitoringPiutangOverview;
 use App\Services\LaporanKeuangan\PiutangService;
 use App\Services\LaporanKeuangan\Support\FilterOptions;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 class MonitoringPiutang extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
     use HasLaporanFilterAndExport;
+    use HasPageShield;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;
     }

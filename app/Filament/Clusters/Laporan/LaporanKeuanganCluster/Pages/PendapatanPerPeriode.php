@@ -8,6 +8,7 @@ use App\Filament\Pages\LaporanKeuangan\Contracts\ProvidesLaporanData;
 use App\Filament\Widgets\LaporanKeuangan\PendapatanPerPeriodeChart;
 use App\Services\LaporanKeuangan\PendapatanService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
@@ -16,11 +17,11 @@ use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 class PendapatanPerPeriode extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
     use HasLaporanFilterAndExport;
+    use HasPageShield;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;
     }

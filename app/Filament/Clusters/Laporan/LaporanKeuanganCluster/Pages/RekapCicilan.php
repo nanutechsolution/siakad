@@ -8,17 +8,18 @@ use App\Filament\Pages\LaporanKeuangan\Contracts\ProvidesLaporanData;
 use App\Services\LaporanKeuangan\CicilanService;
 use App\Services\LaporanKeuangan\Support\FilterOptions;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
-use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
+use Illuminate\Database\Eloquent\Builder; 
 
 class RekapCicilan extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
+    use HasPageShield;
     use HasLaporanFilterAndExport;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;

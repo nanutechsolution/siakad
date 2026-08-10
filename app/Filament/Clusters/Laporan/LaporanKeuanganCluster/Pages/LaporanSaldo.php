@@ -9,6 +9,7 @@ use App\Services\LaporanKeuangan\CicilanService;
 use App\Services\LaporanKeuangan\SaldoService;
 use App\Services\LaporanKeuangan\Support\FilterOptions;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
@@ -21,6 +22,7 @@ use Illuminate\Database\Eloquent\Builder;
 class LaporanSaldo extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
     use HasLaporanFilterAndExport;
+    use HasPageShield;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;
     }

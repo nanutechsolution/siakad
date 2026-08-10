@@ -4,6 +4,7 @@ namespace App\Filament\Widgets;
 
 use App\Models\Kelas;
 use App\Services\Kelas\KelasDashboardService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Tables;
 use Filament\Tables\Table;
 use Filament\Widgets\TableWidget;
@@ -11,6 +12,7 @@ use Filament\Widgets\TableWidget;
 class KelasProblemList extends TableWidget
 {
     protected static ?int $sort = 4;
+    use HasWidgetShield;
 
     protected int|string|array $columnSpan = 'full';
 

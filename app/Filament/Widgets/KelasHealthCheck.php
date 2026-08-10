@@ -3,11 +3,13 @@
 namespace App\Filament\Widgets;
 
 use App\Services\Kelas\KelasDashboardService;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class KelasHealthCheck extends StatsOverviewWidget
 {
+    use HasWidgetShield;
     protected static ?int $sort = 2;
 
     protected function getStats(): array

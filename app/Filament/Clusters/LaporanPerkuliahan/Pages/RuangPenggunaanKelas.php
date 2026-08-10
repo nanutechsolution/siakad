@@ -7,6 +7,7 @@ use App\Filament\Clusters\LaporanPerkuliahan\LaporanPerkuliahanCluster;
 use App\Models\RefTahunAkademik;
 use App\Services\LaporanPerkuliahan\RuangKelasService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -19,6 +20,7 @@ use Maatwebsite\Excel\Facades\Excel;
 
 class RuangPenggunaanKelas extends Page implements HasTable
 {
+    use HasPageShield;
     use InteractsWithTable;
 
     protected string $view = 'filament.clusters.laporan-perkuliahan.pages.ruang-penggunaan-kelas';

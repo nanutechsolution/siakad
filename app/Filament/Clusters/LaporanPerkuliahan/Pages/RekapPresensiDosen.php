@@ -6,6 +6,7 @@ use App\Exports\LaporanPerkuliahan\PresensiDosenExport;
 use App\Filament\Clusters\LaporanPerkuliahan\LaporanPerkuliahanCluster;
 use App\Services\LaporanPerkuliahan\PresensiDosenService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Support\Icons\Heroicon;
@@ -18,6 +19,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class RekapPresensiDosen extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasPageShield;
     protected string $view = 'filament.clusters.laporan-perkuliahan.pages.rekap-presensi-dosen';
     protected static ?string $navigationLabel = 'Rekap Presensi Dosen';
     protected static ?string $title = 'Rekap Presensi Dosen';

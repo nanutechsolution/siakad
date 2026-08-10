@@ -4,11 +4,13 @@ namespace App\Filament\Widgets;
 
 use App\Models\PdfDocument;
 use App\Models\PdfVerification;
+use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget;
 use Filament\Widgets\StatsOverviewWidget\Stat;
 
 class PdfCenterStatsWidget extends StatsOverviewWidget
 {
+    use HasWidgetShield;
     protected function getStats(): array
     {
         return [

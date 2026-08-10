@@ -8,6 +8,7 @@ use App\Models\Mahasiswa;
 use App\Services\Laporan\TranskripAkademikService;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Select;
 use Filament\Pages\Page;
@@ -16,6 +17,7 @@ use Filament\Schemas\Schema;
 class TranskripAkademikPage extends Page
 {
     use HasLaporanFilters;
+    use HasPageShield;
     protected string $view = 'filament.clusters.laporan-akademik.pages.transkrip-akademik-page';
     protected static ?string $cluster = LaporanAkademikCluster::class;
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-academic-cap';

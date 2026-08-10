@@ -8,6 +8,7 @@ use App\Filament\Pages\LaporanKeuangan\Contracts\ProvidesLaporanData;
 use App\Services\LaporanKeuangan\RekapPembayaranService;
 use App\Services\LaporanKeuangan\Support\FilterOptions;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Contracts\HasForms;
@@ -20,6 +21,7 @@ use Illuminate\Database\Eloquent\Builder;
 class RekapPembayaran extends Page implements HasForms, HasTable, ProvidesLaporanData
 {
     use HasLaporanFilterAndExport;
+    use HasPageShield;
     use InteractsWithTable {
         HasLaporanFilterAndExport::table insteadof InteractsWithTable;
     }

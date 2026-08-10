@@ -9,6 +9,7 @@ use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Services\LaporanPerkuliahan\DistribusiMataKuliahService;
 use BackedEnum;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\TextColumn;
@@ -21,6 +22,7 @@ use Maatwebsite\Excel\Facades\Excel;
 class DistribusiMataKuliah extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasPageShield;
     protected string $view = 'filament.clusters.laporan-perkuliahan.pages.distribusi-mata-kuliah';
     protected static ?string $navigationLabel = 'Distribusi Mata Kuliah';
 

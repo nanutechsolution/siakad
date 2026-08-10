@@ -11,6 +11,7 @@ use App\Filament\Widgets\Reports\RekapKrsOverviewWidget;
 use App\Services\Laporan\RekapKrsService;
 use BackedEnum;
 use Barryvdh\DomPDF\Facade\Pdf;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Pages\Page;
 use Filament\Schemas\Concerns\InteractsWithSchemas;
@@ -24,6 +25,7 @@ class RekapKrsPage extends Page implements HasTable
 {
     use HasLaporanFilters;
     use InteractsWithTable;
+    use HasPageShield;
     use InteractsWithSchemas;
     protected string $view = 'filament.clusters.laporan-akademik.pages.rekap-krs-page';
 
