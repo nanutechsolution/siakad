@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\ManajemenKelas\Resources\Manajemenkelas\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Models\RefAngkatan;
 use App\Models\RefProgram;
 use App\Support\Utf8;
@@ -19,7 +20,6 @@ class ManajemenkelasForm
                 Section::make('Data Kelas')
                     ->columns(2)
                     ->columnSpanFull()
-
                     ->components([
                         TextInput::make('nama_kelas')
                             ->label('Nama Kelas')
@@ -28,7 +28,7 @@ class ManajemenkelasForm
                         Select::make('prodi_id')
                             ->label('Program Studi')
                             ->relationship('prodi', 'nama_prodi')
-                            ->getOptionLabelFromRecordUsing(fn($record) => Utf8::clean($record->nama_prodi))
+                            ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                             ->searchable()
                             ->preload()
                             ->required(),
