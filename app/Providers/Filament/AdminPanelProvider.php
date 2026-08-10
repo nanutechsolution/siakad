@@ -39,18 +39,20 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => Blade::render('<x-active-academic-year />'),
             )
+            // ->renderHook(
+            //     PanelsRenderHook::SIDEBAR_NAV_START,
+            //     fn() => Blade::render('<livewire:navigation-search />'),
+            // )
             ->id('admin')
             ->path('admin')
             ->brandLogoHeight('2.25rem')
             ->favicon(asset('favicons/logo-unmaris.svg'))
-            ->brandName('SIAKAD — UNMARIS')
             ->brandLogo(fn() => view('filament.admin.logo'))
             ->viteTheme('resources/css/filament/admin/theme.css')
             ->login(Login::class)
             ->profile()
             ->font('Inter', provider: GoogleFontProvider::class)
             ->databaseNotifications()
-            ->viteTheme('resources/css/filament/admin/theme.css')
             ->discoverResources(in: app_path('Filament/Resources'), for: 'App\Filament\Resources')
             ->discoverPages(in: app_path('Filament/Pages'), for: 'App\Filament\Pages')
             ->discoverClusters(in: app_path('Filament/Clusters'), for: 'App\\Filament\\Clusters')
@@ -64,7 +66,6 @@ class AdminPanelProvider extends PanelProvider
                 }, AppNavigationGroup::cases())
             )
             ->globalSearch(false)
-            ->pages([])
             ->breadcrumbs(true)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
             ->sidebarCollapsibleOnDesktop()

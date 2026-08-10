@@ -6,7 +6,6 @@ use App\Enums\NavigationGroup;
 use App\Filament\Resources\Kelas\Pages\CreateKelas;
 use App\Filament\Resources\Kelas\Pages\EditKelas;
 use App\Filament\Resources\Kelas\Pages\ListKelas;
-use App\Filament\Resources\Kelas\RelationManagers\DosenWaliRelationManager;
 use App\Filament\Resources\Kelas\RelationManagers\MahasiswasRelationManager;
 use App\Filament\Resources\Kelas\Schemas\KelasForm;
 use App\Filament\Resources\Kelas\Tables\KelasTable;

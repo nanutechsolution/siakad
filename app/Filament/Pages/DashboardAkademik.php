@@ -6,6 +6,10 @@ use App\Enums\NavigationGroup;
 use App\Filament\Widgets\AkademikKrsPendingList;
 use App\Filament\Widgets\AkademikOverview;
 use App\Filament\Widgets\AkademikProdiChart;
+use App\Filament\Widgets\KelasDistribution;
+use App\Filament\Widgets\KelasHealthCheck;
+use App\Filament\Widgets\KelasOverview;
+use App\Filament\Widgets\KelasProblemList;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Dashboard as BaseDashboard;
 use UnitEnum;
@@ -32,8 +36,11 @@ class DashboardAkademik extends BaseDashboard
     {
         return [
             AkademikOverview::class,
-            AkademikProdiChart::class,
             AkademikKrsPendingList::class,
+            KelasOverview::class,
+            KelasHealthCheck::class,
+            KelasDistribution::class,
+            KelasProblemList::class,
         ];
     }
 

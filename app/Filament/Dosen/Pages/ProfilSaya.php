@@ -64,7 +64,6 @@ class ProfilSaya extends Page implements HasForms
             ?? DosenBiodata::create(['dosen_id' => $this->dosen->id]);
 
         $this->stats = $this->hitungStatistikKinerja();
-
         $this->form->fill([
             'nidn' => $this->dosen->nidn,
             'nuptk' => $this->dosen->nuptk,
