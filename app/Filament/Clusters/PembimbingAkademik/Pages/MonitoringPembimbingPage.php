@@ -25,7 +25,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
 {
     use InteractsWithTable;
 
-    protected static string $view =
+    protected  string $view =
     'filament.clusters.pembimbing-akademik.pages.monitoring-pembimbing-page';
 
     protected static ?string $navigationLabel =
