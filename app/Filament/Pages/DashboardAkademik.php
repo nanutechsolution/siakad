@@ -5,7 +5,6 @@ namespace App\Filament\Pages;
 use App\Enums\NavigationGroup;
 use App\Filament\Widgets\AkademikKrsPendingList;
 use App\Filament\Widgets\AkademikOverview;
-use App\Filament\Widgets\AkademikProdiChart;
 use App\Filament\Widgets\KelasDistribution;
 use App\Filament\Widgets\KelasHealthCheck;
 use App\Filament\Widgets\KelasOverview;
@@ -36,11 +35,11 @@ class DashboardAkademik extends BaseDashboard
     {
         return [
             AkademikOverview::class,
-            AkademikKrsPendingList::class,
             KelasOverview::class,
             KelasHealthCheck::class,
             KelasDistribution::class,
             KelasProblemList::class,
+            AkademikKrsPendingList::class,
         ];
     }
 
