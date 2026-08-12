@@ -59,7 +59,6 @@ class TrxDosen extends Model implements HasScopeStrategy
      */
     protected $casts = [
         'is_active' => 'boolean',
-        'data_tambahan' => 'array',
     ];
 
     public static function getSupportedScopeStrategies(): array

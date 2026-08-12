@@ -127,20 +127,20 @@ class TrxDosenForm
                                                         ->default('TETAP')
                                                         ->live()
                                                         ->required(),
-
                                                     TextInput::make('nidn')
                                                         ->label('NIDN')
                                                         ->unique(ignoreRecord: true)
-                                                        ->maxLength(50)
-                                                        ->numeric()
-                                                        ->helperText('Nomor Induk Dosen Nasional'),
-
+                                                        ->maxLength(10)
+                                                        ->inputMode('numeric')
+                                                        ->rule('digits:10')
+                                                        ->nullable(),
                                                     TextInput::make('nuptk')
                                                         ->label('NUPTK')
                                                         ->unique(ignoreRecord: true)
-                                                        ->maxLength(50)
-                                                        ->numeric(),
-
+                                                        ->maxLength(16)
+                                                        ->inputMode('numeric')
+                                                        ->rule('digits:16')
+                                                        ->nullable(),
                                                     TextInput::make('asal_institusi')
                                                         ->label('Asal Institusi')
                                                         ->visible(fn(callable $get) => $get('jenis_dosen') === 'LB')
