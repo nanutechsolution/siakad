@@ -6,8 +6,6 @@ use App\Enums\MahasiswaNavigationGroup;
 use App\Services\PresensiMahasiswaService;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
-use Filament\Support\Icons\Heroicon;
-use Illuminate\Validation\ValidationException;
 use UnitEnum;
 
 class AbsenKuliah extends Page
