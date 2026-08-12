@@ -15,7 +15,8 @@ enum PdfDocumentType: string
     case SURAT_PINDAH_PRODI = 'surat_pindah_prodi';
     case SURAT_DISPENSASI = 'surat_dispensasi';
     case TRANSKRIP_FINAL = 'transkrip_final';
-
+    case SK_PEMBIMBING_AKADEMIK = 'sk_pembimbing_akademik';
+    case SK_PEMBIMBING_AKADEMIK_MASSAL = 'sk_pembimbing_akademik_massal';
     public function label(): string
     {
         return match ($this) {
@@ -30,6 +31,8 @@ enum PdfDocumentType: string
             self::SURAT_PINDAH_PRODI => 'Surat Keterangan Pindah Program Studi',
             self::SURAT_DISPENSASI => 'Surat Keterangan Dispensasi Akademik',
             self::TRANSKRIP_FINAL => 'Transkrip Akademik (Final)',
+            self::SK_PEMBIMBING_AKADEMIK => 'Surat Keterangan Penugasan Pembimbing Akademik',
+            self::SK_PEMBIMBING_AKADEMIK_MASSAL => 'SK Pembimbing Akademik Massal per Dosen',
         };
     }
 }

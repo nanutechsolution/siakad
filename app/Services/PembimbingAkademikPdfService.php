@@ -2,21 +2,28 @@
 
 namespace App\Services;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\PembimbingAkademikStatus;
 use App\Models\PembimbingAkademik;
 use App\Models\TrxDosen;
+use App\Services\Pdf\PdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Response;
 
 class PembimbingAkademikPdfService
 {
-    public function downloadSkPenugasan(PembimbingAkademik $record): Response
-    {
-        $pdf = Pdf::loadView('pdf.sk-penugasan', ['record' => $record]);
-
-        $nama = $record->nomor_sk ?: $record->id;
-
-        return $pdf->download('sk-penugasan-' . \Illuminate\Support\Str::slug($nama) . '.pdf');
+    public function __construct(
+        protected PdfService $pdfService,
+    ) {}
+    public function downloadSkPenugasan(
+        PembimbingAkademik $pembimbingAkademik,
+    ): Response {
+        return $this->pdfService->download(
+            PdfDocumentType::SK_PEMBIMBING_AKADEMIK,
+            [
+                'pembimbing_akademik_id' => $pembimbingAkademik->id,
+            ],
+        );
     }
 
     public function downloadSkMassalDosen(string $dosenId): Response

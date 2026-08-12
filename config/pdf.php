@@ -8,6 +8,7 @@ use App\Services\Pdf\Resolvers\KartuUjianPdfResolver;
 use App\Services\Pdf\Resolvers\KhsPdfResolver;
 use App\Services\Pdf\Resolvers\KrsPdfResolver;
 use App\Services\Pdf\Resolvers\KwitansiPdfResolver;
+use App\Services\Pdf\Resolvers\SkPembimbingAkademikPdfResolver;
 use App\Services\Pdf\Resolvers\SuratAktifKuliahPdfResolver;
 use App\Services\Pdf\Resolvers\SuratCutiPdfResolver;
 use App\Services\Pdf\Resolvers\SuratDispensasiPdfResolver;
@@ -147,6 +148,20 @@ return [
             'requires_qr' => true,
         ],
 
+        PdfDocumentType::SK_PEMBIMBING_AKADEMIK->value => [
+            'resolver' => SkPembimbingAkademikPdfResolver::class,
+            'view' => 'pdf.akademik.sk-pembimbing-akademik',
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/SKPA/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}',
+            'kode_jenis' => 'SKPA',
+
+            'requires_signature' => true,
+            'requires_qr' => true,
+        ],
     ],
 
 ];
