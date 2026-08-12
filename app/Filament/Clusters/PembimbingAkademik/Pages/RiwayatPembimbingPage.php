@@ -3,20 +3,18 @@
 namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
 use App\Domain\Authorization\Services\FormResolver;
-use App\Domain\Authorization\Services\OrganizationResolver;
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use App\Exports\PembimbingAkademikExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\Kelas;
-use App\Models\Mahasiswa;
 use App\Models\PembimbingAkademik;
 use App\Models\RefAngkatan;
-use App\Models\RefProdi;
 use App\Support\Utf8;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
+use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
@@ -37,16 +35,31 @@ class RiwayatPembimbingPage extends Page implements HasTable
     use HasPageShield;
 
     protected static ?string $navigationLabel = 'Riwayat Pembimbing Akademik';
-    protected static ?string $modelLabel = 'Riwayat Pembimbing Akademik';
-    protected string $view = 'filament.clusters.pembimbing-akademik.pages.riwayat-pembimbing-page';
-    protected static ?int $navigationSort = 2;
-    protected static ?string $clusterBreadcrumb = 'Riwayat Pembimbing Akademik';
-    protected static ?string $title = 'Riwayat Pembimbing Akademik';
-    protected static ?string $description = 'Halaman ini menampilkan riwayat pembimbing akademik yang telah ditugaskan kepada mahasiswa. Anda dapat melihat daftar pembimbing, periode penugasan, dan informasi terkait lainnya. Halaman ini membantu dalam memantau dan mengelola penugasan pembimbing akademik secara efektif.';
-    protected static ?string $slug = 'riwayat-pembimbing-akademik';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-archive-box';
-    protected static ?string $cluster = PembimbingAkademikCluster::class;
 
+    protected static ?string $modelLabel = 'Riwayat Pembimbing Akademik';
+
+    protected string $view =
+    'filament.clusters.pembimbing-akademik.pages.riwayat-pembimbing-page';
+
+    protected static ?int $navigationSort = 2;
+
+    protected static ?string $clusterBreadcrumb =
+    'Riwayat Pembimbing Akademik';
+
+    protected static ?string $title =
+    'Riwayat Pembimbing Akademik';
+
+    protected static ?string $description =
+    'Gunakan pencarian dan filter untuk menemukan riwayat pembimbing berdasarkan mahasiswa, prodi, angkatan, kelas, dosen, jenis pembimbing, status, maupun periode penugasan.';
+
+    protected static ?string $slug =
+    'riwayat-pembimbing-akademik';
+
+    protected static string|BackedEnum|null $navigationIcon =
+    'heroicon-o-archive-box';
+
+    protected static ?string $cluster =
+    PembimbingAkademikCluster::class;
 
     public function table(Table $table): Table
     {
@@ -56,542 +69,1093 @@ class RiwayatPembimbingPage extends Page implements HasTable
                     ->with([
                         'mahasiswa.person',
                         'mahasiswa.angkatan',
-                        'kelas',
+                        'kelas.prodi',
+                        'kelas.angkatan',
                         'dosen.person',
                     ])
                     ->withTrashed()
                     ->visibleTo(auth()->user())
             )
+
+            /*
+            |--------------------------------------------------------------------------
+            | COLUMNS
+            |--------------------------------------------------------------------------
+            */
             ->columns([
-                // =========================================================
-                // JENIS PEMBIMBING
-                // =========================================================
+
+                /*
+                |--------------------------------------------------------------------------
+                | JENIS
+                |--------------------------------------------------------------------------
+                */
                 TextColumn::make('jenis')
                     ->label('Jenis')
                     ->badge()
+                    ->sortable()
                     ->formatStateUsing(
-                        fn(PembimbingAkademikJenis $state) => $state->label()
+                        fn(PembimbingAkademikJenis $state): string =>
+                        $state->label()
+                    )
+                    ->tooltip(
+                        fn(PembimbingAkademik $record): string =>
+                        $record->jenis === PembimbingAkademikJenis::DOSEN_WALI
+                            ? 'Penugasan dosen wali'
+                            : 'Penugasan pembimbing/penguji'
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | MAHASISWA
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('mahasiswa.nim')
+                    ->label('Mahasiswa')
+                    ->searchable(
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->whereHas(
+                                'mahasiswa',
+                                function (Builder $mahasiswa) use ($search): void {
+                                    $mahasiswa->where(
+                                        'nim',
+                                        'like',
+                                        "%{$search}%"
+                                    )->orWhereHas(
+                                        'person',
+                                        function (Builder $person) use ($search): void {
+                                            $person->where(
+                                                'nama_lengkap',
+                                                'like',
+                                                "%{$search}%"
+                                            );
+                                        }
+                                    );
+                                }
+                            );
+                        }
+                    )
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('NIM berhasil disalin')
+                    ->placeholder('-')
+                    ->description(
+                        fn(?PembimbingAkademik $record): string =>
+                        Utf8::clean(
+                            $record?->mahasiswa?->person?->nama_lengkap
+                        ) ?: '-'
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | ANGKATAN MAHASISWA
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('mahasiswa.angkatan.id_tahun')
+                    ->label('Angkatan')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable()
+                    ->placeholder('-'),
+
+                /*
+                |--------------------------------------------------------------------------
+                | KELAS
+                |--------------------------------------------------------------------------
+                |
+                | Ditampilkan:
+                |
+                | A
+                | TI • 2024
+                |
+                | sehingga admin langsung tahu kelas tersebut milik prodi
+                | dan angkatan mana.
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('kelas_info')
+                    ->label('Kelas')
+                    ->state(
+                        function (PembimbingAkademik $record): string {
+                            $kelas = $record->kelas;
+
+                            if (! $kelas) {
+                                return '-';
+                            }
+
+                            $namaKelas = Utf8::clean(
+                                $kelas->nama_kelas
+                            );
+
+                            $kodeProdi = Utf8::clean(
+                                $kelas->prodi?->kode_prodi_internal
+                                    ?? '-'
+                            );
+
+                            $angkatan =
+                                $kelas->angkatan?->id_tahun
+                                ?? $kelas->angkatan_id
+                                ?? '-';
+
+                            return "{$namaKelas} — {$kodeProdi} — {$angkatan}";
+                        }
+                    )
+                    ->description(
+                        function (PembimbingAkademik $record): ?string {
+                            if (! $record->kelas) {
+                                return $record->mahasiswa?->angkatan?->id_tahun
+                                    ? 'Kelas mahasiswa tidak tersimpan pada penugasan'
+                                    : null;
+                            }
+
+                            return Utf8::clean(
+                                $record->kelas->prodi?->nama_prodi
+                            ) ?: null;
+                        }
+                    )
+                    ->searchable(
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->where(function (Builder $q) use ($search): void {
+
+                                /*
+                                | Penugasan langsung ke kelas
+                                */
+                                $q->whereHas(
+                                    'kelas',
+                                    function (Builder $kelas) use ($search): void {
+                                        $kelas->where(
+                                            'nama_kelas',
+                                            'like',
+                                            "%{$search}%"
+                                        )->orWhereHas(
+                                            'prodi',
+                                            function (Builder $prodi) use ($search): void {
+                                                $prodi
+                                                    ->where(
+                                                        'kode_prodi_internal',
+                                                        'like',
+                                                        "%{$search}%"
+                                                    )
+                                                    ->orWhere(
+                                                        'nama_prodi',
+                                                        'like',
+                                                        "%{$search}%"
+                                                    );
+                                            }
+                                        );
+                                    }
+                                )
+
+                                    /*
+                                | Penugasan per mahasiswa.
+                                | Mahasiswa bisa mempunyai histori kelas.
+                                */
+                                    ->orWhereHas(
+                                        'mahasiswa.kelas',
+                                        function (Builder $kelas) use ($search): void {
+                                            $kelas->where(
+                                                'nama_kelas',
+                                                'like',
+                                                "%{$search}%"
+                                            )->orWhereHas(
+                                                'prodi',
+                                                function (Builder $prodi) use ($search): void {
+                                                    $prodi
+                                                        ->where(
+                                                            'kode_prodi_internal',
+                                                            'like',
+                                                            "%{$search}%"
+                                                        )
+                                                        ->orWhere(
+                                                            'nama_prodi',
+                                                            'like',
+                                                            "%{$search}%"
+                                                        );
+                                                }
+                                            );
+                                        }
+                                    );
+                            });
+                        }
                     )
                     ->sortable(),
 
-                // =========================================================
-                // MAHASISWA
-                // =========================================================
-                TextColumn::make('mahasiswa_info')
-                    ->label('Mahasiswa')
-                    ->getStateUsing(function (PembimbingAkademik $record): string {
-                        if (! $record->mahasiswa) {
-                            return 'Penugasan Per Kelas';
-                        }
-
-                        return trim(
-                            ($record->mahasiswa->nim ?? '-') .
-                                ' — ' .
-                                Utf8::clean(
-                                    $record->mahasiswa->person?->nama_lengkap ?? '-'
-                                )
-                        );
-                    })
-                    ->description(function (PembimbingAkademik $record): ?string {
-                        if (! $record->mahasiswa) {
-                            return $record->kelas
-                                ? 'Seluruh mahasiswa pada kelas'
-                                : null;
-                        }
-
-                        return 'Angkatan ' .
-                            ($record->mahasiswa->angkatan?->id_tahun ?? '-');
-                    })
-                    ->searchable(
-                        query: function (Builder $query, string $search): Builder {
-                            return $query->whereHas('mahasiswa', function (Builder $q) use ($search) {
-                                $q->where('nim', 'like', "%{$search}%")
-                                    ->orWhereHas('person', function (Builder $person) use ($search) {
-                                        $person->where(
-                                            'nama_lengkap',
-                                            'like',
-                                            "%{$search}%"
-                                        );
-                                    });
-                            });
-                        }
-                    )
-                    ->sortable(query: function (Builder $query, string $direction) {
-                        return $query->orderBy(
-                            Mahasiswa::query()
-                                ->select('nim')
-                                ->whereColumn(
-                                    'mahasiswas.id',
-                                    'pembimbing_akademik.mahasiswa_id'
-                                ),
-                            $direction
-                        );
-                    }),
-
-                // =========================================================
-                // PRODI
-                // =========================================================
+                /*
+                |--------------------------------------------------------------------------
+                | PROGRAM STUDI
+                |--------------------------------------------------------------------------
+                */
                 TextColumn::make('prodi_info')
                     ->label('Program Studi')
-                    ->getStateUsing(function (PembimbingAkademik $record): string {
-                        $prodi = $record->mahasiswa?->prodi
-                            ?? $record->kelas?->prodi;
+                    ->state(
+                        function (PembimbingAkademik $record): string {
+                            $prodi = $record->kelas?->prodi;
 
-                        if (! $prodi) {
-                            return '-';
+                            if ($prodi) {
+                                $kode =
+                                    $prodi->kode_prodi_internal
+                                    ?? '-';
+
+                                $nama =
+                                    $prodi->nama_prodi
+                                    ?? null;
+
+                                return $nama
+                                    ? "{$kode} — {$nama}"
+                                    : $kode;
+                            }
+
+                            return $record->mahasiswa?->prodi?->nama_prodi
+                                ?? '-';
                         }
-
-                        $kode = $prodi->kode_prodi_internal
-                            ?? $prodi->kode_prodi_internal
-                            ?? null;
-
-                        $nama = $prodi->nama_prodi
-                            ?? $prodi->nama
-                            ?? '-';
-
-                        return $kode
-                            ? "{$kode} — " . Utf8::clean($nama)
-                            : Utf8::clean($nama);
-                    })
-                    ->wrap()
-                    ->toggleable(),
-
-                // =========================================================
-                // ANGKATAN
-                // =========================================================
-                TextColumn::make('angkatan')
-                    ->label('Angkatan')
-                    ->getStateUsing(function (PembimbingAkademik $record): ?string {
-                        return $record->mahasiswa?->angkatan?->id_tahun
-                            ?? $record->kelas?->angkatan?->id_tahun;
-                    })
-                    ->badge()
-                    ->color('gray')
-                    ->sortable(query: function (Builder $query, string $direction) {
-                        return $query->orderBy(
-                            Mahasiswa::query()
-                                ->select('angkatan_id')
-                                ->whereColumn(
-                                    'mahasiswas.id',
-                                    'pembimbing_akademik.mahasiswa_id'
-                                ),
-                            $direction
-                        );
-                    }),
-
-                // =========================================================
-                // KELAS
-                // =========================================================
-                TextColumn::make('kelas_info')
-                    ->label('Kelas')
-                    ->getStateUsing(function (PembimbingAkademik $record): string {
-                        $kelas = $record->kelas;
-
-                        if (! $kelas) {
-                            return $record->mahasiswa
-                                ? 'Per Mahasiswa'
-                                : '-';
-                        }
-
-                        $namaKelas = Utf8::clean($kelas->nama_kelas);
-
-                        $kodeProdi = $kelas->prodi?->kode_prodi_internal
-                            ?? $kelas->prodi?->kode_prodi_internal
-                            ?? '-';
-
-                        $angkatan = $kelas->angkatan?->id_tahun ?? '-';
-
-                        return "{$namaKelas} — {$kodeProdi} — {$angkatan}";
-                    })
-                    ->description(function (PembimbingAkademik $record): ?string {
-                        if (! $record->kelas) {
-                            return $record->mahasiswa
-                                ? 'Penugasan langsung ke mahasiswa'
-                                : null;
-                        }
-
-                        return $record->kelas->prodi
-                            ? Utf8::clean(
-                                $record->kelas->prodi->nama_prodi
-                                    ?? $record->kelas->prodi->nama
-                                    ?? ''
-                            )
-                            : null;
-                    })
+                    )
+                    ->placeholder('-')
                     ->searchable(
-                        query: function (Builder $query, string $search): Builder {
-                            return $query->whereHas('kelas', function (Builder $q) use ($search) {
-                                $q->where('nama_kelas', 'like', "%{$search}%")
-                                    ->orWhereHas('prodi', function (Builder $prodi) use ($search) {
-                                        $prodi->where('kode_prodi_internal', 'like', "%{$search}%")
-                                            ->orWhere('nama_prodi', 'like', "%{$search}%");
-                                    });
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->where(function (Builder $q) use ($search): void {
+                                $q->whereHas(
+                                    'kelas.prodi',
+                                    function (Builder $prodi) use ($search): void {
+                                        $prodi
+                                            ->where(
+                                                'kode_prodi_internal',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                            ->orWhere(
+                                                'nama_prodi',
+                                                'like',
+                                                "%{$search}%"
+                                            );
+                                    }
+                                )->orWhereHas(
+                                    'mahasiswa.prodi',
+                                    function (Builder $prodi) use ($search): void {
+                                        $prodi
+                                            ->where(
+                                                'kode_prodi_internal',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                            ->orWhere(
+                                                'nama_prodi',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                        ;
+                                    }
+                                );
                             });
                         }
                     )
-                    ->wrap(),
+                    ->toggleable(),
 
-                // =========================================================
-                // DOSEN
-                // =========================================================
-                TextColumn::make('dosen_nama')
+                /*
+                |--------------------------------------------------------------------------
+                | DOSEN
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('dosen_info')
                     ->label('Dosen Pembimbing')
-                    ->getStateUsing(
-                        fn(PembimbingAkademik $record) =>
+                    ->state(
+                        fn(PembimbingAkademik $record): string =>
                         Utf8::clean(
-                            $record->dosen?->person?->nama_lengkap ?? '-'
-                        )
+                            $record->dosen?->person?->nama_lengkap
+                        ) ?: '-'
                     )
                     ->description(
-                        fn(?PembimbingAkademik $record) =>
+                        fn(?PembimbingAkademik $record): ?string =>
                         $record?->dosen?->nidn
                             ? 'NIDN: ' . $record->dosen->nidn
                             : null
                     )
                     ->searchable(
-                        query: function (Builder $query, string $search): Builder {
-                            return $query->whereHas('dosen', function (Builder $q) use ($search) {
-                                $q->where('nidn', 'like', "%{$search}%")
-                                    ->orWhereHas('person', function (Builder $person) use ($search) {
-                                        $person->where(
-                                            'nama_lengkap',
-                                            'like',
-                                            "%{$search}%"
-                                        );
-                                    });
-                            });
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->whereHas(
+                                'dosen',
+                                function (Builder $dosen) use ($search): void {
+                                    $dosen->where(
+                                        'nidn',
+                                        'like',
+                                        "%{$search}%"
+                                    )->orWhereHas(
+                                        'person',
+                                        function (Builder $person) use ($search): void {
+                                            $person->where(
+                                                'nama_lengkap',
+                                                'like',
+                                                "%{$search}%"
+                                            );
+                                        }
+                                    );
+                                }
+                            );
                         }
-                    ),
-
-                // =========================================================
-                // CAKUPAN
-                // =========================================================
-                TextColumn::make('cakupan')
-                    ->label('Cakupan')
-                    ->getStateUsing(
-                        fn(PembimbingAkademik $record) =>
-                        $record->kelas_id
-                            ? 'Per Kelas'
-                            : 'Per Mahasiswa'
                     )
-                    ->badge()
-                    ->color(
-                        fn(string $state) =>
-                        $state === 'Per Kelas'
-                            ? 'info'
-                            : 'warning'
-                    ),
+                    ->sortable(),
 
-                // =========================================================
-                // PRIMARY
-                // =========================================================
+                /*
+                |--------------------------------------------------------------------------
+                | PRIMARY
+                |--------------------------------------------------------------------------
+                */
                 IconColumn::make('is_primary')
                     ->label('Utama')
                     ->boolean()
+                    ->trueIcon('heroicon-o-star')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('warning')
+                    ->falseColor('gray')
                     ->tooltip(
-                        fn(PembimbingAkademik $record) =>
+                        fn(PembimbingAkademik $record): string =>
                         $record->is_primary
                             ? 'Pembimbing utama'
                             : 'Bukan pembimbing utama'
                     )
                     ->toggleable(),
 
-                // =========================================================
-                // PERIODE
-                // =========================================================
-                TextColumn::make('periode')
-                    ->label('Periode')
-                    ->getStateUsing(function (PembimbingAkademik $record): string {
-                        $mulai = $record->tanggal_mulai
-                            ? \Carbon\Carbon::parse($record->tanggal_mulai)
-                            ->translatedFormat('d M Y')
-                            : '-';
-
-                        $selesai = $record->tanggal_selesai
-                            ? \Carbon\Carbon::parse($record->tanggal_selesai)
-                            ->translatedFormat('d M Y')
-                            : 'Sekarang';
-
-                        return "{$mulai} s/d {$selesai}";
-                    })
+                /*
+                |--------------------------------------------------------------------------
+                | PERIODE
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('tanggal_mulai')
+                    ->label('Periode Penugasan')
+                    ->date('d M Y')
+                    ->sortable()
                     ->description(
-                        fn(PembimbingAkademik $record) =>
-                        $record->tanggal_sk
-                            ? 'SK: ' . \Carbon\Carbon::parse($record->tanggal_sk)
-                            ->translatedFormat('d M Y')
-                            : null
-                    )
-                    ->sortable(),
+                        fn(?PembimbingAkademik $record): string =>
+                        $record?->tanggal_selesai
+                            ? 's/d ' . $record->tanggal_selesai->format('d M Y')
+                            : 'Masih berjalan'
+                    ),
 
-                // =========================================================
-                // STATUS
-                // =========================================================
+                /*
+                |--------------------------------------------------------------------------
+                | STATUS
+                |--------------------------------------------------------------------------
+                */
                 TextColumn::make('status')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(PembimbingAkademikStatus $state) => match ($state) {
-                        PembimbingAkademikStatus::AKTIF => 'success',
-                        PembimbingAkademikStatus::SELESAI => 'gray',
-                        PembimbingAkademikStatus::DIBATALKAN => 'danger',
-                    })
-                    ->formatStateUsing(
-                        fn(PembimbingAkademikStatus $state) => $state->label()
+                    ->sortable()
+                    ->color(
+                        fn(PembimbingAkademikStatus $state): string =>
+                        match ($state) {
+                            PembimbingAkademikStatus::AKTIF => 'success',
+                            PembimbingAkademikStatus::SELESAI => 'gray',
+                            PembimbingAkademikStatus::DIBATALKAN => 'danger',
+                        }
                     )
-                    ->sortable(),
+                    ->formatStateUsing(
+                        fn(PembimbingAkademikStatus $state): string =>
+                        $state->label()
+                    ),
 
-                // =========================================================
-                // SK
-                // =========================================================
+                /*
+                |--------------------------------------------------------------------------
+                | SK
+                |--------------------------------------------------------------------------
+                */
                 TextColumn::make('nomor_sk')
-                    ->label('No. SK')
+                    ->label('SK')
                     ->placeholder('Belum ada SK')
-                    ->copyable()
+                    ->tooltip(
+                        fn(?string $state): ?string =>
+                        $state ?: 'Nomor SK belum diisi'
+                    )
+                    ->copyable(
+                        condition: fn(?string $state): bool =>
+                        filled($state)
+                    )
                     ->toggleable(),
 
-                // =========================================================
-                // INPUT
-                // =========================================================
+                /*
+                |--------------------------------------------------------------------------
+                | TANGGAL SK
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('tanggal_sk')
+                    ->label('Tanggal SK')
+                    ->date('d M Y')
+                    ->placeholder('-')
+                    ->sortable()
+                    ->toggleable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | KETERANGAN
+                |--------------------------------------------------------------------------
+                */
+                TextColumn::make('keterangan')
+                    ->label('Keterangan')
+                    ->limit(50)
+                    ->tooltip(
+                        fn(?string $state): ?string =>
+                        $state
+                    )
+                    ->placeholder('-')
+                    ->toggleable(isToggledHiddenByDefault: true),
+
+                /*
+                |--------------------------------------------------------------------------
+                | INPUT
+                |--------------------------------------------------------------------------
+                */
                 TextColumn::make('created_at')
                     ->label('Diinput')
                     ->dateTime('d M Y H:i')
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
-                // =========================================================
-                // DIHAPUS
-                // =========================================================
+                /*
+                |--------------------------------------------------------------------------
+                | DELETED
+                |--------------------------------------------------------------------------
+                */
                 IconColumn::make('is_deleted')
                     ->label('Dihapus')
                     ->boolean()
                     ->getStateUsing(
-                        fn(PembimbingAkademik $record) =>
+                        fn(PembimbingAkademik $record): bool =>
                         $record->deleted_at !== null
                     )
+                    ->trueColor('danger')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | FILTERS
+            |--------------------------------------------------------------------------
+            */
             ->filters([
+
+                /*
+                |--------------------------------------------------------------------------
+                | MAHASISWA
+                |--------------------------------------------------------------------------
+                */
+                Filter::make('mahasiswa')
+                    ->label('Mahasiswa')
+                    ->icon('heroicon-o-user')
+                    ->schema([
+                        TextInput::make('search')
+                            ->label('NIM / Nama Mahasiswa')
+                            ->placeholder('Contoh: 230101001 atau Budi Santoso')
+                            ->prefixIcon('heroicon-o-magnifying-glass')
+                            ->autocomplete(false),
+                    ])
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $search = trim($data['search'] ?? '');
+
+                            if ($search === '') {
+                                return $query;
+                            }
+
+                            return $query->whereHas(
+                                'mahasiswa',
+                                function (Builder $mahasiswa) use ($search): void {
+                                    $mahasiswa
+                                        ->where(
+                                            'nim',
+                                            'like',
+                                            "%{$search}%"
+                                        )
+                                        ->orWhereHas(
+                                            'person',
+                                            function (Builder $person) use ($search): void {
+                                                $person->where(
+                                                    'nama_lengkap',
+                                                    'like',
+                                                    "%{$search}%"
+                                                );
+                                            }
+                                        );
+                                }
+                            );
+                        }
+                    )
+                    ->indicateUsing(
+                        function (array $data): ?string {
+                            $search = trim($data['search'] ?? '');
+
+                            return $search
+                                ? "Mahasiswa: {$search}"
+                                : null;
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | PROGRAM STUDI
+                |--------------------------------------------------------------------------
+                */
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
+                    ->placeholder('Semua Program Studi')
+                    ->options(
+                        fn(): array =>
+                        app(FormResolver::class)
+                            ->prodiOptions(auth()->user())
+                    )
                     ->searchable()
-                    ->query(function (Builder $query, array $data) {
-                        if (! $data['value']) {
-                            return $query;
-                        }
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $prodiId = $data['value'] ?? null;
 
-                        return $query->where(fn(Builder $q) => $q
-                            ->whereHas('kelas', fn(Builder $k) => $k->where('prodi_id', $data['value']))
-                            ->orWhereHas('mahasiswa', fn(Builder $m) => $m->where('prodi_id', $data['value'])));
-                    }),
-                // =========================================================
-                // ANGKATAN
-                // =========================================================
+                            if (! filled($prodiId)) {
+                                return $query;
+                            }
+
+                            return $query->where(function (Builder $q) use ($prodiId): void {
+                                $q->whereHas(
+                                    'kelas',
+                                    fn(Builder $kelas) =>
+                                    $kelas->where('prodi_id', $prodiId)
+                                )->orWhereHas(
+                                    'mahasiswa',
+                                    fn(Builder $mahasiswa) =>
+                                    $mahasiswa->where('prodi_id', $prodiId)
+                                );
+                            });
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | ANGKATAN
+                |--------------------------------------------------------------------------
+                */
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
-                    ->placeholder('Semua angkatan')
+                    ->placeholder('Semua Angkatan')
                     ->options(
-                        fn(): array => RefAngkatan::query()
+                        fn(): array =>
+                        RefAngkatan::query()
                             ->orderByDesc('id_tahun')
-                            ->pluck('id_tahun', 'id_tahun')
+                            ->pluck(
+                                'id_tahun',
+                                'id_tahun'
+                            )
+                            ->mapWithKeys(
+                                fn($tahun) => [
+                                    $tahun => 'Angkatan ' . $tahun,
+                                ]
+                            )
                             ->toArray()
                     )
                     ->searchable()
-                    ->preload()
-                    ->query(function (Builder $query, array $data): Builder {
-                        $angkatanId = $data['value'] ?? null;
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $angkatanId = $data['value'] ?? null;
 
-                        if (! filled($angkatanId)) {
-                            return $query;
+                            if (! filled($angkatanId)) {
+                                return $query;
+                            }
+
+                            return $query->where(function (Builder $q) use ($angkatanId): void {
+                                $q->whereHas(
+                                    'mahasiswa',
+                                    fn(Builder $mahasiswa) =>
+                                    $mahasiswa->where(
+                                        'angkatan_id',
+                                        $angkatanId
+                                    )
+                                )->orWhereHas(
+                                    'kelas',
+                                    fn(Builder $kelas) =>
+                                    $kelas->where(
+                                        'angkatan_id',
+                                        $angkatanId
+                                    )
+                                );
+                            });
                         }
+                    ),
 
-                        return $query->where(function (Builder $q) use ($angkatanId) {
+                /*
+                |--------------------------------------------------------------------------
+                | KELAS
+                |--------------------------------------------------------------------------
+                |
+                | Hasil dropdown:
+                |
+                | A — TI — 2024
+                | B — TI — 2024
+                | A — SI — 2024
+                |
+                |--------------------------------------------------------------------------
+                */
+                SelectFilter::make('kelas_id')
+                    ->label('Kelas')
+                    ->placeholder('Semua Kelas')
+                    ->options(
+                        function (): array {
+                            return Kelas::query()
+                                ->with([
+                                    'prodi',
+                                    'angkatan',
+                                ])
+                                ->visibleTo(auth()->user())
+                                ->orderByDesc('angkatan_id')
+                                ->orderBy('prodi_id')
+                                ->orderBy('nama_kelas')
+                                ->get()
+                                ->mapWithKeys(
+                                    function (Kelas $kelas): array {
+                                        $namaKelas = Utf8::clean(
+                                            $kelas->nama_kelas
+                                        );
 
-                            // Assignment per kelas
-                            $q->whereHas('kelas', function (Builder $kelas) use ($angkatanId) {
-                                $kelas->where('angkatan_id', $angkatanId);
-                            })
-                                // Assignment per mahasiswa
-                                ->orWhereHas('mahasiswa', function (Builder $mahasiswa) use ($angkatanId) {
-                                    $mahasiswa->where('angkatan_id', $angkatanId);
-                                });
-                        });
-                    }),
+                                        $kodeProdi = Utf8::clean(
+                                            $kelas->prodi?->kode_prodi_internal
+                                                ?? '-'
+                                        );
 
-                // ==========================================
-                // DOSEN
-                // ==========================================
+                                        $angkatan =
+                                            $kelas->angkatan?->id_tahun
+                                            ?? $kelas->angkatan_id
+                                            ?? '-';
+
+                                        return [
+                                            $kelas->id =>
+                                            "{$namaKelas} — {$kodeProdi} — {$angkatan}",
+                                        ];
+                                    }
+                                )
+                                ->toArray();
+                        }
+                    )
+                    ->searchable()
+                    /*
+                    | Jangan preload.
+                    | Supaya dropdown tidak langsung menampilkan ratusan/ribuan kelas.
+                    */
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $kelasId = $data['value'] ?? null;
+
+                            if (! filled($kelasId)) {
+                                return $query;
+                            }
+
+                            return $query->where(function (Builder $q) use ($kelasId): void {
+
+                                /*
+                                | Penugasan DOSEN_WALI per kelas
+                                */
+                                $q->where(
+                                    'kelas_id',
+                                    $kelasId
+                                )
+
+                                    /*
+                                | Penugasan per mahasiswa:
+                                | mahasiswa pernah/masih berada di kelas tersebut
+                                */
+                                    ->orWhereHas(
+                                        'mahasiswa',
+                                        function (Builder $mahasiswa) use ($kelasId): void {
+                                            $mahasiswa->whereHas(
+                                                'kelas',
+                                                function (Builder $kelas) use ($kelasId): void {
+                                                    $kelas->where(
+                                                        'kelas.id',
+                                                        $kelasId
+                                                    );
+                                                }
+                                            );
+                                        }
+                                    );
+                            });
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | DOSEN
+                |--------------------------------------------------------------------------
+                */
                 Filter::make('dosen')
                     ->label('Dosen Pembimbing')
+                    ->icon('heroicon-o-academic-cap')
                     ->schema([
                         TextInput::make('search')
                             ->label('Nama Dosen / NIDN')
-                            ->placeholder('Cari nama atau NIDN')
-                            ->prefixIcon('heroicon-o-user'),
+                            ->placeholder('Contoh: Dr. Budi atau 0123456789')
+                            ->prefixIcon('heroicon-o-magnifying-glass')
+                            ->autocomplete(false),
                     ])
-                    ->query(function (Builder $query, array $data) {
-                        $search = trim($data['search'] ?? '');
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $search = trim($data['search'] ?? '');
 
-                        if ($search === '') {
-                            return $query;
+                            if ($search === '') {
+                                return $query;
+                            }
+
+                            return $query->whereHas(
+                                'dosen',
+                                function (Builder $dosen) use ($search): void {
+                                    $dosen
+                                        ->where(
+                                            'nidn',
+                                            'like',
+                                            "%{$search}%"
+                                        )
+                                        ->orWhereHas(
+                                            'person',
+                                            function (Builder $person) use ($search): void {
+                                                $person->where(
+                                                    'nama_lengkap',
+                                                    'like',
+                                                    "%{$search}%"
+                                                );
+                                            }
+                                        );
+                                }
+                            );
                         }
+                    )
+                    ->indicateUsing(
+                        function (array $data): ?string {
+                            $search = trim($data['search'] ?? '');
 
-                        return $query->whereHas('dosen', function (Builder $q) use ($search) {
-                            $q->where('nidn', 'like', "%{$search}%")
-                                ->orWhereHas('person', function (Builder $person) use ($search) {
-                                    $person->where(
-                                        'nama_lengkap',
-                                        'like',
-                                        "%{$search}%"
-                                    );
-                                });
-                        });
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        $search = trim($data['search'] ?? '');
-
-                        return $search
-                            ? "Dosen: {$search}"
-                            : null;
-                    }),
-
-                // ==========================================
-                // KELAS
-                // ==========================================
-                SelectFilter::make('kelas_id')
-                    ->label('Kelas')
-                    ->placeholder('Semua kelas')
-                    ->options(function (): array {
-                        return Kelas::query()
-                            ->with([
-                                'prodi',
-                                'angkatan',
-                            ])
-                            ->visibleTo(auth()->user())
-                            ->orderByDesc('angkatan_id')
-                            ->orderBy('prodi_id')
-                            ->orderBy('nama_kelas')
-                            ->get()
-                            ->mapWithKeys(function (Kelas $kelas): array {
-                                $namaKelas = Utf8::clean($kelas->nama_kelas);
-
-                                $kodeProdi = $kelas->prodi?->kode_prodi_internal
-                                    ?? $kelas->prodi?->kode_prodi_internal
-                                    ?? '-';
-
-                                $namaProdi = $kelas->prodi?->nama_prodi
-                                    ?? $kelas->prodi?->nama
-                                    ?? 'Program Studi';
-
-                                $angkatan = $kelas->angkatan?->id_tahun
-                                    ?? $kelas->angkatan_id
-                                    ?? '-';
-
-                                $label = sprintf(
-                                    '%s — %s (%s) — %s',
-                                    $namaKelas,
-                                    Utf8::clean($namaProdi),
-                                    $kodeProdi,
-                                    $angkatan
-                                );
-
-                                return [
-                                    $kelas->id => $label,
-                                ];
-                            })
-                            ->toArray();
-                    })
-                    ->searchable()
-                    ->preload()
-                    ->query(function (Builder $query, array $data): Builder {
-                        $kelasId = $data['value'] ?? null;
-
-                        if (! filled($kelasId)) {
-                            return $query;
+                            return $search
+                                ? "Dosen: {$search}"
+                                : null;
                         }
+                    ),
 
-                        return $query->where(function (Builder $q) use ($kelasId) {
-
-                            // Assignment langsung ke kelas
-                            $q->where('kelas_id', $kelasId)
-
-                                // Assignment per mahasiswa yang pernah berada
-                                // di kelas tersebut
-                                ->orWhereHas('mahasiswa', function (Builder $mahasiswa) use ($kelasId) {
-                                    $mahasiswa->whereHas('kelas', function (Builder $kelas) use ($kelasId) {
-                                        $kelas->where('kelas.id', $kelasId);
-                                    });
-                                });
-                        });
-                    })
-                    ->indicateUsing(function (array $data): ?string {
-                        if (! filled($data['value'] ?? null)) {
-                            return null;
-                        }
-
-                        $kelas = Kelas::with(['prodi', 'angkatan'])
-                            ->find($data['value']);
-
-                        if (! $kelas) {
-                            return null;
-                        }
-
-                        $kode = $kelas->prodi?->kode_prodi_internal
-                            ?? $kelas->prodi?->kode_prodi_internal
-                            ?? '-';
-
-                        return 'Kelas: ' .
-                            Utf8::clean($kelas->nama_kelas) .
-                            ' — ' .
-                            $kode .
-                            ' — ' .
-                            ($kelas->angkatan?->id_tahun ?? '-');
-                    }),
+                /*
+                |--------------------------------------------------------------------------
+                | JENIS
+                |--------------------------------------------------------------------------
+                */
                 SelectFilter::make('jenis')
-                    ->options(PembimbingAkademikJenis::options()),
+                    ->label('Jenis Penugasan')
+                    ->placeholder('Semua Jenis')
+                    ->options(
+                        PembimbingAkademikJenis::options()
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | STATUS
+                |--------------------------------------------------------------------------
+                */
                 SelectFilter::make('status')
-                    ->options(PembimbingAkademikStatus::options()),
-                TrashedFilter::make(),
+                    ->label('Status Penugasan')
+                    ->placeholder('Semua Status')
+                    ->options(
+                        PembimbingAkademikStatus::options()
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | PEMBIMBING UTAMA
+                |--------------------------------------------------------------------------
+                */
+                SelectFilter::make('is_primary')
+                    ->label('Pembimbing')
+                    ->placeholder('Utama & Pendamping')
+                    ->options([
+                        1 => 'Utama',
+                        0 => 'Bukan Utama',
+                    ])
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            if ($data['value'] === null || $data['value'] === '') {
+                                return $query;
+                            }
+
+                            return $query->where(
+                                'is_primary',
+                                (int) $data['value']
+                            );
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | SK
+                |--------------------------------------------------------------------------
+                */
+                SelectFilter::make('sk')
+                    ->label('Dokumen SK')
+                    ->placeholder('Semua')
+                    ->options([
+                        'ada' => 'Sudah ada SK',
+                        'belum' => 'Belum ada SK',
+                    ])
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $value = $data['value'] ?? null;
+
+                            if (! filled($value)) {
+                                return $query;
+                            }
+
+                            return match ($value) {
+                                'ada' => $query->whereNotNull('nomor_sk')
+                                    ->where('nomor_sk', '!=', ''),
+
+                                'belum' => $query->where(function (Builder $q): void {
+                                    $q->whereNull('nomor_sk')
+                                        ->orWhere('nomor_sk', '');
+                                }),
+
+                                default => $query,
+                            };
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | PERIODE TANGGAL MULAI
+                |--------------------------------------------------------------------------
+                */
+                Filter::make('tanggal_mulai')
+                    ->label('Tanggal Mulai Penugasan')
+                    ->icon('heroicon-o-calendar')
+                    ->schema([
+                        DatePicker::make('dari')
+                            ->label('Dari')
+                            ->native(false),
+
+                        DatePicker::make('sampai')
+                            ->label('Sampai')
+                            ->native(false),
+                    ])
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $dari = $data['dari'] ?? null;
+                            $sampai = $data['sampai'] ?? null;
+
+                            return $query
+                                ->when(
+                                    filled($dari),
+                                    fn(Builder $q) =>
+                                    $q->whereDate(
+                                        'tanggal_mulai',
+                                        '>=',
+                                        $dari
+                                    )
+                                )
+                                ->when(
+                                    filled($sampai),
+                                    fn(Builder $q) =>
+                                    $q->whereDate(
+                                        'tanggal_mulai',
+                                        '<=',
+                                        $sampai
+                                    )
+                                );
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | NOMOR SK
+                |--------------------------------------------------------------------------
+                */
+                Filter::make('nomor_sk')
+                    ->label('Nomor SK')
+                    ->schema([
+                        TextInput::make('search')
+                            ->label('Cari Nomor SK')
+                            ->placeholder('Contoh: 123/UNIV/2024')
+                            ->prefixIcon('heroicon-o-document-text')
+                            ->autocomplete(false),
+                    ])
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            $search = trim($data['search'] ?? '');
+
+                            if ($search === '') {
+                                return $query;
+                            }
+
+                            return $query->where(
+                                'nomor_sk',
+                                'like',
+                                "%{$search}%"
+                            );
+                        }
+                    )
+                    ->indicateUsing(
+                        function (array $data): ?string {
+                            $search = trim($data['search'] ?? '');
+
+                            return $search
+                                ? "SK: {$search}"
+                                : null;
+                        }
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | DATA DIHAPUS
+                |--------------------------------------------------------------------------
+                */
+                TrashedFilter::make()
+                    ->label('Data Dihapus'),
             ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | HEADER ACTIONS
+            |--------------------------------------------------------------------------
+            */
             ->headerActions([
                 Action::make('export')
                     ->label('Export Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
-                    ->action(fn() => Excel::download(
-                        new PembimbingAkademikExport(PembimbingAkademik::query()->withTrashed()),
-                        'riwayat-pembimbing-' . now()->format('Ymd-His') . '.xlsx'
-                    )),
+                    ->action(
+                        fn() => Excel::download(
+                            new PembimbingAkademikExport(
+                                PembimbingAkademik::query()
+                                    ->with([
+                                        'mahasiswa.person',
+                                        'mahasiswa.angkatan',
+                                        'kelas.prodi',
+                                        'kelas.angkatan',
+                                        'dosen.person',
+                                    ])
+                                    ->withTrashed()
+                            ),
+                            'riwayat-pembimbing-' .
+                                now()->format('Ymd-His') .
+                                '.xlsx'
+                        )
+                    ),
             ])
-            ->emptyStateHeading('Belum ada riwayat penugasan')
-            ->emptyStateDescription('Riwayat akan muncul di sini setelah ada penugasan pembimbing yang dibuat.')
-            ->emptyStateIcon('heroicon-o-clock')
+
+            /*
+            |--------------------------------------------------------------------------
+            | EMPTY STATE
+            |--------------------------------------------------------------------------
+            */
+            ->emptyStateHeading(
+                'Belum ada riwayat penugasan'
+            )
+            ->emptyStateDescription(
+                'Belum ditemukan data pembimbing akademik sesuai filter yang dipilih.'
+            )
+            ->emptyStateIcon(
+                'heroicon-o-magnifying-glass'
+            )
+
+            /*
+            |--------------------------------------------------------------------------
+            | RECORD ACTIONS
+            |--------------------------------------------------------------------------
+            */
             ->recordActions([
+
+                /*
+                | Cetak SK
+                */
                 Action::make('cetakSk')
                     ->label('Cetak SK')
                     ->icon('heroicon-o-printer')
                     ->color('gray')
-                    ->visible(fn(PembimbingAkademik $record) => ! $record->trashed())
+                    ->visible(
+                        fn(PembimbingAkademik $record): bool =>
+                        ! $record->trashed()
+                    )
                     ->url(
                         fn(PembimbingAkademik $record): string =>
-                        route('pembimbing-akademik.sk', $record)
+                        route(
+                            'pembimbing-akademik.sk',
+                            $record
+                        )
                     )
                     ->openUrlInNewTab(),
+
+                /*
+                | Pulihkan data
+                */
                 Action::make('pulihkan')
                     ->label('Pulihkan')
                     ->icon('heroicon-o-arrow-uturn-left')
                     ->color('success')
-                    ->visible(fn(PembimbingAkademik $record) => $record->trashed())
+                    ->visible(
+                        fn(PembimbingAkademik $record): bool =>
+                        $record->trashed()
+                    )
                     ->requiresConfirmation()
-                    ->modalDescription('Data riwayat ini akan dimunculkan kembali di daftar aktif/histori.')
-                    ->action(function (PembimbingAkademik $record): void {
-                        $record->restore();
+                    ->modalHeading(
+                        'Pulihkan Riwayat Pembimbing'
+                    )
+                    ->modalDescription(
+                        'Data riwayat ini akan dimunculkan kembali dalam daftar riwayat.'
+                    )
+                    ->action(
+                        function (PembimbingAkademik $record): void {
+                            $record->restore();
 
-                        Notification::make()
-                            ->title('Data berhasil dipulihkan')
-                            ->success()
-                            ->send();
-                    }),
+                            Notification::make()
+                                ->title(
+                                    'Data berhasil dipulihkan'
+                                )
+                                ->body(
+                                    'Riwayat pembimbing telah dikembalikan.'
+                                )
+                                ->success()
+                                ->send();
+                        }
+                    ),
             ])
-            ->defaultSort('created_at', 'desc');
+
+            /*
+            |--------------------------------------------------------------------------
+            | DEFAULT SORT
+            |--------------------------------------------------------------------------
+            */
+            ->defaultSort(
+                'created_at',
+                'desc'
+            );
     }
 }
