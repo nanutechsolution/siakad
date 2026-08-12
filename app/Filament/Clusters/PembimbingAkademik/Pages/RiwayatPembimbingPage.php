@@ -141,7 +141,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             return '-';
                         }
 
-                        $kode = $prodi->kode_prodi
+                        $kode = $prodi->kode_prodi_internal
                             ?? $prodi->kode_prodi_internal
                             ?? null;
 
@@ -195,7 +195,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
 
                         $namaKelas = Utf8::clean($kelas->nama_kelas);
 
-                        $kodeProdi = $kelas->prodi?->kode_prodi
+                        $kodeProdi = $kelas->prodi?->kode_prodi_internal
                             ?? $kelas->prodi?->kode_prodi_internal
                             ?? '-';
 
@@ -223,8 +223,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             return $query->whereHas('kelas', function (Builder $q) use ($search) {
                                 $q->where('nama_kelas', 'like', "%{$search}%")
                                     ->orWhereHas('prodi', function (Builder $prodi) use ($search) {
-                                        $prodi->where('kode_prodi', 'like', "%{$search}%")
-                                            ->orWhere('kode_prodi_internal', 'like', "%{$search}%")
+                                        $prodi->where('kode_prodi_internal', 'like', "%{$search}%")
                                             ->orWhere('nama_prodi', 'like', "%{$search}%");
                                     });
                             });
@@ -475,7 +474,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             ->mapWithKeys(function (Kelas $kelas): array {
                                 $namaKelas = Utf8::clean($kelas->nama_kelas);
 
-                                $kodeProdi = $kelas->prodi?->kode_prodi
+                                $kodeProdi = $kelas->prodi?->kode_prodi_internal
                                     ?? $kelas->prodi?->kode_prodi_internal
                                     ?? '-';
 
@@ -536,7 +535,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             return null;
                         }
 
-                        $kode = $kelas->prodi?->kode_prodi
+                        $kode = $kelas->prodi?->kode_prodi_internal
                             ?? $kelas->prodi?->kode_prodi_internal
                             ?? '-';
 
