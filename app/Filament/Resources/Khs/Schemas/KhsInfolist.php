@@ -61,7 +61,7 @@ class KhsInfolist
                     ])
                     ->compact()
                     ->extraAttributes([
-                        'class' => 'border-0 bg-gradient-to-r from-primary-600 to-primary-500 text-white',
+                        'class' => 'bg-gradient-to-r from-primary-600 to-primary-500 text-white',
                     ]),
 
                 /*
