@@ -34,33 +34,33 @@ class MonitoringPembimbingPage extends Page implements HasTable
     use HasPageShield;
 
     protected string $view =
-        'filament.clusters.pembimbing-akademik.pages.monitoring-pembimbing-page';
+    'filament.clusters.pembimbing-akademik.pages.monitoring-pembimbing-page';
 
     protected static ?string $navigationLabel =
-        'Monitoring Pembimbing Akademik';
+    'Monitoring Pembimbing Akademik';
 
     protected static ?string $modelLabel =
-        'Monitoring Pembimbing Akademik';
+    'Monitoring Pembimbing Akademik';
 
     protected static ?string $clusterBreadcrumb =
-        'Monitoring Pembimbing Akademik';
+    'Monitoring Pembimbing Akademik';
 
     protected static ?int $navigationSort = 4;
 
     protected static ?string $title =
-        'Monitoring Pembimbing Akademik';
+    'Monitoring Pembimbing Akademik';
 
     protected static ?string $description =
-        'Pusat monitoring untuk mengetahui mahasiswa yang belum memiliki Dosen Wali, kelas yang belum memiliki wali, dan kondisi yang memerlukan tindak lanjut.';
+    'Pusat monitoring untuk mengetahui mahasiswa yang belum memiliki Dosen Wali, kelas yang belum memiliki wali, dan kondisi yang memerlukan tindak lanjut.';
 
     protected static ?string $slug =
-        'monitoring-pembimbing-akademik';
+    'monitoring-pembimbing-akademik';
 
     protected static string|BackedEnum|null $navigationIcon =
-        'heroicon-o-chart-bar-square';
+    'heroicon-o-chart-bar-square';
 
     protected static ?string $cluster =
-        PembimbingAkademikCluster::class;
+    PembimbingAkademikCluster::class;
 
     /**
      * -------------------------------------------------------------------------
@@ -152,7 +152,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
              */
             ->whereDoesntHave(
                 'pembimbingAkademik',
-                fn (Builder $q) => $q
+                fn(Builder $q) => $q
                     ->where(
                         'jenis',
                         \App\Enums\PembimbingAkademikJenis::DOSEN_WALI
@@ -176,7 +176,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                             function (Builder $kelas) {
                                 $kelas->whereHas(
                                     'pembimbingAkademik',
-                                    fn (Builder $wali) => $wali
+                                    fn(Builder $wali) => $wali
                                         ->where(
                                             'jenis',
                                             \App\Enums\PembimbingAkademikJenis::DOSEN_WALI
@@ -215,7 +215,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
     protected function namaKelasAktif(Mahasiswa $record): string
     {
         $kelas = $record->mahasiswaKelas
-            ->first(fn ($item) => $item->tanggal_keluar === null)
+            ->first(fn($item) => $item->tanggal_keluar === null)
             ?->kelas;
 
         return $kelas?->nama_kelas
@@ -234,7 +234,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
          */
 
         $kelasAktif = $record->mahasiswaKelas
-            ->first(fn ($item) => $item->tanggal_keluar === null);
+            ->first(fn($item) => $item->tanggal_keluar === null);
 
         if (! $kelasAktif) {
             return 'Kritis';
@@ -278,18 +278,18 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->label('Prioritas')
                     ->badge()
                     ->getStateUsing(
-                        fn (Mahasiswa $record): string =>
-                            $this->statusPrioritas($record)
+                        fn(Mahasiswa $record): string =>
+                        $this->statusPrioritas($record)
                     )
                     ->color(
-                        fn (Mahasiswa $record): string =>
-                            $this->warnaPrioritas($record)
+                        fn(Mahasiswa $record): string =>
+                        $this->warnaPrioritas($record)
                     )
                     ->icon(
-                        fn (Mahasiswa $record): string =>
-                            $this->statusPrioritas($record) === 'Kritis'
-                                ? 'heroicon-m-exclamation-triangle'
-                                : 'heroicon-m-clock'
+                        fn(Mahasiswa $record): string =>
+                        $this->statusPrioritas($record) === 'Kritis'
+                            ? 'heroicon-m-exclamation-triangle'
+                            : 'heroicon-m-clock'
                     )
                     ->sortable(false),
 
@@ -310,10 +310,10 @@ class MonitoringPembimbingPage extends Page implements HasTable
                 TextColumn::make('nama_mahasiswa')
                     ->label('Mahasiswa')
                     ->getStateUsing(
-                        fn (Mahasiswa $record): string =>
-                            $record->person?->nama_lengkap
-                                ? Utf8::clean($record->person->nama_lengkap)
-                                : '-'
+                        fn(Mahasiswa $record): string =>
+                        $record->person?->nama_lengkap
+                            ? Utf8::clean($record->person->nama_lengkap)
+                            : '-'
                     )
                     ->searchable(
                         query: function (
@@ -322,7 +322,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                         ): Builder {
                             return $query->whereHas(
                                 'person',
-                                fn (Builder $q) =>
+                                fn(Builder $q) =>
                                 $q->where(
                                     'nama_lengkap',
                                     'like',
@@ -340,10 +340,10 @@ class MonitoringPembimbingPage extends Page implements HasTable
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
                     ->formatStateUsing(
-                        fn (?string $state): string =>
-                            filled($state)
-                                ? Utf8::clean($state)
-                                : '-'
+                        fn(?string $state): string =>
+                        filled($state)
+                            ? Utf8::clean($state)
+                            : '-'
                     )
                     ->searchable()
                     ->sortable()
@@ -363,8 +363,8 @@ class MonitoringPembimbingPage extends Page implements HasTable
                 TextColumn::make('kelas_aktif')
                     ->label('Kelas Aktif')
                     ->getStateUsing(
-                        fn (Mahasiswa $record): string =>
-                            $this->namaKelasAktif($record)
+                        fn(Mahasiswa $record): string =>
+                        $this->namaKelasAktif($record)
                     )
                     ->placeholder('-')
                     ->wrap(),
@@ -376,14 +376,14 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->label('Status Monitoring')
                     ->badge()
                     ->getStateUsing(
-                        fn (Mahasiswa $record): string =>
-                            $record->mahasiswaKelas
-                                ->first(
-                                    fn ($item) =>
-                                    $item->tanggal_keluar === null
-                                )
-                                ? 'Belum Ada Dosen Wali'
-                                : 'Belum Ada Dosen Wali & Perlu Penetapan'
+                        fn(Mahasiswa $record): string =>
+                        $record->mahasiswaKelas
+                            ->first(
+                                fn($item) =>
+                                $item->tanggal_keluar === null
+                            )
+                            ? 'Belum Ada Dosen Wali'
+                            : 'Belum Ada Dosen Wali & Perlu Penetapan'
                     )
                     ->color('warning')
                     ->icon('heroicon-m-exclamation-triangle'),
@@ -412,8 +412,8 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->label('Dihapus')
                     ->boolean()
                     ->getStateUsing(
-                        fn (Mahasiswa $record): bool =>
-                            $record->deleted_at !== null
+                        fn(Mahasiswa $record): bool =>
+                        $record->deleted_at !== null
                     )
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
@@ -433,7 +433,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->label('Program Studi')
                     ->placeholder('Semua Program Studi')
                     ->options(
-                        fn (): array =>
+                        fn(): array =>
                         $this->formResolver()
                             ->prodiOptions(auth()->user())
                     )
@@ -474,7 +474,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->label('Angkatan')
                     ->placeholder('Semua Angkatan')
                     ->options(
-                        fn (): array =>
+                        fn(): array =>
                         RefAngkatan::query()
                             ->orderByDesc('id_tahun')
                             ->pluck(
@@ -486,7 +486,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->searchable()
                     ->preload()
                     ->query(
-                        fn (
+                        fn(
                             Builder $query,
                             array $data
                         ): Builder =>
@@ -512,24 +512,27 @@ class MonitoringPembimbingPage extends Page implements HasTable
                         }
 
                         return Kelas::query()
-                            ->whereIn(
-                                'prodi_id',
-                                $prodiIds
-                            )
-                            ->orderBy(
-                                'nama_kelas'
-                            )
+                            ->whereIn('prodi_id', $prodiIds)
+                            ->with([
+                                'prodi',
+                                'angkatan',
+                            ])
+                            ->orderBy('nama_kelas')
                             ->get()
                             ->mapWithKeys(
-                                function (
-                                    Kelas $kelas
-                                ): array {
-                                    $nama = Utf8::clean(
+                                function (Kelas $kelas): array {
+                                    $namaKelas = Utf8::clean(
                                         $kelas->nama_kelas
                                     );
 
+                                    $namaProdi = Utf8::clean(
+                                        $kelas->prodi?->nama_prodi ?? '-'
+                                    );
+
+                                    $tahunAngkatan = $kelas->angkatan?->id_tahun ?? '-';
+
                                     return [
-                                        $kelas->id => $nama,
+                                        $kelas->id => "{$namaProdi} — {$namaKelas} — Angkatan {$tahunAngkatan}",
                                     ];
                                 }
                             )
@@ -542,8 +545,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                             Builder $query,
                             array $data
                         ): Builder {
-                            $kelasId =
-                                $data['value'] ?? null;
+                            $kelasId = $data['value'] ?? null;
 
                             if (blank($kelasId)) {
                                 return $query;
@@ -551,15 +553,10 @@ class MonitoringPembimbingPage extends Page implements HasTable
 
                             return $query->whereHas(
                                 'mahasiswaKelas',
-                                fn (Builder $q) =>
+                                fn(Builder $q) =>
                                 $q
-                                    ->where(
-                                        'kelas_id',
-                                        $kelasId
-                                    )
-                                    ->whereNull(
-                                        'tanggal_keluar'
-                                    )
+                                    ->where('kelas_id', $kelasId)
+                                    ->whereNull('tanggal_keluar')
                             );
                         }
                     ),
@@ -588,7 +585,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                             if ($value === 'kritis') {
                                 return $query->whereDoesntHave(
                                     'mahasiswaKelas',
-                                    fn (Builder $q) =>
+                                    fn(Builder $q) =>
                                     $q->whereNull(
                                         'tanggal_keluar'
                                     )
@@ -598,7 +595,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                             if ($value === 'perlu_penetapan') {
                                 return $query->whereHas(
                                     'mahasiswaKelas',
-                                    fn (Builder $q) =>
+                                    fn(Builder $q) =>
                                     $q->whereNull(
                                         'tanggal_keluar'
                                     )
@@ -615,10 +612,10 @@ class MonitoringPembimbingPage extends Page implements HasTable
                 Filter::make('tanpa_kelas')
                     ->label('Mahasiswa Tanpa Kelas Aktif')
                     ->query(
-                        fn (Builder $query): Builder =>
+                        fn(Builder $query): Builder =>
                         $query->whereDoesntHave(
                             'mahasiswaKelas',
-                            fn (Builder $q) =>
+                            fn(Builder $q) =>
                             $q->whereNull(
                                 'tanggal_keluar'
                             )
@@ -662,7 +659,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->icon('heroicon-o-arrow-path')
                     ->color('gray')
                     ->action(
-                        fn () => $this->resetTable()
+                        fn() => $this->resetTable()
                     ),
             ])
 
@@ -679,7 +676,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     ->icon('heroicon-o-eye')
                     ->color('info')
                     ->url(
-                        fn (Mahasiswa $record): string =>
+                        fn(Mahasiswa $record): string =>
                         route(
                             'filament.admin.resources.mahasiswas.edit',
                             [
@@ -689,7 +686,7 @@ class MonitoringPembimbingPage extends Page implements HasTable
                     )
                     ->openUrlInNewTab()
                     ->visible(
-                        fn (Mahasiswa $record): bool =>
+                        fn(Mahasiswa $record): bool =>
                         filled($record->id)
                     ),
             ])
