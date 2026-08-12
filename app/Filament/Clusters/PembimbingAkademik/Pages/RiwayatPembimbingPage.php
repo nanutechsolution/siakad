@@ -8,18 +8,22 @@ use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use App\Exports\PembimbingAkademikExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
+use App\Models\Mahasiswa;
 use App\Models\PembimbingAkademik;
+use App\Models\RefAngkatan;
 use App\Models\RefProdi;
 use App\Support\Utf8;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
+use Filament\Forms\Components\TextInput;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
@@ -50,6 +54,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 PembimbingAkademik::query()
                     ->with([
                         'mahasiswa.person',
+                        'mahasiswa.angkatan',
                         'kelas',
                         'dosen.person',
                     ])
@@ -61,10 +66,39 @@ class RiwayatPembimbingPage extends Page implements HasTable
                     ->badge()
                     ->formatStateUsing(fn(PembimbingAkademikJenis $state) => $state->label()),
                 TextColumn::make('mahasiswa.nim')
-                    ->label('Mahasiswa')
+                    ->label('NIM')
                     ->placeholder('-')
-                    ->description(fn(?PembimbingAkademik $record) => Utf8::clean($record?->mahasiswa?->person?->nama_lengkap))
-                    ->searchable(),
+                    ->searchable(
+                        query: function (Builder $query, string $search): Builder {
+                            return $query->whereHas('mahasiswa', function (Builder $q) use ($search) {
+                                $q->where('nim', 'like', "%{$search}%");
+                            });
+                        }
+                    )
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('NIM berhasil disalin'),
+
+                TextColumn::make('mahasiswa.person.nama_lengkap')
+                    ->label('Nama Mahasiswa')
+                    ->placeholder('-')
+                    ->formatStateUsing(
+                        fn(?string $state) => $state
+                            ? Utf8::clean($state)
+                            : '-'
+                    )
+                    ->searchable(
+                        query: function (Builder $query, string $search): Builder {
+                            return $query->whereHas('mahasiswa.person', function (Builder $q) use ($search) {
+                                $q->where(
+                                    'nama_lengkap',
+                                    'like',
+                                    "%{$search}%"
+                                );
+                            });
+                        }
+                    )
+                    ->sortable(),
                 TextColumn::make('kelas.nama_kelas')
                     ->label('Kelas')
                     ->placeholder('-')
@@ -121,6 +155,80 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             ->whereHas('kelas', fn(Builder $k) => $k->where('prodi_id', $data['value']))
                             ->orWhereHas('mahasiswa', fn(Builder $m) => $m->where('prodi_id', $data['value'])));
                     }),
+                // =========================================================
+                // ANGKATAN
+                // =========================================================
+                SelectFilter::make('angkatan_id')
+                    ->label('Angkatan')
+                    ->options(
+                        fn() =>
+                        RefAngkatan::query()
+                            ->orderByDesc('id_tahun')
+                            ->pluck('id_tahun', 'id_tahun')
+                            ->toArray()
+                    )
+                    ->searchable()
+                    ->preload()
+                    ->query(function (Builder $query, array $data) {
+                        $angkatanId = $data['value'] ?? null;
+
+                        if (! filled($angkatanId)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('mahasiswa', function (Builder $q) use ($angkatanId) {
+                            $q->where('angkatan_id', $angkatanId);
+                        });
+                    }),
+
+                // ==========================================
+                // DOSEN
+                // ==========================================
+                Filter::make('dosen')
+                    ->label('Dosen Pembimbing')
+                    ->schema([
+                        TextInput::make('search')
+                            ->label('Nama Dosen / NIDN')
+                            ->placeholder('Cari nama atau NIDN')
+                            ->prefixIcon('heroicon-o-user'),
+                    ])
+                    ->query(function (Builder $query, array $data) {
+                        $search = trim($data['search'] ?? '');
+
+                        if ($search === '') {
+                            return $query;
+                        }
+
+                        return $query->whereHas('dosen', function (Builder $q) use ($search) {
+                            $q->where('nidn', 'like', "%{$search}%")
+                                ->orWhereHas('person', function (Builder $person) use ($search) {
+                                    $person->where(
+                                        'nama_lengkap',
+                                        'like',
+                                        "%{$search}%"
+                                    );
+                                });
+                        });
+                    })
+                    ->indicateUsing(function (array $data): ?string {
+                        $search = trim($data['search'] ?? '');
+
+                        return $search
+                            ? "Dosen: {$search}"
+                            : null;
+                    }),
+
+                // ==========================================
+                // KELAS
+                // ==========================================
+                SelectFilter::make('kelas_id')
+                    ->label('Kelas')
+                    ->relationship(
+                        name: 'kelas',
+                        titleAttribute: 'nama_kelas',
+                    )
+                    ->searchable()
+                    ->preload(),
                 SelectFilter::make('jenis')
                     ->options(PembimbingAkademikJenis::options()),
                 SelectFilter::make('status')
