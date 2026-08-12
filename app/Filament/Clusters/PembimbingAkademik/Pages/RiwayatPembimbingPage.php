@@ -801,7 +801,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 */
                 Filter::make('dosen')
                     ->label('Dosen Pembimbing')
-                    ->icon('heroicon-o-academic-cap')
                     ->schema([
                         TextInput::make('search')
                             ->label('Nama Dosen / NIDN')
