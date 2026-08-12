@@ -240,7 +240,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
 
                                 $prodi = Utf8::clean(
                                     $kelas->prodi?->kode_prodi
-                                        ?? $kelas->prodi?->nama_prodi
+                                        ?? $kelas->prodi?->kode_prodi_internal
                                         ?? '-'
                                 );
 
