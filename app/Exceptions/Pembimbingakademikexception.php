@@ -41,4 +41,10 @@ class PembimbingAkademikException extends Exception
     {
         return new self('Tanggal mulai penugasan baru tidak boleh lebih awal dari tanggal mulai penugasan sebelumnya.');
     }
+    public static function targetTidakSesuaiMode(): self
+    {
+        return new self(
+            'Target penugasan tidak sesuai dengan mode pembimbing yang berlaku.'
+        );
+    }
 }

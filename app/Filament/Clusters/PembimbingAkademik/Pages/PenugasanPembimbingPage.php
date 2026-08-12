@@ -8,6 +8,7 @@ use App\Exceptions\PembimbingAkademikException;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\Kelas;
 use App\Models\Mahasiswa;
+use App\Models\RefAngkatan;
 use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
@@ -16,7 +17,6 @@ use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -39,36 +39,69 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
     use InteractsWithTable;
     use HasPageShield;
 
-    protected string $view = 'filament.clusters.pembimbing-akademik.pages.penugasan-pembimbing-page';
-    protected static ?string $navigationLabel = 'Penugasan Pembimbing Akademik';
-    protected static ?string $modelLabel = 'Penugasan Pembimbing Akademik';
-    protected static ?string $clusterBreadcrumb = 'Penugasan Pembimbing Akademik';
+    protected string $view =
+    'filament.clusters.pembimbing-akademik.pages.penugasan-pembimbing-page';
+
+    protected static ?string $navigationLabel =
+    'Penugasan Pembimbing Akademik';
+
+    protected static ?string $modelLabel =
+    'Penugasan Pembimbing Akademik';
+
+    protected static ?string $clusterBreadcrumb =
+    'Penugasan Pembimbing Akademik';
+
     protected static ?int $navigationSort = 1;
-    protected static ?string $title = 'Penugasan Pembimbing Akademik';
-    protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-user-plus';
-    protected static ?string $cluster = PembimbingAkademikCluster::class;
+
+    protected static ?string $title =
+    'Penugasan Pembimbing Akademik';
+
+    protected static string|BackedEnum|null $navigationIcon =
+    'heroicon-o-user-plus';
+
+    protected static ?string $cluster =
+    PembimbingAkademikCluster::class;
 
     /**
      * @var array<string, mixed>
      */
     public ?array $data = [];
 
-    /**
-     * Menandai submit sedang berjalan, dipakai blade untuk disable tombol
-     * & menampilkan spinner supaya user tidak klik dua kali (double submit).
-     */
     public bool $isSubmitting = false;
 
     public function mount(): void
     {
-        $this->form->fill([
+        $this->form->fill($this->defaultFormData());
+    }
+
+    /**
+     * Default state form.
+     *
+     * @return array<string, mixed>
+     */
+    protected function defaultFormData(): array
+    {
+        return [
             'jenis' => PembimbingAkademikJenis::DOSEN_WALI->value,
+            'prodi_id' => null,
+            'angkatan_id' => null,
+
             'kelas_ids' => [],
             'mahasiswa_ids' => [],
+
+            'dosen_id' => null,
             'is_primary' => true,
+
+            'semester_mulai_id' => RefTahunAkademik::query()
+                ->where('is_active', true)
+                ->value('id'),
+
             'tanggal_mulai' => now()->toDateString(),
-            'semester_mulai_id' => RefTahunAkademik::query()->where('is_active', true)->value('id'),
-        ]);
+
+            'nomor_sk' => null,
+            'tanggal_sk' => null,
+            'keterangan' => null,
+        ];
     }
 
     public function form(Schema $schema): Schema
@@ -76,214 +109,784 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
         return $schema
             ->components([
                 Wizard::make([
-                    Step::make('Jenis Pembimbing')
-                        ->description('Tentukan jenis penugasan')
-                        ->icon('heroicon-o-tag')
-                        ->components([
-                            Select::make('jenis')
-                                ->label('Jenis Pembimbing')
-                                ->options(PembimbingAkademikJenis::options())
-                                ->native(false)
-                                ->required()
-                                ->live()
-                                ->helperText('Pilih Dosen Wali bila ingin menugaskan wali kelas/mahasiswa. Jenis lain (skripsi, PKL, dll) selalu bersifat per-mahasiswa.'),
+                    $this->stepJenis(),
 
-                            Select::make('prodi_id')
-                                ->label('Program Studi')
-                                ->options(fn() => RefProdi::query()->orderBy('nama_prodi')->pluck('nama_prodi', 'id'))
-                                ->searchable()
-                                ->live()
-                                ->required(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
-                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
-                                ->helperText('Dipakai untuk membaca konfigurasi mode penugasan (per kelas / per mahasiswa) yang berlaku.'),
+                    $this->stepTarget(),
 
-                            Select::make('angkatan_id')
-                                ->label('Angkatan')
-                                ->options(fn() => \App\Models\RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun'))
-                                ->searchable()
-                                ->live()
-                                ->required(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
-                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value)
-                                ->rule(function ($get) {
-                                    return function (string $attribute, $value, \Closure $fail) use ($get) {
-                                        if ($get('jenis') !== PembimbingAkademikJenis::DOSEN_WALI->value) {
-                                            return;
-                                        }
+                    $this->stepDetail(),
 
-                                        if (! $get('prodi_id') || ! $value) {
-                                            return;
-                                        }
-
-                                        $konfigurasi = app(PembimbingAkademikService::class)
-                                            ->konfigurasiAktif($get('prodi_id'), $value);
-
-                                        if (! $konfigurasi) {
-                                            $fail('Konfigurasi mode untuk kombinasi Program Studi & Angkatan ini belum aktif — tidak bisa lanjut. Atur dulu di menu Konfigurasi Pembimbing.');
-                                        }
-                                    };
-                                }),
-
-                            Placeholder::make('info_konfigurasi')
-                                ->label('')
-                                ->visible(fn($get) => $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value && $get('prodi_id') && $get('angkatan_id'))
-                                ->content(function ($get) {
-                                    $konfigurasi = app(PembimbingAkademikService::class)
-                                        ->konfigurasiAktif($get('prodi_id'), $get('angkatan_id'));
-
-                                    if (! $konfigurasi) {
-                                        return new HtmlString(
-                                            '<div class="rounded-lg bg-danger-50 dark:bg-danger-500/10 p-3 text-sm text-danger-700 dark:text-danger-400">
-                                                ⚠️ Belum ada konfigurasi mode yang <strong>aktif</strong> untuk kombinasi Program Studi &amp; Angkatan ini.
-                                                Atur dulu di menu <strong>Konfigurasi Pembimbing</strong> sebelum melanjutkan.
-                                            </div>'
-                                        );
-                                    }
-
-                                    $mode = $konfigurasi->mode;
-
-                                    return new HtmlString(
-                                        '<div class="rounded-lg bg-success-50 dark:bg-success-500/10 p-3 text-sm text-success-700 dark:text-success-400">
-                                            ✅ Mode aktif untuk kombinasi ini: <strong>' . e($mode->getLabel()) . '</strong>.
-                                            Langkah berikutnya akan menyesuaikan otomatis.
-                                        </div>'
-                                    );
-                                }),
-                        ]),
-
-                    Step::make('Target Penugasan')
-                        ->description('Bisa pilih lebih dari satu')
-                        ->icon('heroicon-o-user-group')
-                        ->components([
-                            Placeholder::make('info_multi_target')
-                                ->label('')
-                                ->content(new HtmlString(
-                                    '<div class="rounded-lg bg-primary-50 dark:bg-primary-500/10 p-3 text-sm text-primary-700 dark:text-primary-400">
-                                        💡 Pilih lebih dari satu kelas/mahasiswa di sini — semuanya akan ditugaskan ke dosen yang sama pada langkah berikutnya dalam satu kali submit.
-                                    </div>'
-                                )),
-
-                            CheckboxList::make('kelas_ids')
-                                ->label('Kelas (bisa pilih lebih dari satu)')
-                                ->options(function ($get) {
-                                    if (! $get('prodi_id') || ! $get('angkatan_id')) {
-                                        return [];
-                                    }
-
-                                    return app(PembimbingAkademikService::class)
-                                        ->kelasBelumPunyaWali((int) $get('prodi_id'), (int) $get('angkatan_id'));
-                                })
-                                ->searchable()
-                                ->bulkToggleable()
-                                ->columns(2)
-                                ->helperText('Hanya menampilkan kelas yang belum memiliki Dosen Wali aktif. Gunakan "Pilih Semua" untuk menugaskan satu dosen ke semua kelas sekaligus.')
-                                ->visible(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_KELAS)
-                                ->required(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_KELAS),
-
-                            Select::make('mahasiswa_ids')
-                                ->label('Mahasiswa (bisa pilih lebih dari satu)')
-                                ->multiple()
-                                ->searchable()
-                                ->getSearchResultsUsing(function (string $search, $get) {
-                                    return Mahasiswa::query()
-                                        ->when(
-                                            $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value && $get('prodi_id') && $get('angkatan_id'),
-                                            fn($q) => $q->where('prodi_id', $get('prodi_id'))->where('angkatan_id', $get('angkatan_id'))
-                                        )
-                                        ->where(fn($q) => $q
-                                            ->where('nim', 'like', "%{$search}%")
-                                            ->orWhereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%")))
-                                        ->limit(30)
-                                        ->get()
-                                        ->mapWithKeys(fn(Mahasiswa $m) => [$m->id => "{$m->nim} - {$m->person?->nama_lengkap}"]);
-                                })
-                                ->getOptionLabelsUsing(fn(array $values) => Mahasiswa::query()
-                                    ->whereIn('id', $values)
-                                    ->get()
-                                    ->mapWithKeys(fn(Mahasiswa $m) => [$m->id => "{$m->nim} - {$m->person?->nama_lengkap}"]))
-                                ->helperText('Ketik untuk mencari, klik beberapa nama sekaligus — semuanya akan ditugaskan ke dosen yang sama.')
-                                ->visible(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_MAHASISWA)
-                                ->required(fn($get) => $this->modeSaatIni($get) === PembimbingAkademikMode::PER_MAHASISWA),
-                        ]),
-
-                    Step::make('Detail & Konfirmasi')
-                        ->description('Dosen, SK, dan ringkasan')
-                        ->icon('heroicon-o-clipboard-document-check')
-                        ->components([
-                            Select::make('dosen_id')
-                                ->label('Dosen')
-                                ->searchable()
-                                ->getSearchResultsUsing(fn(string $search) => TrxDosen::query()
-                                    ->where('nidn', 'like', "%{$search}%")
-                                    ->orWhereHas('person', fn($q) => $q->where('nama_lengkap', 'like', "%{$search}%"))
-                                    ->limit(20)
-                                    ->get()
-                                    ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
-                                ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
-                                ->helperText('Satu dosen ini akan diterapkan ke SEMUA target yang dipilih di langkah sebelumnya.')
-                                ->required(),
-                            Toggle::make('is_primary')
-                                ->label('Pembimbing Utama')
-                                ->default(true),
-                            Select::make('semester_mulai_id')
-                                ->label('Semester Mulai')
-                                ->searchable()
-                                ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
-                                ->required(),
-                            DatePicker::make('tanggal_mulai')
-                                ->label('Tanggal Mulai')
-                                ->default(now())
-                                ->required(),
-                            TextInput::make('nomor_sk')
-                                ->label('Nomor SK')
-                                ->maxLength(255),
-                            DatePicker::make('tanggal_sk')
-                                ->label('Tanggal SK'),
-                            Textarea::make('keterangan')
-                                ->label('Keterangan')
-                                ->columnSpanFull()
-                                ->rows(3),
-
-                            Placeholder::make('ringkasan')
-                                ->label('Ringkasan')
-                                ->columnSpanFull()
-                                ->content(function ($get) {
-                                    $jenis = $get('jenis') ? PembimbingAkademikJenis::from($get('jenis'))->label() : '-';
-
-                                    $kelasIds = array_values($get('kelas_ids') ?? []);
-                                    $mahasiswaIds = array_values($get('mahasiswa_ids') ?? []);
-
-                                    if ($kelasIds !== []) {
-                                        $nama = Kelas::query()->whereIn('id', $kelasIds)->pluck('nama_kelas');
-                                        $preview = $nama->take(5)->implode(', ') . ($nama->count() > 5 ? ' dan ' . ($nama->count() - 5) . ' lainnya' : '');
-                                        $target = count($kelasIds) . ' kelas dipilih: ' . $preview;
-                                    } elseif ($mahasiswaIds !== []) {
-                                        $nama = Mahasiswa::query()->whereIn('id', $mahasiswaIds)->pluck('nim');
-                                        $preview = $nama->take(5)->implode(', ') . ($nama->count() > 5 ? ' dan ' . ($nama->count() - 5) . ' lainnya' : '');
-                                        $target = count($mahasiswaIds) . ' mahasiswa dipilih: ' . $preview;
-                                    } else {
-                                        $target = 'Belum ada target dipilih';
-                                    }
-
-                                    $dosen = $get('dosen_id') ? (TrxDosen::find($get('dosen_id'))?->person?->nama_lengkap ?? '-') : '-';
-
-                                    return new HtmlString(
-                                        '<div class="rounded-lg border border-gray-200 dark:border-gray-700 p-3 text-sm space-y-1">
-                                            <div><strong>Jenis:</strong> ' . e($jenis) . '</div>
-                                            <div><strong>Target:</strong> ' . e($target) . '</div>
-                                            <div><strong>Dosen:</strong> ' . e($dosen) . '</div>
-                                        </div>'
-                                    );
-                                }),
-                        ]),
+                    $this->stepKonfirmasi(),
                 ])
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->persistStepInQueryString('penugasan-step')
+                    ->nextAction(
+                        fn($action) => $action
+                            ->label('Lanjut')
+                            ->icon('heroicon-m-arrow-right')
+                            ->iconPosition('after'),
+                    )
+                    ->previousAction(
+                        fn($action) => $action
+                            ->label('Kembali'),
+                    )
+                    ->submitAction(
+                        new HtmlString(
+                            <<<'HTML'
+                            <x-filament::button
+                                type="submit"
+                                color="primary"
+                                icon="heroicon-m-check"
+                                wire:loading.attr="disabled"
+                                wire:target="submit"
+                                wire:confirm="Yakin ingin menyimpan penugasan pembimbing ini? Pastikan jenis, target, dan dosen sudah benar."
+                            >
+                                <span wire:loading.remove wire:target="submit">
+                                    Simpan Penugasan
+                                </span>
+
+                                <span wire:loading wire:target="submit">
+                                    Menyimpan...
+                                </span>
+                            </x-filament::button>
+                            HTML
+                        )
+                    ),
             ])
             ->statePath('data');
     }
 
+    protected function stepJenis(): Step
+    {
+        return Step::make('Konteks')
+            ->description('Tentukan jenis dan konteks penugasan')
+            ->icon('heroicon-o-adjustments-horizontal')
+            ->columns(2)
+            ->components([
+                Select::make('jenis')
+                    ->label('Jenis Pembimbing')
+                    ->options(PembimbingAkademikJenis::options())
+                    ->native(false)
+                    ->required()
+                    ->live()
+                    ->columnSpanFull()
+                    ->afterStateUpdated(function ($set) {
+                        $set('kelas_ids', []);
+                        $set('mahasiswa_ids', []);
+                        $set('prodi_id', null);
+                        $set('angkatan_id', null);
+                    })
+                    ->helperText(
+                        'Dosen Wali mengikuti konfigurasi penugasan. Pembimbing Skripsi, PKL, Tesis, dan jenis individual lainnya ditetapkan per mahasiswa.'
+                    ),
+
+                Select::make('prodi_id')
+                    ->label('Program Studi')
+                    ->options(
+                        fn() => RefProdi::query()
+                            ->orderBy('nama_prodi')
+                            ->pluck('nama_prodi', 'id')
+                    )
+                    ->searchable()
+                    ->native(false)
+                    ->live()
+                    ->required(
+                        fn($get) =>
+                        $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value
+                    )
+                    ->visible(
+                        fn($get) =>
+                        $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value
+                    )
+                    ->afterStateUpdated(function ($set) {
+                        $set('angkatan_id', null);
+                        $set('kelas_ids', []);
+                        $set('mahasiswa_ids', []);
+                    }),
+
+                Select::make('angkatan_id')
+                    ->label('Angkatan')
+                    ->options(
+                        fn() => RefAngkatan::query()
+                            ->orderByDesc('id_tahun')
+                            ->pluck('id_tahun', 'id_tahun')
+                    )
+                    ->searchable()
+                    ->native(false)
+                    ->live()
+                    ->required(
+                        fn($get) =>
+                        $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value
+                    )
+                    ->visible(
+                        fn($get) =>
+                        $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value
+                    )
+                    ->afterStateUpdated(function ($set) {
+                        $set('kelas_ids', []);
+                        $set('mahasiswa_ids', []);
+                    })
+                    ->rule(function ($get) {
+                        return function (
+                            string $attribute,
+                            $value,
+                            \Closure $fail
+                        ) use ($get) {
+                            if (
+                                $get('jenis') !==
+                                PembimbingAkademikJenis::DOSEN_WALI->value
+                            ) {
+                                return;
+                            }
+
+                            if (! $get('prodi_id') || ! $value) {
+                                return;
+                            }
+
+                            $konfigurasi = app(
+                                PembimbingAkademikService::class
+                            )->konfigurasiAktif(
+                                (int) $get('prodi_id'),
+                                (int) $value,
+                            );
+
+                            if (! $konfigurasi) {
+                                $fail(
+                                    'Belum ada konfigurasi aktif untuk Program Studi dan Angkatan ini.'
+                                );
+                            }
+                        };
+                    }),
+
+                Placeholder::make('info_konfigurasi')
+                    ->label('')
+                    ->columnSpanFull()
+                    ->visible(
+                        fn($get) =>
+                        $get('jenis') === PembimbingAkademikJenis::DOSEN_WALI->value
+                            && $get('prodi_id')
+                            && $get('angkatan_id')
+                    )
+                    ->content(function ($get) {
+                        $konfigurasi = app(
+                            PembimbingAkademikService::class
+                        )->konfigurasiAktif(
+                            $get('prodi_id'),
+                            $get('angkatan_id'),
+                        );
+
+                        if (! $konfigurasi) {
+                            return new HtmlString(
+                                '
+                                <div class="rounded-xl border border-danger-200 bg-danger-50 p-4 text-sm text-danger-700 dark:border-danger-800 dark:bg-danger-500/10 dark:text-danger-400">
+                                    <div class="flex gap-3">
+                                        <div class="text-lg">⚠️</div>
+                                        <div>
+                                            <div class="font-semibold">
+                                                Konfigurasi belum tersedia
+                                            </div>
+                                            <div class="mt-1">
+                                                Kombinasi Program Studi dan Angkatan ini belum memiliki mode penugasan yang aktif.
+                                                Atur terlebih dahulu di menu Konfigurasi Pembimbing.
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                '
+                            );
+                        }
+
+                        $mode = $konfigurasi->mode;
+
+                        return new HtmlString(
+                            '
+                            <div class="rounded-xl border border-success-200 bg-success-50 p-4 text-sm text-success-700 dark:border-success-800 dark:bg-success-500/10 dark:text-success-400">
+                                <div class="flex gap-3">
+                                    <div class="text-lg">✓</div>
+                                    <div>
+                                        <div class="font-semibold">
+                                            Konfigurasi aktif
+                                        </div>
+                                        <div class="mt-1">
+                                            Penugasan akan dilakukan
+                                            <strong>' .
+                                e($mode->getLabel()) .
+                                '</strong>.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            '
+                        );
+                    }),
+
+                Placeholder::make('info_individual')
+                    ->label('')
+                    ->columnSpanFull()
+                    ->visible(
+                        fn($get) =>
+                        $get('jenis')
+                            && $get('jenis') !== PembimbingAkademikJenis::DOSEN_WALI->value
+                    )
+                    ->content(
+                        new HtmlString(
+                            '
+                            <div class="rounded-xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-500/10 dark:text-primary-400">
+                                <div class="flex gap-3">
+                                    <div class="text-lg">💡</div>
+                                    <div>
+                                        <div class="font-semibold">
+                                            Penugasan individual
+                                        </div>
+                                        <div class="mt-1">
+                                            Jenis pembimbing ini ditetapkan langsung kepada mahasiswa.
+                                            Pada langkah berikutnya Anda dapat memilih beberapa mahasiswa sekaligus.
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            '
+                        )
+                    ),
+            ]);
+    }
+
+    protected function stepTarget(): Step
+    {
+        return Step::make('Target')
+            ->description('Pilih kelas atau mahasiswa')
+            ->icon('heroicon-o-user-group')
+            ->components([
+                Placeholder::make('target_header')
+                    ->label('')
+                    ->content(function ($get) {
+                        $mode = $this->modeSaatIni($get);
+
+                        if (! $mode) {
+                            return new HtmlString(
+                                '
+                                <div class="rounded-xl bg-gray-50 p-4 text-sm text-gray-600 dark:bg-gray-800 dark:text-gray-400">
+                                    Pilih konteks penugasan pada langkah sebelumnya terlebih dahulu.
+                                </div>
+                                '
+                            );
+                        }
+
+                        $label = $mode === PembimbingAkademikMode::PER_KELAS
+                            ? 'per kelas'
+                            : 'per mahasiswa';
+
+                        return new HtmlString(
+                            '
+                            <div class="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-800 dark:bg-primary-500/10">
+                                <div class="text-sm font-semibold text-primary-700 dark:text-primary-300">
+                                    Mode penugasan: ' . e(ucwords($label)) . '
+                                </div>
+                                <div class="mt-1 text-sm text-primary-600 dark:text-primary-400">
+                                    Pilih satu atau beberapa target. Semua target akan menerima dosen yang sama.
+                                </div>
+                            </div>
+                            '
+                        );
+                    }),
+
+                CheckboxList::make('kelas_ids')
+                    ->label('Pilih Kelas')
+                    ->options(function ($get) {
+                        if (
+                            ! $get('prodi_id') ||
+                            ! $get('angkatan_id')
+                        ) {
+                            return [];
+                        }
+
+                        return app(
+                            PembimbingAkademikService::class
+                        )->kelasBelumPunyaWali(
+                            (int) $get('prodi_id'),
+                            (int) $get('angkatan_id'),
+                        );
+                    })
+                    ->searchable()
+                    ->bulkToggleable()
+                    ->columns([
+                        'default' => 1,
+                        'md' => 2,
+                    ])
+                    ->visible(
+                        fn($get) =>
+                        $this->modeSaatIni($get) ===
+                            PembimbingAkademikMode::PER_KELAS
+                    )
+                    ->required(
+                        fn($get) =>
+                        $this->modeSaatIni($get) ===
+                            PembimbingAkademikMode::PER_KELAS
+                    )
+                    ->helperText(
+                        'Yang ditampilkan hanya kelas yang belum memiliki Dosen Wali aktif.'
+                    )
+                    ->columnSpanFull(),
+
+                Select::make('mahasiswa_ids')
+                    ->label('Pilih Mahasiswa')
+                    ->multiple()
+                    ->searchable()
+                    ->native(false)
+                    ->visible(
+                        fn($get) =>
+                        $this->modeSaatIni($get) ===
+                            PembimbingAkademikMode::PER_MAHASISWA
+                    )
+                    ->required(
+                        fn($get) =>
+                        $this->modeSaatIni($get) ===
+                            PembimbingAkademikMode::PER_MAHASISWA
+                    )
+                    ->getSearchResultsUsing(
+                        function (
+                            string $search,
+                            $get
+                        ) {
+                            return Mahasiswa::query()
+                                ->whereNull('deleted_at')
+                                ->when(
+                                    $get('jenis') ===
+                                        PembimbingAkademikJenis::DOSEN_WALI->value
+                                        && $get('prodi_id')
+                                        && $get('angkatan_id'),
+                                    fn($query) =>
+                                    $query
+                                        ->where(
+                                            'prodi_id',
+                                            $get('prodi_id')
+                                        )
+                                        ->where(
+                                            'angkatan_id',
+                                            $get('angkatan_id')
+                                        )
+                                )
+                                ->where(function ($query) use ($search) {
+                                    $query
+                                        ->where(
+                                            'nim',
+                                            'like',
+                                            "%{$search}%"
+                                        )
+                                        ->orWhereHas(
+                                            'person',
+                                            fn($person) =>
+                                            $person->where(
+                                                'nama_lengkap',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                        );
+                                })
+                                ->whereDoesntHave(
+                                    'pembimbingAkademik',
+                                    fn($query) =>
+                                    $query
+                                        ->where(
+                                            'jenis',
+                                            PembimbingAkademikJenis::DOSEN_WALI
+                                        )
+                                        ->where(
+                                            'status',
+                                            \App\Enums\PembimbingAkademikStatus::AKTIF
+                                        )
+                                )
+                                ->limit(30)
+                                ->get()
+                                ->mapWithKeys(
+                                    fn(Mahasiswa $mahasiswa) =>
+                                    [
+                                        $mahasiswa->id =>
+                                        "{$mahasiswa->nim} — {$mahasiswa->person?->nama_lengkap}",
+                                    ]
+                                )
+                                ->all();
+                        }
+                    )
+                    ->getOptionLabelsUsing(
+                        fn(array $values) =>
+                        Mahasiswa::query()
+                            ->whereIn('id', $values)
+                            ->get()
+                            ->mapWithKeys(
+                                fn(Mahasiswa $mahasiswa) =>
+                                [
+                                    $mahasiswa->id =>
+                                    "{$mahasiswa->nim} — {$mahasiswa->person?->nama_lengkap}",
+                                ]
+                            )
+                            ->all()
+                    )
+                    ->helperText(
+                        'Ketik NIM atau nama mahasiswa. Anda dapat memilih beberapa mahasiswa sekaligus.'
+                    )
+                    ->columnSpanFull(),
+
+                Placeholder::make('target_count')
+                    ->label('')
+                    ->columnSpanFull()
+                    ->content(function ($get) {
+                        $kelas = array_values(
+                            $get('kelas_ids') ?? []
+                        );
+
+                        $mahasiswa = array_values(
+                            $get('mahasiswa_ids') ?? []
+                        );
+
+                        $count = count($kelas) ?: count($mahasiswa);
+
+                        if ($count === 0) {
+                            return new HtmlString(
+                                '
+                                <div class="rounded-lg border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
+                                    Belum ada target yang dipilih.
+                                </div>
+                                '
+                            );
+                        }
+
+                        return new HtmlString(
+                            '
+                            <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
+                                <span class="font-semibold">' .
+                                $count .
+                                '</span>
+                                target akan ditugaskan kepada
+                                <span class="font-semibold">
+                                    satu dosen yang sama
+                                </span>.
+                            </div>
+                            '
+                        );
+                    }),
+            ]);
+    }
+
+    protected function stepDetail(): Step
+    {
+        return Step::make('Pembimbing')
+            ->description('Tentukan dosen dan periode')
+            ->icon('heroicon-o-academic-cap')
+            ->columns(2)
+            ->components([
+                Select::make('dosen_id')
+                    ->label('Dosen Pembimbing')
+                    ->searchable()
+                    ->native(false)
+                    ->required()
+                    ->getSearchResultsUsing(
+                        fn(string $search) =>
+                        TrxDosen::query()
+                            ->where(function ($query) use ($search) {
+                                $query
+                                    ->where(
+                                        'nidn',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhereHas(
+                                        'person',
+                                        fn($person) =>
+                                        $person->where(
+                                            'nama_lengkap',
+                                            'like',
+                                            "%{$search}%"
+                                        )
+                                    );
+                            })
+                            ->limit(20)
+                            ->get()
+                            ->mapWithKeys(
+                                fn(TrxDosen $dosen) =>
+                                [
+                                    $dosen->id =>
+                                    "{$dosen->person?->nama_lengkap} — {$dosen->nidn}",
+                                ]
+                            )
+                            ->all()
+                    )
+                    ->getOptionLabelUsing(
+                        fn($value) =>
+                        optional(
+                            TrxDosen::find($value)
+                        )?->person?->nama_lengkap
+                            ? (
+                                TrxDosen::find($value)->person->nama_lengkap .
+                                ' — ' .
+                                TrxDosen::find($value)->nidn
+                            )
+                            : null
+                    )
+                    ->helperText(
+                        'Dosen ini akan diterapkan ke seluruh target yang dipilih.'
+                    )
+                    ->columnSpanFull(),
+
+                Toggle::make('is_primary')
+                    ->label('Pembimbing Utama')
+                    ->default(true)
+                    ->helperText(
+                        'Aktifkan jika penugasan ini merupakan pembimbing utama.'
+                    ),
+
+                Select::make('semester_mulai_id')
+                    ->label('Semester Mulai')
+                    ->options(
+                        fn() =>
+                        RefTahunAkademik::query()
+                            ->orderByDesc('id')
+                            ->pluck('nama_tahun', 'id')
+                    )
+                    ->searchable()
+                    ->native(false)
+                    ->required(),
+
+                DatePicker::make('tanggal_mulai')
+                    ->label('Tanggal Mulai')
+                    ->default(now())
+                    ->native(false)
+                    ->required(),
+
+                TextInput::make('nomor_sk')
+                    ->label('Nomor SK')
+                    ->maxLength(255)
+                    ->placeholder('Contoh: 123/SK/AKD/2026'),
+
+                DatePicker::make('tanggal_sk')
+                    ->label('Tanggal SK')
+                    ->native(false),
+
+                Textarea::make('keterangan')
+                    ->label('Keterangan')
+                    ->rows(3)
+                    ->placeholder(
+                        'Catatan tambahan jika diperlukan...'
+                    )
+                    ->columnSpanFull(),
+            ]);
+    }
+
+    protected function stepKonfirmasi(): Step
+    {
+        return Step::make('Konfirmasi')
+            ->description('Periksa sebelum menyimpan')
+            ->icon('heroicon-o-clipboard-document-check')
+            ->components([
+                Placeholder::make('final_summary')
+                    ->label('')
+                    ->columnSpanFull()
+                    ->content(function ($get) {
+                        $jenis = $get('jenis')
+                            ? PembimbingAkademikJenis::from(
+                                $get('jenis')
+                            )->label()
+                            : '-';
+
+                        $mode = $this->modeSaatIni($get);
+
+                        $kelasIds = array_values(
+                            $get('kelas_ids') ?? []
+                        );
+
+                        $mahasiswaIds = array_values(
+                            $get('mahasiswa_ids') ?? []
+                        );
+
+                        if ($kelasIds !== []) {
+                            $kelas = Kelas::query()
+                                ->whereIn('id', $kelasIds)
+                                ->pluck('nama_kelas');
+
+                            $preview = $kelas
+                                ->take(5)
+                                ->implode(', ');
+
+                            if ($kelas->count() > 5) {
+                                $preview .=
+                                    ' + ' .
+                                    ($kelas->count() - 5) .
+                                    ' lainnya';
+                            }
+
+                            $target = count($kelasIds) .
+                                ' kelas';
+
+                            $targetDetail = $preview;
+                        } elseif ($mahasiswaIds !== []) {
+                            $mahasiswa = Mahasiswa::query()
+                                ->whereIn('id', $mahasiswaIds)
+                                ->get();
+
+                            $preview = $mahasiswa
+                                ->take(5)
+                                ->map(
+                                    fn($m) =>
+                                    "{$m->nim} — {$m->person?->nama_lengkap}"
+                                )
+                                ->implode(', ');
+
+                            if ($mahasiswa->count() > 5) {
+                                $preview .=
+                                    ' + ' .
+                                    ($mahasiswa->count() - 5) .
+                                    ' lainnya';
+                            }
+
+                            $target = count($mahasiswaIds) .
+                                ' mahasiswa';
+
+                            $targetDetail = $preview;
+                        } else {
+                            $target = 'Belum ada target';
+                            $targetDetail = '-';
+                        }
+
+                        $dosen = '-';
+
+                        if ($get('dosen_id')) {
+                            $dosenModel = TrxDosen::with('person')
+                                ->find($get('dosen_id'));
+
+                            if ($dosenModel) {
+                                $dosen =
+                                    $dosenModel->person?->nama_lengkap .
+                                    ' — ' .
+                                    $dosenModel->nidn;
+                            }
+                        }
+
+                        $semester = '-';
+
+                        if ($get('semester_mulai_id')) {
+                            $semester =
+                                RefTahunAkademik::find(
+                                    $get('semester_mulai_id')
+                                )?->nama_tahun ?? '-';
+                        }
+
+                        return new HtmlString(
+                            '
+                            <div class="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-gray-700 dark:bg-gray-900">
+
+                                <div class="border-b border-gray-200 bg-gray-50 px-5 py-4 dark:border-gray-700 dark:bg-gray-800">
+                                    <div class="text-base font-semibold">
+                                        Periksa Penugasan
+                                    </div>
+
+                                    <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                        Pastikan informasi di bawah sudah benar sebelum menyimpan.
+                                    </div>
+                                </div>
+
+                                <div class="divide-y divide-gray-100 dark:divide-gray-800">
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Jenis
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' . e($jenis) . '
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Mode
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' . e($mode?->getLabel() ?? '-') . '
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Target
+                                        </div>
+                                        <div class="sm:col-span-2">
+                                            <div class="font-medium">
+                                                ' . e($target) . '
+                                            </div>
+                                            <div class="mt-1 text-sm text-gray-500">
+                                                ' . e($targetDetail) . '
+                                            </div>
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Dosen
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' . e($dosen) . '
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Semester Mulai
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' . e($semester) . '
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Tanggal Mulai
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' . e($get('tanggal_mulai') ?? '-') . '
+                                        </div>
+                                    </div>
+
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Pembimbing Utama
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' .
+                                ($get('is_primary') ? 'Ya' : 'Tidak') .
+                                '
+                                        </div>
+                                    </div>
+
+                                    ' .
+                                ($get('nomor_sk')
+                                    ? '
+                                    <div class="grid gap-2 px-5 py-4 sm:grid-cols-3">
+                                        <div class="text-sm text-gray-500">
+                                            Nomor SK
+                                        </div>
+                                        <div class="font-medium sm:col-span-2">
+                                            ' .
+                                    e($get('nomor_sk')) .
+                                    '
+                                        </div>
+                                    </div>
+                                    '
+                                    : '') .
+                                '
+                                </div>
+                            </div>
+
+                            <div class="mt-4 rounded-xl border border-warning-200 bg-warning-50 p-4 text-sm text-warning-700 dark:border-warning-800 dark:bg-warning-500/10 dark:text-warning-400">
+                                <strong>Perhatian:</strong>
+                                penugasan yang berhasil disimpan akan menjadi pembimbing aktif.
+                                Pastikan target dan dosen sudah benar.
+                            </div>
+                            '
+                        );
+                    }),
+            ]);
+    }
+
     /**
-     * Mode efektif berdasarkan jenis + konfigurasi aktif prodi/angkatan.
-     * Dipakai berulang kali di form() untuk show/hide & required field.
+     * Menentukan mode penugasan efektif.
      */
     public function modeSaatIni($get): ?PembimbingAkademikMode
     {
@@ -295,61 +898,114 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
 
         $jenis = PembimbingAkademikJenis::from($jenisValue);
 
-        if ($jenis !== PembimbingAkademikJenis::DOSEN_WALI) {
+        if (
+            $jenis !== PembimbingAkademikJenis::DOSEN_WALI
+        ) {
             return PembimbingAkademikMode::PER_MAHASISWA;
         }
 
-        // Untuk Dosen Wali, null berarti konfigurasi belum aktif — sengaja
-        // TIDAK fallback ke mode manapun, supaya field target di Step 2
-        // (kelas_ids / mahasiswa_ids) sama-sama tersembunyi dan tidak bisa
-        // diisi sampai konfigurasi benar-benar diatur.
-        $konfigurasi = app(PembimbingAkademikService::class)->konfigurasiAktif($get('prodi_id'), $get('angkatan_id'));
+        if (
+            ! $get('prodi_id') ||
+            ! $get('angkatan_id')
+        ) {
+            return null;
+        }
 
-        return app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
+        $service = app(
+            PembimbingAkademikService::class
+        );
+
+        $konfigurasi = $service->konfigurasiAktif(
+            (int) $get('prodi_id'),
+            (int) $get('angkatan_id'),
+        );
+
+        return $service->modeUntuk(
+            $jenis,
+            $konfigurasi
+        );
     }
 
     /**
-     * Menugaskan ke SEMUA target terpilih (kelas_ids atau mahasiswa_ids)
-     * dalam satu submit. Setiap target diproses independen (try/catch)
-     * supaya satu target yang gagal (mis. sudah punya wali aktif) tidak
-     * menggagalkan target lain yang valid.
+     * Submit semua target.
      */
     public function submit(): void
     {
+        if ($this->isSubmitting) {
+            return;
+        }
+
         $this->isSubmitting = true;
 
         try {
             $data = $this->form->getState();
 
-            $jenis = PembimbingAkademikJenis::from($data['jenis']);
-            $konfigurasi = app(PembimbingAkademikService::class)->konfigurasiAktif($data['prodi_id'] ?? null, $data['angkatan_id'] ?? null);
-            $mode = app(PembimbingAkademikService::class)->modeUntuk($jenis, $konfigurasi);
+            $jenis = PembimbingAkademikJenis::from(
+                $data['jenis']
+            );
 
-            // Lapis pertahanan tambahan (form->getState() di atas seharusnya
-            // sudah menolak lewat rule() di field angkatan_id kalau konfigurasi
-            // belum aktif, tapi tetap dijaga di sini kalau-kalau validasi
-            // ter-bypass, mis. dipanggil lewat cara lain).
-            if ($jenis === PembimbingAkademikJenis::DOSEN_WALI && ! $mode) {
+            $service = app(
+                PembimbingAkademikService::class
+            );
+
+            $konfigurasi = $service->konfigurasiAktif(
+                $data['prodi_id'] ?? null,
+                $data['angkatan_id'] ?? null,
+            );
+
+            $mode = $service->modeUntuk(
+                $jenis,
+                $konfigurasi
+            );
+
+            if (
+                $jenis === PembimbingAkademikJenis::DOSEN_WALI &&
+                ! $mode
+            ) {
                 Notification::make()
-                    ->title('Konfigurasi belum aktif untuk kombinasi ini')
-                    ->body('Atur dulu mode di menu Konfigurasi Pembimbing sebelum menugaskan Dosen Wali.')
+                    ->title('Konfigurasi belum aktif')
+                    ->body(
+                        'Atur mode penugasan terlebih dahulu pada menu Konfigurasi Pembimbing.'
+                    )
                     ->warning()
                     ->send();
 
                 return;
             }
 
-            $targetIds = $mode === PembimbingAkademikMode::PER_KELAS
-                ? array_values($data['kelas_ids'] ?? [])
-                : array_values($data['mahasiswa_ids'] ?? []);
+            $targetIds = $mode ===
+                PembimbingAkademikMode::PER_KELAS
+                ? array_values(
+                    $data['kelas_ids'] ?? []
+                )
+                : array_values(
+                    $data['mahasiswa_ids'] ?? []
+                );
 
             if ($targetIds === []) {
-                Notification::make()->title('Pilih minimal satu target')->warning()->send();
+                Notification::make()
+                    ->title('Target belum dipilih')
+                    ->body(
+                        'Pilih minimal satu kelas atau mahasiswa.'
+                    )
+                    ->warning()
+                    ->send();
 
                 return;
             }
 
-            $service = app(PembimbingAkademikService::class);
+            if (! filled($data['dosen_id'] ?? null)) {
+                Notification::make()
+                    ->title('Dosen belum dipilih')
+                    ->body(
+                        'Pilih dosen pembimbing terlebih dahulu.'
+                    )
+                    ->warning()
+                    ->send();
+
+                return;
+            }
+
             $berhasil = 0;
             $dilewati = 0;
 
@@ -357,47 +1013,104 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                 try {
                     $service->tugaskan([
                         'jenis' => $data['jenis'],
-                        'kelas_id' => $mode === PembimbingAkademikMode::PER_KELAS ? $targetId : null,
-                        'mahasiswa_id' => $mode === PembimbingAkademikMode::PER_MAHASISWA ? $targetId : null,
-                        'dosen_id' => $data['dosen_id'],
-                        'is_primary' => $data['is_primary'] ?? true,
-                        'semester_mulai_id' => $data['semester_mulai_id'],
-                        'tanggal_mulai' => $data['tanggal_mulai'],
-                        'nomor_sk' => $data['nomor_sk'] ?? null,
-                        'tanggal_sk' => $data['tanggal_sk'] ?? null,
-                        'keterangan' => $data['keterangan'] ?? null,
-                        'prodi_id' => $data['prodi_id'] ?? null,
-                        'angkatan_id' => $data['angkatan_id'] ?? null,
+
+                        'kelas_id' =>
+                        $mode === PembimbingAkademikMode::PER_KELAS
+                            ? $targetId
+                            : null,
+
+                        'mahasiswa_id' =>
+                        $mode === PembimbingAkademikMode::PER_MAHASISWA
+                            ? $targetId
+                            : null,
+
+                        'dosen_id' =>
+                        $data['dosen_id'],
+
+                        'is_primary' =>
+                        $data['is_primary'] ?? true,
+
+                        'semester_mulai_id' =>
+                        $data['semester_mulai_id'],
+
+                        'tanggal_mulai' =>
+                        $data['tanggal_mulai'],
+
+                        'nomor_sk' =>
+                        $data['nomor_sk'] ?? null,
+
+                        'tanggal_sk' =>
+                        $data['tanggal_sk'] ?? null,
+
+                        'keterangan' =>
+                        $data['keterangan'] ?? null,
+
+                        'prodi_id' =>
+                        $data['prodi_id'] ?? null,
+
+                        'angkatan_id' =>
+                        $data['angkatan_id'] ?? null,
                     ]);
+
                     $berhasil++;
-                } catch (PembimbingAkademikException) {
+                } catch (
+                    PembimbingAkademikException) {
                     $dilewati++;
                 }
             }
 
-            $banyak = count($targetIds) > 1;
+            if ($berhasil === 0) {
+                Notification::make()
+                    ->title('Tidak ada penugasan yang dibuat')
+                    ->body(
+                        'Semua target yang dipilih sudah memiliki pembimbing aktif atau tidak memenuhi aturan penugasan.'
+                    )
+                    ->warning()
+                    ->persistent()
+                    ->send();
+
+                return;
+            }
+
+            $total = count($targetIds);
 
             $notification = Notification::make()
-                ->title($banyak
-                    ? "{$berhasil} penugasan berhasil dibuat" . ($dilewati > 0 ? ", {$dilewati} dilewati (sudah ada pembimbing aktif)" : '')
-                    : 'Pembimbing akademik berhasil ditugaskan')
+                ->title(
+                    "{$berhasil} penugasan berhasil dibuat"
+                )
                 ->success();
 
-            if ($banyak) {
-                $notification->persistent();
+            if ($dilewati > 0) {
+                $notification
+                    ->body(
+                        "{$dilewati} dari {$total} target dilewati karena sudah memiliki pembimbing aktif."
+                    )
+                    ->persistent();
+            } else {
+                $notification->body(
+                    "Semua {$total} target berhasil ditugaskan."
+                );
             }
 
             $notification->send();
 
+            $semester =
+                $data['semester_mulai_id'];
+
             $this->form->fill([
-                'jenis' => $data['jenis'],
-                'prodi_id' => $data['prodi_id'] ?? null,
-                'angkatan_id' => $data['angkatan_id'] ?? null,
-                'kelas_ids' => [],
-                'mahasiswa_ids' => [],
-                'is_primary' => true,
-                'tanggal_mulai' => now()->toDateString(),
-                'semester_mulai_id' => $data['semester_mulai_id'],
+                ...$this->defaultFormData(),
+
+                'jenis' =>
+                $data['jenis'],
+
+                'prodi_id' =>
+                $data['prodi_id'] ?? null,
+
+                'angkatan_id' =>
+                $data['angkatan_id'] ?? null,
+
+                'semester_mulai_id' =>
+                $semester,
             ]);
         } finally {
             $this->isSubmitting = false;
