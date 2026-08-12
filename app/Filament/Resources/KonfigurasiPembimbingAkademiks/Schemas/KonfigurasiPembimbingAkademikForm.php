@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\KonfigurasiPembimbingAkademiks\Schemas;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Enums\PembimbingAkademikMode;
 use App\Models\KonfigurasiPembimbingAkademik;
 use App\Models\RefAngkatan;
@@ -27,14 +28,9 @@ class KonfigurasiPembimbingAkademikForm
                 ->components([
                     Select::make('prodi_id')
                         ->label('Program Studi')
-                        ->relationship(
-                            name: 'prodi',
-                            titleAttribute: 'nama_prodi',
-                            modifyQueryUsing: fn(Builder $query) =>
-                            $query->whereIn(
-                                'id',
-                                auth()->user()->accessibleProdiIds()
-                            )
+                        ->options(
+                            fn(): array => app(FormResolver::class)
+                                ->prodiOptions(auth()->user())
                         )
                         ->searchable()
                         ->preload()

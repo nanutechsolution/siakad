@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\KonfigurasiPembimbingAkademiks\Tables;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Enums\PembimbingAkademikMode;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
@@ -60,19 +61,7 @@ class KonfigurasiPembimbingAkademiksTable
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(function (): array {
-                        $prodiIds = auth()->user()->accessibleProdiIds();
-
-                        if ($prodiIds === []) {
-                            return [];
-                        }
-
-                        return \App\Models\RefProdi::query()
-                            ->whereIn('id', $prodiIds)
-                            ->orderBy('nama_prodi')
-                            ->pluck('nama_prodi', 'id')
-                            ->toArray();
-                    })
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('mode')
