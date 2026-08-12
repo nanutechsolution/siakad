@@ -225,7 +225,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
                     ->options(function () {
-                        return \App\Models\Kelas::query()
+                        return Kelas::query()
                             ->with([
                                 'prodi',
                                 'angkatan',
@@ -236,7 +236,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             ->orderBy('nama_kelas')
                             ->get()
                             ->mapWithKeys(function (Kelas $kelas) {
-                                $namaKelas = Utf8::clean($kelas->nama_kelas ?? '-');
+                                $namaKelas = Utf8::clean($kelas->nama_kelas);
 
                                 $prodi = Utf8::clean(
                                     $kelas->prodi?->kode_prodi
@@ -253,7 +253,28 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             ->toArray();
                     })
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->query(function (Builder $query, array $data): Builder {
+                        $kelasId = $data['value'] ?? null;
+
+                        if (! filled($kelasId)) {
+                            return $query;
+                        }
+
+                        return $query->where(function (Builder $q) use ($kelasId) {
+
+                            // A. Penugasan langsung ke kelas
+                            $q->where('kelas_id', $kelasId)
+
+                                // B. Penugasan ke mahasiswa yang pernah
+                                // berada di kelas tersebut
+                                ->orWhereHas('mahasiswa', function (Builder $mahasiswa) use ($kelasId) {
+                                    $mahasiswa->whereHas('kelas', function (Builder $kelas) use ($kelasId) {
+                                        $kelas->where('kelas.id', $kelasId);
+                                    });
+                                });
+                        });
+                    }),
                 SelectFilter::make('jenis')
                     ->options(PembimbingAkademikJenis::options()),
                 SelectFilter::make('status')

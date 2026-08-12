@@ -32,9 +32,9 @@ class PembimbingStatsWidget extends BaseWidget
             $this->prodiIds
         );
 
-        $total = $stats['total_mahasiswa'];
-        $sudah = $stats['sudah_punya_wali'];
-        $belum = $stats['belum_punya_wali'];
+        $total = $stats['total_mahasiswa_aktif'];
+        $sudah = $stats['mahasiswa_sudah_punya_wali'];
+        $belum = $stats['mahasiswa_belum_punya_wali'];
 
         $coverage = $total > 0
             ? round(($sudah / $total) * 100, 1)
