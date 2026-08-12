@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Domain\Authorization\Contracts\HasScopeStrategy;
 use App\Domain\Authorization\Enums\ScopeStrategy;
 use App\Enums\PembimbingAkademikMode;
+use App\Models\Concerns\VisibleToUser;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -14,6 +15,7 @@ use Spatie\Activitylog\Support\LogOptions;
 class KonfigurasiPembimbingAkademik extends Model implements HasScopeStrategy
 {
     use LogsActivity;
+    use VisibleToUser;
     protected $table = 'konfigurasi_pembimbing_akademik';
 
     protected $fillable = [
