@@ -948,7 +948,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 */
                 Filter::make('tanggal_mulai')
                     ->label('Tanggal Mulai Penugasan')
-                    ->icon('heroicon-o-calendar')
                     ->schema([
                         DatePicker::make('dari')
                             ->label('Dari')
