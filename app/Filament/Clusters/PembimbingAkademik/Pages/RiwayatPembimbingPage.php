@@ -548,7 +548,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 */
                 Filter::make('mahasiswa')
                     ->label('Mahasiswa')
-                    ->icon('heroicon-o-user')
                     ->schema([
                         TextInput::make('search')
                             ->label('NIM / Nama Mahasiswa')
