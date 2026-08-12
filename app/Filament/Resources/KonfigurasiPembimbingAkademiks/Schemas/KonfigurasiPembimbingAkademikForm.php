@@ -13,6 +13,7 @@ use Filament\Forms\Components\Toggle;
 use Filament\Forms\Components\Radio;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
 
 class KonfigurasiPembimbingAkademikForm
@@ -26,16 +27,31 @@ class KonfigurasiPembimbingAkademikForm
                 ->components([
                     Select::make('prodi_id')
                         ->label('Program Studi')
-                        ->relationship('prodi', 'nama_prodi')
+                        ->relationship(
+                            name: 'prodi',
+                            titleAttribute: 'nama_prodi',
+                            modifyQueryUsing: fn(Builder $query) =>
+                            $query->whereIn(
+                                'id',
+                                KonfigurasiPembimbingAkademik::query()
+                                    ->visibleTo(auth()->user())
+                                    ->pluck('prodi_id')
+                            )
+                        )
                         ->searchable()
                         ->preload()
                         ->required()
                         ->unique(
                             ignoreRecord: true,
-                            modifyRuleUsing: fn($rule, $get) => $rule->where('angkatan_id', $get('angkatan_id')),
+                            modifyRuleUsing: fn($rule, $get) =>
+                            $rule->where(
+                                'angkatan_id',
+                                $get('angkatan_id')
+                            )
                         )
                         ->validationMessages([
-                            'unique' => 'Kombinasi Program Studi dan Angkatan ini sudah memiliki konfigurasi.',
+                            'unique' =>
+                            'Kombinasi Program Studi dan Angkatan ini sudah memiliki konfigurasi.',
                         ]),
                     Select::make('angkatan_id')
                         ->label('Angkatan')

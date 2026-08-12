@@ -10,6 +10,7 @@ use App\Models\KonfigurasiPembimbingAkademik;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
 use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 use UnitEnum;
 
 class KonfigurasiPembimbingAkademikResource extends Resource
@@ -22,12 +23,16 @@ class KonfigurasiPembimbingAkademikResource extends Resource
     protected static ?string $modelLabel = 'Konfigurasi Pembimbing Akademik';
     protected static ?string $pluralModelLabel = 'Konfigurasi Pembimbing Akademik';
     protected static ?int $navigationSort = 5;
-
+    public static function getEloquentQuery(): Builder
+    {
+        return parent::getEloquentQuery()->visibleTo(auth()->user());
+    }
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::count();
+        return (string) static::getModel()::query()
+            ->visibleTo(auth()->user())
+            ->count();
     }
-
     public static function getNavigationBadgeColor(): ?string
     {
         return 'primary';
