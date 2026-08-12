@@ -58,10 +58,21 @@ class KonfigurasiPembimbingAkademiksTable
             ])
 
             ->filters([
-
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->relationship('prodi', 'nama_prodi')
+                    ->options(function (): array {
+                        $prodiIds = auth()->user()->accessibleProdiIds();
+
+                        if ($prodiIds === []) {
+                            return [];
+                        }
+
+                        return \App\Models\RefProdi::query()
+                            ->whereIn('id', $prodiIds)
+                            ->orderBy('nama_prodi')
+                            ->pluck('nama_prodi', 'id')
+                            ->toArray();
+                    })
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('mode')

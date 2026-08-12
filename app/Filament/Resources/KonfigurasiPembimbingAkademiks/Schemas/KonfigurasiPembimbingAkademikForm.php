@@ -33,9 +33,7 @@ class KonfigurasiPembimbingAkademikForm
                             modifyQueryUsing: fn(Builder $query) =>
                             $query->whereIn(
                                 'id',
-                                KonfigurasiPembimbingAkademik::query()
-                                    ->visibleTo(auth()->user())
-                                    ->pluck('prodi_id')
+                                auth()->user()->accessibleProdiIds()
                             )
                         )
                         ->searchable()
