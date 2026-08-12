@@ -304,9 +304,42 @@ class PembimbingAkademikService
     {
         return Mahasiswa::query()
             ->whereNull('deleted_at')
-            ->whereDoesntHave('pembimbingAkademik', fn(Builder $q) => $q
-                ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
-                ->where('status', PembimbingAkademikStatus::AKTIF));
+            ->whereDoesntHave(
+                'pembimbingAkademik',
+                fn(Builder $q) => $q
+                    ->where(
+                        'jenis',
+                        PembimbingAkademikJenis::DOSEN_WALI
+                    )
+                    ->where(
+                        'status',
+                        PembimbingAkademikStatus::AKTIF
+                    )
+            )
+            ->whereDoesntHave(
+                'mahasiswaKelas',
+                function (Builder $q) {
+                    $q
+                        ->whereNull('tanggal_keluar')
+                        ->whereHas(
+                            'kelas',
+                            function (Builder $kelas) {
+                                $kelas->whereHas(
+                                    'pembimbingAkademik',
+                                    fn(Builder $wali) => $wali
+                                        ->where(
+                                            'jenis',
+                                            PembimbingAkademikJenis::DOSEN_WALI
+                                        )
+                                        ->where(
+                                            'status',
+                                            PembimbingAkademikStatus::AKTIF
+                                        )
+                                );
+                            }
+                        );
+                }
+            );
     }
     /**
      * Top-N dosen dengan beban Dosen Wali aktif terbanyak.

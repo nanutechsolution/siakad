@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace App\Filament\Widgets;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Services\PembimbingAkademikService;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
 use Filament\Widgets\StatsOverviewWidget as BaseWidget;
@@ -15,112 +16,227 @@ class PembimbingStatsWidget extends BaseWidget
 
     protected static ?int $sort = 1;
 
-    /**
-     * Scope Program Studi.
-     *
-     * Dikirim dari MonitoringPembimbingPage.
-     *
-     * @var array<int>
-     */
-    public array $prodiIds = [];
+    protected function getProdiIds(): array
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return array_values(
+            array_map(
+                'intval',
+                app(FormResolver::class)
+                    ->accessibleProdiIds($user)
+            )
+        );
+    }
 
     protected function getStats(): array
     {
-        $service = app(PembimbingAkademikService::class);
-
-        $stats = $service->monitoringStats(
-            $this->prodiIds
+        $service = app(
+            PembimbingAkademikService::class
         );
 
-        $total = $stats['total_mahasiswa_aktif'];
-        $sudah = $stats['mahasiswa_sudah_punya_wali'];
-        $belum = $stats['mahasiswa_belum_punya_wali'];
+        $stats = $service->monitoringStats(
+            $this->getProdiIds()
+        );
+
+        $total = (int) (
+            $stats['total_mahasiswa_aktif'] ?? 0
+        );
+
+        $sudah = (int) (
+            $stats['mahasiswa_sudah_punya_wali'] ?? 0
+        );
+
+        $belum = (int) (
+            $stats['mahasiswa_belum_punya_wali'] ?? 0
+        );
 
         $coverage = $total > 0
-            ? round(($sudah / $total) * 100, 1)
+            ? round(
+                ($sudah / $total) * 100,
+                1
+            )
             : 0;
 
+        $dosenAktif = (int) (
+            $stats['dosen_wali_aktif'] ?? 0
+        );
+
+        $bebanTinggi = (int) (
+            $stats['dosen_beban_tinggi'] ?? 0
+        );
+
+        $assignmentBerakhir = (int) (
+            $stats['assignment_berakhir'] ?? 0
+        );
+
+        $kelasPerKelas = (int) (
+            $stats['kelas_per_kelas'] ?? 0
+        );
+
+        $kelasDenganWali = (int) (
+            $stats['kelas_dengan_wali'] ?? 0
+        );
+
+        $coverageKelas = (float) (
+            $stats['persentase_kelas_dengan_wali'] ?? 0
+        );
+
         return [
+
+            /*
+             * =============================================================
+             * 1. MAHASISWA
+             * =============================================================
+             */
+
             Stat::make(
                 'Mahasiswa Aktif',
                 number_format($total)
             )
-                ->description('Dalam scope program studi')
-                ->descriptionIcon('heroicon-m-users')
-                ->icon('heroicon-o-users')
+                ->description(
+                    'Total mahasiswa aktif dalam scope Anda'
+                )
+                ->descriptionIcon(
+                    'heroicon-m-users'
+                )
+                ->icon(
+                    'heroicon-o-users'
+                )
                 ->color('primary'),
 
             Stat::make(
-                'Sudah Punya Dosen Wali',
-                number_format($sudah)
+                'Coverage Dosen Wali',
+                "{$coverage}%"
             )
-                ->description("Coverage {$coverage}%")
-                ->descriptionIcon('heroicon-m-check-circle')
-                ->icon('heroicon-o-check-circle')
-                ->color('success'),
+                ->description(
+                    "{$sudah} dari {$total} mahasiswa sudah ter-cover"
+                )
+                ->descriptionIcon(
+                    $coverage >= 100
+                        ? 'heroicon-m-check-circle'
+                        : 'heroicon-m-chart-bar'
+                )
+                ->icon(
+                    'heroicon-o-chart-pie'
+                )
+                ->color(
+                    $coverage >= 100
+                        ? 'success'
+                        : ($coverage >= 90
+                            ? 'warning'
+                            : 'danger')
+                ),
 
             Stat::make(
-                'Belum Punya Dosen Wali',
+                'Belum Punya Wali',
                 number_format($belum)
             )
                 ->description(
                     $belum > 0
-                        ? 'Perlu tindak lanjut'
-                        : 'Semua mahasiswa tertangani'
+                        ? 'Mahasiswa perlu segera ditindaklanjuti'
+                        : 'Tidak ada mahasiswa bermasalah'
                 )
                 ->descriptionIcon(
                     $belum > 0
                         ? 'heroicon-m-exclamation-triangle'
                         : 'heroicon-m-check-circle'
                 )
-                ->icon('heroicon-o-exclamation-triangle')
+                ->icon(
+                    'heroicon-o-exclamation-triangle'
+                )
                 ->color(
                     $belum > 0
                         ? 'danger'
                         : 'success'
                 ),
 
+            /*
+             * =============================================================
+             * 2. DOSEN
+             * =============================================================
+             */
+
             Stat::make(
                 'Dosen Wali Aktif',
-                number_format($stats['dosen_wali_aktif'])
+                number_format($dosenAktif)
             )
                 ->description(
-                    $stats['dosen_tanpa_mahasiswa'] > 0
-                        ? "{$stats['dosen_tanpa_mahasiswa']} belum memiliki mahasiswa"
-                        : 'Distribusi tersedia'
+                    $bebanTinggi > 0
+                        ? "{$bebanTinggi} dosen memiliki beban > 40 mahasiswa"
+                        : 'Tidak ada beban di atas threshold'
                 )
-                ->icon('heroicon-o-academic-cap')
-                ->color('info'),
-
-            Stat::make(
-                'Kelas Tanpa Wali',
-                number_format($stats['kelas_tanpa_wali'])
-            )
-                ->description(
-                    $stats['kelas_tanpa_wali'] > 0
-                        ? 'Perlu penetapan'
-                        : 'Semua kelas memiliki wali'
+                ->descriptionIcon(
+                    $bebanTinggi > 0
+                        ? 'heroicon-m-exclamation-triangle'
+                        : 'heroicon-m-check-circle'
                 )
-                ->icon('heroicon-o-building-office-2')
+                ->icon(
+                    'heroicon-o-academic-cap'
+                )
                 ->color(
-                    $stats['kelas_tanpa_wali'] > 0
+                    $bebanTinggi > 0
                         ? 'warning'
-                        : 'success'
+                        : 'info'
                 ),
 
+            /*
+             * =============================================================
+             * 3. KELAS
+             * =============================================================
+             */
+
             Stat::make(
-                'Assignment Akan Berakhir',
-                number_format($stats['assignment_akan_berakhir'])
+                'Coverage Kelas',
+                "{$coverageKelas}%"
             )
                 ->description(
-                    $stats['assignment_akan_berakhir'] > 0
-                        ? 'Perlu diperpanjang / dimutasi'
-                        : 'Tidak ada yang mendekati akhir'
+                    "{$kelasDenganWali} dari {$kelasPerKelas} kelas memiliki wali"
                 )
-                ->icon('heroicon-o-clock')
+                ->descriptionIcon(
+                    $coverageKelas >= 100
+                        ? 'heroicon-m-check-circle'
+                        : 'heroicon-m-building-office-2'
+                )
+                ->icon(
+                    'heroicon-o-building-office-2'
+                )
                 ->color(
-                    $stats['assignment_akan_berakhir'] > 0
-                        ? 'warning'
+                    $coverageKelas >= 100
+                        ? 'success'
+                        : 'warning'
+                ),
+
+            /*
+             * =============================================================
+             * 4. ASSIGNMENT BERMASALAH
+             * =============================================================
+             */
+
+            Stat::make(
+                'Assignment Lewat Masa',
+                number_format($assignmentBerakhir)
+            )
+                ->description(
+                    $assignmentBerakhir > 0
+                        ? 'Assignment masih aktif tetapi tanggal selesai sudah lewat'
+                        : 'Tidak ada assignment yang melewati masa berlaku'
+                )
+                ->descriptionIcon(
+                    $assignmentBerakhir > 0
+                        ? 'heroicon-m-clock'
+                        : 'heroicon-m-check-circle'
+                )
+                ->icon(
+                    'heroicon-o-clock'
+                )
+                ->color(
+                    $assignmentBerakhir > 0
+                        ? 'danger'
                         : 'success'
                 ),
         ];
