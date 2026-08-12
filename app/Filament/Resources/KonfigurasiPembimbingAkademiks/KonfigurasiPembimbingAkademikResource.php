@@ -29,9 +29,7 @@ class KonfigurasiPembimbingAkademikResource extends Resource
     }
     public static function getNavigationBadge(): ?string
     {
-        return (string) static::getModel()::query()
-            ->visibleTo(auth()->user())
-            ->count();
+        return (string) static::getEloquentQuery()->count();
     }
     public static function getNavigationBadgeColor(): ?string
     {
