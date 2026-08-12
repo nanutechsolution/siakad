@@ -450,6 +450,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                     ->getSearchResultsUsing(
                         function (string $search, $get) {
                             return Mahasiswa::query()
+                                ->visibleTo(auth()->user())
                                 ->whereNull('deleted_at')
                                 ->when(
                                     $get('jenis') ===
@@ -511,6 +512,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                     ->getOptionLabelsUsing(
                         fn(array $values) =>
                         Mahasiswa::query()
+                            ->visibleTo(auth()->user())
                             ->whereIn('id', $values)
                             ->get()
                             ->mapWithKeys(
@@ -581,6 +583,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                     ->getSearchResultsUsing(
                         fn(string $search) =>
                         TrxDosen::query()
+                            ->visibleTo(auth()->user())
                             ->where(function ($query) use ($search) {
                                 $query
                                     ->where(
