@@ -33,40 +33,86 @@ class TrxDosensTable
 
                 TextColumn::make('nidn')
                     ->label('NIDN')
-                    ->searchable()
-                    ->sortable(),
-
-                TextColumn::make('nuptk')
-                    ->label('NUPTK')
+                    ->placeholder('—')
                     ->searchable()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    ->copyable()
+                    ->copyMessage('NIDN disalin')
+                    ->copyMessageDuration(1500)
+                    ->badge()
+                    ->color('primary')
+                    ->icon('heroicon-o-identification'),
+                TextColumn::make('nuptk')
+                    ->label('NUPTK')
+                    ->placeholder('—')
+                    ->searchable()
+                    ->sortable()
+                    ->copyable()
+                    ->copyMessage('NUPTK disalin')
+                    ->copyMessageDuration(1500)
+                    ->badge()
+                    ->color('gray')
+                    ->icon('heroicon-o-credit-card')
+                    ->toggleable(),
 
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->badge()
+                    ->color('info')
+                    ->wrap(),
 
                 TextColumn::make('jenis_dosen')
-                    ->label('Jenis Dosen')
+                    ->label('Jenis')
                     ->badge()
-                    ->toggleable(),
+                    ->formatStateUsing(fn(?string $state): string => match ($state) {
+                        'TETAP' => 'Dosen Tetap',
+                        'TIDAK_TETAP' => 'Tidak Tetap',
+                        'LB' => 'Dosen Luar Biasa',
+                        'PRAKTISI' => 'Praktisi',
+                        default => $state ?? '—',
+                    })
+                    ->color(fn(?string $state): string => match ($state) {
+                        'TETAP' => 'success',
+                        'TIDAK_TETAP' => 'warning',
+                        'LB' => 'info',
+                        'PRAKTISI' => 'gray',
+                        default => 'gray',
+                    })
+                    ->sortable(),
 
                 IconColumn::make('is_active')
-                    ->label('Aktif')
-                    ->boolean(),
+                    ->label('Status')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip(
+                        fn($record) =>
+                        $record->is_active
+                            ? 'Dosen Aktif'
+                            : 'Dosen Tidak Aktif'
+                    ),
 
                 TextColumn::make('person.email')
                     ->label('Email')
+                    ->icon('heroicon-o-envelope')
+                    ->copyable()
+                    ->searchable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('person.no_hp')
-                    ->label('No HP')
+                    ->label('No. HP')
+                    ->icon('heroicon-o-phone')
+                    ->copyable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('created_at')
-                    ->label('Dibuat')
-                    ->dateTime()
+                    ->label('Terdaftar')
+                    ->dateTime('d M Y')
+                    ->sortable()
                     ->toggleable(isToggledHiddenByDefault: true),
 
             ])
@@ -74,7 +120,7 @@ class TrxDosensTable
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
                     ->searchable()
-                    ->options(fn () => app(FormResolver::class)->prodiOptions(auth()->user()))
+                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->preload(),
 
                 SelectFilter::make('jenis_dosen')

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikMode;
 use App\Exceptions\PembimbingAkademikException;
@@ -17,7 +18,6 @@ use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -105,6 +105,10 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             'keterangan' => null,
         ];
     }
+    protected function formResolver(): FormResolver
+    {
+        return app(FormResolver::class);
+    }
 
     public function form(Schema $schema): Schema
     {
@@ -184,9 +188,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                 Select::make('prodi_id')
                     ->label('Program Studi')
                     ->options(
-                        fn() => RefProdi::query()
-                            ->orderBy('nama_prodi')
-                            ->pluck('nama_prodi', 'id')
+                        fn() => $this->formResolver()->prodiOptions(auth()->user())
                     )
                     ->searchable()
                     ->native(false)
@@ -259,7 +261,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                         };
                     }),
 
-                Placeholder::make('info_konfigurasi')
+                TextEntry::make('info_konfigurasi')
                     ->label('')
                     ->columnSpanFull()
                     ->visible(
@@ -268,7 +270,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                             && $get('prodi_id')
                             && $get('angkatan_id')
                     )
-                    ->content(function ($get) {
+                    ->state(function ($get) {
                         $konfigurasi = app(
                             PembimbingAkademikService::class
                         )->konfigurasiAktif(
@@ -321,7 +323,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                         );
                     }),
 
-                Placeholder::make('info_individual')
+                TextEntry::make('info_individual')
                     ->label('')
                     ->columnSpanFull()
                     ->visible(
@@ -329,7 +331,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                         $get('jenis')
                             && $get('jenis') !== PembimbingAkademikJenis::DOSEN_WALI->value
                     )
-                    ->content(
+                    ->state(
                         new HtmlString(
                             '
                             <div class="rounded-xl border border-primary-200 bg-primary-50 p-4 text-sm text-primary-700 dark:border-primary-800 dark:bg-primary-500/10 dark:text-primary-400">
@@ -358,9 +360,9 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             ->description('Pilih kelas atau mahasiswa')
             ->icon('heroicon-o-user-group')
             ->components([
-                Placeholder::make('target_header')
+                TextEntry::make('target_header')
                     ->label('')
-                    ->content(function ($get) {
+                    ->state(function ($get) {
                         $mode = $this->modeSaatIni($get);
 
                         if (! $mode) {
@@ -599,10 +601,14 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                             ->limit(20)
                             ->get()
                             ->mapWithKeys(
-                                fn(TrxDosen $dosen) =>
-                                [
-                                    $dosen->id =>
-                                    "{$dosen->person?->nama_lengkap} — {$dosen->nidn}",
+                                fn(TrxDosen $dosen) => [
+                                    $dosen->id => sprintf(
+                                        '%s — %s',
+                                        $dosen->person?->nama_dengan_gelar ?? 'Dosen tanpa nama',
+                                        $dosen->nidn
+                                            ? "NIDN {$dosen->nidn}"
+                                            : ($dosen->nuptk ? "NUPTK {$dosen->nuptk}" : 'ID belum tersedia')
+                                    ),
                                 ]
                             )
                             ->all()
@@ -674,10 +680,10 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             ->description('Periksa sebelum menyimpan')
             ->icon('heroicon-o-clipboard-document-check')
             ->components([
-                Placeholder::make('final_summary')
+                TextEntry::make('final_summary')
                     ->label('')
                     ->columnSpanFull()
-                    ->content(function ($get) {
+                    ->state(function ($get) {
                         $jenis = $get('jenis')
                             ? PembimbingAkademikJenis::from(
                                 $get('jenis')
@@ -751,9 +757,9 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
 
                             if ($dosenModel) {
                                 $dosen =
-                                    $dosenModel->person?->nama_lengkap .
-                                    ' — ' .
-                                    $dosenModel->nidn;
+                                    ($dosenModel->person?->nama_dengan_gelar ?? 'Tanpa Nama')
+                                    . ' — '
+                                    . ("NIDN: " . ($dosenModel->nidn ?? 'N/A') . " | NUPTK: " . ($dosenModel->nuptk ?? 'N/A'));
                             }
                         }
 

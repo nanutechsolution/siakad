@@ -2,15 +2,21 @@
 
 namespace App\Models;
 
+use App\Domain\Authorization\Contracts\HasScopeStrategy;
+use App\Domain\Authorization\Enums\ScopeStrategy;
+use App\Models\Concerns\VisibleToUser;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\SoftDeletes;
+use LogicException;
 
-class RefProdi extends Model
+class RefProdi extends Model implements HasScopeStrategy
 {
     use HasFactory, SoftDeletes;
+    use VisibleToUser;
 
     /**
      * The table associated with the model.
@@ -39,7 +45,34 @@ class RefProdi extends Model
             'last_nim_seq' => 'integer',
         ];
     }
+    public static function getSupportedScopeStrategies(): array
+    {
+        return [
+            ScopeStrategy::GLOBAL,
+            ScopeStrategy::FAKULTAS,
+            ScopeStrategy::PRODI,
+        ];
+    }
 
+    public static function getFakultasScopeColumn(): ?string
+    {
+        return 'fakultas_id';
+    }
+
+    public static function getProdiScopeColumn(): ?string
+    {
+        return 'id';
+    }
+
+    public static function applyOwnershipScope(
+        Builder $query,
+        User $user,
+        ScopeStrategy $strategy
+    ): Builder {
+        throw new LogicException(
+            'RefProdi tidak menggunakan ownership scope.'
+        );
+    }
     /**
      * Get the faculty that owns the study program.
      */
