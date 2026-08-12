@@ -8,6 +8,7 @@ use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use App\Exports\PembimbingAkademikExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
+use App\Models\Kelas;
 use App\Models\Mahasiswa;
 use App\Models\PembimbingAkademik;
 use App\Models\RefAngkatan;
@@ -223,10 +224,34 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 // ==========================================
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
-                    ->relationship(
-                        name: 'kelas',
-                        titleAttribute: 'nama_kelas',
-                    )
+                    ->options(function () {
+                        return \App\Models\Kelas::query()
+                            ->with([
+                                'prodi',
+                                'angkatan',
+                            ])
+                            ->visibleTo(auth()->user())
+                            ->orderByDesc('angkatan_id')
+                            ->orderBy('prodi_id')
+                            ->orderBy('nama_kelas')
+                            ->get()
+                            ->mapWithKeys(function (Kelas $kelas) {
+                                $namaKelas = Utf8::clean($kelas->nama_kelas ?? '-');
+
+                                $prodi = Utf8::clean(
+                                    $kelas->prodi?->kode_prodi
+                                        ?? $kelas->prodi?->nama_prodi
+                                        ?? '-'
+                                );
+
+                                $angkatan = $kelas->angkatan?->id_tahun ?? '-';
+
+                                return [
+                                    $kelas->id => "{$namaKelas} - {$prodi} - {$angkatan}",
+                                ];
+                            })
+                            ->toArray();
+                    })
                     ->searchable()
                     ->preload(),
                 SelectFilter::make('jenis')
