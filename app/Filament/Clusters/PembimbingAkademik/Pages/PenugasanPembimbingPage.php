@@ -24,6 +24,7 @@ use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Wizard;
@@ -31,6 +32,7 @@ use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 
 class PenugasanPembimbingPage extends Page implements HasForms, HasTable
@@ -110,35 +112,35 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             ->components([
                 Wizard::make([
                     $this->stepJenis(),
-
                     $this->stepTarget(),
-
                     $this->stepDetail(),
-
                     $this->stepKonfirmasi(),
                 ])
                     ->columnSpanFull()
                     ->persistStepInQueryString('penugasan-step')
+
                     ->nextAction(
                         fn($action) => $action
                             ->label('Lanjut')
                             ->icon('heroicon-m-arrow-right')
                             ->iconPosition('after'),
                     )
+
                     ->previousAction(
                         fn($action) => $action
                             ->label('Kembali'),
                     )
+
                     ->submitAction(
                         new HtmlString(
-                            <<<'HTML'
+                            Blade::render(<<<'BLADE'
                             <x-filament::button
                                 type="submit"
                                 color="primary"
                                 icon="heroicon-m-check"
                                 wire:loading.attr="disabled"
                                 wire:target="submit"
-                                wire:confirm="Yakin ingin menyimpan penugasan pembimbing ini? Pastikan jenis, target, dan dosen sudah benar."
+                                     onclick="return confirm('Yakin ingin menyimpan penugasan pembimbing ini? Pastikan jenis, target, dan dosen sudah benar.')"
                             >
                                 <span wire:loading.remove wire:target="submit">
                                     Simpan Penugasan
@@ -148,7 +150,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                     Menyimpan...
                                 </span>
                             </x-filament::button>
-                            HTML
+                        BLADE)
                         )
                     ),
             ])
@@ -432,6 +434,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                     ->multiple()
                     ->searchable()
                     ->native(false)
+                    ->live()
                     ->visible(
                         fn($get) =>
                         $this->modeSaatIni($get) ===
@@ -443,10 +446,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                             PembimbingAkademikMode::PER_MAHASISWA
                     )
                     ->getSearchResultsUsing(
-                        function (
-                            string $search,
-                            $get
-                        ) {
+                        function (string $search, $get) {
                             return Mahasiswa::query()
                                 ->whereNull('deleted_at')
                                 ->when(
@@ -498,8 +498,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                                 ->limit(30)
                                 ->get()
                                 ->mapWithKeys(
-                                    fn(Mahasiswa $mahasiswa) =>
-                                    [
+                                    fn(Mahasiswa $mahasiswa) => [
                                         $mahasiswa->id =>
                                         "{$mahasiswa->nim} — {$mahasiswa->person?->nama_lengkap}",
                                     ]
@@ -513,8 +512,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                             ->whereIn('id', $values)
                             ->get()
                             ->mapWithKeys(
-                                fn(Mahasiswa $mahasiswa) =>
-                                [
+                                fn(Mahasiswa $mahasiswa) => [
                                     $mahasiswa->id =>
                                     "{$mahasiswa->nim} — {$mahasiswa->person?->nama_lengkap}",
                                 ]
@@ -526,44 +524,43 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                     )
                     ->columnSpanFull(),
 
-                Placeholder::make('target_count')
+                TextEntry::make('target_count')
                     ->label('')
-                    ->columnSpanFull()
-                    ->content(function ($get) {
-                        $kelas = array_values(
-                            $get('kelas_ids') ?? []
-                        );
+                    ->state(function ($get) {
+                        $mode = $this->modeSaatIni($get);
 
-                        $mahasiswa = array_values(
-                            $get('mahasiswa_ids') ?? []
-                        );
-
-                        $count = count($kelas) ?: count($mahasiswa);
-
-                        if ($count === 0) {
-                            return new HtmlString(
-                                '
-                                <div class="rounded-lg border border-dashed border-gray-300 p-3 text-sm text-gray-500 dark:border-gray-700 dark:text-gray-400">
-                                    Belum ada target yang dipilih.
-                                </div>
-                                '
+                        if ($mode === PembimbingAkademikMode::PER_KELAS) {
+                            $targetIds = array_values(
+                                array_filter(
+                                    $get('kelas_ids') ?? [],
+                                    fn($id) => filled($id)
+                                )
                             );
+
+                            $label = 'kelas';
+                        } elseif ($mode === PembimbingAkademikMode::PER_MAHASISWA) {
+                            $targetIds = array_values(
+                                array_filter(
+                                    $get('mahasiswa_ids') ?? [],
+                                    fn($id) => filled($id)
+                                )
+                            );
+
+                            $label = 'mahasiswa';
+                        } else {
+                            $targetIds = [];
+                            $label = 'target';
                         }
 
-                        return new HtmlString(
-                            '
-                            <div class="rounded-lg bg-gray-50 p-3 text-sm dark:bg-gray-800">
-                                <span class="font-semibold">' .
-                                $count .
-                                '</span>
-                                target akan ditugaskan kepada
-                                <span class="font-semibold">
-                                    satu dosen yang sama
-                                </span>.
-                            </div>
-                            '
-                        );
-                    }),
+                        $count = count($targetIds);
+
+                        if ($count === 0) {
+                            return 'Belum ada target yang dipilih.';
+                        }
+
+                        return "{$count} {$label} dipilih dan akan ditugaskan kepada satu dosen yang sama.";
+                    })
+                    ->columnSpanFull(),
             ]);
     }
 
@@ -1093,7 +1090,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             }
 
             $notification->send();
-
+            $this->redirect(static::getUrl());
             $semester =
                 $data['semester_mulai_id'];
 
