@@ -5,9 +5,12 @@ namespace App\Filament\Resources\Khs\Schemas;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Group;
+use Filament\Schemas\Components\Split;
 use Filament\Schemas\Schema;
 use Filament\Support\Enums\FontWeight;
 use Filament\Support\Enums\TextSize;
+use Illuminate\Support\HtmlString;
 
 class KhsInfolist
 {
@@ -21,6 +24,7 @@ class KhsInfolist
                 | HEADER DOKUMEN
                 |--------------------------------------------------------------------------
                 */
+
                 Section::make()
                     ->schema([
                         Grid::make([
@@ -29,175 +33,242 @@ class KhsInfolist
                         ])
                             ->schema([
 
-                                TextEntry::make('mahasiswa.nim')
-                                    ->label('NIM')
-                                    ->icon('heroicon-o-identification')
-                                    ->copyable()
-                                    ->weight(FontWeight::Bold)
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl bg-gray-50 dark:bg-white/5 px-4 py-3',
+                                Group::make([
+                                    TextEntry::make('mahasiswa.person.nama_lengkap')
+                                        ->hiddenLabel()
+                                        ->weight(FontWeight::ExtraBold)
+                                        ->size(TextSize::Large),
+
+                                    TextEntry::make('mahasiswa.nim')
+                                        ->hiddenLabel()
+                                        ->formatStateUsing(
+                                            fn($state) => "NIM: {$state}"
+                                        )
+                                        ->color('gray'),
+                                ])
+                                    ->columnSpan([
+                                        'default' => 1,
+                                        'md' => 2,
                                     ]),
 
                                 TextEntry::make('tahunAkademik.nama_tahun')
-                                    ->label('Tahun Akademik')
-                                    ->icon('heroicon-o-calendar-days')
-                                    ->weight(FontWeight::Bold)
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl bg-gray-50 dark:bg-white/5 px-4 py-3',
-                                    ]),
-
-                                TextEntry::make('mahasiswa.prodi.nama_prodi')
-                                    ->label('Program Studi')
-                                    ->icon('heroicon-o-academic-cap')
+                                    ->label('TAHUN AKADEMIK')
                                     ->badge()
                                     ->color('primary')
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl bg-gray-50 dark:bg-white/5 px-4 py-3',
-                                    ]),
+                                    ->size(TextSize::Large)
+                                    ->alignEnd(),
                             ]),
                     ])
                     ->compact()
                     ->extraAttributes([
-                        'class' => 'border-primary-200 dark:border-primary-800',
+                        'class' => 'border-0 bg-gradient-to-r from-primary-600 to-primary-500 text-white',
                     ]),
-
 
                 /*
                 |--------------------------------------------------------------------------
-                | IDENTITAS MAHASISWA
+                | IDENTITAS AKADEMIK
                 |--------------------------------------------------------------------------
                 */
-                Section::make('Identitas Mahasiswa')
-                    ->description('Data mahasiswa yang tercatat pada Kartu Hasil Studi.')
-                    ->icon('heroicon-o-user-circle')
+
+                Section::make('Identitas Akademik')
+                    ->description('Informasi mahasiswa dan periode studi yang tercatat pada Kartu Hasil Studi.')
+                    ->icon('heroicon-o-identification')
                     ->schema([
+
                         Grid::make([
                             'default' => 1,
-                            'md' => 2,
+                            'sm' => 2,
+                            'lg' => 4,
                         ])
                             ->schema([
 
-                                TextEntry::make('mahasiswa.person.nama_lengkap')
-                                    ->label('Nama Lengkap')
-                                    ->weight(FontWeight::Bold)
-                                    ->size(TextSize::Large)
-                                    ->icon('heroicon-o-user')
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-4',
-                                    ]),
-
                                 TextEntry::make('mahasiswa.nim')
                                     ->label('Nomor Induk Mahasiswa')
-                                    ->icon('heroicon-o-identification')
-                                    ->copyable()
-                                    ->weight(FontWeight::SemiBold)
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-4',
-                                    ]),
+                                    ->icon('heroicon-m-identification')
+                                    ->weight(FontWeight::Bold)
+                                    ->copyable(),
+
+                                TextEntry::make('mahasiswa.person.nama_lengkap')
+                                    ->label('Nama Mahasiswa')
+                                    ->weight(FontWeight::Bold),
 
                                 TextEntry::make('mahasiswa.prodi.nama_prodi')
                                     ->label('Program Studi')
-                                    ->icon('heroicon-o-building-library')
-                                    ->weight(FontWeight::SemiBold)
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-4',
-                                    ]),
+                                    ->badge()
+                                    ->color('info'),
 
                                 TextEntry::make('tahunAkademik.nama_tahun')
                                     ->label('Tahun Akademik')
-                                    ->icon('heroicon-o-calendar')
-                                    ->weight(FontWeight::SemiBold)
-                                    ->extraAttributes([
-                                        'class' => 'rounded-xl border border-gray-200 dark:border-gray-700 px-4 py-4',
-                                    ]),
+                                    ->icon('heroicon-m-calendar')
+                                    ->weight(FontWeight::Bold),
                             ]),
-                    ]),
-
+                    ])
+                    ->columnSpanFull(),
 
                 /*
                 |--------------------------------------------------------------------------
-                | HASIL STUDI
+                | NILAI IPS / IPK
                 |--------------------------------------------------------------------------
                 */
-                Section::make('Ringkasan Hasil Studi')
-                    ->description('Indeks prestasi mahasiswa pada tahun akademik yang dipilih.')
-                    ->icon('heroicon-o-chart-bar-square')
+
+                Grid::make([
+                    'default' => 1,
+                    'md' => 2,
+                ])
                     ->schema([
-                        Grid::make([
-                            'default' => 1,
-                            'md' => 2,
-                        ])
+
+                        Section::make()
                             ->schema([
 
                                 TextEntry::make('riwayatStatus.ips')
                                     ->label('Indeks Prestasi Semester')
                                     ->formatStateUsing(
-                                        fn($state) => filled($state)
-                                            ? number_format((float) $state, 2, ',', '.')
+                                        fn($state) =>
+                                        filled($state)
+                                            ? number_format((float) $state, 2)
                                             : '—'
                                     )
-                                    ->icon('heroicon-o-chart-bar')
-                                    ->iconColor('success')
-                                    ->weight(FontWeight::ExtraBold)
                                     ->size(TextSize::Large)
+                                    ->weight(FontWeight::ExtraBold)
                                     ->color('success')
-                                    ->extraAttributes([
-                                        'class' => '
-                                            rounded-2xl
-                                            border border-success-200
-                                            bg-success-50
-                                            dark:border-success-800
-                                            dark:bg-success-950/30
-                                            px-6 py-6
-                                        ',
-                                    ]),
+                                    ->alignCenter(),
+
+                                TextEntry::make('riwayatStatus.ips')
+                                    ->hiddenLabel()
+                                    ->formatStateUsing(
+                                        fn($state) =>
+                                        filled($state)
+                                            ? 'IPS Semester'
+                                            : 'Belum tersedia'
+                                    )
+                                    ->color('gray')
+                                    ->alignCenter(),
+                            ])
+                            ->icon('heroicon-o-chart-bar')
+                            ->iconColor('success')
+                            ->extraAttributes([
+                                'class' => 'text-center border border-success-200 dark:border-success-800 bg-success-50/50 dark:bg-success-950/20',
+                            ]),
+
+                        Section::make()
+                            ->schema([
 
                                 TextEntry::make('riwayatStatus.ipk')
                                     ->label('Indeks Prestasi Kumulatif')
                                     ->formatStateUsing(
-                                        fn($state) => filled($state)
-                                            ? number_format((float) $state, 2, ',', '.')
+                                        fn($state) =>
+                                        filled($state)
+                                            ? number_format((float) $state, 2)
                                             : '—'
                                     )
-                                    ->icon('heroicon-o-academic-cap')
-                                    ->iconColor('primary')
-                                    ->weight(FontWeight::ExtraBold)
                                     ->size(TextSize::Large)
+                                    ->weight(FontWeight::ExtraBold)
                                     ->color('primary')
-                                    ->extraAttributes([
-                                        'class' => '
-                                            rounded-2xl
-                                            border border-primary-200
-                                            bg-primary-50
-                                            dark:border-primary-800
-                                            dark:bg-primary-950/30
-                                            px-6 py-6
-                                        ',
-                                    ]),
-                            ]),
-                    ]),
+                                    ->alignCenter(),
 
+                                TextEntry::make('riwayatStatus.ipk')
+                                    ->hiddenLabel()
+                                    ->formatStateUsing(
+                                        fn($state) =>
+                                        filled($state)
+                                            ? 'IPK Kumulatif'
+                                            : 'Belum tersedia'
+                                    )
+                                    ->color('gray')
+                                    ->alignCenter(),
+                            ])
+                            ->icon('heroicon-o-academic-cap')
+                            ->iconColor('primary')
+                            ->extraAttributes([
+                                'class' => 'text-center border border-primary-200 dark:border-primary-800 bg-primary-50/50 dark:bg-primary-950/20',
+                            ]),
+                    ])
+                    ->columnSpanFull(),
 
                 /*
                 |--------------------------------------------------------------------------
-                | FOOTER / KETERANGAN
+                | STATUS AKADEMIK
                 |--------------------------------------------------------------------------
                 */
-                Section::make()
+
+                Section::make('Status Akademik')
+                    ->icon('heroicon-o-check-badge')
                     ->schema([
-                        TextEntry::make('keterangan')
-                            ->label('Keterangan')
-                            ->default('Dokumen ini merupakan ringkasan hasil studi mahasiswa pada semester terkait.')
-                            ->icon('heroicon-o-information-circle')
-                            ->color('gray')
-                            ->extraAttributes([
-                                'class' => 'text-sm',
+
+                        Grid::make([
+                            'default' => 1,
+                            'sm' => 3,
+                        ])
+                            ->schema([
+
+                                TextEntry::make('riwayatStatus.ips')
+                                    ->label('IPS Semester')
+                                    ->formatStateUsing(
+                                        fn($state) =>
+                                        filled($state)
+                                            ? number_format((float) $state, 2)
+                                            : 'Belum tersedia'
+                                    )
+                                    ->badge()
+                                    ->color('success'),
+
+                                TextEntry::make('riwayatStatus.ipk')
+                                    ->label('IPK Kumulatif')
+                                    ->formatStateUsing(
+                                        fn($state) =>
+                                        filled($state)
+                                            ? number_format((float) $state, 2)
+                                            : 'Belum tersedia'
+                                    )
+                                    ->badge()
+                                    ->color('primary'),
+
+                                TextEntry::make('tahunAkademik.nama_tahun')
+                                    ->label('Periode')
+                                    ->badge()
+                                    ->color('gray'),
                             ]),
                     ])
+                    ->columnSpanFull(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | FOOTER INFORMASI
+                |--------------------------------------------------------------------------
+                */
+
+                Section::make()
+                    ->schema([
+                        TextEntry::make('informasi_khs')
+                            ->hiddenLabel()
+                            ->state(
+                                new HtmlString(
+                                    '<div class="flex items-start gap-3">
+                                        <div class="shrink-0">
+                                            <svg class="h-5 w-5 text-primary-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                    d="M13 16h-1v-4h-1m1-4h.01M12 20a8 8 0 100-16 8 8 0 000 16z"/>
+                                            </svg>
+                                        </div>
+
+                                        <div>
+                                            <div class="font-semibold text-gray-900 dark:text-white">
+                                                Kartu Hasil Studi
+                                            </div>
+
+                                            <div class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                                                Dokumen ini memuat ringkasan hasil studi mahasiswa
+                                                pada periode akademik yang dipilih.
+                                                Gunakan tombol <strong>Cetak KHS</strong>
+                                                untuk menghasilkan dokumen resmi.
+                                            </div>
+                                        </div>
+                                    </div>'
+                                )
+                            ),
+                    ])
                     ->compact()
-                    ->extraAttributes([
-                        'class' => 'bg-gray-50 dark:bg-white/5',
-                    ]),
+                    ->columnSpanFull(),
             ]);
     }
 }
