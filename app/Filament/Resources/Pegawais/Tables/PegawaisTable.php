@@ -32,9 +32,7 @@ class PegawaisTable
                     ->label('')
                     ->imageSize(44)
                     ->circular()
-                    ->defaultImageUrl(
-                        url('/images/default-avatar.png')
-                    )
+                    ->defaultImageUrl(url('https://ui-avatars.com/api/?name=P&color=7F9CF5&background=EBF4FF'))
                     ->extraImgAttributes([
                         'alt' => 'Foto pegawai',
                         'loading' => 'lazy',
