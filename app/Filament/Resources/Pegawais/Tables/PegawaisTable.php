@@ -296,6 +296,7 @@ class PegawaisTable
             ->recordActions([
                 ViewAction::make()
                     ->label('Lihat')
+                    ->slideOver()
                     ->icon('heroicon-o-eye'),
 
                 EditAction::make()
