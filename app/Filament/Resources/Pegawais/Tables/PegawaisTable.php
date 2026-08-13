@@ -294,7 +294,6 @@ class PegawaisTable
             */
 
             ->recordActions([
-
                 ViewAction::make()
                     ->label('Lihat')
                     ->icon('heroicon-o-eye'),

@@ -6,7 +6,9 @@ use App\Enums\NavigationGroup;
 use App\Filament\Resources\Pegawais\Pages\CreatePegawai;
 use App\Filament\Resources\Pegawais\Pages\EditPegawai;
 use App\Filament\Resources\Pegawais\Pages\ListPegawais;
+use App\Filament\Resources\Pegawais\Pages\ViewPegawai;
 use App\Filament\Resources\Pegawais\Schemas\PegawaiForm;
+use App\Filament\Resources\Pegawais\Schemas\PegawaiInfolist;
 use App\Filament\Resources\Pegawais\Tables\PegawaisTable;
 use App\Models\TrxPegawai;
 use BackedEnum;
@@ -28,7 +30,10 @@ class PegawaiResource extends Resource
     {
         return PegawaiForm::configure($schema);
     }
-
+    public static function infolist(Schema $schema): Schema
+    {
+        return PegawaiInfolist::configure($schema);
+    }
     public static function table(Table $table): Table
     {
         return PegawaisTable::configure($table);
@@ -49,6 +54,7 @@ class PegawaiResource extends Resource
             'index' => ListPegawais::route('/'),
             'create' => CreatePegawai::route('/create'),
             'edit' => EditPegawai::route('/{record}/edit'),
+            'view' => ViewPegawai::route('/{record}'),
         ];
     }
 }
