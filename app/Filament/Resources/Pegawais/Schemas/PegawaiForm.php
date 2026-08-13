@@ -1,81 +1,372 @@
 <?php
 
-namespace App\Filament\Resources\Pegawais\Schemas;
+namespace App\Filament\Resources\Pegawais\Tables;
 
 use App\Enums\HR\JenisPegawai;
-use Filament\Forms\Components\DatePicker;
-use Filament\Forms\Components\Select;
-use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
-use Filament\Schemas\Components\Grid;
-use Filament\Schemas\Components\Section;
-use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
+use Filament\Actions\BulkActionGroup;
+use Filament\Actions\DeleteBulkAction;
+use Filament\Actions\EditAction;
+use Filament\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
 
-class PegawaiForm
+class PegawaisTable
 {
-    public static function configure(Schema $schema): Schema
+    public static function configure(Table $table): Table
     {
-        return $schema
-            ->components([
-                Section::make('Informasi Kepegawaian')
-                    ->schema([
-                        Select::make('person_id')
-                            ->label('Identitas Person (SSOT)')
-                            ->relationship('person', 'nama_lengkap')
-                            ->searchable()
-                            ->preload()
-                            ->required()
-                            ->createOptionForm([
-                                Grid::make(2)->schema([
-                                    TextInput::make('nama_lengkap')
-                                        ->label('Nama Lengkap (Sesuai KTP)')
-                                        ->required()
-                                        ->maxLength(255)
-                                        ->columnSpanFull(),
-                                    TextInput::make('nik')
-                                        ->label('NIK / No. KTP')
-                                        ->unique('ref_person', 'nik', ignoreRecord: true)
-                                        ->maxLength(255),
-                                    Select::make('jenis_kelamin')
-                                        ->label('Jenis Kelamin')
-                                        ->options([
-                                            'L' => 'Laki-laki',
-                                            'P' => 'Perempuan',
-                                        ]),
-                                    TextInput::make('email')
-                                        ->label('Email Pribadi')
-                                        ->email()
-                                        ->maxLength(255),
-                                    TextInput::make('no_hp')
-                                        ->label('No. Handphone')
-                                        ->maxLength(20),
-                                    TextInput::make('tempat_lahir')
-                                        ->label('Tempat Lahir')
-                                        ->maxLength(255),
-                                    DatePicker::make('tanggal_lahir')
-                                        ->label('Tanggal Lahir')
-                                        ->native(false)
-                                        ->displayFormat('d/m/Y'),
-                                ]),
-                            ])
-                            ->columnSpanFull(),
+        return $table
+            ->columns([
 
-                        TextInput::make('nip')
-                            ->label('Nomor Induk Pegawai (NIP)')
-                            ->unique(ignoreRecord: true)
-                            ->maxLength(30)
-                            ->placeholder('Kosongkan jika belum memiliki NIP'),
+                /*
+                |--------------------------------------------------------------------------
+                | FOTO
+                |--------------------------------------------------------------------------
+                */
 
-                        Select::make('jenis_pegawai')
-                            ->label('Status Kepegawaian')
-                            ->options(JenisPegawai::class)
-                            ->required(),
+                ImageColumn::make('person.photo_path')
+                    ->label('')
+                    ->imageSize(44)
+                    ->circular()
+                    ->defaultImageUrl(
+                        url('/images/default-avatar.png')
+                    )
+                    ->extraImgAttributes([
+                        'alt' => 'Foto pegawai',
+                        'loading' => 'lazy',
+                    ])
+                    ->width('1%'),
 
-                        Toggle::make('is_active')
-                            ->label('Status Aktif Pegawai')
-                            ->default(true)
-                            ->required(),
-                    ])->columns(2),
-            ]);
+                /*
+                |--------------------------------------------------------------------------
+                | PEGAWAI
+                |--------------------------------------------------------------------------
+                |
+                | Nama menjadi informasi utama.
+                | NIP ditampilkan sebagai description agar tabel tidak terlalu lebar.
+                |
+                */
+
+                TextColumn::make('person.nama_lengkap')
+                    ->label('Pegawai')
+                    ->formatStateUsing(
+                        fn($record): string =>
+                        $record->person?->nama_dengan_gelar
+                            ?? $record->person?->nama_lengkap
+                            ?? '-'
+                    )
+                    ->description(
+                        fn($record): string =>
+                        'NIP: ' . ($record->nip ?: '-')
+                    )
+                    ->weight('bold')
+                    ->grow()
+                    ->searchable(
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->where(function (
+                                Builder $query
+                            ) use ($search) {
+
+                                $query
+                                    ->where(
+                                        'nip',
+                                        'like',
+                                        "%{$search}%"
+                                    )
+                                    ->orWhereHas(
+                                        'person',
+                                        function (
+                                            Builder $personQuery
+                                        ) use ($search) {
+                                            $personQuery->where(
+                                                'nama_lengkap',
+                                                'like',
+                                                "%{$search}%"
+                                            );
+                                        }
+                                    );
+                            });
+                        }
+                    )
+                    ->sortable(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | JENIS KELAMIN
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('person.jenis_kelamin')
+                    ->label('L/P')
+                    ->badge()
+                    ->formatStateUsing(
+                        fn(?string $state): string => match ($state) {
+                            'L' => 'Laki-laki',
+                            'P' => 'Perempuan',
+                            default => '—',
+                        }
+                    )
+                    ->color(
+                        fn(?string $state): string => match ($state) {
+                            'L' => 'info',
+                            'P' => 'danger',
+                            default => 'gray',
+                        }
+                    )
+                    ->sortable()
+                    ->alignCenter(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | STATUS PEGAWAI
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('jenis_pegawai')
+                    ->label('Status Pegawai')
+                    ->badge()
+                    ->sortable()
+                    ->alignCenter(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | STATUS AKTIF
+                |--------------------------------------------------------------------------
+                */
+
+                IconColumn::make('is_active')
+                    ->label('Status')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-check-circle')
+                    ->falseIcon('heroicon-o-x-circle')
+                    ->trueColor('success')
+                    ->falseColor('danger')
+                    ->tooltip(
+                        fn(bool $state): string =>
+                        $state
+                            ? 'Pegawai aktif'
+                            : 'Pegawai tidak aktif'
+                    )
+                    ->sortable()
+                    ->alignCenter(),
+
+                /*
+                |--------------------------------------------------------------------------
+                | EMAIL
+                |--------------------------------------------------------------------------
+                |
+                | Tidak tampil di awal agar tabel tetap bersih.
+                | SDM dapat mengaktifkannya melalui column manager.
+                |
+                */
+
+                TextColumn::make('person.email')
+                    ->label('Email')
+                    ->icon('heroicon-o-envelope')
+                    ->copyable()
+                    ->copyMessage('Email berhasil disalin')
+                    ->copyMessageDuration(1500)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | NO HP
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('person.no_hp')
+                    ->label('No. HP')
+                    ->icon('heroicon-o-phone')
+                    ->copyable()
+                    ->copyMessage('Nomor HP berhasil disalin')
+                    ->copyMessageDuration(1500)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | NIK
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('person.nik')
+                    ->label('NIK')
+                    ->copyable()
+                    ->copyMessage('NIK berhasil disalin')
+                    ->copyMessageDuration(1500)
+                    ->placeholder('—')
+                    ->searchable()
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | TEMPAT LAHIR
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('person.tempat_lahir')
+                    ->label('Tempat Lahir')
+                    ->placeholder('—')
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | TANGGAL LAHIR
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('person.tanggal_lahir')
+                    ->label('Tanggal Lahir')
+                    ->date('d M Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
+
+                /*
+                |--------------------------------------------------------------------------
+                | TANGGAL REGISTRASI
+                |--------------------------------------------------------------------------
+                */
+
+                TextColumn::make('created_at')
+                    ->label('Terdaftar')
+                    ->dateTime('d M Y')
+                    ->placeholder('—')
+                    ->sortable()
+                    ->toggleable(
+                        isToggledHiddenByDefault: true
+                    ),
+            ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | FILTER
+            |--------------------------------------------------------------------------
+            */
+
+            ->filters([
+
+                SelectFilter::make('jenis_pegawai')
+                    ->label('Status Pegawai')
+                    ->options(JenisPegawai::class)
+                    ->native(false),
+
+                SelectFilter::make('person.jenis_kelamin')
+                    ->label('Jenis Kelamin')
+                    ->options([
+                        'L' => 'Laki-laki',
+                        'P' => 'Perempuan',
+                    ])
+                    ->native(false),
+
+                TernaryFilter::make('is_active')
+                    ->label('Keaktifan')
+                    ->trueLabel('Aktif')
+                    ->falseLabel('Tidak Aktif')
+                    ->placeholder('Semua'),
+
+            ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | AKSI PER BARIS
+            |--------------------------------------------------------------------------
+            */
+
+            ->recordActions([
+
+                ViewAction::make()
+                    ->label('Lihat')
+                    ->icon('heroicon-o-eye'),
+
+                EditAction::make()
+                    ->label('Edit')
+                    ->icon('heroicon-o-pencil'),
+
+            ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | BULK ACTION
+            |--------------------------------------------------------------------------
+            */
+
+            ->toolbarActions([
+
+                BulkActionGroup::make([
+                    DeleteBulkAction::make()
+                        ->label('Hapus Terpilih'),
+                ]),
+
+            ])
+
+            /*
+            |--------------------------------------------------------------------------
+            | SEARCH
+            |--------------------------------------------------------------------------
+            */
+
+            ->searchPlaceholder(
+                'Cari nama, NIP, NIK, email, atau nomor HP...'
+            )
+
+            ->searchDebounce(400)
+
+            /*
+            |--------------------------------------------------------------------------
+            | SORT DEFAULT
+            |--------------------------------------------------------------------------
+            */
+
+            ->defaultSort(
+                'created_at',
+                'desc'
+            )
+
+            /*
+            |--------------------------------------------------------------------------
+            | PAGINATION
+            |--------------------------------------------------------------------------
+            */
+
+            ->paginationPageOptions([
+                10,
+                25,
+                50,
+                100,
+            ])
+
+            ->defaultPaginationPageOption(25)
+
+            /*
+            |--------------------------------------------------------------------------
+            | RESPONSIVE
+            |--------------------------------------------------------------------------
+            |
+            | Pada layar kecil, informasi sekunder disembunyikan.
+            |
+            */
+
+            ->deferLoading();
     }
 }
