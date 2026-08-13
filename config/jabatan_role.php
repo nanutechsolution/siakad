@@ -47,6 +47,7 @@ return [
             'Admin Akademik',
             'Rektor',
             'Wakil Rektor',
+            'Admin Keuangan'
         ],
         'fakultas' => [
             'Admin Fakultas',
