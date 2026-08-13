@@ -54,7 +54,6 @@ class PegawaiResource extends Resource
             'index' => ListPegawais::route('/'),
             'create' => CreatePegawai::route('/create'),
             'edit' => EditPegawai::route('/{record}/edit'),
-            'view' => ViewPegawai::route('/{record}'),
         ];
     }
 }
