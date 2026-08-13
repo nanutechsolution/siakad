@@ -3175,6 +3175,7 @@ CREATE TABLE `trx_dosen` (
   `updated_at` timestamp NULL DEFAULT NULL,
   `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
+  UNIQUE KEY `trx_dosen_person_id_unique` (`person_id`),
   UNIQUE KEY `trx_dosen_nidn_unique` (`nidn`),
   UNIQUE KEY `trx_dosen_nuptk_unique` (`nuptk`),
   KEY `trx_dosen_person_id_foreign` (`person_id`),
@@ -3551,3 +3552,4 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (264,'2026_07_16_00
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (265,'2026_07_16_002857_add_pro_settings_to_kampus_settings',21);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (266,'2026_08_03_204039_drop_kelas_dosen_wali_table',21);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (267,'2026_08_06_095815_add_status_state_machine_to_ref_tahun_akademik',21);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (268,'2026_08_13_125914_add_unique_person_id_to_trx_dosen_table',22);
