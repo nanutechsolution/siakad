@@ -6,12 +6,12 @@ use App\Filament\Clusters\Migration\MigrationCluster;
 use App\Filament\Widgets\Clusters\Migration\Widgets\RecentMigrationBatchesWidget;
 use App\Filament\Widgets\MigrationStatsWidget;
 use BackedEnum;
-use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Page;
 
 class MigrationDashboard extends Page
 {
-    use HasWidgetShield;
+    use HasPageShield;
     protected string $view = 'filament.clusters.migration.pages.migration-dashboard';
     protected static string|BackedEnum|null $navigationIcon = 'heroicon-o-squares-2x2';
     protected static ?string $navigationLabel = 'Dashboard';
