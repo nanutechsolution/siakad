@@ -170,11 +170,43 @@ class TrxDosensTable
             ])->filtersFormColumns(2)
             ->recordActions([
                 EditAction::make(),
+                Action::make('nonaktifkan')
+                    ->label('Nonaktifkan')
+                    ->icon('heroicon-o-pause-circle')
+                    ->color('warning')
+                    ->requiresConfirmation()
+                    ->modalHeading('Nonaktifkan Dosen?')
+                    ->modalDescription(
+                        'Dosen akan dinonaktifkan dan tetap tersimpan sebagai histori akademik. Data tidak akan dihapus.'
+                    )
+                    ->action(function ($record): void {
+                        $record->update([
+                            'is_active' => false,
+                        ]);
+                    })
+                    ->visible(fn($record): bool => (bool) $record->is_active),
+
+                Action::make('aktifkan')
+                    ->label('Aktifkan')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->requiresConfirmation()
+                    ->modalHeading('Aktifkan Dosen?')
+                    ->modalDescription(
+                        'Dosen akan kembali berstatus aktif.'
+                    )
+                    ->action(function ($record): void {
+                        $record->update([
+                            'is_active' => true,
+                        ]);
+                    })
+                    ->visible(fn($record): bool => ! $record->is_active),
 
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
+
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
                 ]),
