@@ -47,9 +47,9 @@ class MahasiswaBimbingansTable
                 TextColumn::make('status_risiko')
                     ->label('Risiko Akademik')
                     ->badge()
-                    ->state(fn(Model $record) => $record->statusRisiko())
-                    ->color(fn($state) => $state->getColor())
-                    ->icon(fn($state) => $state->getIcon()),
+                    ->state(fn(Model $record) => $record->statusRisiko)
+                    ->color(fn($state) => $state?->getColor() ?? 'gray')
+                    ->icon(fn($state) => $state?->getIcon()),
 
                 TextColumn::make('tunggakan')
                     ->label('Tunggakan')
