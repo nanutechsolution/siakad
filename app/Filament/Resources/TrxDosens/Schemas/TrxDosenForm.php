@@ -23,6 +23,7 @@ use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Utilities\Set;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use App\Enums\HR\JenjangGelar;
 
 class TrxDosenForm
 {
@@ -181,8 +182,14 @@ class TrxDosenForm
                                                             ->native(false)
                                                             ->required()
                                                             ->getOptionLabelFromRecordUsing(
-                                                                fn(RefGelar $record): string =>
-                                                                "{$record->kode} — {$record->nama} ({$record->jenjang})"
+                                                                fn(RefGelar $record): string => sprintf(
+                                                                    '%s — %s (%s)',
+                                                                    $record->kode,
+                                                                    $record->nama,
+                                                                    $record->jenjang instanceof JenjangGelar
+                                                                        ? $record->jenjang->value
+                                                                        : (string) $record->jenjang,
+                                                                )
                                                             )
 
                                                             ->createOptionForm([
