@@ -30,9 +30,7 @@
             <span class="flex items-center gap-1">
                 <span class="h-2 w-2 rounded-full bg-success-500"></span>
 
-                <span class="hidden sm:inline text-xs text-gray-500">
-                    {{ $semester }}
-                </span>
+               
             </span>
         </div>
 
