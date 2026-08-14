@@ -19,8 +19,11 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Filament\Actions\DeleteAction as ActionsDeleteAction;
 use Filament\Forms\Components\FileUpload;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Utilities\Get;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\HtmlString;
 use Maatwebsite\Excel\Facades\Excel;
 
 class MahasiswasRelationManager extends RelationManager
@@ -105,9 +108,39 @@ class MahasiswasRelationManager extends RelationManager
                 Action::make('plot_mahasiswa')
                     ->label('Plotting Mahasiswa')
                     ->icon('heroicon-o-user-plus')
-                    ->modalWidth('xl')
+                    ->modalHeading('Plotting Mahasiswa')
+                    ->modalDescription(
+                        fn() => 'Tambahkan mahasiswa ke kelas ' .
+                            $this->getOwnerRecord()->nama_kelas .
+                            ' — Angkatan ' .
+                            $this->getOwnerRecord()->angkatan_id
+                    )
+                    ->modalWidth('2xl')
                     ->schema([
+                        TextEntry::make('kelas_tujuan')
+                            ->label('Kelas Tujuan')
+                            ->state(function () {
+                                $kelas = $this->getOwnerRecord();
+
+                                return new HtmlString(
+                                    '<div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">' .
+                                        '<div class="text-base font-semibold text-gray-950 dark:text-white">' .
+                                        e($kelas->nama_kelas) .
+                                        '</div>' .
+                                        '<div class="mt-1 text-sm text-gray-500">' .
+                                        'Angkatan ' . e($kelas->angkatan_id) .
+                                        ' · Prodi ID ' . e($kelas->prodi_id) .
+                                        ' · Program ID ' . e($kelas->program_id) .
+                                        '</div>' .
+                                        '</div>'
+                                );
+                            }),
+
                         Select::make('mahasiswa_ids')
+                            ->label('Mahasiswa')
+                            ->helperText(
+                                'Cari berdasarkan NIM atau nama. Mahasiswa dari angkatan lain dapat dipilih untuk kasus restart/mutasi cohort.'
+                            )
                             ->multiple()
                             ->searchable()
                             ->required()
@@ -120,8 +153,7 @@ class MahasiswasRelationManager extends RelationManager
                                     ->where(function ($q) use ($search) {
                                         $q->whereHas(
                                             'person',
-                                            fn($p) =>
-                                            $p->where(
+                                            fn($p) => $p->where(
                                                 'nama_lengkap',
                                                 'like',
                                                 "%{$search}%"
@@ -144,32 +176,110 @@ class MahasiswasRelationManager extends RelationManager
                                     ->with('person')
                                     ->get()
                                     ->mapWithKeys(fn($m) => [
-                                        $m->id => "{$m->nim} - {$m->person->nama_lengkap} [Angkatan {$m->angkatan_id}]",
+                                        $m->id =>
+                                        "{$m->nim} - {$m->person->nama_lengkap} [Angkatan {$m->angkatan_id}]",
                                     ])
                                     ->toArray()
-                            ),
-                        DatePicker::make('tanggal_masuk')->default(now())->required(),
+                            )
+                            ->live(),
+
+                        TextEntry::make('warning_lintas_angkatan')
+                            ->label('')
+                            ->state(function (Get $get) {
+                                $ids = $get('mahasiswa_ids') ?? [];
+
+                                if (empty($ids)) {
+                                    return null;
+                                }
+
+                                $kelas = $this->getOwnerRecord();
+
+                                $mahasiswa = Mahasiswa::query()
+                                    ->whereIn('id', $ids)
+                                    ->get(['id', 'nim', 'angkatan_id']);
+
+                                $lintasAngkatan = $mahasiswa
+                                    ->filter(fn($m) => (int) $m->angkatan_id !== (int) $kelas->angkatan_id);
+
+                                if ($lintasAngkatan->isEmpty()) {
+                                    return new HtmlString(
+                                        '<div class="rounded-xl border border-green-200 bg-green-50 p-3 text-sm text-green-700 dark:border-green-800 dark:bg-green-950/30 dark:text-green-300">
+                            Semua mahasiswa sesuai dengan angkatan kelas.
+                        </div>'
+                                    );
+                                }
+
+                                $list = $lintasAngkatan
+                                    ->map(
+                                        fn($m) =>
+                                        '<li>' .
+                                            e($m->nim) .
+                                            ' — Angkatan ' .
+                                            e($m->angkatan_id) .
+                                            '</li>'
+                                    )
+                                    ->implode('');
+
+                                return new HtmlString(
+                                    '<div class="rounded-xl border border-amber-300 bg-amber-50 p-4 text-sm text-amber-800 dark:border-amber-700 dark:bg-amber-950/30 dark:text-amber-300">
+                        <div class="font-semibold">⚠ Penempatan lintas angkatan</div>
+                        <div class="mt-1">
+                            Mahasiswa berikut memiliki angkatan berbeda dengan kelas tujuan:
+                        </div>
+                        <ul class="mt-2 list-disc pl-5">' .
+                                        $list .
+                                        '</ul>
+                        <div class="mt-2">
+                            Pastikan penempatan ini merupakan restart, mutasi cohort,
+                            atau keputusan akademik yang sah.
+                        </div>
+                    </div>'
+                                );
+                            })
+                            ->visible(fn(Get $get) => filled($get('mahasiswa_ids'))),
+
+                        DatePicker::make('tanggal_masuk')
+                            ->label('Tanggal Masuk')
+                            ->helperText(
+                                'Tanggal mulai mahasiswa efektif menjadi anggota kelas ini.'
+                            )
+                            ->default(now())
+                            ->required(),
                     ])
                     ->action(function (array $data, MahasiswaPlottingService $service) {
                         $sukses = 0;
                         $gagal = 0;
                         $errorLog = [];
+
                         foreach ($data['mahasiswa_ids'] as $id) {
                             try {
-                                $service->plot($id, $this->getOwnerRecord()->id, $data['tanggal_masuk']);
+                                $service->plot(
+                                    $id,
+                                    $this->getOwnerRecord()->id,
+                                    $data['tanggal_masuk']
+                                );
+
                                 $sukses++;
                             } catch (\Exception $e) {
                                 $gagal++;
-                                Log::error("Plotting Error: " . $e->getMessage());
+
+                                Log::error('Plotting Error: ' . $e->getMessage());
+
                                 $errorLog[] = $e->getMessage();
                             }
                         }
+
                         Notification::make()
-                            ->title($gagal == 0 ? 'Berhasil' : 'Selesai dengan Catatan')
-                            ->body("Sukses: $sukses, Gagal: $gagal. " . ($gagal > 0 ? "Pesan error: " . implode(', ', array_unique($errorLog)) : ""))
-                            ->status($gagal == 0 ? 'success' : 'warning')
+                            ->title($gagal === 0 ? 'Berhasil' : 'Selesai dengan Catatan')
+                            ->body(
+                                "Sukses: {$sukses}, Gagal: {$gagal}." .
+                                    ($gagal > 0
+                                        ? ' Pesan error: ' . implode(', ', array_unique($errorLog))
+                                        : '')
+                            )
+                            ->status($gagal === 0 ? 'success' : 'warning')
                             ->send();
-                    }),
+                    })
             ])
             ->recordActions([
                 Action::make('mutasi')
