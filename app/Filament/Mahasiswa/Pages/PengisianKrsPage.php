@@ -209,11 +209,7 @@ class PengisianKrsPage extends Page implements HasForms
                 ->sum('master_mata_kuliahs.sks_default');
         }
 
-        // Estimasi Semester Mahasiswa (misal dihitung dari Tahun Masuk vs Tahun Aktif)
-        // $tahunAngkatan = $this->mahasiswa->angkatan_id ?? date('Y');
-        // $tahunSekarang = substr($this->activeTa->kode_tahun, 0, 4);
-        // $semesterMhs = (($tahunSekarang - $tahunAngkatan) * 2) + ($this->activeTa->semester == 1 ? 1 : 2);
-        // $semesterMhs = $semesterMhs > 0 ? $semesterMhs : 1;
+
         $semesterMhs = $this->mahasiswa->semesterPada($this->activeTa);
         $modeKrs = $this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET';
 

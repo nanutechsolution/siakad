@@ -5,6 +5,7 @@ namespace App\Listeners\Pembayaran;
 use App\Events\PembayaranTerverifikasi;
 use App\Models\Mahasiswa;
 use App\Models\RefProdi;
+use App\Models\RefTahunAkademik;
 use App\Services\Pembayaran\PaymentPolicyChecker;
 use App\Settings\KampusSettings;
 use Illuminate\Support\Facades\DB;
@@ -92,9 +93,20 @@ class GenerateNimListener
             $prodi->kode_prodi_internal,
             $nextSeq
         );
+        $tahunAkademikMulai = \App\Models\RefTahunAkademik::query()
+            ->where('kode_tahun', $angkatanTahun . '1')
+            ->first();
 
-        // Update mahasiswa & counter prodi
-        $mahasiswa->update(['nim' => $nim]);
+        if (! $tahunAkademikMulai) {
+            throw new \RuntimeException(
+                "Tahun Akademik {$angkatanTahun}1 tidak ditemukan."
+            );
+        }
+
+        $mahasiswa->update([
+            'nim' => $nim,
+            'mulai_studi_tahun_akademik_id' => $tahunAkademikMulai->id,
+        ]);
         $prodi->update(['last_nim_seq' => $nextSeq]);
 
         return $nim;
