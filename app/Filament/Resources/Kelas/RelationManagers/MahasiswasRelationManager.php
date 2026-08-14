@@ -211,7 +211,10 @@ class MahasiswasRelationManager extends RelationManager
                                     )
                                     ->getSearchResultsUsing(function (string $search) {
 
+                                        $kelas = $this->getOwnerRecord();
                                         return Mahasiswa::query()
+                                            ->where('prodi_id', $kelas->prodi_id)
+                                            ->where('program_id', $kelas->program_id)
                                             ->whereDoesntHave(
                                                 'mahasiswaKelas',
                                                 fn($query) => $query
