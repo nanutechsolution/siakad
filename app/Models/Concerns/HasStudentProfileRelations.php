@@ -17,6 +17,7 @@ use App\Models\RefAngkatan;
 use App\Models\RefPerson;
 use App\Models\RefProdi;
 use App\Models\RefProgram;
+use App\Models\RefTahunAkademik;
 use App\Models\RiwayatProdiMahasiswa;
 use App\Models\RiwayatStatusMahasiswa;
 use App\Models\TagihanMahasiswa;
@@ -153,13 +154,6 @@ trait HasStudentProfileRelations
     {
         return $this->hasMany(RiwayatProdiMahasiswa::class, 'mahasiswa_id')
             ->orderByDesc('tanggal_berlaku');
-    }
-
-    public function riwayatStatus(): HasMany
-    {
-        return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id')
-            ->with('tahunAkademik')
-            ->orderByDesc('tahun_akademik_id');
     }
 
     /**
@@ -390,5 +384,20 @@ trait HasStudentProfileRelations
         };
     }
 
-    
+
+    public function mulaiStudiTahunAkademik(): BelongsTo
+    {
+        return $this->belongsTo(
+            RefTahunAkademik::class,
+            'mulai_studi_tahun_akademik_id'
+        );
+    }
+
+    public function riwayatStatus(): HasMany
+    {
+        return $this->hasMany(
+            RiwayatStatusMahasiswa::class,
+            'mahasiswa_id'
+        );
+    }
 }

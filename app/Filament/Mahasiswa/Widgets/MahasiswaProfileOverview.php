@@ -2,6 +2,7 @@
 
 namespace App\Filament\Mahasiswa\Widgets;
 
+use App\Domain\Akademik\Resolvers\MahasiswaAcademicResolver;
 use App\Enums\StatusKuliah;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
@@ -35,27 +36,33 @@ class MahasiswaProfileOverview extends StatsOverviewWidget
                     ->color('danger'),
             ];
         }
+        $academic = app(MahasiswaAcademicResolver::class, [
+            'mahasiswa' => $mahasiswa,
+        ]);
+        $activeTa = $academic->tahunAkademikAktif();
 
-        $activeTa = RefTahunAkademik::where('is_active', 1)->first();
+        $ipk = number_format(
+            $academic->ipk(),
+            2,
+            '.',
+            ''
+        );
 
-        // Ambil riwayat semester terakhir untuk IPK dan SKS
-        $riwayatTerakhir = DB::table('riwayat_status_mahasiswas')
-            ->where('mahasiswa_id', $mahasiswa->id)
-            ->orderBy('tahun_akademik_id', 'desc')
-            ->first();
+        $sksTotal = $academic->sksTotal();
 
-        $ipk = $riwayatTerakhir ? number_format((float) $riwayatTerakhir->ipk, 2, '.', '') : '0.00';
-        $sksTotal = $riwayatTerakhir ? (int) $riwayatTerakhir->sks_total : 0;
+        $semesterMhs = $academic->semesterBerjalan($activeTa);
 
-        $rawStatus = $riwayatTerakhir ? $riwayatTerakhir->status_kuliah : StatusKuliah::AKTIF->value;
-        $statusLabel = StatusKuliah::tryFrom($rawStatus)?->label() ?? 'Tidak Diketahui';
+        $statusKuliah = $academic->statusKuliah();
 
-        $statusColor = match ($rawStatus) {
-            StatusKuliah::AKTIF->value => 'success',
-            StatusKuliah::CUTI->value => 'warning',
+        $statusLabel = $academic->statusKuliahLabel();
+
+        $statusColor = match ($statusKuliah) {
+            StatusKuliah::AKTIF => 'success',
+            StatusKuliah::CUTI => 'warning',
+            StatusKuliah::LULUS => 'info',
+            null => 'gray',
             default => 'danger',
         };
-
         // Progress SKS kelulusan: berbasis kurikulum mahasiswa masing-masing,
         // bukan angka tetap, karena tiap kurikulum bisa beda syarat lulus.
         $sksLulusSyarat = (int) ($mahasiswa->kurikulum?->jumlah_sks_lulus ?? 144);
