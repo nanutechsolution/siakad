@@ -71,11 +71,20 @@ class MahasiswaProfileOverview extends StatsOverviewWidget
 
         // Estimasi Semester Berjalan (formula sama dengan PengisianKrsPage)
         $semesterMhs = null;
-        if ($activeTa && $activeTa->kode_tahun) {
-            $tahunAngkatan = (int) $mahasiswa->angkatan_id;
+        if ($activeTa && $mahasiswa->mulaiStudiTahunAkademik) {
+            $mulai = $mahasiswa->mulaiStudiTahunAkademik;
+
+            $tahunMulai = (int) substr($mulai->kode_tahun, 0, 4);
+            $semesterMulai = (int) substr($mulai->kode_tahun, 4, 1);
+
             $tahunSekarang = (int) substr($activeTa->kode_tahun, 0, 4);
-            $semesterMhs = (($tahunSekarang - $tahunAngkatan) * 2) + ($activeTa->semester == 1 ? 1 : 2);
-            $semesterMhs = $semesterMhs > 0 ? $semesterMhs : 1;
+            $semesterSekarang = (int) substr($activeTa->kode_tahun, 4, 1);
+
+            $semesterMhs = (($tahunSekarang - $tahunMulai) * 2)
+                + ($semesterSekarang - $semesterMulai)
+                + 1;
+
+            $semesterMhs = max($semesterMhs, 1);
         }
 
         // Status KRS semester berjalan
@@ -89,9 +98,9 @@ class MahasiswaProfileOverview extends StatsOverviewWidget
 
         $statusKrsRaw = $activeTa
             ? DB::table('krs')
-                ->where('mahasiswa_id', $mahasiswa->id)
-                ->where('tahun_akademik_id', $activeTa->id)
-                ->value('status_krs')
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->where('tahun_akademik_id', $activeTa->id)
+            ->value('status_krs')
             : null;
 
         [$krsLabel, $krsColor] = $statusKrsRaw
@@ -101,10 +110,10 @@ class MahasiswaProfileOverview extends StatsOverviewWidget
         // Status Keuangan semester berjalan
         $tagihanAktif = $activeTa
             ? DB::table('tagihan_mahasiswas')
-                ->where('mahasiswa_id', $mahasiswa->id)
-                ->where('tahun_akademik_id', $activeTa->id)
-                ->whereNull('deleted_at')
-                ->first()
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->where('tahun_akademik_id', $activeTa->id)
+            ->whereNull('deleted_at')
+            ->first()
             : null;
 
         if (!$tagihanAktif) {
