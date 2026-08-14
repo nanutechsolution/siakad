@@ -133,14 +133,12 @@ class TrxDosenForm
                                                         ->unique(ignoreRecord: true)
                                                         ->maxLength(10)
                                                         ->inputMode('numeric')
-                                                        ->rule('digits:10')
                                                         ->nullable(),
                                                     TextInput::make('nuptk')
                                                         ->label('NUPTK')
                                                         ->unique(ignoreRecord: true)
                                                         ->maxLength(16)
                                                         ->inputMode('numeric')
-                                                        ->rule('digits:16')
                                                         ->nullable(),
                                                     TextInput::make('asal_institusi')
                                                         ->label('Asal Institusi')
