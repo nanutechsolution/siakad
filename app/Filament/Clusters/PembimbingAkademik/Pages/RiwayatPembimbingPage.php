@@ -205,7 +205,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         function (PembimbingAkademik $record): ?string {
                             if (! $record->kelas) {
                                 return $record->mahasiswa?->angkatan?->id_tahun
-                                    ? 'Kelas mahasiswa tidak tersimpan pada penugasan'
+                                    ? '-'
                                     : null;
                             }
 
