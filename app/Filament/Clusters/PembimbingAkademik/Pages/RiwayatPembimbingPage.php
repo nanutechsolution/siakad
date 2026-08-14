@@ -1093,22 +1093,22 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 /*
                 | Cetak SK
                 */
-                Action::make('cetakSk')
-                    ->label('Cetak SK')
-                    ->icon('heroicon-o-printer')
-                    ->color('gray')
-                    ->visible(
-                        fn(PembimbingAkademik $record): bool =>
-                        ! $record->trashed()
-                    )
-                    ->url(
-                        fn(PembimbingAkademik $record): string =>
-                        route(
-                            'pembimbing-akademik.sk',
-                            $record
-                        )
-                    )
-                    ->openUrlInNewTab(),
+                // Action::make('cetakSk')
+                //     ->label('Cetak SK')
+                //     ->icon('heroicon-o-printer')
+                //     ->color('gray')
+                //     ->visible(
+                //         fn(PembimbingAkademik $record): bool =>
+                //         ! $record->trashed()
+                //     )
+                //     ->url(
+                //         fn(PembimbingAkademik $record): string =>
+                //         route(
+                //             'pembimbing-akademik.sk',
+                //             $record
+                //         )
+                //     )
+                //     ->openUrlInNewTab(),
 
                 /*
                 | Pulihkan data
