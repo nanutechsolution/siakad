@@ -14,44 +14,60 @@ use Illuminate\Support\Facades\DB;
 class RiwayatStatusService
 {
     /**
-     * Sinkronkan satu semester mahasiswa.
+     * Sinkronkan status akademik mahasiswa untuk satu semester.
+     *
+     * Riwayat hanya dibuat jika terdapat nilai yang sudah dipublish.
      */
     public function sinkronkanSemester(
         string $mahasiswaId,
         int $tahunAkademikId,
     ): void {
-
         $detailsSemester = KrsDetail::query()
             ->whereHas('krs', function ($q) use ($mahasiswaId, $tahunAkademikId) {
                 $q->where('mahasiswa_id', $mahasiswaId)
                     ->where('tahun_akademik_id', $tahunAkademikId);
             })
             ->where('is_published', true)
-            ->get();
+            ->get([
+                'id',
+                'nilai_indeks',
+                'sks_snapshot',
+            ]);
 
+        /*
+         * Belum ada nilai published.
+         *
+         * Jangan membuat riwayat akademik dengan IPS/IPK = 0.
+         */
         if ($detailsSemester->isEmpty()) {
             return;
         }
 
-        $totalBobotSemester = 0;
+        /*
+         * ================================================================
+         * IPS SEMESTER
+         * ================================================================
+         */
+
+        $totalBobotSemester = 0.0;
         $totalSksSemester = 0;
 
         foreach ($detailsSemester as $detail) {
-            $totalBobotSemester +=
-                (float) $detail->nilai_indeks *
-                (int) $detail->sks_snapshot;
+            $sks = (int) $detail->sks_snapshot;
+            $indeks = (float) $detail->nilai_indeks;
 
-            $totalSksSemester += (int) $detail->sks_snapshot;
+            $totalBobotSemester += $indeks * $sks;
+            $totalSksSemester += $sks;
         }
 
         $ips = $totalSksSemester > 0
             ? round($totalBobotSemester / $totalSksSemester, 2)
-            : 0;
+            : 0.0;
 
         /*
-         |--------------------------------------------------------------------------
-         | Hitung IPK dari seluruh semester
-         |--------------------------------------------------------------------------
+         * ================================================================
+         * IPK KUMULATIF
+         * ================================================================
          */
 
         $semuaDetail = KrsDetail::query()
@@ -59,22 +75,32 @@ class RiwayatStatusService
                 $q->where('mahasiswa_id', $mahasiswaId);
             })
             ->where('is_published', true)
-            ->get();
+            ->get([
+                'id',
+                'nilai_indeks',
+                'sks_snapshot',
+            ]);
 
-        $totalBobot = 0;
+        $totalBobot = 0.0;
         $totalSks = 0;
 
         foreach ($semuaDetail as $detail) {
-            $totalBobot +=
-                (float) $detail->nilai_indeks *
-                (int) $detail->sks_snapshot;
+            $sks = (int) $detail->sks_snapshot;
+            $indeks = (float) $detail->nilai_indeks;
 
-            $totalSks += (int) $detail->sks_snapshot;
+            $totalBobot += $indeks * $sks;
+            $totalSks += $sks;
         }
 
         $ipk = $totalSks > 0
             ? round($totalBobot / $totalSks, 2)
-            : 0;
+            : 0.0;
+
+        /*
+         * ================================================================
+         * SIMPAN RIWAYAT
+         * ================================================================
+         */
 
         RiwayatStatusMahasiswa::updateOrCreate(
             [
@@ -92,16 +118,21 @@ class RiwayatStatusService
     }
 
     /**
-     * Hitung ulang seluruh semester mahasiswa.
+     * Hitung ulang seluruh semester mahasiswa
+     * berdasarkan KRS yang benar-benar memiliki nilai published.
      */
     public function sinkronkanMahasiswa(string $mahasiswaId): void
     {
         DB::transaction(function () use ($mahasiswaId) {
 
-            $semester = Krs::query()
-                ->where('mahasiswa_id', $mahasiswaId)
+            $semester = KrsDetail::query()
+                ->whereHas('krs', function ($q) use ($mahasiswaId) {
+                    $q->where('mahasiswa_id', $mahasiswaId);
+                })
+                ->where('is_published', true)
+                ->join('krs', 'krs.id', '=', 'krs_detail.krs_id')
                 ->distinct()
-                ->pluck('tahun_akademik_id');
+                ->pluck('krs.tahun_akademik_id');
 
             foreach ($semester as $tahunAkademikId) {
                 $this->sinkronkanSemester(
@@ -113,7 +144,7 @@ class RiwayatStatusService
     }
 
     /**
-     * Hitung ulang seluruh mahasiswa pada satu kelas.
+     * Hitung ulang seluruh mahasiswa pada satu kelas/jadwal.
      */
     public function sinkronkanKelas(JadwalKuliah $jadwal): void
     {

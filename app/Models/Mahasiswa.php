@@ -8,6 +8,7 @@ use App\Enums\StatusRisikoAkademikEnum;
 use App\Models\Concerns\HasStudentProfileRelations;
 use App\Models\Concerns\VisibleToUser;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Casts\Attribute;
 use Illuminate\Database\Eloquent\Concerns\HasUuids;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -232,29 +233,27 @@ class Mahasiswa extends Model implements HasScopeStrategy
             (int) $mulaiStudi->kode_tahun;
     }
 
-    public function statusRisiko(): StatusRisikoAkademikEnum
+    public function statusRisiko(): Attribute
     {
-        $riwayat = $this->riwayatStatus;
+        return Attribute::get(function (): StatusRisikoAkademikEnum {
+            $terakhir = $this->statusTerakhir;
 
-        $terakhir = $riwayat->first();
+            if (! $terakhir) {
+                return StatusRisikoAkademikEnum::BELUM_ADA_DATA;
+            }
 
-        if (! $terakhir) {
-            return StatusRisikoAkademikEnum::BELUM_ADA_DATA;
-        }
+            if (
+                (float) $terakhir->sks_total === 0.0 &&
+                (float) $terakhir->ipk === 0.0
+            ) {
+                return StatusRisikoAkademikEnum::BELUM_ADA_DATA;
+            }
 
-        if ((float) $terakhir->ipk < 2.00) {
-            return StatusRisikoAkademikEnum::KRITIS;
-        }
+            if ((float) $terakhir->ipk < 2.00) {
+                return StatusRisikoAkademikEnum::KRITIS;
+            }
 
-        $duaTerakhir = $riwayat->take(2)->values();
-
-        if (
-            $duaTerakhir->count() === 2 &&
-            (float) $duaTerakhir[0]->ips < (float) $duaTerakhir[1]->ips
-        ) {
-            return StatusRisikoAkademikEnum::WASPADA;
-        }
-
-        return StatusRisikoAkademikEnum::AMAN;
+            return StatusRisikoAkademikEnum::AMAN;
+        });
     }
 }
