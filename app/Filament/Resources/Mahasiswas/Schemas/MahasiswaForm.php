@@ -153,7 +153,18 @@ class MahasiswaForm
                                                             ->searchable()
                                                             ->preload()
                                                             ->required(),
-
+                                                        Select::make('mulai_studi_tahun_akademik_id')
+                                                            ->label('Mulai Studi')
+                                                            ->relationship(
+                                                                'mulaiStudiTahunAkademik',
+                                                                'nama_tahun'
+                                                            )
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->required()
+                                                            ->helperText(
+                                                                'Tahun akademik pertama mahasiswa resmi mulai mengikuti studi.'
+                                                            ),
                                                         Select::make('program_id')
                                                             ->label('Program Kelas')
                                                             ->relationship('program', 'nama_program')

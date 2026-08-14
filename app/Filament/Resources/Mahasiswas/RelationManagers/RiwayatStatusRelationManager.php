@@ -7,7 +7,6 @@ use App\Enums\StatusKuliah;
 use App\Models\RiwayatStatusMahasiswa;
 use App\Services\Pdf\PdfService;
 use Filament\Actions\Action;
-use Filament\Actions\AssociateAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\CreateAction;
 use Filament\Actions\DeleteAction;
@@ -44,10 +43,21 @@ class RiwayatStatusRelationManager extends RelationManager
                         'unique' => 'Riwayat untuk Tahun Akademik ini sudah ada.',
                     ]),
 
-                Select::make('status_kuliah')
-                    ->label('Status Kuliah')
-                    ->options(collect(StatusKuliah::cases())->mapWithKeys(fn($enum) => [$enum->value => $enum->label()]))
-                    ->required(),
+                TextInput::make('nomor_sk')
+                    ->label('Nomor SK')
+                    ->maxLength(255)
+                    ->required(fn(callable $get): bool => in_array(
+                        $get('status_kuliah'),
+                        [
+                            StatusKuliah::CUTI->value,
+                            StatusKuliah::DROP_OUT->value,
+                            StatusKuliah::LULUS->value,
+                            StatusKuliah::KELUAR->value,
+                        ],
+                        true
+                    ))
+                    ->helperText('Wajib diisi untuk status Cuti, Lulus, Drop Out, atau Keluar.')
+                    ->columnSpanFull(),
 
                 TextInput::make('ips')
                     ->label('IPS (Indeks Prestasi Semester)')
