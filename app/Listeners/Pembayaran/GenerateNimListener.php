@@ -5,7 +5,6 @@ namespace App\Listeners\Pembayaran;
 use App\Events\PembayaranTerverifikasi;
 use App\Models\Mahasiswa;
 use App\Models\RefProdi;
-use App\Models\RefTahunAkademik;
 use App\Services\Pembayaran\PaymentPolicyChecker;
 use App\Settings\KampusSettings;
 use Illuminate\Support\Facades\DB;
