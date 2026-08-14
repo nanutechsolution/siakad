@@ -125,6 +125,7 @@ class AppServiceProvider extends ServiceProvider
             'tagihan_nonReguler' => \App\Models\TagihanNonReguler::class,
             'tagihan_nonReguler_detail' => \App\Models\TagihanNonRegulerDetail::class,
             'tagihan_mahasiswa_detail' => \App\Models\TagihanMahasiswaDetail::class,
+            'ref_gelar' => \App\Models\RefGelar::class,
         ]);
     }
 }
