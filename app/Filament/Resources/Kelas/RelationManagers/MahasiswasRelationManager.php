@@ -112,19 +112,42 @@ class MahasiswasRelationManager extends RelationManager
                             ->searchable()
                             ->required()
                             ->getSearchResultsUsing(function (string $search) {
-                                $kelas = $this->getOwnerRecord();
                                 return Mahasiswa::query()
-                                    ->where('angkatan_id', $kelas->angkatan_id) // Filter Angkatan
-                                    ->whereDoesntHave('mahasiswaKelas', fn($q) => $q->whereNull('tanggal_keluar'))
-                                    ->where(fn($q) => $q->whereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%"))
-                                        ->orWhere('nim', 'like', "%{$search}%"))
+                                    ->whereDoesntHave(
+                                        'mahasiswaKelas',
+                                        fn($q) => $q->whereNull('tanggal_keluar')
+                                    )
+                                    ->where(function ($q) use ($search) {
+                                        $q->whereHas(
+                                            'person',
+                                            fn($p) =>
+                                            $p->where(
+                                                'nama_lengkap',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                        )
+                                            ->orWhere('nim', 'like', "%{$search}%");
+                                    })
+                                    ->with('person')
                                     ->limit(30)
-                                    ->pluck('nim', 'id')
-                                    ->map(fn($nim, $id) => $nim . ' - ' . Mahasiswa::find($id)->person->nama_lengkap);
+                                    ->get()
+                                    ->mapWithKeys(fn($m) => [
+                                        $m->id =>
+                                        "{$m->nim} - {$m->person->nama_lengkap} [Angkatan {$m->angkatan_id}]",
+                                    ])
+                                    ->toArray();
                             })
-                            ->getOptionLabelsUsing(fn(array $values): array =>
-                            Mahasiswa::whereIn('id', $values)->with('person')->get()
-                                ->mapWithKeys(fn($m) => [$m->id => "{$m->nim} - {$m->person->nama_lengkap}"])->toArray()),
+                            ->getOptionLabelsUsing(
+                                fn(array $values): array =>
+                                Mahasiswa::whereIn('id', $values)
+                                    ->with('person')
+                                    ->get()
+                                    ->mapWithKeys(fn($m) => [
+                                        $m->id => "{$m->nim} - {$m->person->nama_lengkap} [Angkatan {$m->angkatan_id}]",
+                                    ])
+                                    ->toArray()
+                            ),
                         DatePicker::make('tanggal_masuk')->default(now())->required(),
                     ])
                     ->action(function (array $data, MahasiswaPlottingService $service) {
@@ -154,11 +177,19 @@ class MahasiswasRelationManager extends RelationManager
                     ->visible(fn($record) => $record->tanggal_keluar === null)
                     ->schema([
                         Select::make('target_kelas_id')
+                            ->label('Kelas Tujuan')
                             ->options(fn() => \App\Models\Kelas::query()
                                 ->where('id', '!=', $this->getOwnerRecord()->id)
                                 ->where('prodi_id', $this->getOwnerRecord()->prodi_id)
-                                ->where('angkatan_id', $this->getOwnerRecord()->angkatan_id)
-                                ->pluck('nama_kelas', 'id'))
+                                ->where('program_id', $this->getOwnerRecord()->program_id)
+                                ->orderBy('angkatan_id')
+                                ->orderBy('nama_kelas')
+                                ->get()
+                                ->mapWithKeys(fn($kelas) => [
+                                    $kelas->id => "{$kelas->nama_kelas} — Angkatan {$kelas->angkatan_id}",
+                                ])
+                                ->toArray())
+                            ->searchable()
                             ->required(),
                         DatePicker::make('tanggal_mutasi')->default(now())->required(),
                     ])

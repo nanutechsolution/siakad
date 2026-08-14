@@ -18,9 +18,9 @@ class MahasiswaPlottingService
         return DB::transaction(function () use ($mahasiswaId, $kelasId, $tanggalMasuk) {
             $mahasiswa = Mahasiswa::findOrFail($mahasiswaId);
             $kelas = Kelas::findOrFail($kelasId);
-            if ($mahasiswa->angkatan_id !== $kelas->angkatan_id) {
-                throw new \InvalidArgumentException("Mahasiswa angkatan {$mahasiswa->angkatan_id} tidak dapat dimasukkan ke kelas angkatan {$kelas->angkatan_id}.");
-            }
+            // if ($mahasiswa->angkatan_id !== $kelas->angkatan_id) {
+            //     throw new \InvalidArgumentException("Mahasiswa angkatan {$mahasiswa->angkatan_id} tidak dapat dimasukkan ke kelas angkatan {$kelas->angkatan_id}.");
+            // }
             // 1. Validasi Prodi dan Program harus SAMA!
             if ($mahasiswa->prodi_id !== $kelas->prodi_id || $mahasiswa->program_id !== $kelas->program_id) {
                 throw new \InvalidArgumentException('Prodi atau Program Kelas tidak sesuai dengan data Mahasiswa.');

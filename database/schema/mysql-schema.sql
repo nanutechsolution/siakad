@@ -19,8 +19,8 @@ CREATE TABLE `academic_history_logs` (
   PRIMARY KEY (`id`),
   KEY `idx_mhs_ta` (`mahasiswa_id`,`tahun_akademik_id`),
   KEY `academic_history_logs_tahun_akademik_id_foreign` (`tahun_akademik_id`),
-  CONSTRAINT `academic_history_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `academic_history_logs_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE CASCADE
+  CONSTRAINT `academic_history_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `academic_history_logs_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `activity_log`;
@@ -92,7 +92,7 @@ CREATE TABLE `akademik_grade_revision_logs` (
   KEY `akademik_grade_revision_logs_krs_detail_id_foreign` (`krs_detail_id`),
   KEY `akademik_grade_revision_logs_executed_by_foreign` (`executed_by`),
   CONSTRAINT `akademik_grade_revision_logs_executed_by_foreign` FOREIGN KEY (`executed_by`) REFERENCES `users` (`id`),
-  CONSTRAINT `akademik_grade_revision_logs_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE CASCADE
+  CONSTRAINT `akademik_grade_revision_logs_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `akademik_transkrip`;
@@ -115,7 +115,7 @@ CREATE TABLE `akademik_transkrip` (
   KEY `akademik_transkrip_mata_kuliah_id_foreign` (`mata_kuliah_id`),
   KEY `akademik_transkrip_krs_detail_id_foreign` (`krs_detail_id`),
   CONSTRAINT `akademik_transkrip_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `akademik_transkrip_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `akademik_transkrip_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `akademik_transkrip_mata_kuliah_id_foreign` FOREIGN KEY (`mata_kuliah_id`) REFERENCES `master_mata_kuliahs` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -363,6 +363,7 @@ CREATE TABLE `generator_batches` (
   `created_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `generator_batches_created_by_foreign` (`created_by`),
   KEY `generator_batches_tahun_akademik_id_status_index` (`tahun_akademik_id`,`status`),
@@ -387,7 +388,7 @@ CREATE TABLE `generator_logs` (
   KEY `generator_logs_mahasiswa_id_created_at_index` (`mahasiswa_id`,`created_at`),
   KEY `generator_logs_status_index` (`status`),
   CONSTRAINT `generator_logs_generator_batch_id_foreign` FOREIGN KEY (`generator_batch_id`) REFERENCES `generator_batches` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `generator_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
+  CONSTRAINT `generator_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `imports`;
@@ -451,7 +452,7 @@ CREATE TABLE `jadwal_kuliah` (
   KEY `jadwal_kuliah_mata_kuliah_id_foreign` (`mata_kuliah_id`),
   KEY `jadwal_kuliah_kelas_id_foreign` (`kelas_id`),
   KEY `jadwal_kuliah_ruang_id_foreign` (`ruang_id`),
-  CONSTRAINT `jadwal_kuliah_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_kuliah_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `jadwal_kuliah_kurikulum_id_foreign` FOREIGN KEY (`kurikulum_id`) REFERENCES `master_kurikulums` (`id`) ON DELETE SET NULL,
   CONSTRAINT `jadwal_kuliah_mata_kuliah_id_foreign` FOREIGN KEY (`mata_kuliah_id`) REFERENCES `master_mata_kuliahs` (`id`),
   CONSTRAINT `jadwal_kuliah_ruang_id_foreign` FOREIGN KEY (`ruang_id`) REFERENCES `ref_ruang` (`id`),
@@ -474,7 +475,7 @@ CREATE TABLE `jadwal_kuliah_dosen` (
   KEY `jadwal_kuliah_dosen_jadwal_kuliah_id_foreign` (`jadwal_kuliah_id`),
   KEY `jadwal_kuliah_dosen_dosen_id_foreign` (`dosen_id`),
   CONSTRAINT `jadwal_kuliah_dosen_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `jadwal_kuliah_dosen_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE CASCADE
+  CONSTRAINT `jadwal_kuliah_dosen_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `jadwal_ujian_pengawas`;
@@ -511,7 +512,7 @@ CREATE TABLE `jadwal_ujian_pesertas` (
   UNIQUE KEY `jup_ujian_krsd_unique` (`jadwal_ujian_id`,`krs_detail_id`),
   KEY `jadwal_ujian_pesertas_krs_detail_id_foreign` (`krs_detail_id`),
   CONSTRAINT `jadwal_ujian_pesertas_jadwal_ujian_id_foreign` FOREIGN KEY (`jadwal_ujian_id`) REFERENCES `jadwal_ujians` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `jadwal_ujian_pesertas_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE CASCADE
+  CONSTRAINT `jadwal_ujian_pesertas_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `jadwal_ujians`;
@@ -532,7 +533,7 @@ CREATE TABLE `jadwal_ujians` (
   PRIMARY KEY (`id`),
   KEY `jadwal_ujians_jadwal_kuliah_id_foreign` (`jadwal_kuliah_id`),
   KEY `jadwal_ujians_ruang_id_foreign` (`ruang_id`),
-  CONSTRAINT `jadwal_ujians_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_ujians_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `jadwal_ujians_ruang_id_foreign` FOREIGN KEY (`ruang_id`) REFERENCES `ref_ruang` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -580,6 +581,7 @@ CREATE TABLE `kelas` (
   `kapasitas` int DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `uniq_kelas` (`nama_kelas`,`prodi_id`,`program_id`,`angkatan_id`),
   KEY `kelas_prodi_id_foreign` (`prodi_id`),
@@ -628,7 +630,7 @@ CREATE TABLE `keuangan_adjustments` (
   CONSTRAINT `keuangan_adjustments_diajukan_oleh_foreign` FOREIGN KEY (`diajukan_oleh`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `keuangan_adjustments_dibatalkan_oleh_foreign` FOREIGN KEY (`dibatalkan_oleh`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `keuangan_adjustments_disetujui_oleh_foreign` FOREIGN KEY (`disetujui_oleh`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `keuangan_adjustments_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_mahasiswas` (`id`) ON DELETE CASCADE
+  CONSTRAINT `keuangan_adjustments_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_mahasiswas` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `keuangan_beasiswa_details`;
@@ -724,7 +726,7 @@ CREATE TABLE `keuangan_mahasiswa_beasiswas` (
   KEY `keuangan_mahasiswa_beasiswas_tahun_akademik_mulai_id_foreign` (`tahun_akademik_mulai_id`),
   KEY `keuangan_mahasiswa_beasiswas_tahun_akademik_akhir_id_foreign` (`tahun_akademik_akhir_id`),
   CONSTRAINT `keuangan_mahasiswa_beasiswas_beasiswa_id_foreign` FOREIGN KEY (`beasiswa_id`) REFERENCES `keuangan_master_beasiswas` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `keuangan_mahasiswa_beasiswas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `keuangan_mahasiswa_beasiswas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `keuangan_mahasiswa_beasiswas_tahun_akademik_akhir_id_foreign` FOREIGN KEY (`tahun_akademik_akhir_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `keuangan_mahasiswa_beasiswas_tahun_akademik_mulai_id_foreign` FOREIGN KEY (`tahun_akademik_mulai_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -773,7 +775,7 @@ CREATE TABLE `keuangan_saldos` (
   `updated_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `keuangan_saldos_mahasiswa_id_foreign` (`mahasiswa_id`),
-  CONSTRAINT `keuangan_saldos_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
+  CONSTRAINT `keuangan_saldos_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `keuangan_skema_tarif`;
@@ -844,6 +846,7 @@ CREATE TABLE `krs` (
   `dispensasi_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `krs_mahasiswa_id_tahun_akademik_id_unique` (`mahasiswa_id`,`tahun_akademik_id`),
   KEY `krs_tahun_akademik_id_foreign` (`tahun_akademik_id`),
@@ -885,6 +888,7 @@ CREATE TABLE `krs_detail` (
   `is_locked` tinyint(1) NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `krs_detail_krs_id_jadwal_kuliah_id_unique` (`krs_id`,`jadwal_kuliah_id`),
   UNIQUE KEY `krs_detail_prevent_double_mk` (`krs_id`,`mata_kuliah_id`),
@@ -893,8 +897,8 @@ CREATE TABLE `krs_detail` (
   KEY `krs_detail_ekuivalensi_id_foreign` (`ekuivalensi_id`),
   CONSTRAINT `krs_detail_ekuivalensi_id_foreign` FOREIGN KEY (`ekuivalensi_id`) REFERENCES `akademik_ekuivalensi` (`id`) ON DELETE SET NULL,
   CONSTRAINT `krs_detail_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`),
-  CONSTRAINT `krs_detail_krs_id_foreign` FOREIGN KEY (`krs_id`) REFERENCES `krs` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `krs_detail_mata_kuliah_id_foreign` FOREIGN KEY (`mata_kuliah_id`) REFERENCES `master_mata_kuliahs` (`id`) ON DELETE SET NULL
+  CONSTRAINT `krs_detail_krs_id_foreign` FOREIGN KEY (`krs_id`) REFERENCES `krs` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `krs_detail_mata_kuliah_id_foreign` FOREIGN KEY (`mata_kuliah_id`) REFERENCES `master_mata_kuliahs` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `krs_detail_nilai`;
@@ -911,7 +915,7 @@ CREATE TABLE `krs_detail_nilai` (
   KEY `krs_detail_nilai_krs_detail_id_foreign` (`krs_detail_id`),
   KEY `krs_detail_nilai_komponen_id_foreign` (`komponen_id`),
   CONSTRAINT `krs_detail_nilai_komponen_id_foreign` FOREIGN KEY (`komponen_id`) REFERENCES `ref_komponen_nilai` (`id`),
-  CONSTRAINT `krs_detail_nilai_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE CASCADE
+  CONSTRAINT `krs_detail_nilai_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `krs_status_logs`;
@@ -1903,8 +1907,8 @@ CREATE TABLE `mahasiswa_kelas` (
   PRIMARY KEY (`id`),
   KEY `mahasiswa_kelas_mahasiswa_id_foreign` (`mahasiswa_id`),
   KEY `mahasiswa_kelas_kelas_id_foreign` (`kelas_id`),
-  CONSTRAINT `mahasiswa_kelas_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE CASCADE,
-  CONSTRAINT `mahasiswa_kelas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
+  CONSTRAINT `mahasiswa_kelas_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `mahasiswa_kelas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 /*!50003 SET @saved_cs_client      = @@character_set_client */ ;
@@ -1978,7 +1982,7 @@ CREATE TABLE `mahasiswas` (
   KEY `mahasiswas_id_pd_feeder_index` (`id_pd_feeder`),
   CONSTRAINT `mahasiswas_angkatan_id_foreign` FOREIGN KEY (`angkatan_id`) REFERENCES `ref_angkatan` (`id_tahun`),
   CONSTRAINT `mahasiswas_kurikulum_id_foreign` FOREIGN KEY (`kurikulum_id`) REFERENCES `master_kurikulums` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `mahasiswas_person_id_foreign` FOREIGN KEY (`person_id`) REFERENCES `ref_person` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `mahasiswas_person_id_foreign` FOREIGN KEY (`person_id`) REFERENCES `ref_person` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `mahasiswas_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `mahasiswas_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `ref_program` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2003,6 +2007,7 @@ CREATE TABLE `master_kurikulums` (
   `tgl_sk_kurikulum` date DEFAULT NULL,
   `id_kurikulum_feeder` varchar(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `master_kurikulums_prodi_id_foreign` (`prodi_id`),
   CONSTRAINT `master_kurikulums_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`)
@@ -2039,6 +2044,7 @@ CREATE TABLE `midtrans_gateway_logs` (
   `transaction_status` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `payload` json NOT NULL,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `midtrans_gateway_logs_order_id_index` (`order_id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2055,6 +2061,7 @@ CREATE TABLE `midtrans_transactions` (
   `nominal` decimal(19,2) NOT NULL,
   `snap_token` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `created_at` timestamp NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `midtrans_transactions_order_id_unique` (`order_id`),
   KEY `midtrans_transactions_tagihan_type_tagihan_id_index` (`tagihan_type`,`tagihan_id`),
@@ -2390,7 +2397,7 @@ CREATE TABLE `pembimbing_akademik` (
   KEY `pembimbing_akademik_dosen_id_status_index` (`dosen_id`,`status`),
   CONSTRAINT `pembimbing_akademik_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `pembimbing_akademik_deleted_by_foreign` FOREIGN KEY (`deleted_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `pembimbing_akademik_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `pembimbing_akademik_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `pembimbing_akademik_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `pembimbing_akademik_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `pembimbing_akademik_semester_mulai_id_foreign` FOREIGN KEY (`semester_mulai_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT,
@@ -2483,7 +2490,7 @@ CREATE TABLE `perkuliahan_absensi` (
   KEY `perkuliahan_absensi_perkuliahan_sesi_id_ip_address_index` (`perkuliahan_sesi_id`,`ip_address`),
   KEY `perkuliahan_absensi_perkuliahan_sesi_id_foreign` (`perkuliahan_sesi_id`),
   KEY `perkuliahan_absensi_status_kehadiran_index` (`status_kehadiran`),
-  CONSTRAINT `perkuliahan_absensi_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `perkuliahan_absensi_krs_detail_id_foreign` FOREIGN KEY (`krs_detail_id`) REFERENCES `krs_detail` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `perkuliahan_absensi_perkuliahan_sesi_id_foreign` FOREIGN KEY (`perkuliahan_sesi_id`) REFERENCES `perkuliahan_sesi` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2509,7 +2516,7 @@ CREATE TABLE `perkuliahan_sesi` (
   KEY `perkuliahan_sesi_jadwal_kuliah_id_pertemuan_ke_index` (`jadwal_kuliah_id`,`pertemuan_ke`),
   KEY `perkuliahan_sesi_token_sesi_index` (`token_sesi`),
   KEY `perkuliahan_sesi_status_sesi_index` (`status_sesi`),
-  CONSTRAINT `perkuliahan_sesi_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE CASCADE
+  CONSTRAINT `perkuliahan_sesi_jadwal_kuliah_id_foreign` FOREIGN KEY (`jadwal_kuliah_id`) REFERENCES `jadwal_kuliah` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `permissions`;
@@ -2861,6 +2868,7 @@ CREATE TABLE `ref_tahun_akademik` (
   `nilai_dipublish_at` timestamp NULL DEFAULT NULL,
   `semester_ditutup_at` timestamp NULL DEFAULT NULL,
   `ditutup_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `ref_tahun_akademik_kode_tahun_unique` (`kode_tahun`),
   KEY `ref_tahun_akademik_is_active_index` (`is_active`),
@@ -2891,7 +2899,7 @@ CREATE TABLE `riwayat_prodi_mahasiswas` (
   PRIMARY KEY (`id`),
   UNIQUE KEY `riwayat_prodi_mahasiswas_mahasiswa_id_is_active_unique` (`mahasiswa_id`,`is_active`),
   KEY `riwayat_prodi_mahasiswas_prodi_id_foreign` (`prodi_id`),
-  CONSTRAINT `riwayat_prodi_mahasiswas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `riwayat_prodi_mahasiswas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `riwayat_prodi_mahasiswas_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2914,7 +2922,7 @@ CREATE TABLE `riwayat_status_mahasiswas` (
   UNIQUE KEY `unique_status_per_semester` (`mahasiswa_id`,`tahun_akademik_id`),
   KEY `riwayat_status_mahasiswas_tahun_akademik_id_foreign` (`tahun_akademik_id`),
   KEY `riwayat_status_mahasiswas_status_kuliah_index` (`status_kuliah`),
-  CONSTRAINT `riwayat_status_mahasiswas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `riwayat_status_mahasiswas_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `riwayat_status_mahasiswas_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -2995,6 +3003,7 @@ CREATE TABLE `sinkronisasi_batches` (
   `created_by` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   KEY `sinkronisasi_batches_created_by_foreign` (`created_by`),
   KEY `sinkronisasi_batches_tahun_akademik_id_status_index` (`tahun_akademik_id`,`status`),
@@ -3020,7 +3029,7 @@ CREATE TABLE `sinkronisasi_logs` (
   KEY `sinkronisasi_logs_sinkronisasi_batch_id_status_index` (`sinkronisasi_batch_id`,`status`),
   KEY `sinkronisasi_logs_mahasiswa_id_created_at_index` (`mahasiswa_id`,`created_at`),
   KEY `sinkronisasi_logs_status_index` (`status`),
-  CONSTRAINT `sinkronisasi_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `sinkronisasi_logs_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `sinkronisasi_logs_sinkronisasi_batch_id_foreign` FOREIGN KEY (`sinkronisasi_batch_id`) REFERENCES `sinkronisasi_batches` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3053,7 +3062,7 @@ CREATE TABLE `sinkronisasi_review_items` (
   KEY `sinkronisasi_review_items_mahasiswa_id_status_index` (`mahasiswa_id`,`status`),
   CONSTRAINT `sinkronisasi_review_items_keuangan_adjustment_id_foreign` FOREIGN KEY (`keuangan_adjustment_id`) REFERENCES `keuangan_adjustments` (`id`) ON DELETE SET NULL,
   CONSTRAINT `sinkronisasi_review_items_komponen_biaya_id_foreign` FOREIGN KEY (`komponen_biaya_id`) REFERENCES `keuangan_komponen_biaya` (`id`),
-  CONSTRAINT `sinkronisasi_review_items_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `sinkronisasi_review_items_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `sinkronisasi_review_items_resolved_by_foreign` FOREIGN KEY (`resolved_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
   CONSTRAINT `sinkronisasi_review_items_sinkronisasi_batch_id_foreign` FOREIGN KEY (`sinkronisasi_batch_id`) REFERENCES `sinkronisasi_batches` (`id`) ON DELETE CASCADE,
   CONSTRAINT `sinkronisasi_review_items_tagihan_detail_id_foreign` FOREIGN KEY (`tagihan_detail_id`) REFERENCES `tagihan_mahasiswas_details` (`id`) ON DELETE CASCADE,
@@ -3108,7 +3117,7 @@ CREATE TABLE `tagihan_mahasiswas_details` (
   UNIQUE KEY `unik_tagihan_komponen` (`tagihan_id`,`komponen_biaya_id`),
   KEY `tagihan_mahasiswas_details_komponen_biaya_id_foreign` (`komponen_biaya_id`),
   CONSTRAINT `tagihan_mahasiswas_details_komponen_biaya_id_foreign` FOREIGN KEY (`komponen_biaya_id`) REFERENCES `keuangan_komponen_biaya` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `tagihan_mahasiswas_details_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_mahasiswas` (`id`) ON DELETE CASCADE
+  CONSTRAINT `tagihan_mahasiswas_details_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_mahasiswas` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `tagihan_non_reguler_details`;
@@ -3129,7 +3138,7 @@ CREATE TABLE `tagihan_non_reguler_details` (
   UNIQUE KEY `unik_tagihan_nr_komponen` (`tagihan_id`,`komponen_biaya_id`),
   KEY `tagihan_non_reguler_details_komponen_biaya_id_index` (`komponen_biaya_id`),
   CONSTRAINT `tagihan_non_reguler_details_komponen_biaya_id_foreign` FOREIGN KEY (`komponen_biaya_id`) REFERENCES `keuangan_komponen_biaya` (`id`) ON DELETE RESTRICT,
-  CONSTRAINT `tagihan_non_reguler_details_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_non_regulers` (`id`) ON DELETE CASCADE
+  CONSTRAINT `tagihan_non_reguler_details_tagihan_id_foreign` FOREIGN KEY (`tagihan_id`) REFERENCES `tagihan_non_regulers` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `tagihan_non_regulers`;
@@ -3156,7 +3165,7 @@ CREATE TABLE `tagihan_non_regulers` (
   KEY `tagihan_non_regulers_mahasiswa_id_status_bayar_index` (`mahasiswa_id`,`status_bayar`),
   KEY `tagihan_non_regulers_referensi_type_referensi_id_index` (`referensi_type`,`referensi_id`),
   CONSTRAINT `tagihan_non_regulers_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
-  CONSTRAINT `tagihan_non_regulers_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE CASCADE
+  CONSTRAINT `tagihan_non_regulers_mahasiswa_id_foreign` FOREIGN KEY (`mahasiswa_id`) REFERENCES `mahasiswas` (`id`) ON DELETE RESTRICT
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `trx_dosen`;
@@ -3181,7 +3190,7 @@ CREATE TABLE `trx_dosen` (
   KEY `trx_dosen_person_id_foreign` (`person_id`),
   KEY `trx_dosen_prodi_id_foreign` (`prodi_id`),
   KEY `idx_dosen_nidn` (`nidn`),
-  CONSTRAINT `trx_dosen_person_id_foreign` FOREIGN KEY (`person_id`) REFERENCES `ref_person` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `trx_dosen_person_id_foreign` FOREIGN KEY (`person_id`) REFERENCES `ref_person` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `trx_dosen_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
@@ -3553,3 +3562,12 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (265,'2026_07_16_00
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (266,'2026_08_03_204039_drop_kelas_dosen_wali_table',21);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (267,'2026_08_06_095815_add_status_state_machine_to_ref_tahun_akademik',21);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (268,'2026_08_13_125914_add_unique_person_id_to_trx_dosen_table',22);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (269,'2026_08_13_132631_break_ref_person_cascade_chain',23);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (270,'2026_08_13_132902_protect_mahasiswa_children_tables',24);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (271,'2026_08_13_133009_protect_krs_grade_and_attendance_chain',25);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (272,'2026_08_13_133117_protect_kelas_and_schedule_chain',26);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (273,'2026_08_13_133212_symmetrize_pembimbing_akademik_dosen_rule',27);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (274,'2026_08_13_133325_protect_krs_detail_mata_kuliah_reference',28);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (275,'2026_08_13_133419__add_soft_deletes_to_master_data',29);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (276,'2026_08_13_133858_protect_keuangan_and_payment_gateway_chain',30);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (277,'2026_08_13_134221_protect_jadwal_kuliah_dosen',31);
