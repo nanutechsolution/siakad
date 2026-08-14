@@ -117,25 +117,30 @@ class MahasiswasRelationManager extends RelationManager
                     )
                     ->modalWidth('2xl')
                     ->schema([
-                        TextEntry::make('kelas_tujuan')
+                        TextEntry::make('kelas_info')
                             ->label('Kelas Tujuan')
                             ->state(function () {
                                 $kelas = $this->getOwnerRecord();
 
-                                return new HtmlString(
-                                    '<div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-900">' .
-                                        '<div class="text-base font-semibold text-gray-950 dark:text-white">' .
-                                        e($kelas->nama_kelas) .
-                                        '</div>' .
-                                        '<div class="mt-1 text-sm text-gray-500">' .
-                                        'Angkatan ' . e($kelas->angkatan_id) .
-                                        ' · Prodi ID ' . e($kelas->prodi_id) .
-                                        ' · Program ID ' . e($kelas->program_id) .
-                                        '</div>' .
-                                        '</div>'
-                                );
+                                return "{$kelas->nama_kelas} — Angkatan {$kelas->angkatan_id}";
+                            })
+                            ->weight('bold'),
+
+                        TextEntry::make('kelas_prodi')
+                            ->label('Program Studi')
+                            ->state(function () {
+                                return $this->getOwnerRecord()
+                                    ->prodi
+                                    ->nama_prodi ?? '-';
                             }),
 
+                        TextEntry::make('kelas_program')
+                            ->label('Program')
+                            ->state(function () {
+                                return $this->getOwnerRecord()
+                                    ->program
+                                    ->nama_program ?? '-';
+                            }),
                         Select::make('mahasiswa_ids')
                             ->label('Mahasiswa')
                             ->helperText(
