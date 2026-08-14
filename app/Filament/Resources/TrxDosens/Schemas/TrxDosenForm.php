@@ -168,22 +168,82 @@ class TrxDosenForm
                                         Section::make('Gelar Akademik')
                                             ->description('Urutan menentukan tampilan gelar di depan/belakang nama.')
                                             ->icon('heroicon-o-star')
-                                            // REMOVED: ->relationship('person.gelars') 
                                             ->schema([
-                                                // CHANGED: Use the actual relationship name from TrxDosen
                                                 Repeater::make('atribusiGelar')
                                                     ->relationship()
                                                     ->schema([
                                                         Select::make('gelar_id')
                                                             ->label('Gelar')
                                                             ->relationship('gelar', 'nama')
-                                                            ->getOptionLabelFromRecordUsing(
-                                                                fn(RefGelar $record): string =>
-                                                                "{$record->kode} — {$record->nama} (" . (is_object($record->jenjang) ? $record->jenjang->value : $record->jenjang) . ")"
-                                                            )
                                                             ->searchable(['kode', 'nama'])
                                                             ->preload()
-                                                            ->required(),
+                                                            ->native(false)
+                                                            ->required()
+                                                            ->getOptionLabelFromRecordUsing(
+                                                                fn(RefGelar $record): string =>
+                                                                "{$record->kode} — {$record->nama} ({$record->jenjang})"
+                                                            )
+
+                                                            // ==============================
+                                                            // TAMBAH GELAR BARU
+                                                            // ==============================
+                                                            ->createOptionModalHeading('Tambah Gelar Baru')
+                                                            ->createOptionModalDescription(
+                                                                'Tambahkan master gelar akademik/profesi yang belum tersedia.'
+                                                            )
+                                                            ->createOptionForm([
+                                                                Grid::make(2)
+                                                                    ->schema([
+                                                                        TextInput::make('kode')
+                                                                            ->label('Kode Gelar')
+                                                                            ->placeholder('Contoh: S.Kom.')
+                                                                            ->required()
+                                                                            ->maxLength(10)
+                                                                            ->unique(
+                                                                                table: 'ref_gelar',
+                                                                                column: 'kode'
+                                                                            ),
+
+                                                                        Select::make('posisi')
+                                                                            ->label('Posisi')
+                                                                            ->options([
+                                                                                'DEPAN' => 'Gelar Depan',
+                                                                                'BELAKANG' => 'Gelar Belakang',
+                                                                            ])
+                                                                            ->default('BELAKANG')
+                                                                            ->required()
+                                                                            ->native(false),
+
+                                                                        TextInput::make('nama')
+                                                                            ->label('Nama Gelar')
+                                                                            ->placeholder('Contoh: Sarjana Komputer')
+                                                                            ->required()
+                                                                            ->maxLength(255)
+                                                                            ->columnSpanFull(),
+
+                                                                        Select::make('jenjang')
+                                                                            ->label('Jenjang')
+                                                                            ->options([
+                                                                                'D3' => 'Diploma 3 (D3)',
+                                                                                'D4' => 'Sarjana Terapan (D4)',
+                                                                                'S1' => 'Sarjana (S1)',
+                                                                                'S2' => 'Magister (S2)',
+                                                                                'S3' => 'Doktor (S3)',
+                                                                                'PROFESI' => 'Profesi',
+                                                                            ])
+                                                                            ->required()
+                                                                            ->native(false),
+                                                                    ]),
+                                                            ])
+                                                            ->createOptionUsing(function (array $data): int {
+                                                                return RefGelar::create($data)->getKey();
+                                                            })
+                                                            ->createOptionAction(
+                                                                fn($action) => $action
+                                                                    ->label('Tambah Gelar')
+                                                                    ->icon('heroicon-o-plus')
+                                                                    ->modalWidth('lg')
+                                                            ),
                                                         TextInput::make('urutan')
                                                             ->numeric()
                                                             ->default(1)
