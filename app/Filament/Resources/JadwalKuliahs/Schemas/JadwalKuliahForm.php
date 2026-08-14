@@ -82,7 +82,14 @@ class JadwalKuliahForm
                                         )->orderBy('angkatan_id', 'desc')->orderBy('nama_kelas');
                                     }
                                 )
-                                ->getOptionLabelFromRecordUsing(fn(Kelas $record) => "{$record->nama_kelas} — Angkatan {$record->angkatan_id}")
+                                ->getOptionLabelFromRecordUsing(
+                                    fn(Kelas $record): string => sprintf(
+                                        '%s — %s — Angkatan %s',
+                                        $record->nama_kelas,
+                                        $record->prodi?->kode_prodi_internal ?? 'Tanpa Kode Prodi',
+                                        $record->angkatan_id,
+                                    )
+                                )
                                 ->required()
                                 ->searchable()
                                 ->preload()
