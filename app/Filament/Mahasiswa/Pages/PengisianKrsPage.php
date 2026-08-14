@@ -39,8 +39,6 @@ class PengisianKrsPage extends Page implements HasForms
     public ?int $activeKelasId = null;
     public function mount(): void
     {
-
-
         $this->mahasiswa = Mahasiswa::where('person_id', Auth::user()->person_id)->first();
         $this->activeTa = RefTahunAkademik::where('is_active', 1)->first();
 
@@ -212,11 +210,11 @@ class PengisianKrsPage extends Page implements HasForms
         }
 
         // Estimasi Semester Mahasiswa (misal dihitung dari Tahun Masuk vs Tahun Aktif)
-        $tahunAngkatan = $this->mahasiswa->angkatan_id ?? date('Y');
-        $tahunSekarang = substr($this->activeTa->kode_tahun, 0, 4);
-        $semesterMhs = (($tahunSekarang - $tahunAngkatan) * 2) + ($this->activeTa->semester == 1 ? 1 : 2);
-        $semesterMhs = $semesterMhs > 0 ? $semesterMhs : 1;
-
+        // $tahunAngkatan = $this->mahasiswa->angkatan_id ?? date('Y');
+        // $tahunSekarang = substr($this->activeTa->kode_tahun, 0, 4);
+        // $semesterMhs = (($tahunSekarang - $tahunAngkatan) * 2) + ($this->activeTa->semester == 1 ? 1 : 2);
+        // $semesterMhs = $semesterMhs > 0 ? $semesterMhs : 1;
+        $semesterMhs = $this->mahasiswa->semesterPada($this->activeTa);
         $modeKrs = $this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET';
 
         if ($modeKrs === 'PAKET') {
@@ -317,7 +315,6 @@ class PengisianKrsPage extends Page implements HasForms
                 ->dosenWaliAktif($this->mahasiswa);
             $dosenWaliId = $pembimbingAkademik?->dosen_id;
 
-            $isPaket = ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
             $isPaket = ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
             // 1. Insert Header KRS (Tabel KRS menggunakan UUID di kolom id)
             DB::table('krs')->insert([

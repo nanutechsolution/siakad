@@ -586,6 +586,8 @@ CREATE TABLE `kelas` (
   UNIQUE KEY `uniq_kelas` (`nama_kelas`,`prodi_id`,`program_id`,`angkatan_id`),
   KEY `kelas_prodi_id_foreign` (`prodi_id`),
   KEY `kelas_program_id_foreign` (`program_id`),
+  KEY `kelas_angkatan_id_foreign` (`angkatan_id`),
+  CONSTRAINT `kelas_angkatan_id_foreign` FOREIGN KEY (`angkatan_id`) REFERENCES `ref_angkatan` (`id_tahun`) ON DELETE RESTRICT,
   CONSTRAINT `kelas_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`),
   CONSTRAINT `kelas_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `ref_program` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -1963,6 +1965,7 @@ CREATE TABLE `mahasiswas` (
   `person_id` bigint unsigned DEFAULT NULL,
   `nim` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `angkatan_id` int NOT NULL,
+  `mulai_studi_tahun_akademik_id` bigint unsigned DEFAULT NULL,
   `prodi_id` bigint unsigned NOT NULL,
   `program_id` bigint unsigned DEFAULT NULL,
   `kurikulum_id` bigint unsigned DEFAULT NULL,
@@ -1980,8 +1983,10 @@ CREATE TABLE `mahasiswas` (
   KEY `mahasiswas_program_id_foreign` (`program_id`),
   KEY `mahasiswas_kurikulum_id_foreign` (`kurikulum_id`),
   KEY `mahasiswas_id_pd_feeder_index` (`id_pd_feeder`),
+  KEY `mahasiswas_mulai_studi_tahun_akademik_id_foreign` (`mulai_studi_tahun_akademik_id`),
   CONSTRAINT `mahasiswas_angkatan_id_foreign` FOREIGN KEY (`angkatan_id`) REFERENCES `ref_angkatan` (`id_tahun`),
   CONSTRAINT `mahasiswas_kurikulum_id_foreign` FOREIGN KEY (`kurikulum_id`) REFERENCES `master_kurikulums` (`id`) ON DELETE RESTRICT,
+  CONSTRAINT `mahasiswas_mulai_studi_tahun_akademik_id_foreign` FOREIGN KEY (`mulai_studi_tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `mahasiswas_person_id_foreign` FOREIGN KEY (`person_id`) REFERENCES `ref_person` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `mahasiswas_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`) ON DELETE RESTRICT,
   CONSTRAINT `mahasiswas_program_id_foreign` FOREIGN KEY (`program_id`) REFERENCES `ref_program` (`id`) ON DELETE RESTRICT
@@ -3571,3 +3576,5 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (274,'2026_08_13_13
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (275,'2026_08_13_133419__add_soft_deletes_to_master_data',29);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (276,'2026_08_13_133858_protect_keuangan_and_payment_gateway_chain',30);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (277,'2026_08_13_134221_protect_jadwal_kuliah_dosen',31);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (278,'2026_08_14_204113_add_angkatan_foreign_key_to_kelas_table',32);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (279,'2026_08_14_220127_add_mulai_studi_tahun_akademik_id_to_mahasiswas_table',33);

@@ -140,30 +140,6 @@ class Mahasiswa extends Model implements HasScopeStrategy
             fn(Builder $q) => $q->whereNull('tanggal_keluar')
         );
     }
-    /**
-     * Status risiko akademik sederhana berdasar IPK terakhir & tren IPS.
-     * Sesuaikan ambang batas (2.00) dengan aturan akademik kampusmu.
-     */
-    public function statusRisiko(): StatusRisikoAkademikEnum
-    {
-        $riwayat = $this->riwayatStatus;
-        $terakhir = $riwayat->last();
-
-        if (! $terakhir) {
-            return StatusRisikoAkademikEnum::BELUM_ADA_DATA;
-        }
-
-        if ((float) $terakhir->ipk < 2.00) {
-            return  StatusRisikoAkademikEnum::KRITIS;
-        }
-
-        $duaTerakhir = $riwayat->slice(-2)->values();
-        if ($duaTerakhir->count() === 2 && (float) $duaTerakhir[1]->ips < (float) $duaTerakhir[0]->ips) {
-            return StatusRisikoAkademikEnum::WASPADA;
-        }
-
-        return StatusRisikoAkademikEnum::AMAN;
-    }
 
     /**
      * Cari akun User (login) milik mahasiswa ini via person_id.
@@ -192,12 +168,6 @@ class Mahasiswa extends Model implements HasScopeStrategy
         );
     }
 
-    /** Riwayat IPS/IPK per semester (sumber resmi untuk KHS & Transkrip). */
-    public function riwayatStatus(): HasMany
-    {
-        return $this->hasMany(RiwayatStatusMahasiswa::class, 'mahasiswa_id');
-    }
-
     /** Nilai final per mata kuliah (sumber resmi untuk Transkrip Sementara). */
     public function transkrip(): HasMany
     {
@@ -213,5 +183,78 @@ class Mahasiswa extends Model implements HasScopeStrategy
     public function pembimbingAkademik()
     {
         return $this->hasMany(PembimbingAkademik::class, 'mahasiswa_id');
+    }
+
+    public function mulaiStudiTahunAkademik()
+    {
+        return $this->belongsTo(
+            RefTahunAkademik::class,
+            'mulai_studi_tahun_akademik_id'
+        );
+    }
+
+    public function semesterPada(RefTahunAkademik $tahunAkademik): ?int
+    {
+        $mulaiStudi = $this->mulaiStudiTahunAkademik;
+
+        if (! $mulaiStudi) {
+            throw new \LogicException(
+                "Mahasiswa {$this->nim} belum memiliki tahun akademik mulai studi."
+            );
+        }
+
+        $startYear = (int) substr($mulaiStudi->kode_tahun, 0, 4);
+        $startSemester = (int) $mulaiStudi->semester;
+
+        $currentYear = (int) substr($tahunAkademik->kode_tahun, 0, 4);
+        $currentSemester = (int) $tahunAkademik->semester;
+
+        $startIndex = ($startYear * 2) + ($startSemester - 1);
+        $currentIndex = ($currentYear * 2) + ($currentSemester - 1);
+
+        // Belum mulai studi pada periode ini.
+        if ($currentIndex < $startIndex) {
+            return null;
+        }
+
+        return $currentIndex - $startIndex + 1;
+    }
+
+    public function sudahMulaiStudiPada(RefTahunAkademik $tahunAkademik): bool
+    {
+        $mulaiStudi = $this->mulaiStudiTahunAkademik;
+
+        if (! $mulaiStudi) {
+            return false;
+        }
+
+        return (int) $tahunAkademik->kode_tahun >=
+            (int) $mulaiStudi->kode_tahun;
+    }
+
+    public function statusRisiko(): StatusRisikoAkademikEnum
+    {
+        $riwayat = $this->riwayatStatus;
+
+        $terakhir = $riwayat->first();
+
+        if (! $terakhir) {
+            return StatusRisikoAkademikEnum::BELUM_ADA_DATA;
+        }
+
+        if ((float) $terakhir->ipk < 2.00) {
+            return StatusRisikoAkademikEnum::KRITIS;
+        }
+
+        $duaTerakhir = $riwayat->take(2)->values();
+
+        if (
+            $duaTerakhir->count() === 2 &&
+            (float) $duaTerakhir[0]->ips < (float) $duaTerakhir[1]->ips
+        ) {
+            return StatusRisikoAkademikEnum::WASPADA;
+        }
+
+        return StatusRisikoAkademikEnum::AMAN;
     }
 }
