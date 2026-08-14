@@ -169,6 +169,7 @@ class TrxDosenForm
                                             ->description('Urutan menentukan tampilan gelar di depan/belakang nama.')
                                             ->icon('heroicon-o-star')
                                             ->schema([
+                                                // CHANGED: Use the actual relationship name from TrxDosen
                                                 Repeater::make('atribusiGelar')
                                                     ->relationship()
                                                     ->schema([
@@ -184,13 +185,6 @@ class TrxDosenForm
                                                                 "{$record->kode} — {$record->nama} ({$record->jenjang})"
                                                             )
 
-                                                            // ==============================
-                                                            // TAMBAH GELAR BARU
-                                                            // ==============================
-                                                            ->createOptionModalHeading('Tambah Gelar Baru')
-                                                            ->createOptionModalDescription(
-                                                                'Tambahkan master gelar akademik/profesi yang belum tersedia.'
-                                                            )
                                                             ->createOptionForm([
                                                                 Grid::make(2)
                                                                     ->schema([
@@ -201,11 +195,11 @@ class TrxDosenForm
                                                                             ->maxLength(10)
                                                                             ->unique(
                                                                                 table: 'ref_gelar',
-                                                                                column: 'kode'
+                                                                                column: 'kode',
                                                                             ),
 
                                                                         Select::make('posisi')
-                                                                            ->label('Posisi')
+                                                                            ->label('Posisi Gelar')
                                                                             ->options([
                                                                                 'DEPAN' => 'Gelar Depan',
                                                                                 'BELAKANG' => 'Gelar Belakang',
@@ -235,14 +229,18 @@ class TrxDosenForm
                                                                             ->native(false),
                                                                     ]),
                                                             ])
+
                                                             ->createOptionUsing(function (array $data): int {
                                                                 return RefGelar::create($data)->getKey();
                                                             })
+
                                                             ->createOptionAction(
                                                                 fn($action) => $action
                                                                     ->label('Tambah Gelar')
                                                                     ->icon('heroicon-o-plus')
+                                                                    ->modalHeading('Tambah Gelar Baru')
                                                                     ->modalWidth('lg')
+                                                                    ->modalSubmitActionLabel('Simpan Gelar')
                                                             ),
                                                         TextInput::make('urutan')
                                                             ->numeric()
