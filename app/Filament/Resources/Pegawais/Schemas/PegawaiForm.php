@@ -20,19 +20,19 @@ class PegawaiForm
 
                 /*
                 |--------------------------------------------------------------------------
-                | 1. IDENTITAS UTAMA
+                | IDENTITAS
                 |--------------------------------------------------------------------------
                 */
 
                 Section::make('Identitas Pegawai')
                     ->description(
-                        'Hubungkan pegawai dengan data identitas yang sudah tersimpan di sistem.'
+                        'Gunakan data Person sebagai sumber identitas utama (SSOT).'
                     )
                     ->icon('heroicon-o-user-circle')
                     ->schema([
 
                         Select::make('person_id')
-                            ->label('Pilih Identitas Pegawai')
+                            ->label('Data Person')
                             ->relationship(
                                 name: 'person',
                                 titleAttribute: 'nama_lengkap',
@@ -41,47 +41,45 @@ class PegawaiForm
                                 'nama_lengkap',
                                 'nik',
                             ])
-                            ->searchDebounce(500)
+                            ->searchDebounce(400)
                             ->optionsLimit(30)
-                            ->preload()
                             ->native(false)
                             ->required()
-                            ->searchPrompt(
-                                'Cari berdasarkan nama atau NIK...'
-                            )
-                            ->searchingMessage(
-                                'Mencari data person...'
-                            )
-                            ->noSearchResultsMessage(
-                                'Person tidak ditemukan.'
-                            )
+                            ->preload()
+                            ->searchPrompt('Ketik nama atau NIK...')
+                            ->searchingMessage('Mencari person...')
+                            ->noSearchResultsMessage('Person tidak ditemukan.')
                             ->noOptionsMessage(
-                                'Belum ada data person yang tersedia.'
+                                'Belum ada data Person.'
                             )
                             ->getOptionLabelFromRecordUsing(
-                                fn($record): string =>
-                                $record->nama_lengkap
+                                fn($record): string => $record->nama_lengkap
                                     . (
-                                        $record->nik
-                                        ? ' — NIK: ' . $record->nik
+                                        filled($record->nik)
+                                        ? " — NIK {$record->nik}"
                                         : ''
                                     )
                             )
+                            ->prefixIcon('heroicon-o-user')
                             ->helperText(
-                                'Gunakan data Person sebagai sumber identitas utama (SSOT).'
+                                'Pilih Person yang sudah terdaftar. Jika belum ada, gunakan "Buat Person Baru".'
                             )
+                            ->createOptionModalHeading(
+                                'Buat Person Baru'
+                            )
+                            ->createOptionModalWidth('2xl')
                             ->createOptionForm([
 
-                                Section::make('Data Identitas Baru')
+                                Section::make('Identitas Dasar')
                                     ->description(
-                                        'Data ini akan disimpan ke master Person dan otomatis dipilih sebagai pegawai.'
+                                        'Isi sesuai KTP atau dokumen identitas resmi.'
                                     )
                                     ->schema([
 
                                         TextInput::make('nama_lengkap')
                                             ->label('Nama Lengkap')
                                             ->placeholder(
-                                                'Nama sesuai KTP / dokumen resmi'
+                                                'Nama sesuai dokumen resmi'
                                             )
                                             ->required()
                                             ->minLength(2)
@@ -91,9 +89,7 @@ class PegawaiForm
 
                                         TextInput::make('nik')
                                             ->label('NIK')
-                                            ->placeholder(
-                                                '16 digit NIK'
-                                            )
+                                            ->placeholder('16 digit NIK')
                                             ->numeric()
                                             ->length(16)
                                             ->unique(
@@ -111,7 +107,6 @@ class PegawaiForm
                                                 'P' => 'Perempuan',
                                             ])
                                             ->native(false)
-                                            ->required()
                                             ->prefixIcon(
                                                 'heroicon-o-user'
                                             ),
@@ -127,14 +122,14 @@ class PegawaiForm
 
                                         TextInput::make('tempat_lahir')
                                             ->label('Tempat Lahir')
-                                            ->placeholder('Contoh: Malang')
+                                            ->placeholder('Contoh: Waikabubak')
                                             ->maxLength(255)
                                             ->prefixIcon(
                                                 'heroicon-o-map-pin'
                                             ),
 
                                         TextInput::make('email')
-                                            ->label('Email Pribadi')
+                                            ->label('Email')
                                             ->placeholder('nama@email.com')
                                             ->email()
                                             ->maxLength(255)
@@ -157,16 +152,16 @@ class PegawaiForm
                                     ->columns([
                                         'default' => 1,
                                         'sm' => 2,
-                                        'lg' => 2,
                                     ]),
 
                             ])
+                            ->editOptionModalHeading(
+                                'Perbarui Data Person'
+                            )
+                            ->editOptionModalWidth('2xl')
                             ->editOptionForm([
 
-                                Section::make('Perbarui Data Identitas')
-                                    ->description(
-                                        'Perubahan akan memperbarui master Person.'
-                                    )
+                                Section::make('Perbarui Identitas')
                                     ->schema([
 
                                         TextInput::make('nama_lengkap')
@@ -208,7 +203,7 @@ class PegawaiForm
                                             ->maxLength(255),
 
                                         TextInput::make('email')
-                                            ->label('Email Pribadi')
+                                            ->label('Email')
                                             ->email()
                                             ->maxLength(255)
                                             ->autocomplete('email'),
@@ -223,7 +218,6 @@ class PegawaiForm
                                     ->columns([
                                         'default' => 1,
                                         'sm' => 2,
-                                        'lg' => 2,
                                     ]),
                             ])
                             ->columnSpanFull(),
@@ -232,13 +226,13 @@ class PegawaiForm
 
                 /*
                 |--------------------------------------------------------------------------
-                | 2. DATA KEPEGAWAIAN
+                | KEPEGAWAIAN
                 |--------------------------------------------------------------------------
                 */
 
                 Section::make('Data Kepegawaian')
                     ->description(
-                        'Informasi yang menentukan status pegawai di organisasi.'
+                        'Informasi status dan identitas kepegawaian.'
                     )
                     ->icon('heroicon-o-briefcase')
                     ->schema([
@@ -263,27 +257,31 @@ class PegawaiForm
                                         'heroicon-o-identification'
                                     )
                                     ->helperText(
-                                        'Opsional. Isi NIP resmi jika tersedia.'
+                                        'Opsional.'
                                     ),
 
                                 Select::make('jenis_pegawai')
                                     ->label('Jenis Pegawai')
                                     ->options(JenisPegawai::class)
                                     ->native(false)
-                                    ->required()
                                     ->searchable()
+                                    ->required()
                                     ->prefixIcon(
                                         'heroicon-o-briefcase'
                                     ),
 
                                 Toggle::make('is_active')
-                                    ->label('Pegawai Aktif')
+                                    ->label('Status Aktif')
                                     ->default(true)
+                                    ->live()
                                     ->onColor('success')
                                     ->offColor('danger')
-                                    ->onIcon('heroicon-o-check-circle')
-                                    ->offIcon('heroicon-o-x-circle')
-                                    ->inline(false)
+                                    ->onIcon(
+                                        'heroicon-o-check-circle'
+                                    )
+                                    ->offIcon(
+                                        'heroicon-o-x-circle'
+                                    )
                                     ->helperText(
                                         'Nonaktifkan jika pegawai sudah tidak aktif.'
                                     ),
@@ -294,40 +292,37 @@ class PegawaiForm
 
                 /*
                 |--------------------------------------------------------------------------
-                | 3. INFORMASI & PANDUAN
+                | INFORMASI
                 |--------------------------------------------------------------------------
                 */
 
-                Section::make('Panduan Pengisian')
-                    ->description(
-                        'Pastikan data identitas dan kepegawaian sesuai dokumen resmi.'
-                    )
+                Section::make('Catatan Pengisian')
                     ->icon('heroicon-o-information-circle')
                     ->schema([
 
                         Grid::make([
                             'default' => 1,
-                            'md' => 3,
+                            'sm' => 3,
                         ])
                             ->schema([
 
-                                Section::make('1. Identitas')
+                                Section::make('Identitas')
+                                    ->icon('heroicon-o-user')
                                     ->description(
-                                        'Pilih Person yang sudah ada atau buat Person baru.'
-                                    )
-                                    ->icon('heroicon-o-user'),
+                                        'Data nama, NIK, dan informasi personal berasal dari master Person.'
+                                    ),
 
-                                Section::make('2. Kepegawaian')
+                                Section::make('Kepegawaian')
+                                    ->icon('heroicon-o-briefcase')
                                     ->description(
-                                        'Isi NIP dan jenis/status kepegawaian.'
-                                    )
-                                    ->icon('heroicon-o-briefcase'),
+                                        'NIP dan jenis pegawai menentukan status kepegawaian.'
+                                    ),
 
-                                Section::make('3. Status')
+                                Section::make('Status')
+                                    ->icon('heroicon-o-check-circle')
                                     ->description(
-                                        'Pastikan status aktif sesuai kondisi pegawai.'
-                                    )
-                                    ->icon('heroicon-o-check-circle'),
+                                        'Gunakan status aktif/nonaktif tanpa menghapus histori pegawai.'
+                                    ),
 
                             ]),
 
@@ -335,8 +330,12 @@ class PegawaiForm
                     ->collapsible()
                     ->collapsed()
                     ->persistCollapsed()
-                    ->id('pegawai-form-guide'),
+                    ->columnSpanFull(),
 
+            ])
+            ->columns([
+                'default' => 1,
+                'lg' => 2,
             ]);
     }
 }
