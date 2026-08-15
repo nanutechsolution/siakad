@@ -7,6 +7,7 @@ use App\Enums\PembimbingAkademikStatus;
 use App\Exceptions\PembimbingAkademikException;
 use App\Exports\PembimbingAkademikExport;
 use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
+use App\Models\Kelas;
 use App\Models\PembimbingAkademik;
 use App\Models\RefAngkatan;
 use App\Models\RefProdi;
@@ -423,10 +424,38 @@ class MutasiPembimbingPage extends Page implements HasTable
              */
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
-                    ->relationship('kelas', 'nama_kelas')
+                    ->options(function () {
+                        return Kelas::query()
+                            ->with([
+                                'prodi',
+                            ])
+                            ->orderBy('nama_kelas')
+                            ->get()
+                            ->mapWithKeys(function (Kelas $kelas) {
+                                $label = $kelas->nama_kelas;
+
+                                $detail = collect([
+                                    $kelas->prodi?->nama_prodi,
+                                    $kelas->angkatan_id
+                                        ? 'Angkatan ' . $kelas->angkatan_id
+                                        : null,
+                                ])
+                                    ->filter()
+                                    ->implode(' • ');
+
+                                if ($detail !== '') {
+                                    $label .= ' — ' . $detail;
+                                }
+
+                                return [
+                                    $kelas->id => $label,
+                                ];
+                            })
+                            ->toArray();
+                    })
                     ->searchable()
-                    ->preload()
-                    ->multiple(),
+                    ->multiple()
+                    ->preload(),
 
                 /*
              * Dosen
