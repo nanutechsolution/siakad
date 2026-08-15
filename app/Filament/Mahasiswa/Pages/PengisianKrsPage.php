@@ -9,8 +9,8 @@ use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Services\Akademik\KrsValidationService;
 use Filament\Forms\Components\CheckboxList;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
@@ -104,9 +104,9 @@ class PengisianKrsPage extends Page implements HasForms
     {
         return $schema
             ->components([
-                Placeholder::make('ringkasan_krs')
+                TextEntry::make('ringkasan_krs')
                     ->label('')
-                    ->content(function (Get $get) {
+                    ->state(function (Get $get) {
                         $summaryData = $this->getSummaryData($get);
                         return view('filament.mahasiswa.components.krs-summary', $summaryData);
                     })
