@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\PembimbingAkademik\Pages;
 
+use App\Domain\Authorization\Services\FormResolver;
 use App\Enums\PembimbingAkademikJenis;
 use App\Enums\PembimbingAkademikStatus;
 use App\Exceptions\PembimbingAkademikException;
@@ -52,7 +53,26 @@ class MutasiPembimbingPage extends Page implements HasTable
     protected static ?string $slug = 'mutasi-pembimbing-akademik';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-arrow-path-rounded-square';
+    protected function formResolver(): FormResolver
+    {
+        return app(FormResolver::class);
+    }
 
+    protected function accessibleProdiIds(): array
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return array_values(
+            array_map(
+                'intval',
+                $this->formResolver()->accessibleProdiIds($user)
+            )
+        );
+    }
     protected function dosenSelectField(string $name, string $label, ?string $excludeDosenId = null): Select
     {
         return Select::make($name)
@@ -83,6 +103,34 @@ class MutasiPembimbingPage extends Page implements HasTable
                         'dosen.person',
                         'semesterMulai',
                     ])
+                    ->where(function (Builder $query) {
+                        $prodiIds = $this->accessibleProdiIds();
+
+                        if ($prodiIds === []) {
+                            $query->whereRaw('1 = 0');
+
+                            return;
+                        }
+
+                        $query
+                            // Penugasan mahasiswa
+                            ->whereHas(
+                                'mahasiswa',
+                                fn(Builder $q) => $q->whereIn(
+                                    'prodi_id',
+                                    $prodiIds
+                                )
+                            )
+
+                            // atau penugasan berbasis kelas
+                            ->orWhereHas(
+                                'kelas',
+                                fn(Builder $q) => $q->whereIn(
+                                    'prodi_id',
+                                    $prodiIds
+                                )
+                            );
+                    })
             )
 
             ->columns([
@@ -364,29 +412,57 @@ class MutasiPembimbingPage extends Page implements HasTable
              */
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
+                    ->placeholder('Semua Program Studi')
                     ->options(
-                        RefProdi::query()
-                            ->orderBy('nama_prodi')
-                            ->pluck('nama_prodi', 'id')
-                            ->toArray()
+                        fn(): array => $this->formResolver()
+                            ->prodiOptions(auth()->user())
                     )
                     ->searchable()
                     ->multiple()
+                    ->preload()
                     ->query(function (
                         Builder $query,
                         array $data
                     ): Builder {
-                        $values = $data['values'] ?? [];
+                        $values = array_map(
+                            'intval',
+                            $data['values'] ?? []
+                        );
 
-                        if (empty($values)) {
+                        if ($values === []) {
                             return $query;
                         }
 
-                        return $query->whereHas(
-                            'mahasiswa',
-                            fn(Builder $q) =>
-                            $q->whereIn('prodi_id', $values)
+                        // Defense-in-depth:
+                        // user tidak boleh memilih prodi di luar scope resolver.
+                        $values = array_values(
+                            array_intersect(
+                                $values,
+                                $this->accessibleProdiIds()
+                            )
                         );
+
+                        if ($values === []) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
+                        return $query->where(function (Builder $q) use ($values) {
+                            $q
+                                ->whereHas(
+                                    'mahasiswa',
+                                    fn(Builder $m) => $m->whereIn(
+                                        'prodi_id',
+                                        $values
+                                    )
+                                )
+                                ->orWhereHas(
+                                    'kelas',
+                                    fn(Builder $k) => $k->whereIn(
+                                        'prodi_id',
+                                        $values
+                                    )
+                                );
+                        });
                     }),
 
                 /*
@@ -424,38 +500,73 @@ class MutasiPembimbingPage extends Page implements HasTable
              */
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
-                    ->options(function () {
+                    ->options(function (): array {
+                        $prodiIds = $this->accessibleProdiIds();
+
+                        if ($prodiIds === []) {
+                            return [];
+                        }
+
                         return Kelas::query()
+                            ->whereIn('prodi_id', $prodiIds)
                             ->with([
                                 'prodi',
                             ])
                             ->orderBy('nama_kelas')
                             ->get()
-                            ->mapWithKeys(function (Kelas $kelas) {
-                                $label = $kelas->nama_kelas;
+                            ->mapWithKeys(function (Kelas $kelas): array {
+                                $namaKelas = Utf8::clean(
+                                    $kelas->nama_kelas ?? '-'
+                                );
+
+                                $namaProdi = Utf8::clean(
+                                    $kelas->prodi?->nama_prodi ?? '-'
+                                );
+
+                                $angkatan = $kelas->angkatan_id
+                                    ? 'Angkatan ' . $kelas->angkatan_id
+                                    : null;
 
                                 $detail = collect([
-                                    $kelas->prodi?->nama_prodi,
-                                    $kelas->angkatan_id
-                                        ? 'Angkatan ' . $kelas->angkatan_id
-                                        : null,
+                                    $namaProdi,
+                                    $angkatan,
                                 ])
                                     ->filter()
                                     ->implode(' • ');
 
-                                if ($detail !== '') {
-                                    $label .= ' — ' . $detail;
-                                }
-
                                 return [
-                                    $kelas->id => $label,
+                                    $kelas->id => $namaKelas
+                                        . ($detail !== '' ? ' — ' . $detail : ''),
                                 ];
                             })
                             ->toArray();
                     })
                     ->searchable()
                     ->multiple()
-                    ->preload(),
+                    ->preload()
+                    ->query(function (
+                        Builder $query,
+                        array $data
+                    ): Builder {
+                        $values = $data['values'] ?? [];
+
+                        if (empty($values)) {
+                            return $query;
+                        }
+
+                        $prodiIds = $this->accessibleProdiIds();
+
+                        if ($prodiIds === []) {
+                            return $query->whereRaw('1 = 0');
+                        }
+
+                        return $query->whereHas(
+                            'kelas',
+                            fn(Builder $q) => $q
+                                ->whereIn('id', $values)
+                                ->whereIn('prodi_id', $prodiIds)
+                        );
+                    }),
 
                 /*
              * Dosen
@@ -616,7 +727,7 @@ class MutasiPembimbingPage extends Page implements HasTable
                     ->action(
                         fn() => Excel::download(
                             new PembimbingAkademikExport(
-                                PembimbingAkademik::query()
+                                $this->getFilteredTableQuery()
                             ),
                             'pembimbing-' .
                                 now()->format('Ymd-His') .
