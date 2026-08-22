@@ -71,7 +71,8 @@ class MahasiswasTable
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
                     ->relationship('angkatan', 'id_tahun')
-                    ->searchable(),
+                    ->searchable()
+                    ->preload(),
                 SelectFilter::make('program_id')
                     ->label('Program Kelas')
                     ->relationship('program', 'nama_program'),
