@@ -5,7 +5,55 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>SIAKAD - UNMARIS</title>
+    <!-- SEO -->
+    <meta name="description"
+        content="SIAKAD Universitas Stella Maris Sumba (UNMARIS) - Portal Sistem Informasi Akademik untuk mahasiswa, dosen, dan administrator.">
 
+    <meta name="keywords"
+        content="SIAKAD UNMARIS, SIAKAD Universitas Stella Maris Sumba, sistem informasi akademik, Universitas Stella Maris Sumba, UNMARIS, akademik mahasiswa, akademik dosen">
+
+    <meta name="author" content="Universitas Stella Maris Sumba">
+
+    <meta name="robots" content="index, follow">
+    <meta name="googlebot" content="index, follow">
+
+    <!-- Canonical -->
+    <link rel="canonical" href="{{ url('/') }}">
+
+    <!-- Open Graph -->
+    <meta property="og:type" content="website">
+    <meta property="og:site_name" content="SIAKAD UNMARIS">
+    <meta property="og:title" content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+    <meta property="og:description"
+        content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:image" content="{{ asset('images/logo-unmaris.png') }}">
+    <meta property="og:locale" content="id_ID">
+
+    <!-- Twitter Card -->
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+    <meta name="twitter:description"
+        content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba.">
+    <meta name="twitter:image" content="{{ asset('images/logo-unmaris.png') }}">
+
+    <!-- Structured Data / JSON-LD -->
+    <script type="application/ld+json">
+        {
+            "@context": "https://schema.org",
+            "@type": "WebSite",
+            "name": "SIAKAD UNMARIS",
+            "alternateName": "Sistem Informasi Akademik Universitas Stella Maris Sumba",
+            "url": "{{ url('/') }}",
+            "description": "Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.",
+            "publisher": {
+                "@type": "EducationalOrganization",
+                "name": "Universitas Stella Maris Sumba",
+                "url": "{{ url('/') }}"
+            },
+            "inLanguage": "id-ID"
+        }
+    </script>
     <!-- Favicon -->
     <link rel="icon" type="image/svg+xml" href="{{ asset('favicons/logo-unmaris.svg') }}">
 
