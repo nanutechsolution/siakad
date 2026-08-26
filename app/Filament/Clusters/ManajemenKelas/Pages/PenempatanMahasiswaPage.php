@@ -218,22 +218,24 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                         Utf8::clean($record->person?->nama_lengkap)
                     )
                     ->sortable(
-                        query: fn(Builder $query, string $direction) =>
-                        $query
-                            ->join(
-                                'ref_person',
-                                'ref_person.id',
-                                '=',
-                                'mahasiswas.person_id'
-                            )
-                            ->orderBy('ref_person.nama_lengkap', $direction)
-                            ->select('mahasiswas.*')
+                        query: function (Builder $query, string $direction): Builder {
+                            return $query->orderBy(
+                                \App\Models\RefPerson::select('nama_lengkap')
+                                    ->whereColumn(
+                                        'ref_person.id',
+                                        'mahasiswas.person_id'
+                                    )
+                                    ->limit(1),
+                                $direction
+                            );
+                        }
                     )
                     ->searchable(
                         query: fn(Builder $query, string $search) =>
                         $query->whereHas(
                             'person',
-                            fn($q) => $q->where(
+                            fn(Builder $q) =>
+                            $q->where(
                                 'nama_lengkap',
                                 'like',
                                 "%{$search}%"
