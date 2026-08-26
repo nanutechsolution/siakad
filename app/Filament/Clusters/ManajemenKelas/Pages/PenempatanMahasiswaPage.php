@@ -213,10 +213,9 @@ class PenempatanMahasiswaPage extends Page implements HasTable
 
                 TextColumn::make('nama')
                     ->label('Nama')
-                     ->sortable()
+                    ->sortable()
                     ->getStateUsing(
-                        fn(Mahasiswa $record) =>
-                        Utf8::clean(
+                        fn(Mahasiswa $record) => Utf8::clean(
                             $record->person?->nama_lengkap
                         )
                     )
@@ -224,18 +223,15 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                         query: fn(
                             Builder $query,
                             string $search
-                        ) =>
-                        $query->whereHas(
+                        ) => $query->whereHas(
                             'person',
-                            fn($q) =>
-                            $q->where(
+                            fn($q) => $q->where(
                                 'nama_lengkap',
                                 'like',
                                 "%{$search}%"
                             )
                         )
                     ),
-
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
                     ->formatStateUsing(
