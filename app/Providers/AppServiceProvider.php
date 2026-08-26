@@ -5,6 +5,7 @@ namespace App\Providers;
 use App\Domain\Authorization\Observers\MahasiswaObserver;
 use App\Domain\Authorization\Observers\TrxDosenObserver;
 use App\Domain\Authorization\Observers\TrxPersonJabatanObserver;
+use App\Models\JadwalKuliah;
 use App\Observers\PerkuliahanSesiObserver;
 use App\Observers\RiwayatStatusMahasiswaObserver;
 use App\Observers\TahunAkademikObserver;
@@ -12,6 +13,7 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Support\Facades\Gate;
 use App\Policies\DosenJadwalKuliahPolicy;
 use App\Policies\DosenNilaiPolicy;
+use App\Policies\JadwalKuliahPolicy;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
@@ -31,7 +33,8 @@ class AppServiceProvider extends ServiceProvider
     {
         // 1. Registrasi Policy berbasis Model (Sangat disarankan & Clean)
         Gate::policy(\App\Models\KrsDetail::class, DosenNilaiPolicy::class);
-        Gate::policy(\App\Models\JadwalKuliah::class, DosenJadwalKuliahPolicy::class);
+        // Gate::policy(\App\Models\JadwalKuliah::class, DosenJadwalKuliahPolicy::class);
+        Gate::policy(JadwalKuliah::class, JadwalKuliahPolicy::class);
         // 2. Jika tetap ingin mempertahankan Alias String (inputNilaiDosen & revisiNilaiDosen)
         // Bungkus dengan Closure agar parameter $user dan $record diteruskan dengan sempurna
         Gate::define(
