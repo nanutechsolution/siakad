@@ -583,7 +583,7 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
                     ->getSearchResultsUsing(
                         fn(string $search) =>
                         TrxDosen::query()
-                            ->visibleTo(auth()->user())
+                            // ->visibleTo(auth()->user())
                             ->where(function ($query) use ($search) {
                                 $query
                                     ->where(
