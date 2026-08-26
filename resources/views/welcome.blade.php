@@ -6,32 +6,20 @@
          BASIC META
     ========================================================== -->
     <meta charset="UTF-8">
-
-    <meta name="viewport"
-        content="width=device-width, initial-scale=1.0">
-
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="theme-color" content="#1e1b4b">
-
     <meta name="color-scheme" content="light">
-
     <meta name="author" content="Universitas Stella Maris Sumba">
-
-    <meta name="description"
-        content="SIAKAD Universitas Stella Maris Sumba (UNMARIS) adalah portal Sistem Informasi Akademik untuk mahasiswa, dosen, dan administrator dalam mengakses layanan akademik.">
+    <meta name="description" content="SIAKAD Universitas Stella Maris Sumba (UNMARIS) adalah portal Sistem Informasi Akademik untuk mahasiswa, dosen, dan administrator dalam mengakses layanan akademik.">
 
     <!-- Google / Search Engine -->
-    <meta name="robots"
-        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
-
-    <meta name="googlebot"
-        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="robots" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+    <meta name="googlebot" content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
 
     <!-- =========================================================
          TITLE
     ========================================================== -->
-    <title>
-        SIAKAD UNMARIS - Universitas Stella Maris Sumba
-    </title>
+    <title>SIAKAD UNMARIS - Universitas Stella Maris Sumba</title>
 
     <!-- =========================================================
          CANONICAL
@@ -41,124 +29,83 @@
     <!-- =========================================================
          FAVICON
     ========================================================== -->
-    <link rel="icon"
-        type="image/svg+xml"
-        href="{{ asset('favicons/logo-unmaris.svg') }}">
-
-    <link rel="apple-touch-icon"
-        href="{{ asset('images/logo-unmaris.png') }}">
+    <link rel="icon" type="image/svg+xml" href="{{ asset('favicons/logo-unmaris.svg') }}">
+    <link rel="apple-touch-icon" href="{{ asset('images/logo-unmaris.png') }}">
 
     <!-- =========================================================
          OPEN GRAPH / FACEBOOK / WHATSAPP
     ========================================================== -->
     <meta property="og:type" content="website">
-
-    <meta property="og:site_name"
-        content="SIAKAD UNMARIS">
-
-    <meta property="og:title"
-        content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
-
-    <meta property="og:description"
-        content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
-
-    <meta property="og:url"
-        content="{{ url('/') }}">
-
-    <meta property="og:image"
-        content="{{ asset('images/logo-unmaris.png') }}">
-
-    <meta property="og:image:alt"
-        content="Logo Universitas Stella Maris Sumba">
-
-    <meta property="og:image:type"
-        content="image/png">
-
-    <meta property="og:locale"
-        content="id_ID">
+    <meta property="og:site_name" content="SIAKAD UNMARIS">
+    <meta property="og:title" content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+    <meta property="og:description" content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
+    <meta property="og:url" content="{{ url('/') }}">
+    <meta property="og:image" content="{{ asset('images/logo-unmaris.png') }}">
+    <meta property="og:image:alt" content="Logo Universitas Stella Maris Sumba">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:locale" content="id_ID">
 
     <!-- =========================================================
          TWITTER / X
     ========================================================== -->
-    <meta name="twitter:card"
-        content="summary">
-
-    <meta name="twitter:title"
-        content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
-
-    <meta name="twitter:description"
-        content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
-
-    <meta name="twitter:image"
-        content="{{ asset('images/logo-unmaris.png') }}">
-
-    <meta name="twitter:image:alt"
-        content="Logo Universitas Stella Maris Sumba">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+    <meta name="twitter:description" content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
+    <meta name="twitter:image" content="{{ asset('images/logo-unmaris.png') }}">
+    <meta name="twitter:image:alt" content="Logo Universitas Stella Maris Sumba">
 
     <!-- =========================================================
          LANGUAGE
     ========================================================== -->
-    <meta http-equiv="content-language"
-        content="id">
+    <meta http-equiv="content-language" content="id">
 
     <!-- =========================================================
          STRUCTURED DATA - WEBSITE
     ========================================================== -->
     <script type="application/ld+json">
-        {
-            !!json_encode([
-                '@context' => 'https://schema.org',
-                '@type' => 'WebSite',
-                'name' => 'SIAKAD UNMARIS',
-                'alternateName' => [
-                    'SIAKAD Universitas Stella Maris Sumba',
-                    'Sistem Informasi Akademik Universitas Stella Maris Sumba',
-                ],
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => 'SIAKAD UNMARIS',
+            'alternateName' => [
+                'SIAKAD Universitas Stella Maris Sumba',
+                'Sistem Informasi Akademik Universitas Stella Maris Sumba',
+            ],
+            'url' => url('/'),
+            'description' => 'Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.',
+            'inLanguage' => 'id-ID',
+            'publisher' => [
+                '@type' => 'EducationalOrganization',
+                'name' => 'Universitas Stella Maris Sumba',
                 'url' => url('/'),
-                'description' => 'Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.',
-                'inLanguage' => 'id-ID',
-                'publisher' => [
-                    '@type' => 'EducationalOrganization',
-                    'name' => 'Universitas Stella Maris Sumba',
-                    'url' => url('/'),
-                    'logo' => [
-                        '@type' => 'ImageObject',
-                        'url' => asset('images/logo-unmaris.png'),
-                    ],
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => asset('images/logo-unmaris.png'),
                 ],
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!
-        }
+            ],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 
     <!-- =========================================================
          STRUCTURED DATA - ORGANIZATION
     ========================================================== -->
     <script type="application/ld+json">
-        {
-            !!json_encode([
-                '@context' => 'https://schema.org',
-                '@type' => 'EducationalOrganization',
-                'name' => 'Universitas Stella Maris Sumba',
-                'alternateName' => 'UNMARIS',
-                'url' => url('/'),
-                'logo' => asset('images/logo-unmaris.png'),
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!
-        }
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'EducationalOrganization',
+            'name' => 'Universitas Stella Maris Sumba',
+            'alternateName' => 'UNMARIS',
+            'url' => url('/'),
+            'logo' => asset('images/logo-unmaris.png'),
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 
     <!-- =========================================================
          PERFORMANCE
     ========================================================== -->
-    <link rel="preconnect"
-        href="https://fonts.googleapis.com">
-
-    <link rel="preconnect"
-        href="https://fonts.gstatic.com"
-        crossorigin>
-
-    <link
-        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
-        rel="stylesheet">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 
     <!-- =========================================================
          TAILWIND / VITE
@@ -259,7 +206,6 @@
         </div>
 
         <!-- Role Selection Cards -->
-        <!-- Mobile: Stacked list | Desktop: Horizontal Cards -->
         <div class="w-full grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
 
             <!-- 1. Mahasiswa -->
@@ -271,7 +217,6 @@
                     <h2 class="text-lg sm:text-xl font-bold text-indigo-950 mb-0.5 sm:mb-1">Mahasiswa</h2>
                     <p class="text-xs sm:text-sm text-slate-500 hidden sm:block">KRS, Jadwal, Nilai & Transkrip</p>
                 </div>
-                <!-- Panah indikator (Mobile only) -->
                 <div class="md:hidden text-slate-300 group-hover:text-yellow-500 transition-colors">
                     <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"></path>
