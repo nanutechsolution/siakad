@@ -2,77 +2,177 @@
 <html lang="id">
 
 <head>
+    <!-- =========================================================
+         BASIC META
+    ========================================================== -->
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>SIAKAD - UNMARIS</title>
-    <!-- SEO -->
-    <meta name="description"
-        content="SIAKAD Universitas Stella Maris Sumba (UNMARIS) - Portal Sistem Informasi Akademik untuk mahasiswa, dosen, dan administrator.">
 
-    <meta name="keywords"
-        content="SIAKAD UNMARIS, SIAKAD Universitas Stella Maris Sumba, sistem informasi akademik, Universitas Stella Maris Sumba, UNMARIS, akademik mahasiswa, akademik dosen">
+    <meta name="viewport"
+        content="width=device-width, initial-scale=1.0">
+
+    <meta name="theme-color" content="#1e1b4b">
+
+    <meta name="color-scheme" content="light">
 
     <meta name="author" content="Universitas Stella Maris Sumba">
 
-    <meta name="robots" content="index, follow">
-    <meta name="googlebot" content="index, follow">
+    <meta name="description"
+        content="SIAKAD Universitas Stella Maris Sumba (UNMARIS) adalah portal Sistem Informasi Akademik untuk mahasiswa, dosen, dan administrator dalam mengakses layanan akademik.">
 
-    <!-- Canonical -->
+    <!-- Google / Search Engine -->
+    <meta name="robots"
+        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+    <meta name="googlebot"
+        content="index, follow, max-image-preview:large, max-snippet:-1, max-video-preview:-1">
+
+    <!-- =========================================================
+         TITLE
+    ========================================================== -->
+    <title>
+        SIAKAD UNMARIS - Universitas Stella Maris Sumba
+    </title>
+
+    <!-- =========================================================
+         CANONICAL
+    ========================================================== -->
     <link rel="canonical" href="{{ url('/') }}">
 
-    <!-- Open Graph -->
+    <!-- =========================================================
+         FAVICON
+    ========================================================== -->
+    <link rel="icon"
+        type="image/svg+xml"
+        href="{{ asset('favicons/logo-unmaris.svg') }}">
+
+    <link rel="apple-touch-icon"
+        href="{{ asset('images/logo-unmaris.png') }}">
+
+    <!-- =========================================================
+         OPEN GRAPH / FACEBOOK / WHATSAPP
+    ========================================================== -->
     <meta property="og:type" content="website">
-    <meta property="og:site_name" content="SIAKAD UNMARIS">
-    <meta property="og:title" content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+
+    <meta property="og:site_name"
+        content="SIAKAD UNMARIS">
+
+    <meta property="og:title"
+        content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+
     <meta property="og:description"
         content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
-    <meta property="og:url" content="{{ url('/') }}">
-    <meta property="og:image" content="{{ asset('images/logo-unmaris.png') }}">
-    <meta property="og:locale" content="id_ID">
 
-    <!-- Twitter Card -->
-    <meta name="twitter:card" content="summary">
-    <meta name="twitter:title" content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+    <meta property="og:url"
+        content="{{ url('/') }}">
+
+    <meta property="og:image"
+        content="{{ asset('images/logo-unmaris.png') }}">
+
+    <meta property="og:image:alt"
+        content="Logo Universitas Stella Maris Sumba">
+
+    <meta property="og:image:type"
+        content="image/png">
+
+    <meta property="og:locale"
+        content="id_ID">
+
+    <!-- =========================================================
+         TWITTER / X
+    ========================================================== -->
+    <meta name="twitter:card"
+        content="summary">
+
+    <meta name="twitter:title"
+        content="SIAKAD UNMARIS - Universitas Stella Maris Sumba">
+
     <meta name="twitter:description"
-        content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba.">
-    <meta name="twitter:image" content="{{ asset('images/logo-unmaris.png') }}">
+        content="Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.">
 
-    <!-- Structured Data / JSON-LD -->
+    <meta name="twitter:image"
+        content="{{ asset('images/logo-unmaris.png') }}">
+
+    <meta name="twitter:image:alt"
+        content="Logo Universitas Stella Maris Sumba">
+
+    <!-- =========================================================
+         LANGUAGE
+    ========================================================== -->
+    <meta http-equiv="content-language"
+        content="id">
+
+    <!-- =========================================================
+         STRUCTURED DATA - WEBSITE
+    ========================================================== -->
     <script type="application/ld+json">
         {
-            "@context": "https://schema.org",
-            "@type": "WebSite",
-            "name": "SIAKAD UNMARIS",
-            "alternateName": "Sistem Informasi Akademik Universitas Stella Maris Sumba",
-            "url": "{{ url('/') }}",
-            "description": "Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.",
-            "publisher": {
-                "@type": "EducationalOrganization",
-                "name": "Universitas Stella Maris Sumba",
-                "url": "{{ url('/') }}"
-            },
-            "inLanguage": "id-ID"
+            !!json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'WebSite',
+                'name' => 'SIAKAD UNMARIS',
+                'alternateName' => [
+                    'SIAKAD Universitas Stella Maris Sumba',
+                    'Sistem Informasi Akademik Universitas Stella Maris Sumba',
+                ],
+                'url' => url('/'),
+                'description' => 'Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.',
+                'inLanguage' => 'id-ID',
+                'publisher' => [
+                    '@type' => 'EducationalOrganization',
+                    'name' => 'Universitas Stella Maris Sumba',
+                    'url' => url('/'),
+                    'logo' => [
+                        '@type' => 'ImageObject',
+                        'url' => asset('images/logo-unmaris.png'),
+                    ],
+                ],
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!
         }
     </script>
-    <!-- Favicon -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicons/logo-unmaris.svg') }}">
 
-    <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <!-- =========================================================
+         STRUCTURED DATA - ORGANIZATION
+    ========================================================== -->
+    <script type="application/ld+json">
+        {
+            !!json_encode([
+                '@context' => 'https://schema.org',
+                '@type' => 'EducationalOrganization',
+                'name' => 'Universitas Stella Maris Sumba',
+                'alternateName' => 'UNMARIS',
+                'url' => url('/'),
+                'logo' => asset('images/logo-unmaris.png'),
+            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!
+        }
+    </script>
 
-    <!-- Tailwind / Vite -->
+    <!-- =========================================================
+         PERFORMANCE
+    ========================================================== -->
+    <link rel="preconnect"
+        href="https://fonts.googleapis.com">
+
+    <link rel="preconnect"
+        href="https://fonts.gstatic.com"
+        crossorigin>
+
+    <link
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap"
+        rel="stylesheet">
+
+    <!-- =========================================================
+         TAILWIND / VITE
+    ========================================================== -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 
+    <!-- =========================================================
+         STYLES
+    ========================================================== -->
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            overflow: hidden;
-            /* Mencegah scroll, memaksa single screen */
         }
 
-        /* Animasi Logo Pop-in saat pertama kali load */
         @keyframes logoPop {
             0% {
                 opacity: 0;
@@ -89,7 +189,6 @@
             animation: logoPop 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
         }
 
-        /* Animasi Staggered untuk Card */
         @keyframes fadeUpCard {
             0% {
                 opacity: 0;
