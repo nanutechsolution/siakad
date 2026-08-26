@@ -213,6 +213,7 @@ class PenempatanMahasiswaPage extends Page implements HasTable
 
                 TextColumn::make('nama')
                     ->label('Nama')
+                     ->sortable()
                     ->getStateUsing(
                         fn(Mahasiswa $record) =>
                         Utf8::clean(
