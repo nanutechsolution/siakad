@@ -211,14 +211,27 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                     ->searchable()
                     ->sortable(),
 
-                TextColumn::make('nama_lengkap')
+                TextColumn::make('nama')
                     ->label('Nama')
-                    ->sortable(false)
+                    ->getStateUsing(
+                        fn(Mahasiswa $record) =>
+                        Utf8::clean($record->person?->nama_lengkap)
+                    )
+                    ->sortable(
+                        query: fn(Builder $query, string $direction) =>
+                        $query
+                            ->join(
+                                'ref_person',
+                                'ref_person.id',
+                                '=',
+                                'mahasiswas.person_id'
+                            )
+                            ->orderBy('ref_person.nama_lengkap', $direction)
+                            ->select('mahasiswas.*')
+                    )
                     ->searchable(
-                        query: fn(
-                            Builder $query,
-                            string $search
-                        ) => $query->whereHas(
+                        query: fn(Builder $query, string $search) =>
+                        $query->whereHas(
                             'person',
                             fn($q) => $q->where(
                                 'nama_lengkap',
