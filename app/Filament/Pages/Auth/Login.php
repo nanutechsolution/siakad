@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages\Auth;
 
+use Filament\Actions\Action;
 use Filament\Auth\Pages\Login as PagesLogin;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Component;
@@ -42,6 +43,19 @@ class Login extends PagesLogin
         return [
             'username' => $data['username'],
             'password' => $data['password'],
+        ];
+    }
+
+    protected function getFormActions(): array
+    {
+        return [
+            $this->getAuthenticateFormAction(),
+            Action::make('backToHome')
+                ->label('Kembali ke Beranda')
+                ->icon('heroicon-m-arrow-left')
+                ->color('gray')
+                ->url(url('/'))
+                ->extraAttributes(['class' => 'w-full justify-center mt-2']),
         ];
     }
 }
