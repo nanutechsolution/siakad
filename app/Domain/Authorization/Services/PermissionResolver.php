@@ -35,6 +35,7 @@ final class PermissionResolver
             'Admin Fakultas',
             'Admin Prodi',
             'Kaprodi',
+            'Admin Keuangan',
         ]);
     }
 
