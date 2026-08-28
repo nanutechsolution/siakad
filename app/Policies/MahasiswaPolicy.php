@@ -55,10 +55,34 @@ class MahasiswaPolicy
 
     public function update(User $user, Mahasiswa $mahasiswa): bool
     {
-        return $user->can('Update:Mahasiswa')
-            && $this->isRecordAccessible($user, $mahasiswa)
-            && $this->permissionResolver->canManageAkademik($user);
+        $canUpdate = $user->can('Update:Mahasiswa');
+        $accessible = $this->isRecordAccessible($user, $mahasiswa);
+        $canManage = $this->permissionResolver->canManageAkademik($user);
+
+        dd([
+            'user' => [
+                'name' => $user->name,
+                'roles' => $user->getRoleNames()->toArray(),
+            ],
+            'mahasiswa' => [
+                'nim' => $mahasiswa->nim,
+                'person_id' => $mahasiswa->person_id,
+            ],
+            'checks' => [
+                'Update:Mahasiswa' => $canUpdate,
+                'isRecordAccessible' => $accessible,
+                'canManageAkademik' => $canManage,
+            ],
+        ]);
+
+        return $canUpdate && $accessible && $canManage;
     }
+    // public function update(User $user, Mahasiswa $mahasiswa): bool
+    // {
+    //     return $user->can('Update:Mahasiswa')
+    //         && $this->isRecordAccessible($user, $mahasiswa)
+    //         && $this->permissionResolver->canManageAkademik($user);
+    // }
 
     public function delete(User $user, Mahasiswa $mahasiswa): bool
     {
