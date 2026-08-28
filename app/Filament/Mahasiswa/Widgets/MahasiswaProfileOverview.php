@@ -211,7 +211,12 @@ class MahasiswaProfileOverview extends StatsOverviewWidget
                 0
             );
 
-            if ($statusBayar === 'LUNAS' || $sisaTagihan <= 0) {
+            if ($totalTagihan <= 0 && $statusBayar === 'LUNAS') {
+                $keuanganLabel = 'Ditanggung Beasiswa';
+                $keuanganColor = 'success';
+                $keuanganDesc =
+                    'Beasiswa menanggung 100% biaya kuliah semester ini.';
+            } elseif ($statusBayar === 'LUNAS' || $sisaTagihan <= 0) {
                 $keuanganLabel = 'Lunas';
                 $keuanganColor = 'success';
                 $keuanganDesc =

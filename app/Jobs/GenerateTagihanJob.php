@@ -222,8 +222,8 @@ class GenerateTagihanJob implements ShouldQueue
                     'kode_transaksi'    => $kodeTransaksi,
                     'deskripsi'         => "Tagihan Biaya Kuliah Mahasiswa NIM {$mhs->nim} - {$namaTahun}",
                     'total_tagihan'     => $totalTagihanBersih,
+                    'status_bayar'      => $totalTagihanBersih > 0 ? 'BELUM' : 'LUNAS',
                     'total_bayar'       => 0.00,
-                    'status_bayar'      => 'BELUM',
                     'created_by'        => $this->userId,
                     'tenggat_waktu'     => now()->addDays(30),
                     'created_at'        => now(),
@@ -244,12 +244,17 @@ class GenerateTagihanJob implements ShouldQueue
                 // nominal_diskon di atas (BeasiswaDiskonService), jadi
                 // mencatatnya lagi sebagai entri ADJUSTMENT terpisah akan
                 // dobel hitung.
-                $ledger->recordTagihan(
-                    mahasiswaId: $mhs->id,
-                    nominal: number_format($totalTagihanBersih, 2, '.', ''),
-                    referensiDokumen: "tagihan-mahasiswa:{$tagihanId}",
-                    keterangan: "Tagihan Biaya Kuliah Mahasiswa NIM {$mhs->nim} - {$namaTahun}",
-                );
+                // Catat ke ledger hanya jika masih ada kewajiban yang harus dibayar.
+                // Mahasiswa dengan beasiswa/diskon 100% menghasilkan total Rp0,
+                // sehingga tidak boleh dibuatkan transaksi ledger bernilai nol.
+                if ($totalTagihanBersih > 0) {
+                    $ledger->recordTagihan(
+                        mahasiswaId: $mhs->id,
+                        nominal: number_format($totalTagihanBersih, 2, '.', ''),
+                        referensiDokumen: "tagihan-mahasiswa:{$tagihanId}",
+                        keterangan: "Tagihan Biaya Kuliah Mahasiswa NIM {$mhs->nim} - {$namaTahun}",
+                    );
+                }
                 DB::commit();
                 $successCount++;
                 $this->logMahasiswa($batch, $mhs->id, 'BERHASIL', $totalTagihanBersih, "Tagihan {$kodeTransaksi} terbit dengan " . count($detailTagihanToInsert) . ' komponen.');
