@@ -157,7 +157,7 @@
 
                     @if(!empty($kopSurat['akreditasi']))
                     <div class="akreditasi">
-                        Terakreditasi "{{ $kopSurat['akreditasi'] }}"
+                        "{{ $kopSurat['akreditasi'] }}"
                         @if(!empty($kopSurat['nomorAkreditasi']))
                         | SK: {{ $kopSurat['nomorAkreditasi'] }}
                         @endif
