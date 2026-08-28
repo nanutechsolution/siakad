@@ -10,6 +10,7 @@ use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Models\User;
 use App\Services\Keuangan\BeasiswaDiskonService;
+use App\Services\Keuangan\DetailTarifResolver;
 use App\Services\Keuangan\LedgerService;
 use Filament\Notifications\Notification;
 use Illuminate\Bus\Queueable;
@@ -152,16 +153,19 @@ class GenerateTagihanJob implements ShouldQueue
                 if (!$skemaTarif) {
                     throw new \Exception("Skema tarif untuk Prodi/Angkatan/Program mahasiswa ini belum dikonfigurasi.");
                 }
+                // 4. Resolve komponen tarif melalui DetailTarifResolver
+                //    supaya aturan FLAT / ONCE / berlaku_semester
+                //    konsisten dengan Preview di TagihanService.
+                $detailTarifResolver = app(DetailTarifResolver::class);
 
-                // 4. Ambil komponen tarif
-                $detailTarif = DB::table('keuangan_detail_tarif')
-                    ->join('keuangan_komponen_biaya', 'keuangan_komponen_biaya.id', '=', 'keuangan_detail_tarif.komponen_biaya_id')
-                    ->where('keuangan_detail_tarif.skema_tarif_id', $skemaTarif->id)
-                    ->select('keuangan_detail_tarif.*', 'keuangan_komponen_biaya.nama_komponen')
-                    ->get();
+                $detailTarif = $detailTarifResolver->resolve(
+                    mahasiswa: $mhs,
+                    skemaTarifId: $skemaTarif->id,
+                    tahunAkademik: $tahunAkademik,
+                );
 
                 if ($detailTarif->isEmpty()) {
-                    throw new \Exception("Komponen tarif pada skema biaya prodi ini masih kosong.");
+                    throw new \Exception("Tidak ada komponen tarif yang berlaku untuk mahasiswa ini pada semester tersebut.");
                 }
 
                 // Pre-load Model KeuanganKomponenBiaya untuk parameter Service (mencegah N+1)
@@ -177,7 +181,6 @@ class GenerateTagihanJob implements ShouldQueue
 
                 foreach ($detailTarif as $tarif) {
                     $nominalDasar = (float) $tarif->nominal;
-
                     // Kalkulasi Diskon via Service Layer
                     $komponenModel = $modelKomponens->get($tarif->komponen_biaya_id);
                     $nominalDiskonKomponen = 0.0;

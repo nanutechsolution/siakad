@@ -10,6 +10,7 @@ use App\Models\KeuanganKomponenBiaya;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Services\Keuangan\BeasiswaDiskonService;
+use App\Services\Keuangan\DetailTarifResolver;
 use App\Services\Keuangan\TargetMahasiswaResolver;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -24,8 +25,8 @@ class TagihanService
     public function __construct(
         private readonly TargetMahasiswaResolver $resolver,
         private readonly BeasiswaDiskonService $beasiswaService,
-    ) {
-    }
+        private readonly DetailTarifResolver $detailTarifResolver,
+    ) {}
 
     /**
      * Memasukkan proses generate tagihan ke dalam antrean Laravel Queue.
@@ -109,7 +110,12 @@ class TagihanService
         $query = $this->resolver->resolve($data);
 
         $query->chunkById(200, function ($chunk) use (
-            $tahunAkademikId, $tahunAkademik, $isSpesifik, &$agregat, &$sampelSiap, &$sampelGagal
+            $tahunAkademikId,
+            $tahunAkademik,
+            $isSpesifik,
+            &$agregat,
+            &$sampelSiap,
+            &$sampelGagal
         ) {
             /** @var Mahasiswa $mhs */
             foreach ($chunk as $mhs) {
@@ -209,28 +215,48 @@ class TagihanService
      * ditampilkan di preview cocok dengan tagihan yang benar-benar akan
      * terbit (bukan cuma nominal kotor dari skema tarif).
      */
-    private function hitungRincianTagihan(Mahasiswa $mhs, object $skemaTarif, ?RefTahunAkademik $tahunAkademik): array
-    {
-        if (! isset($this->cacheDetailSkema[$skemaTarif->id])) {
-            $this->cacheDetailSkema[$skemaTarif->id] = DB::table('keuangan_detail_tarif')
-                ->join('keuangan_komponen_biaya', 'keuangan_komponen_biaya.id', '=', 'keuangan_detail_tarif.komponen_biaya_id')
-                ->where('keuangan_detail_tarif.skema_tarif_id', $skemaTarif->id)
-                ->select('keuangan_detail_tarif.*', 'keuangan_komponen_biaya.nama_komponen')
-                ->get();
-        }
+    private function hitungRincianTagihan(
+        Mahasiswa $mhs,
+        object $skemaTarif,
+        ?RefTahunAkademik $tahunAkademik
+    ): array {
+        /*
+     * Detail tarif sekarang ditentukan oleh:
+     * - Mahasiswa
+     * - Skema tarif
+     * - Tahun akademik
+     *
+     * Jadi jangan query keuangan_detail_tarif langsung di sini.
+     */
+        $detailTarif = $this->detailTarifResolver->resolve(
+            mahasiswa: $mhs,
+            skemaTarifId: $skemaTarif->id,
+            tahunAkademik: $tahunAkademik,
+        );
 
-        $detailTarif = $this->cacheDetailSkema[$skemaTarif->id];
+        $komponenIds = $detailTarif
+            ->pluck('komponen_biaya_id')
+            ->toArray();
 
-        $komponenIds = $detailTarif->pluck('komponen_biaya_id')->toArray();
-        $modelKomponens = KeuanganKomponenBiaya::whereIn('id', $komponenIds)->get()->keyBy('id');
+        $modelKomponens = KeuanganKomponenBiaya::whereIn(
+            'id',
+            $komponenIds
+        )
+            ->get()
+            ->keyBy('id');
 
         $rincianKomponen = [];
+
         $totalKotor = 0.0;
         $totalDiskon = 0.0;
 
         foreach ($detailTarif as $tarif) {
             $nominalDasar = (float) $tarif->nominal;
-            $komponenModel = $modelKomponens->get($tarif->komponen_biaya_id);
+
+            $komponenModel = $modelKomponens->get(
+                $tarif->komponen_biaya_id
+            );
+
             $nominalDiskon = 0.0;
 
             if ($komponenModel && $tahunAkademik) {
@@ -246,14 +272,20 @@ class TagihanService
                 'nama_komponen' => $tarif->nama_komponen,
                 'nominal_dasar' => $nominalDasar,
                 'nominal_diskon' => $nominalDiskon,
-                'nominal_bersih' => max(0, $nominalDasar - $nominalDiskon),
+                'nominal_bersih' => max(
+                    0,
+                    $nominalDasar - $nominalDiskon
+                ),
             ];
 
             $totalKotor += $nominalDasar;
             $totalDiskon += $nominalDiskon;
         }
 
-        $totalBersih = max(0, $totalKotor - $totalDiskon);
+        $totalBersih = max(
+            0,
+            $totalKotor - $totalDiskon
+        );
 
         return [
             'nim' => $mhs->nim,
