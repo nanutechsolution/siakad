@@ -88,11 +88,36 @@ class MahasiswaForm
                                                         fn($action) => $action->modalWidth('lg')
                                                     )
                                                     ->editOptionForm([
-                                                        TextInput::make('nama_lengkap')->required()->maxLength(255),
-                                                        TextInput::make('nik')
-                                                            ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true),
-                                                        TextInput::make('email')->email(),
-                                                        TextInput::make('no_hp')->tel(),
+                                                        Grid::make(2)->schema([
+                                                            TextInput::make('nama_lengkap')
+                                                                ->required()
+                                                                ->maxLength(255)
+                                                                ->columnSpanFull(),
+                                                            TextInput::make('nik')
+                                                                ->label('NIK')
+                                                                ->numeric()
+                                                                ->length(16)
+                                                                ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true),
+                                                            TextInput::make('email')
+                                                                ->email()
+                                                                ->maxLength(255)
+                                                                ->nullable(),
+                                                            TextInput::make('no_hp')
+                                                                ->label('No. HP')
+                                                                ->tel()
+                                                                ->maxLength(20)
+                                                                ->nullable(),
+                                                            Radio::make('jenis_kelamin')
+                                                                ->label('Jenis Kelamin')
+                                                                ->options(['L' => 'Laki-laki', 'P' => 'Perempuan'])
+                                                                ->inline(),
+                                                            TextInput::make('tempat_lahir')
+                                                                ->nullable(),
+                                                            DatePicker::make('tanggal_lahir')
+                                                                ->native(false)
+                                                                ->maxDate(now())
+                                                                ->displayFormat('d/m/Y'),
+                                                        ]),
                                                     ])
                                                     ->columnSpanFull()
                                                     ->helperText('Ketik nama atau NIK untuk mencari data person yang sudah terdaftar (misal: sudah jadi dosen/pegawai sebelumnya).'),
