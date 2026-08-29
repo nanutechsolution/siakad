@@ -251,7 +251,31 @@ class RefTahunAkademik extends Model
             ];
         });
     }
+    /**
+     * Label status periode input nilai untuk ditampilkan di UI.
+     */
+    public function inputNilaiStatusLabel(): string
+    {
+        if ($this->is_locked_nilai) {
+            return 'Terkunci (manual)';
+        }
 
+        if (! $this->buka_input_nilai) {
+            return 'Sudah ditutup';
+        }
+
+        $today = now()->startOfDay();
+
+        if ($this->tgl_mulai_input_nilai && $today->lt($this->tgl_mulai_input_nilai)) {
+            return 'Belum dibuka';
+        }
+
+        if ($this->tgl_selesai_input_nilai && $today->gt($this->tgl_selesai_input_nilai)) {
+            return 'Sudah ditutup';
+        }
+
+        return 'Terbuka';
+    }
     protected function safeCount(string $relation, ?string $distinctColumn = null, array $where = []): int
     {
         if (! method_exists($this, $relation) || ! DbSchema::hasTable((new static)->getTable())) {

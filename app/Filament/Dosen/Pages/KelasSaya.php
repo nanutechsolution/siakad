@@ -91,12 +91,18 @@ class KelasSaya extends Page implements HasTable
                 TextColumn::make('status_periode')
                     ->badge()
                     ->label('Status Input')
-                    ->getStateUsing(fn(JadwalKuliah $record) => $record->tahunAkademik?->inputNilaiStatusLabel() ?? 'Tidak diketahui')
-                    ->colors([
-                        'success' => 'Terbuka',
-                        'danger' => 'Terkunci (manual)',
-                        'warning' => fn($state) => in_array($state, ['Belum dibuka', 'Sudah ditutup']),
-                    ]),
+                    ->getStateUsing(
+                        fn(JadwalKuliah $record): string =>
+                        $record->tahunAkademik?->inputNilaiStatusLabel() ?? 'Tidak diketahui'
+                    )
+                    ->color(function (string $state): string {
+                        return match ($state) {
+                            'Terbuka' => 'success',
+                            'Terkunci (manual)' => 'danger',
+                            'Belum dibuka', 'Sudah ditutup' => 'warning',
+                            default => 'gray',
+                        };
+                    }),
             ])
             ->recordActions([
                 Action::make('input_nilai')
