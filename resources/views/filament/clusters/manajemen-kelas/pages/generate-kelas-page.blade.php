@@ -102,14 +102,55 @@
                         draggable="true"
                         x-on:dragstart="draggedId = '{{ $m['id'] }}'; $el.style.opacity = 0.4"
                         x-on:dragend="$el.style.opacity = 1; draggedId = null"
-                        class="cursor-grab active:cursor-grabbing rounded-lg border border-gray-200 dark:border-gray-700
-                               bg-white dark:bg-gray-900 px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
-                        <div class="text-sm font-medium text-gray-950 dark:text-white truncate">{{ $m['nama'] }}</div>
-                        <div class="text-xs text-gray-500 dark:text-gray-400">{{ $m['nim'] }}</div>
+                        x-data="{ menuTerbuka: false }"
+                        class="relative cursor-grab active:cursor-grabbing rounded-lg border border-gray-200 dark:border-gray-700
+               bg-white dark:bg-gray-900 px-3 py-2 shadow-sm hover:shadow-md transition-shadow">
+                        <div class="flex items-start justify-between gap-2">
+                            <div class="min-w-0">
+                                <div class="text-sm font-medium text-gray-950 dark:text-white truncate">{{ $m['nama'] }}</div>
+                                <div class="text-xs text-gray-500 dark:text-gray-400">{{ $m['nim'] }}</div>
+                            </div>
+
+                            {{-- Tombol pindah cepat — fallback untuk touch screen, juga berguna di desktop --}}
+                            <div class="relative shrink-0" x-on:click.outside="menuTerbuka = false">
+                                <button
+                                    type="button"
+                                    x-on:click="menuTerbuka = !menuTerbuka"
+                                    class="rounded-md p-1 text-gray-400 hover:bg-gray-100 hover:text-gray-600
+                           dark:hover:bg-gray-800 dark:hover:text-gray-300"
+                                    aria-label="Pindahkan mahasiswa">
+                                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor" class="h-4 w-4">
+                                        <path d="M10 3a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM10 8.5a1.5 1.5 0 110 3 1.5 1.5 0 010-3zM10 14a1.5 1.5 0 110 3 1.5 1.5 0 010-3z" />
+                                    </svg>
+                                </button>
+
+                                <div
+                                    x-show="menuTerbuka"
+                                    x-transition
+                                    x-cloak
+                                    class="absolute right-0 z-10 mt-1 w-40 rounded-lg border border-gray-200 dark:border-gray-700
+                           bg-white dark:bg-gray-900 py-1 shadow-lg">
+                                    <div class="px-3 py-1.5 text-[11px] font-medium uppercase tracking-wide text-gray-400">
+                                        Pindah ke
+                                    </div>
+                                    @foreach ($this->labelKelas as $labelTujuan => $namaTujuan)
+                                    @if ($labelTujuan !== $label)
+                                    <button
+                                        type="button"
+                                        x-on:click="menuTerbuka = false; $wire.pindahkanMahasiswa('{{ $m['id'] }}', '{{ $labelTujuan }}')"
+                                        class="block w-full px-3 py-1.5 text-left text-sm text-gray-700 hover:bg-gray-50
+                                       dark:text-gray-200 dark:hover:bg-gray-800">
+                                        {{ $namaTujuan }}
+                                    </button>
+                                    @endif
+                                    @endforeach
+                                </div>
+                            </div>
+                        </div>
                     </div>
                     @empty
                     <div class="flex items-center justify-center h-16 text-xs text-gray-400 dark:text-gray-600 border border-dashed rounded-lg">
-                        Seret mahasiswa ke sini
+                        Seret mahasiswa ke sini, atau pakai menu titik-tiga
                     </div>
                     @endforelse
                 </div>
