@@ -27,7 +27,7 @@ $logoFullPath = $kampus->logo_path ? storage_path('app/public/'.$kampus->logo_pa
             <!-- Status Akreditasi -->
             @if ($kampus->akreditasi)
             <div style="font-family: Arial, sans-serif; font-size: 11px; font-weight: bold; color: #333333; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 6px;">
-                Terakreditasi: {{ $kampus->akreditasi }}
+                {{ $kampus->akreditasi }}
             </div>
             @endif
 
