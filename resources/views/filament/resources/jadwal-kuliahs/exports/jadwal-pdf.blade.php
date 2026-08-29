@@ -136,7 +136,7 @@
                     @forelse ($jadwal->dosenPengajars as $dp)
                     {{ $dp->dosen?->person?->nama_lengkap ?? '-' }}{{ $dp->is_koordinator ? ' (Koord.)' : '' }}<br>
                     @empty
-                    -
+                    Team Teaching
                     @endforelse
                 </td>
                 <td>
