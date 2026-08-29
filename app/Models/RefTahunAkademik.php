@@ -276,6 +276,43 @@ class RefTahunAkademik extends Model
 
         return 'Terbuka';
     }
+
+    /**
+     * Mengecek apakah periode input nilai sedang terbuka.
+     *
+     * Syarat:
+     * - status harus InputNilai
+     * - buka_input_nilai harus true
+     * - tidak sedang dikunci
+     * - tanggal mulai, jika ada, sudah tercapai
+     * - tanggal selesai, jika ada, belum terlewati
+     */
+    public function isInputNilaiOpen(): bool
+    {
+        if ($this->status !== TahunAkademikStatus::InputNilai) {
+            return false;
+        }
+
+        if (! $this->buka_input_nilai) {
+            return false;
+        }
+
+        if ($this->is_locked_nilai) {
+            return false;
+        }
+
+        $today = now()->startOfDay();
+
+        if ($this->tgl_mulai_input_nilai && $today->lt($this->tgl_mulai_input_nilai)) {
+            return false;
+        }
+
+        if ($this->tgl_selesai_input_nilai && $today->gt($this->tgl_selesai_input_nilai)) {
+            return false;
+        }
+
+        return true;
+    }
     protected function safeCount(string $relation, ?string $distinctColumn = null, array $where = []): int
     {
         if (! method_exists($this, $relation) || ! DbSchema::hasTable((new static)->getTable())) {
