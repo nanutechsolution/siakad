@@ -71,9 +71,31 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
 
     public bool $isSubmitting = false;
 
+    /**
+     * Urutan step Wizard, 1-based, mengikuti kontrak
+     * startOnStep() / persistStepInQueryString() milik Filament.
+     * Urutannya mengikuti array di form(): Konteks, Target,
+     * Pembimbing, Konfirmasi.
+     */
+    private const STEP_KONTEKS = 1;
+
+    private const STEP_TARGET = 2;
+
+    private const STEP_PEMBIMBING = 3;
+
+    private const STEP_KONFIRMASI = 4;
+
+    /**
+     * Key session untuk menyimpan konteks (jenis, prodi, angkatan,
+     * semester) yang dipertahankan saat submit() berhasil, supaya
+     * wizard bisa langsung dibuka di step Target tanpa mengulang
+     * step Konteks.
+     */
+    private const RETAINED_CONTEXT_SESSION_KEY = 'penugasan-pembimbing.retained-context';
+
     public function mount(): void
     {
-        $this->form->fill($this->defaultFormData());
+        $this->form->fill($this->resolveInitialFormData());
     }
 
     /**
@@ -105,6 +127,37 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             'keterangan' => null,
         ];
     }
+
+    /**
+     * Data awal form saat wizard di-mount.
+     *
+     * Kalau ada konteks yang sengaja dipertahankan dari penugasan
+     * sebelumnya (lihat submit()), konteks itu menimpa nilai default
+     * untuk jenis, prodi, angkatan, dan semester — supaya pengguna
+     * tidak perlu mengisi ulang saat menugaskan target berikutnya.
+     * Konteks di session hanya dipakai sekali (langsung terhapus).
+     *
+     * @return array<string, mixed>
+     */
+    protected function resolveInitialFormData(): array
+    {
+        $data = $this->defaultFormData();
+
+        $retained = session()->pull(self::RETAINED_CONTEXT_SESSION_KEY);
+
+        if (! is_array($retained)) {
+            return $data;
+        }
+
+        foreach (['jenis', 'prodi_id', 'angkatan_id', 'semester_mulai_id'] as $key) {
+            if (array_key_exists($key, $retained) && filled($retained[$key])) {
+                $data[$key] = $retained[$key];
+            }
+        }
+
+        return $data;
+    }
+
     protected function formResolver(): FormResolver
     {
         return app(FormResolver::class);
@@ -1099,25 +1152,17 @@ class PenugasanPembimbingPage extends Page implements HasForms, HasTable
             }
 
             $notification->send();
-            $this->redirect(static::getUrl());
-            $semester =
-                $data['semester_mulai_id'];
 
-            $this->form->fill([
-                ...$this->defaultFormData(),
-
-                'jenis' =>
-                $data['jenis'],
-
-                'prodi_id' =>
-                $data['prodi_id'] ?? null,
-
-                'angkatan_id' =>
-                $data['angkatan_id'] ?? null,
-
-                'semester_mulai_id' =>
-                $semester,
+            session()->put(self::RETAINED_CONTEXT_SESSION_KEY, [
+                'jenis' => $data['jenis'],
+                'prodi_id' => $data['prodi_id'] ?? null,
+                'angkatan_id' => $data['angkatan_id'] ?? null,
+                'semester_mulai_id' => $data['semester_mulai_id'] ?? null,
             ]);
+
+            $this->redirect(
+                static::getUrl(['penugasan-step' => self::STEP_TARGET])
+            );
         } finally {
             $this->isSubmitting = false;
         }
