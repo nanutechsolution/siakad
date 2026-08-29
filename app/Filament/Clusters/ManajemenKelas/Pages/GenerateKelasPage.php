@@ -99,7 +99,43 @@ class GenerateKelasPage extends Page implements HasForms, HasActions
             ])
             ->statePath('data');
     }
+    public function pindahkanMahasiswa(string $mahasiswaId, string $labelTujuan): void
+    {
+        if (! array_key_exists($labelTujuan, $this->labelKelas)) {
+            return;
+        }
 
+        $labelAsal = $this->distribusi[$mahasiswaId] ?? null;
+
+        if ($labelAsal === $labelTujuan) {
+            return; // drop ke kolom yang sama, tidak perlu apa-apa
+        }
+
+        $this->distribusi[$mahasiswaId] = $labelTujuan;
+
+        // Feedback halus, tidak mengganggu — cukup untuk konfirmasi visual
+        $nama = collect($this->daftarMahasiswa)->firstWhere('id', $mahasiswaId)['nama'] ?? 'Mahasiswa';
+        $this->dispatch('mahasiswa-dipindah', nama: $nama, tujuan: $this->labelKelas[$labelTujuan]);
+    }
+
+    #[Computed]
+    public function mahasiswaPerKolom(): array
+    {
+        $tersaring = collect($this->daftarMahasiswaTersaring)->keyBy('id');
+
+        $kolom = [];
+        foreach (array_keys($this->labelKelas) as $label) {
+            $kolom[$label] = [];
+        }
+
+        foreach ($this->distribusi as $mahasiswaId => $label) {
+            if ($tersaring->has($mahasiswaId) && isset($kolom[$label])) {
+                $kolom[$label][] = $tersaring[$mahasiswaId];
+            }
+        }
+
+        return $kolom;
+    }
     public function resetPreview(): void
     {
         $this->previewGenerated = false;
