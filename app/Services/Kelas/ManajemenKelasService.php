@@ -196,12 +196,7 @@ class ManajemenKelasService
     }
 
     /**
-     * Generate N kelas baru untuk kombinasi:
-     *
-     * prodi + program + angkatan.
-     *
-     * Mahasiswa yang belum mempunyai kelas aktif
-     * dibagi round-robin.
+     * @param array<string, array<int, string>>|null $distribusiManual  ['A' => [mahasiswaId, ...], 'B' => [...]]
      */
     public function generateKelasOtomatis(
         int $prodiId,
@@ -210,6 +205,7 @@ class ManajemenKelasService
         int $jumlahKelas,
         ?int $kapasitasPerKelas,
         string $polaNama = 'Kelas %s',
+        ?array $distribusiManual = null,
     ): array {
         return DB::transaction(function () use (
             $prodiId,
@@ -217,61 +213,74 @@ class ManajemenKelasService
             $angkatanId,
             $jumlahKelas,
             $kapasitasPerKelas,
-            $polaNama
+            $polaNama,
+            $distribusiManual
         ) {
             $abjad = range('A', 'Z');
+            $label = fn(int $i) => $abjad[$i] ?? (string) ($i + 1);
 
-            $kelasBaru = collect();
-
-            for ($i = 0; $i < $jumlahKelas; $i++) {
-                $label = $abjad[$i]
-                    ?? (string) ($i + 1);
-
-                $kelasBaru->push(
-                    Kelas::create([
-                        'nama_kelas' => sprintf(
-                            $polaNama,
-                            $label
-                        ),
-                        'prodi_id' => $prodiId,
-                        'program_id' => $programId,
-                        'angkatan_id' => $angkatanId,
-                        'kapasitas' => $kapasitasPerKelas,
-                    ])
-                );
+            // Validasi kapasitas SEBELUM membuat apa pun (defense in depth,
+            // preview di UI cuma bantuan visual, validasi final tetap di server)
+            if ($distribusiManual && $kapasitasPerKelas !== null) {
+                foreach ($distribusiManual as $labelKelas => $idsMahasiswa) {
+                    if (count($idsMahasiswa) > $kapasitasPerKelas) {
+                        throw ManajemenKelasException::kapasitasPenuh($kapasitasPerKelas);
+                    }
+                }
             }
 
-            $mahasiswaIds = $this
-                ->mahasiswaTanpaKelas(
-                    $prodiId,
-                    $angkatanId
-                )
-                ->pluck('id')
-                ->values();
+            $kelasBaru = collect();
+            $kelasPerLabel = [];
 
-            $kelasIds = $kelasBaru
-                ->pluck('id')
-                ->values();
+            for ($i = 0; $i < $jumlahKelas; $i++) {
+                $labelKelas = $label($i);
+
+                $kelas = Kelas::create([
+                    'nama_kelas' => sprintf($polaNama, $labelKelas),
+                    'prodi_id' => $prodiId,
+                    'program_id' => $programId,
+                    'angkatan_id' => $angkatanId,
+                    'kapasitas' => $kapasitasPerKelas,
+                ]);
+
+                $kelasBaru->push($kelas);
+                $kelasPerLabel[$labelKelas] = $kelas;
+            }
 
             $ditempatkan = 0;
 
-            foreach ($mahasiswaIds as $i => $mahasiswaId) {
-                $kelasId = $kelasIds[$i % $kelasIds->count()];
+            if ($distribusiManual !== null) {
+                // Pakai hasil edit user di preview
+                foreach ($distribusiManual as $labelKelas => $idsMahasiswa) {
+                    $kelasId = $kelasPerLabel[$labelKelas]->id;
 
-                MahasiswaKelas::create([
-                    'mahasiswa_id' => $mahasiswaId,
-                    'kelas_id' => $kelasId,
-                    'tanggal_masuk' => now()->toDateString(),
-                    'tanggal_keluar' => null,
-                ]);
+                    foreach ($idsMahasiswa as $mahasiswaId) {
+                        MahasiswaKelas::create([
+                            'mahasiswa_id' => $mahasiswaId,
+                            'kelas_id' => $kelasId,
+                            'tanggal_masuk' => now()->toDateString(),
+                            'tanggal_keluar' => null,
+                        ]);
+                        $ditempatkan++;
+                    }
+                }
+            } else {
+                // Fallback lama: round-robin otomatis
+                $mahasiswaIds = $this->mahasiswaTanpaKelas($prodiId, $angkatanId)->pluck('id')->values();
+                $kelasIds = $kelasBaru->pluck('id')->values();
 
-                $ditempatkan++;
+                foreach ($mahasiswaIds as $i => $mahasiswaId) {
+                    MahasiswaKelas::create([
+                        'mahasiswa_id' => $mahasiswaId,
+                        'kelas_id' => $kelasIds[$i % $kelasIds->count()],
+                        'tanggal_masuk' => now()->toDateString(),
+                        'tanggal_keluar' => null,
+                    ]);
+                    $ditempatkan++;
+                }
             }
 
-            return [
-                'kelas' => $kelasBaru,
-                'ditempatkan' => $ditempatkan,
-            ];
+            return ['kelas' => $kelasBaru, 'ditempatkan' => $ditempatkan];
         });
     }
 
