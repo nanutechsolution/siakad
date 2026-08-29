@@ -113,12 +113,15 @@ class GenerateKelasPage extends Page implements HasForms, HasActions
         $data = $this->form->getState();
 
         $mahasiswa = Mahasiswa::query()
-            ->where('prodi_id', $data['prodi_id'])
-            ->where('angkatan_id', $data['angkatan_id'])
-            ->whereNull('deleted_at')
+            ->select(['mahasiswas.id', 'mahasiswas.nim', 'mahasiswas.person_id'])
+            ->join('ref_person', 'ref_person.id', '=', 'mahasiswas.person_id')
+            ->addSelect('ref_person.nama_lengkap as nama')
+            ->where('mahasiswas.prodi_id', $data['prodi_id'])
+            ->where('mahasiswas.angkatan_id', $data['angkatan_id'])
+            ->whereNull('mahasiswas.deleted_at')
             ->whereDoesntHave('mahasiswaKelas', fn($q) => $q->whereNull('tanggal_keluar'))
-            ->orderBy('nama')
-            ->get(['id', 'nama', 'nim']);
+            ->orderBy('ref_person.nama_lengkap')
+            ->get();
 
         if ($mahasiswa->isEmpty()) {
             Notification::make()
@@ -143,7 +146,6 @@ class GenerateKelasPage extends Page implements HasForms, HasActions
             'nim' => $m->nim,
         ])->all();
 
-        // Round-robin awal — user boleh geser manual sesudah ini
         $this->distribusi = [];
         foreach ($mahasiswa->values() as $i => $m) {
             $this->distribusi[$m->id] = $labels[$i % $labels->count()];
