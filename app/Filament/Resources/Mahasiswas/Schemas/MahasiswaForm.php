@@ -6,6 +6,7 @@ use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Mahasiswa;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
+use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -16,7 +17,9 @@ use Filament\Schemas\Components\Group;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Tabs;
 use Filament\Schemas\Components\Tabs\Tab;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Filament\Support\Enums\FontWeight;
 use Illuminate\Database\Eloquent\Builder;
 
 class MahasiswaForm
@@ -30,18 +33,19 @@ class MahasiswaForm
                         Tabs::make('MahasiswaTabs')
                             ->columnSpanFull()
                             ->persistTabInQueryString()
+                            ->contained(false) // gaya 2026: tab menyatu dengan background, bukan card bertumpuk
                             ->tabs([
 
                                 // ================= TAB 1: IDENTITAS & AKADEMIK =================
-                                Tab::make('Akademik')
+                                Tab::make('Identitas & Akademik')
                                     ->icon('heroicon-o-academic-cap')
                                     ->schema([
-                                        Section::make('Identitas Utama (SSOT)')
-                                            ->description('Pilih data person yang sudah ada, atau buat baru jika belum pernah terdaftar di sistem.')
+                                        Section::make('Data Person')
+                                            ->description('Sumber tunggal identitas (SSOT). Cari data yang sudah ada di sistem sebelum membuat baru — mencegah duplikasi antar peran (dosen, pegawai, mahasiswa).')
                                             ->icon('heroicon-o-identification')
                                             ->schema([
                                                 Select::make('person_id')
-                                                    ->label('Data Person')
+                                                    ->label('Cari atau Pilih Person')
                                                     ->relationship('person', 'nama_lengkap')
                                                     ->searchable(['nama_lengkap', 'nik', 'email'])
                                                     ->preload()
@@ -51,105 +55,68 @@ class MahasiswaForm
                                                         fn($record) => "{$record->nama_lengkap}" . ($record->nik ? " — NIK {$record->nik}" : '')
                                                     )
                                                     ->createOptionModalHeading('Buat Data Person Baru')
-                                                    ->createOptionForm([
-                                                        Grid::make(2)->schema([
-                                                            TextInput::make('nama_lengkap')
-                                                                ->required()
-                                                                ->maxLength(255)
-                                                                ->columnSpanFull(),
-                                                            TextInput::make('nik')
-                                                                ->label('NIK')
-                                                                ->numeric()
-                                                                ->length(16)
-                                                                ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true)
-                                                                ->required(),
-                                                            TextInput::make('email')
-                                                                ->email()
-                                                                ->maxLength(255)
-                                                                ->nullable(),
-                                                            TextInput::make('no_hp')
-                                                                ->label('No. HP')
-                                                                ->tel()
-                                                                ->maxLength(20)
-                                                                ->nullable(),
-                                                            Radio::make('jenis_kelamin')
-                                                                ->label('Jenis Kelamin')
-                                                                ->options(['L' => 'Laki-laki', 'P' => 'Perempuan'])
-                                                                ->inline(),
-                                                            TextInput::make('tempat_lahir')
-                                                                ->nullable(),
-                                                            DatePicker::make('tanggal_lahir')
-                                                                ->native(false)
-                                                                ->maxDate(now())
-                                                                ->displayFormat('d/m/Y'),
-                                                        ]),
-                                                    ])
+                                                    ->createOptionForm(self::personFieldset())
                                                     ->createOptionAction(
-                                                        fn($action) => $action->modalWidth('lg')
+                                                        fn($action) => $action
+                                                            ->modalWidth('lg')
+                                                            ->modalDescription('Isi Nama Lengkap dan NIK terlebih dahulu. Data lain seperti kontak dan tanggal lahir bisa dilengkapi belakangan.')
                                                     )
-                                                    ->editOptionForm([
-                                                        Grid::make(2)->schema([
-                                                            TextInput::make('nama_lengkap')
-                                                                ->required()
-                                                                ->maxLength(255)
-                                                                ->columnSpanFull(),
-                                                            TextInput::make('nik')
-                                                                ->label('NIK')
-                                                                ->numeric()
-                                                                ->length(16)
-                                                                ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true),
-                                                            TextInput::make('email')
-                                                                ->email()
-                                                                ->maxLength(255)
-                                                                ->nullable(),
-                                                            TextInput::make('no_hp')
-                                                                ->label('No. HP')
-                                                                ->tel()
-                                                                ->maxLength(20)
-                                                                ->nullable(),
-                                                            Radio::make('jenis_kelamin')
-                                                                ->label('Jenis Kelamin')
-                                                                ->options(['L' => 'Laki-laki', 'P' => 'Perempuan'])
-                                                                ->inline(),
-                                                            TextInput::make('tempat_lahir')
-                                                                ->nullable(),
-                                                            DatePicker::make('tanggal_lahir')
-                                                                ->native(false)
-                                                                ->maxDate(now())
-                                                                ->displayFormat('d/m/Y'),
-                                                        ]),
-                                                    ])
+                                                    ->editOptionForm(self::personFieldset())
+                                                    ->editOptionAction(fn($action) => $action->modalWidth('lg'))
                                                     ->columnSpanFull()
-                                                    ->helperText('Ketik nama atau NIK untuk mencari data person yang sudah terdaftar (misal: sudah jadi dosen/pegawai sebelumnya).'),
+                                                    ->helperText('Ketik nama atau NIK. Jika calon mahasiswa pernah tercatat (mis. alumni, anak dosen/pegawai), datanya akan muncul otomatis.'),
+                                            ]),
 
+                                        Section::make('Identitas Akademik')
+                                            ->description('Nomor Induk Mahasiswa untuk institusi ini.')
+                                            ->icon('heroicon-o-hashtag')
+                                            ->schema([
                                                 TextInput::make('nim')
                                                     ->label('NIM (Nomor Induk Mahasiswa)')
                                                     ->required()
                                                     ->unique(ignoreRecord: true)
                                                     ->maxLength(20)
                                                     ->alphaNum()
-                                                    ->helperText('Format NIM mengikuti pola pada Program Studi (ref_prodi.format_nim). Pastikan tidak duplikat.')
-                                                    ->columnSpan(2),
-                                                TextEntry::make('nim_preview')
-                                                    ->label('Status NIM')
-                                                    ->html() // Mengizinkan elemen HTML dalam return string
-                                                    ->state(function (callable $get, ?Mahasiswa $record) {
+                                                    ->live(onBlur: true)
+                                                    ->prefixIcon('heroicon-o-identification')
+                                                    ->helperText('Format mengikuti pola pada Program Studi terpilih.')
+                                                    ->hint(function (Get $get, ?Mahasiswa $record): ?string {
                                                         $nim = $get('nim');
-
                                                         if (blank($nim)) {
-                                                            return '<span class="text-gray-400">Belum diisi</span>';
+                                                            return null;
                                                         }
 
                                                         $exists = Mahasiswa::where('nim', $nim)
                                                             ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
                                                             ->exists();
 
-                                                        return $exists
-                                                            ? '<span class="text-danger-600 font-medium">⚠ NIM sudah dipakai</span>'
-                                                            : '<span class="text-success-600 font-medium">✓ NIM tersedia</span>';
+                                                        return $exists ? 'NIM sudah dipakai' : 'NIM tersedia';
                                                     })
-                                                    ->live()
-                                                    ->columnSpan(1),
+                                                    ->hintIcon(function (Get $get, ?Mahasiswa $record) {
+                                                        $nim = $get('nim');
+                                                        if (blank($nim)) {
+                                                            return null;
+                                                        }
+
+                                                        $exists = Mahasiswa::where('nim', $nim)
+                                                            ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
+                                                            ->exists();
+
+                                                        return $exists ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle';
+                                                    })
+                                                    ->hintColor(function (Get $get, ?Mahasiswa $record) {
+                                                        $nim = $get('nim');
+                                                        if (blank($nim)) {
+                                                            return null;
+                                                        }
+
+                                                        $exists = Mahasiswa::where('nim', $nim)
+                                                            ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
+                                                            ->exists();
+
+                                                        return $exists ? 'danger' : 'success';
+                                                    })
+                                                    ->columnSpan(2),
                                             ])
                                             ->columns(3),
 
@@ -164,6 +131,7 @@ class MahasiswaForm
                                                             ->searchable()
                                                             ->preload()
                                                             ->required()
+                                                            ->native(false)
                                                             ->live()
                                                             ->afterStateUpdated(function (callable $set): void {
                                                                 // kurikulum terikat ke prodi (master_kurikulums.prodi_id),
@@ -177,24 +145,24 @@ class MahasiswaForm
                                                             ->relationship('angkatan', 'id_tahun')
                                                             ->searchable()
                                                             ->preload()
+                                                            ->native(false)
                                                             ->required(),
+
                                                         Select::make('mulai_studi_tahun_akademik_id')
                                                             ->label('Mulai Studi')
-                                                            ->relationship(
-                                                                'mulaiStudiTahunAkademik',
-                                                                'nama_tahun'
-                                                            )
+                                                            ->relationship('mulaiStudiTahunAkademik', 'nama_tahun')
                                                             ->searchable()
                                                             ->preload()
+                                                            ->native(false)
                                                             ->required()
-                                                            ->helperText(
-                                                                'Tahun akademik pertama mahasiswa resmi mulai mengikuti studi.'
-                                                            ),
+                                                            ->helperText('Tahun akademik pertama mahasiswa resmi mulai studi.'),
+
                                                         Select::make('program_id')
                                                             ->label('Program Kelas')
                                                             ->relationship('program', 'nama_program')
                                                             ->searchable()
                                                             ->preload()
+                                                            ->native(false)
                                                             ->nullable(),
 
                                                         Select::make('kurikulum_id')
@@ -202,7 +170,7 @@ class MahasiswaForm
                                                             ->relationship(
                                                                 name: 'kurikulum',
                                                                 titleAttribute: 'nama_kurikulum',
-                                                                modifyQueryUsing: fn(Builder $query, callable $get) => $query
+                                                                modifyQueryUsing: fn(Builder $query, Get $get) => $query
                                                                     ->when(
                                                                         filled($get('prodi_id')),
                                                                         fn(Builder $query) => $query->where('prodi_id', $get('prodi_id')),
@@ -210,9 +178,11 @@ class MahasiswaForm
                                                             )
                                                             ->searchable()
                                                             ->preload()
+                                                            ->native(false)
                                                             ->nullable()
-                                                            ->disabled(fn(callable $get) => blank($get('prodi_id')))
-                                                            ->helperText('Pilih Program Studi terlebih dahulu. Daftar kurikulum otomatis terfilter sesuai prodi (master_kurikulums.prodi_id).'),
+                                                            ->disabled(fn(Get $get) => blank($get('prodi_id')))
+                                                            ->columnSpanFull()
+                                                            ->helperText('Pilih Program Studi terlebih dahulu — daftar otomatis terfilter.'),
                                                     ]),
                                             ]),
                                     ]),
@@ -220,6 +190,8 @@ class MahasiswaForm
                                 // ================= TAB 2: BIODATA TAMBAHAN =================
                                 Tab::make('Biodata Tambahan')
                                     ->icon('heroicon-o-user-circle')
+                                    ->badge(fn(?Mahasiswa $record) => self::biodataCompleteness($record))
+                                    ->badgeColor(fn(?Mahasiswa $record) => self::biodataCompleteness($record) === '100%' ? 'success' : 'warning')
                                     ->schema([
                                         Section::make()
                                             ->relationship('biodata') // hasOne mahasiswa_biodata, auto save
@@ -234,7 +206,8 @@ class MahasiswaForm
                                                         Textarea::make('alamat_domisili')
                                                             ->label('Alamat Domisili Saat Ini')
                                                             ->rows(2)
-                                                            ->columnSpanFull(),
+                                                            ->columnSpanFull()
+                                                            ->helperText('Kosongkan jika sama dengan alamat KTP.'),
                                                         TextInput::make('kode_pos')
                                                             ->label('Kode Pos')
                                                             ->numeric()
@@ -251,10 +224,12 @@ class MahasiswaForm
                                                             TextInput::make('nik_ayah')->label('NIK Ayah')->numeric()->length(16),
                                                             Select::make('pendidikan_ayah')
                                                                 ->label('Pendidikan Ayah')
+                                                                ->native(false)
                                                                 ->options(self::pendidikanOptions()),
                                                             TextInput::make('pekerjaan_ayah')->label('Pekerjaan Ayah'),
                                                             Select::make('penghasilan_ayah')
                                                                 ->label('Penghasilan Ayah')
+                                                                ->native(false)
                                                                 ->options(self::penghasilanOptions()),
                                                         ]),
                                                         Grid::make(2)->schema([
@@ -262,24 +237,30 @@ class MahasiswaForm
                                                             TextInput::make('nik_ibu')->label('NIK Ibu')->numeric()->length(16),
                                                             Select::make('pendidikan_ibu')
                                                                 ->label('Pendidikan Ibu')
+                                                                ->native(false)
                                                                 ->options(self::pendidikanOptions()),
                                                             TextInput::make('pekerjaan_ibu')->label('Pekerjaan Ibu'),
                                                             Select::make('penghasilan_ibu')
                                                                 ->label('Penghasilan Ibu')
+                                                                ->native(false)
                                                                 ->options(self::penghasilanOptions()),
                                                         ]),
                                                     ])
                                                     ->collapsible()
                                                     ->collapsed(),
 
-                                                Section::make('Wali (jika bukan orang tua kandung)')
+                                                Section::make('Wali')
+                                                    ->description('Isi hanya jika bukan orang tua kandung.')
                                                     ->icon('heroicon-o-shield-check')
                                                     ->schema([
                                                         Grid::make(2)->schema([
                                                             TextInput::make('nama_wali')->label('Nama Wali'),
                                                             TextInput::make('hubungan_wali')->label('Hubungan dengan Mahasiswa'),
                                                             TextInput::make('pekerjaan_wali')->label('Pekerjaan Wali'),
-                                                            TextInput::make('no_hp_wali')->label('No. HP Wali')->tel(),
+                                                            TextInput::make('no_hp_wali')
+                                                                ->label('No. HP Wali')
+                                                                ->tel()
+                                                                ->prefixIcon('heroicon-o-phone'),
                                                         ]),
                                                     ])
                                                     ->collapsible()
@@ -290,6 +271,7 @@ class MahasiswaForm
                                                     ->schema([
                                                         Grid::make(3)->schema([
                                                             Select::make('agama')
+                                                                ->native(false)
                                                                 ->options([
                                                                     'ISLAM' => 'Islam',
                                                                     'KRISTEN' => 'Kristen',
@@ -300,6 +282,7 @@ class MahasiswaForm
                                                                 ]),
                                                             Select::make('status_pernikahan')
                                                                 ->label('Status Pernikahan')
+                                                                ->native(false)
                                                                 ->options([
                                                                     'BELUM_KAWIN' => 'Belum Kawin',
                                                                     'KAWIN' => 'Kawin',
@@ -309,7 +292,10 @@ class MahasiswaForm
                                                             TextInput::make('no_kip')
                                                                 ->label('No. KIP')
                                                                 ->helperText('Isi jika penerima KIP Kuliah'),
+                                                        ]),
+                                                        Grid::make(2)->schema([
                                                             TextInput::make('anak_ke')
+                                                                ->label('Anak Ke-')
                                                                 ->numeric()
                                                                 ->minValue(1),
                                                             TextInput::make('jumlah_saudara')
@@ -328,22 +314,31 @@ class MahasiswaForm
                                         Section::make('Integrasi PDDikti')
                                             ->icon('heroicon-o-arrow-path')
                                             ->schema([
-                                                Grid::make(2)->schema([
-                                                    TextInput::make('id_pd_feeder')
-                                                        ->label('ID Mahasiswa Feeder')
-                                                        ->maxLength(36)
-                                                        ->nullable()
-                                                        ->helperText('UUID dari PDDikti. Jangan diubah manual jika tidak yakin.'),
+                                                // Placeholder informatif saat record belum dibuat,
+                                                // menggantikan tab yang hilang tanpa penjelasan.
+                                                Placeholder::make('feeder_locked_notice')
+                                                    ->label('')
+                                                    ->content('Sinkronisasi PDDikti tersedia setelah data mahasiswa disimpan.')
+                                                    ->visible(fn(?Mahasiswa $record) => $record === null),
 
-                                                    TextEntry::make('last_synced_at')
-                                                        ->label('Terakhir Sinkronisasi')
-                                                        ->state(fn(?Mahasiswa $record): string => $record?->last_synced_at
-                                                            ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
-                                                            : 'Belum pernah sinkron'),
-                                                ]),
+                                                Grid::make(2)
+                                                    ->schema([
+                                                        TextInput::make('id_pd_feeder')
+                                                            ->label('ID Mahasiswa Feeder')
+                                                            ->maxLength(36)
+                                                            ->nullable()
+                                                            ->prefixIcon('heroicon-o-finger-print')
+                                                            ->helperText('UUID dari PDDikti. Jangan diubah manual jika tidak yakin.'),
+
+                                                        TextEntry::make('last_synced_at')
+                                                            ->label('Terakhir Sinkronisasi')
+                                                            ->state(fn(?Mahasiswa $record): string => $record?->last_synced_at
+                                                                ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
+                                                                : 'Belum pernah sinkron'),
+                                                    ])
+                                                    ->visible(fn(?Mahasiswa $record) => $record !== null),
                                             ]),
-                                    ])
-                                    ->visible(fn(?Mahasiswa $record) => $record !== null),
+                                    ]),
                             ]),
                     ])->columnSpan(['lg' => 2]),
 
@@ -354,27 +349,102 @@ class MahasiswaForm
                             ->relationship('person')
                             ->schema([
                                 FileUpload::make('photo_path')
-                                    ->label('Unggah Pas Foto')
+                                    ->label('')
                                     ->image()
                                     ->imageEditor()
+                                    ->avatar() // pratinjau bulat, gaya profil modern
                                     ->directory('mahasiswa/foto')
                                     ->maxSize(2048)
                                     ->columnSpanFull(),
                             ])
                             ->collapsible(),
-                        Section::make('Status')
+
+                        Section::make('Ringkasan Status')
+                            ->icon('heroicon-o-information-circle')
                             ->schema([
                                 TextEntry::make('created_at')
                                     ->label('Terdaftar Sejak')
+                                    ->weight(FontWeight::Medium)
                                     ->state(fn(?Mahasiswa $record) => $record?->created_at?->translatedFormat('d F Y') ?? '—'),
                                 TextEntry::make('updated_at')
                                     ->label('Terakhir Diubah')
                                     ->state(fn(?Mahasiswa $record) => $record?->updated_at?->diffForHumans() ?? '—'),
+                                TextEntry::make('sync_status')
+                                    ->label('Status PDDikti')
+                                    ->badge()
+                                    ->color(fn(?Mahasiswa $record) => $record?->last_synced_at ? 'success' : 'gray')
+                                    ->state(fn(?Mahasiswa $record) => $record?->last_synced_at ? 'Tersinkron' : 'Belum Sinkron'),
                             ])
                             ->visible(fn(?Mahasiswa $record) => $record !== null),
                     ])->columnSpan(['lg' => 1]),
             ])
             ->columns(3);
+    }
+
+    /**
+     * Fieldset Person dipakai bersama oleh createOptionForm & editOptionForm
+     * agar keduanya selalu sinkron dan tidak ada field yang "hilang" saat edit.
+     */
+    protected static function personFieldset(): array
+    {
+        return [
+            Grid::make(2)->schema([
+                TextInput::make('nama_lengkap')
+                    ->required()
+                    ->maxLength(255)
+                    ->columnSpanFull(),
+                TextInput::make('nik')
+                    ->label('NIK')
+                    ->numeric()
+                    ->length(16)
+                    ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true)
+                    ->required(),
+                TextInput::make('email')
+                    ->email()
+                    ->maxLength(255)
+                    ->prefixIcon('heroicon-o-envelope')
+                    ->nullable(),
+                TextInput::make('no_hp')
+                    ->label('No. HP')
+                    ->tel()
+                    ->prefixIcon('heroicon-o-phone')
+                    ->maxLength(20)
+                    ->nullable(),
+                Radio::make('jenis_kelamin')
+                    ->label('Jenis Kelamin')
+                    ->options(['L' => 'Laki-laki', 'P' => 'Perempuan'])
+                    ->inline(),
+                TextInput::make('tempat_lahir')
+                    ->nullable(),
+                DatePicker::make('tanggal_lahir')
+                    ->native(false)
+                    ->maxDate(now())
+                    ->displayFormat('d/m/Y'),
+            ]),
+        ];
+    }
+
+    protected static function biodataCompleteness(?Mahasiswa $record): string
+    {
+        if (! $record?->biodata) {
+            return '0%';
+        }
+
+        $fields = [
+            'alamat_ktp',
+            'nama_ayah',
+            'nama_ibu',
+            'agama',
+            'status_pernikahan',
+            'anak_ke',
+            'jumlah_saudara',
+        ];
+
+        $filled = collect($fields)
+            ->filter(fn($field) => filled($record->biodata->{$field}))
+            ->count();
+
+        return round(($filled / count($fields)) * 100) . '%';
     }
 
     protected static function pendidikanOptions(): array
