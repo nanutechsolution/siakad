@@ -18,8 +18,11 @@ use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
+use Filament\Schemas\Components\Grid;
+use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\HtmlString;
 use Livewire\Attributes\Computed;
 
 class GenerateKelasPage extends Page implements HasForms, HasActions
@@ -65,37 +68,98 @@ class GenerateKelasPage extends Page implements HasForms, HasActions
     {
         return $schema
             ->components([
-                Select::make('prodi_id')
-                    ->label('Program Studi')
-                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
-                    ->searchable()->live()->required()
-                    ->afterStateUpdated(fn() => $this->resetPreview()),
-                Select::make('program_id')
-                    ->label('Program')
-                    ->options(fn() => RefProgram::query()->where('is_active', true)->orderBy('nama_program')->pluck('nama_program', 'id'))
-                    ->searchable()->required(),
-                Select::make('angkatan_id')
-                    ->label('Angkatan')
-                    ->options(fn() => RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun'))
-                    ->searchable()->live()->required()
-                    ->afterStateUpdated(fn() => $this->resetPreview()),
-                TextInput::make('jumlah_kelas')
-                    ->label('Jumlah Kelas yang Dibuat')
-                    ->numeric()->minValue(1)->maxValue(26)->required()->live(debounce: 400)
-                    ->helperText('Maksimal 26 kelas sekali generate (penamaan otomatis A-Z).')
-                    ->afterStateUpdated(fn() => $this->resetPreview()),
-                TextInput::make('kapasitas_per_kelas')
-                    ->label('Kapasitas per Kelas')
-                    ->numeric()->minValue(1)->live(debounce: 400)
-                    ->helperText('Kosongkan kalau tidak ingin membatasi kapasitas.')
-                    ->afterStateUpdated(fn() => $this->resetPreview()),
-                TextInput::make('pola_nama')
-                    ->label('Pola Nama Kelas')
-                    ->required()->live(debounce: 400)
-                    ->helperText(fn($state) => 'Contoh hasil: ' . collect(['A', 'B', 'C'])
-                        ->map(fn($l) => sprintf($state ?: 'Kelas %s', $l))
-                        ->implode(', '))
-                    ->afterStateUpdated(fn() => $this->resetPreview()),
+                Section::make('Pilih Kombinasi Kelas')
+                    ->description('Tentukan program studi, program, dan angkatan yang akan digenerate kelasnya.')
+                    ->icon('heroicon-o-funnel')
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                            ->schema([
+                                Select::make('prodi_id')
+                                    ->label('Program Studi')
+                                    ->prefixIcon('heroicon-o-academic-cap')
+                                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
+                                    ->searchable()
+                                    ->native(false)
+                                    ->live()
+                                    ->required()
+                                    ->placeholder('Pilih program studi')
+                                    ->afterStateUpdated(fn() => $this->resetPreview()),
+
+                                Select::make('program_id')
+                                    ->label('Program')
+                                    ->prefixIcon('heroicon-o-briefcase')
+                                    ->options(fn() => RefProgram::query()
+                                        ->where('is_active', true)
+                                        ->orderBy('nama_program')
+                                        ->pluck('nama_program', 'id'))
+                                    ->searchable()
+                                    ->native(false)
+                                    ->required()
+                                    ->placeholder('Pilih program'),
+
+                                Select::make('angkatan_id')
+                                    ->label('Angkatan')
+                                    ->prefixIcon('heroicon-o-calendar')
+                                    ->options(fn() => RefAngkatan::query()
+                                        ->orderByDesc('id_tahun')
+                                        ->pluck('id_tahun', 'id_tahun'))
+                                    ->searchable()
+                                    ->native(false)
+                                    ->live()
+                                    ->required()
+                                    ->placeholder('Pilih angkatan')
+                                    ->afterStateUpdated(fn() => $this->resetPreview()),
+                            ]),
+                    ]),
+
+                Section::make('Aturan Pembuatan Kelas')
+                    ->description('Atur jumlah kelas, batas kapasitas, dan pola penamaan sebelum menghitung preview.')
+                    ->icon('heroicon-o-adjustments-horizontal')
+                    ->schema([
+                        Grid::make(['default' => 1, 'sm' => 2, 'lg' => 3])
+                            ->schema([
+                                TextInput::make('jumlah_kelas')
+                                    ->label('Jumlah Kelas')
+                                    ->prefixIcon('heroicon-o-squares-2x2')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->maxValue(26)
+                                    ->required()
+                                    ->live(debounce: 400)
+                                    ->placeholder('Misal: 3')
+                                    ->helperText('Maksimal 26 kelas (A–Z).')
+                                    ->afterStateUpdated(fn() => $this->resetPreview()),
+
+                                TextInput::make('kapasitas_per_kelas')
+                                    ->label('Kapasitas per Kelas')
+                                    ->prefixIcon('heroicon-o-user-group')
+                                    ->numeric()
+                                    ->minValue(1)
+                                    ->live(debounce: 400)
+                                    ->placeholder('Kosongkan = tanpa batas')
+                                    ->helperText('Opsional. Kosongkan jika tidak ingin membatasi.')
+                                    ->afterStateUpdated(fn() => $this->resetPreview()),
+
+                                TextInput::make('pola_nama')
+                                    ->label('Pola Nama Kelas')
+                                    ->prefixIcon('heroicon-o-tag')
+                                    ->required()
+                                    ->live(debounce: 400)
+                                    ->placeholder('Kelas %s')
+                                    ->afterStateUpdated(fn() => $this->resetPreview())
+                                    ->hintIcon('heroicon-o-information-circle', tooltip: 'Gunakan %s sebagai placeholder huruf kelas')
+                                    ->belowContent(fn($state) => new HtmlString(
+                                        '<div class="flex flex-wrap items-center gap-1.5 mt-1">
+                                        <span class="text-xs text-gray-500 dark:text-gray-400">Contoh:</span>'
+                                            . collect(['A', 'B', 'C'])
+                                            ->map(fn($l) => '<span class="inline-flex items-center rounded-md bg-primary-50 dark:bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 dark:text-primary-400">'
+                                                . e(sprintf($state ?: 'Kelas %s', $l))
+                                                . '</span>')
+                                            ->implode('')
+                                            . '</div>'
+                                    )),
+                            ]),
+                    ]),
             ])
             ->statePath('data');
     }
