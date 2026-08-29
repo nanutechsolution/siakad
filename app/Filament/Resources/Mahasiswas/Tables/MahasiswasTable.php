@@ -43,12 +43,11 @@ class MahasiswasTable
 
                 TextColumn::make('person.nama_lengkap')
                     ->label('Nama Mahasiswa')
-                    ->searchable(['person.nama_lengkap', 'person.nik'])
+                    ->searchable(['nama_lengkap', 'nik']) // ← tanpa prefix "person."
                     ->sortable()
                     ->weight(FontWeight::SemiBold)
                     ->description(fn(Mahasiswa $record) => $record->person?->nik ? 'NIK ' . $record->person->nik : null)
                     ->wrap(),
-
                 TextColumn::make('nim')
                     ->label('NIM')
                     ->searchable()
