@@ -104,7 +104,7 @@ class MahasiswaBimbingansTable
                     'krs' => $krs,
                     'mahasiswa' => $record,
                     'hasilValidasi' => $hasilValidasi,
-                    'statusRisiko' => $record->statusRisiko(),
+                    'statusRisiko' => $record->statusRisiko,
                     'totalTunggakan' => $record->totalTunggakan(),
                     'riwayatIpk' => $record->riwayatStatus,
                 ]);
