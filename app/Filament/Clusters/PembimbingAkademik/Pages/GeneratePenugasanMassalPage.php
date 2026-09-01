@@ -130,7 +130,7 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
                             CheckboxList::make('dosen_ids')
                                 ->label('Dosen yang Dilibatkan')
                                 ->options(fn($get) => TrxDosen::query()
-                                    ->when($get('prodi_id'), fn($q) => $q->where('prodi_id', $get('prodi_id')))
+                                    // ->when($get('prodi_id'), fn($q) => $q->where('prodi_id', $get('prodi_id')))
                                     ->get()
                                     ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
                                 ->searchable()
