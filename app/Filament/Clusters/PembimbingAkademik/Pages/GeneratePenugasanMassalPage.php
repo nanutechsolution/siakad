@@ -239,6 +239,10 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
             return;
         }
 
+        // Nilai dari CheckboxList datang sebagai string (mis. "12"), bukan int —
+        // normalisasi dulu supaya lookup ke koleksi ->keyBy('id') (integer) cocok.
+        $dosenIds = array_map('intval', $dosenIds);
+
         $dosen = TrxDosen::query()->whereIn('id', $dosenIds)->get()->keyBy('id');
 
         $jumlahDosen = count($dosenIds);
@@ -301,7 +305,14 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
 
     public function generatePreview(): void
     {
-        $state = $this->form->getState();
+        // PENTING: jangan pakai $this->form->getState() di sini. Saat method
+        // ini jalan (dipanggil dari goToStep sebelum currentStep berpindah ke
+        // 3), field prodi_id/angkatan_id sedang hidden (->visible hanya utk
+        // step 1), dan Filament tidak men-dehydrate field yang hidden — jadi
+        // getState() akan kehilangan key tsb sama sekali. $this->data selalu
+        // utuh karena ia adalah array state Livewire mentah, tidak melalui
+        // proses dehydrate berbasis visibilitas.
+        $state = $this->data;
         $service = app(PembimbingAkademikService::class);
 
         $konfigurasi = $service->konfigurasiAktif($state['prodi_id'] ?? null, $state['angkatan_id'] ?? null);
@@ -319,6 +330,8 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
 
             return;
         }
+
+        $dosenIds = array_map('intval', $dosenIds);
 
         if ($konfigurasi->mode === PembimbingAkademikMode::PER_KELAS) {
             $kelasIds = $service->kelasBelumPunyaWali((int) $state['prodi_id'], (int) $state['angkatan_id'])->keys();
@@ -392,14 +405,25 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
             ->get()
             ->keyBy('id');
 
-        $this->previewGrouped = collect($this->preview)
-            ->groupBy('dosen_id')
-            ->map(fn(Collection $rows, int $dosenId) => [
-                'dosen_id' => $dosenId,
-                'nama' => $dosen->get($dosenId)?->person?->nama_lengkap ?? '—',
-                'nidn' => $dosen->get($dosenId)?->nidn ?? '',
-                'rows' => $rows->values()->all(),
-            ])
+        $rowsByDosen = collect($this->preview)->groupBy('dosen_id');
+
+        // Bangun grup dari $this->dosenOptions (semua dosen yang dipilih di
+        // step 2), BUKAN dari hasil groupBy($this->preview) saja — supaya
+        // dosen yang kebetulan sedang 0 target (misal semua barisnya baru
+        // saja di-drag ke dosen lain) tetap punya dropzone yang tampil,
+        // bukan menghilang dari layar.
+        $this->previewGrouped = collect($this->dosenOptions)
+            ->keys()
+            ->map(function ($dosenId) use ($dosen, $rowsByDosen) {
+                $dosenId = (int) $dosenId;
+
+                return [
+                    'dosen_id' => $dosenId,
+                    'nama' => $dosen->get($dosenId)?->person?->nama_lengkap ?? '—',
+                    'nidn' => $dosen->get($dosenId)?->nidn ?? '',
+                    'rows' => $rowsByDosen->get($dosenId, collect())->values()->all(),
+                ];
+            })
             ->values()
             ->all();
     }
@@ -421,7 +445,10 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
      */
     public function processBatch(int $batchSize = 10): array
     {
-        $state = $this->form->getState();
+        // Sama seperti di generatePreview(): pakai $this->data, bukan
+        // $this->form->getState(), karena field-field terkait sudah hidden
+        // di step ini dan tidak akan ter-dehydrate.
+        $state = $this->data;
         $service = app(PembimbingAkademikService::class);
 
         $slice = collect($this->preview)->slice($this->processed, $batchSize);

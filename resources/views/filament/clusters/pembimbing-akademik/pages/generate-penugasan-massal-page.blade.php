@@ -152,16 +152,23 @@
 
         <div
             x-data="{ query: '' }"
-            class="space-y-3">
-            <x-filament::input.wrapper class="max-w-sm">
-                <x-filament::input type="text" x-model="query" placeholder="Cari kelas / mahasiswa..." />
-            </x-filament::input.wrapper>
+            class="space-y-3"
+            wire:key="preview-groups-wrapper">
+            <div class="flex items-center justify-between gap-3">
+                <x-filament::input.wrapper class="max-w-sm">
+                    <x-filament::input type="text" x-model="query" placeholder="Cari kelas / mahasiswa..." />
+                </x-filament::input.wrapper>
+                <p class="hidden text-xs text-gray-400 dark:text-gray-500 sm:block">
+                    Seret baris ke grup dosen lain untuk memindahkan, atau pakai menu di kanan tiap baris.
+                </p>
+            </div>
 
             @foreach ($previewGrouped as $group)
             <div
-                x-data="{ open: true }"
-                x-show="query === '' || {{ collect($group['rows'])->pluck('target_label')->map(fn ($l) => "'" . strtolower($l) . "'.includes(query.toLowerCase())")->implode(' || ') }}"
-                class="overflow-hidden rounded-lg border border-gray-200 dark:border-white/10">
+                x-data="{ open: true, labels: @js(collect($group['rows'])->pluck('target_label')->map(fn ($l) => strtolower($l))->values()->all()) }"
+                x-show="query === '' || labels.length === 0 || labels.some((l) => l.includes(query.toLowerCase()))"
+                class="overflow-hidden rounded-lg border border-gray-200 dark:border-white/10"
+                wire:key="preview-group-{{ $group['dosen_id'] }}">
                 <button
                     type="button"
                     @click="open = !open"
@@ -173,31 +180,85 @@
                     <x-heroicon-m-chevron-down class="h-4 w-4 transition-transform" x-bind:class="{ 'rotate-180': ! open }" />
                 </button>
 
-                <table x-show="open" class="w-full text-sm">
-                    <tbody>
-                        @foreach ($group['rows'] as $row)
-                        @php $index = array_search($row, $preview, true); @endphp
-                        <tr
-                            x-show="query === '' || '{{ strtolower($row['target_label']) }}'.includes(query.toLowerCase())"
-                            class="border-t border-gray-100 dark:border-white/5">
-                            <td class="px-4 py-2 text-gray-700 dark:text-gray-300">{{ $row['target_label'] }}</td>
-                            <td class="w-64 px-4 py-2">
-                                <select
-                                    class="fi-select-input block w-full rounded-lg border-gray-300 text-xs shadow-sm dark:border-gray-600 dark:bg-gray-700"
-                                    wire:change="reassignTarget({{ $index }}, $event.target.value)">
-                                    @foreach ($dosenOptions as $id => $label)
-                                    <option value="{{ $id }}" @selected($row['dosen_id']==$id)>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                        </tr>
-                        @endforeach
-                    </tbody>
-                </table>
+                {{-- data-dosen-group menandai elemen ini sebagai satu Sortable list;
+             semua list berbagi group name "preview-targets" sehingga baris
+             bisa di-drag lintas dosen. Lihat script di bawah. --}}
+                <ul
+                    x-show="open"
+                    data-dosen-group="{{ $group['dosen_id'] }}"
+                    class="divide-y divide-gray-100 dark:divide-white/5">
+                    @forelse ($group['rows'] as $row)
+                    @php $index = array_search($row, $preview, true); @endphp
+                    <li
+                        wire:key="preview-row-{{ $index }}"
+                        data-index="{{ $index }}"
+                        x-show="query === '' || @js(strtolower($row['target_label'])).includes(query.toLowerCase())"
+                        class="drag-row flex cursor-grab items-center gap-3 bg-white px-4 py-2 text-sm active:cursor-grabbing dark:bg-gray-900">
+                        <span class="drag-handle shrink-0 text-gray-300 dark:text-gray-600">
+                            <x-heroicon-m-bars-2 class="h-4 w-4" />
+                        </span>
+                        <span class="flex-1 text-gray-700 dark:text-gray-300">{{ $row['target_label'] }}</span>
+                        <select
+                            class="fi-select-input w-56 rounded-lg border-gray-300 text-xs shadow-sm dark:border-gray-600 dark:bg-gray-700"
+                            wire:change="reassignTarget({{ $index }}, $event.target.value)">
+                            @foreach ($dosenOptions as $id => $label)
+                            <option value="{{ $id }}" @selected($row['dosen_id']==$id)>{{ $label }}</option>
+                            @endforeach
+                        </select>
+                    </li>
+                    @empty
+                    <li class="no-drag px-4 py-6 text-center text-xs text-gray-400 dark:text-gray-600">
+                        Belum ada target — seret baris ke sini untuk memindahkan.
+                    </li>
+                    @endforelse
+                </ul>
             </div>
             @endforeach
         </div>
     </x-filament::section>
+
+    @once
+    @push('scripts')
+    <script src="https://cdn.jsdelivr.net/npm/sortablejs@1.15.2/Sortable.min.js"></script>
+    @endpush
+    @endonce
+
+    <script>
+        document.addEventListener('livewire:init', () => {
+            const mountDragGroups = (root = document) => {
+                root.querySelectorAll('[data-dosen-group]').forEach((el) => {
+                    if (el._sortableBound) return;
+                    el._sortableBound = true;
+
+                    new Sortable(el, {
+                        group: 'preview-targets',
+                        animation: 150,
+                        handle: '.drag-handle',
+                        filter: '.no-drag',
+                        ghostClass: 'opacity-40',
+                        onAdd: (evt) => {
+                            const index = evt.item.dataset.index;
+                            const dosenId = evt.to.dataset.dosenGroup;
+
+                            if (index === undefined) return;
+
+                            @this.reassignTarget(parseInt(index), parseInt(dosenId));
+                        },
+                    });
+                });
+            };
+
+            mountDragGroups();
+
+            // Livewire mem-morph ulang markup tiap kali properti berubah
+            // (mis. setelah reassignTarget). Elemen yang wire:key-nya sama
+            // dipertahankan (jadi binding Sortable lama tetap valid), tapi
+            // grup/baris baru yang belum pernah ada perlu di-mount ulang.
+            Livewire.hook('morph.updated', ({
+                el
+            }) => mountDragGroups(el));
+        });
+    </script>
 
     <div class="mt-6 flex items-center justify-between">
         <x-filament::button color="gray" wire:click="goToStep(2)">
