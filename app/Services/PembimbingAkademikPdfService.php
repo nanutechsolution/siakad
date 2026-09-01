@@ -8,16 +8,20 @@ use App\Models\PembimbingAkademik;
 use App\Models\TrxDosen;
 use App\Services\Pdf\PdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
-use Illuminate\Http\Response;
+use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class PembimbingAkademikPdfService
 {
     public function __construct(
         protected PdfService $pdfService,
     ) {}
+
     public function downloadSkPenugasan(
         PembimbingAkademik $pembimbingAkademik,
-    ): Response {
+    ) {
+        // Catatan: Jika ini masih error, pastikan $this->pdfService->download() 
+        // di class Anda juga me-return StreamedResponse, bukan sekadar Response.
         return $this->pdfService->download(
             PdfDocumentType::SK_PEMBIMBING_AKADEMIK,
             [
@@ -26,54 +30,32 @@ class PembimbingAkademikPdfService
         );
     }
 
-    public function downloadSkMassalDosen(string $dosenId): Response
+    public function downloadSkMassalDosen(string $dosenId)
     {
-        $dosen = TrxDosen::findOrFail($dosenId);
+        // 1. Generate Dokumen (Simpan ke DB, Buat QR, Pasang TTD)
+        $document = $this->pdfService->generateArchived(
+            type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK_MASSAL,
+            context: ['dosen_id' => $dosenId],
+            documentableType: 'dosen', // Disesuaikan dengan entitas kepemilikan dokumen
+            documentableId: $dosenId
+        );
 
-        $records = PembimbingAkademik::query()
-            ->where('dosen_id', $dosenId)
-            ->where('status', PembimbingAkademikStatus::AKTIF)
-            ->orderBy('kelas_id')
-            ->get();
-
-        $pdf = Pdf::loadView('pdf.sk-penugasan-massal', [
-            'dosen' => $dosen,
-            'records' => $records,
-        ]);
-
-        return $pdf->download('sk-massal-' . $dosen->nidn . '.pdf');
+        // 2. Download file yang sudah jadi
+        return $this->pdfService->downloadArchived($document);
     }
 
-    /**
-     * @param  array{prodi_id?: int|null, angkatan_id?: int|null}  $filters
-     */
-    public function downloadDaftarPembimbing(array $filters): Response
+    public function downloadDaftarPembimbing(array $filters)
     {
-        $query = PembimbingAkademik::query()->where('status', PembimbingAkademikStatus::AKTIF);
-
-        if (! empty($filters['prodi_id'])) {
-            $query->where(fn($q) => $q
-                ->whereHas('kelas', fn($k) => $k->where('prodi_id', $filters['prodi_id']))
-                ->orWhereHas('mahasiswa', fn($m) => $m->where('prodi_id', $filters['prodi_id'])));
-        }
-
-        if (! empty($filters['angkatan_id'])) {
-            $query->where(fn($q) => $q
-                ->whereHas('kelas', fn($k) => $k->where('angkatan_id', $filters['angkatan_id']))
-                ->orWhereHas('mahasiswa', fn($m) => $m->where('angkatan_id', $filters['angkatan_id'])));
-        }
-
-        $records = $query->orderBy('kelas_id')->get();
-
-        $pdf = Pdf::loadView('pdf.daftar-pembimbing', [
-            'records' => $records,
-            'filters' => $filters,
-        ]);
-
-        return $pdf->download('daftar-pembimbing-' . now()->format('Ymd-His') . '.pdf');
+        // Langsung serahkan ke PdfService inti!
+        // Data 'filters' akan ditangkap oleh DaftarPembimbingPdfResolver
+        return $this->pdfService->download(
+            PdfDocumentType::DAFTAR_PEMBIMBING,
+            [
+                'filters' => $filters,
+            ]
+        );
     }
-
-    public function downloadDaftarBimbinganDosen(string $dosenId): Response
+    public function downloadDaftarBimbinganDosen(string $dosenId): StreamedResponse
     {
         $dosen = TrxDosen::findOrFail($dosenId);
 
@@ -87,10 +69,14 @@ class PembimbingAkademikPdfService
             'records' => $records,
         ]);
 
-        return $pdf->download('daftar-bimbingan-' . $dosen->nidn . '.pdf');
+        $fileName = Str::ascii('daftar-bimbingan-' . $dosen->nidn . '.pdf');
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $fileName);
     }
 
-    public function downloadLaporanMonitoring(): Response
+    public function downloadLaporanMonitoring(): StreamedResponse
     {
         $service = app(PembimbingAkademikService::class);
 
@@ -102,6 +88,10 @@ class PembimbingAkademikPdfService
             'bebanDosen' => $service->bebanDosenTerbanyak(10),
         ]);
 
-        return $pdf->download('laporan-monitoring-' . now()->format('Ymd-His') . '.pdf');
+        $fileName = 'laporan-monitoring-' . now()->format('Ymd-His') . '.pdf';
+
+        return response()->streamDownload(function () use ($pdf) {
+            echo $pdf->output();
+        }, $fileName);
     }
 }

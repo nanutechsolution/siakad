@@ -20,10 +20,39 @@ class PdfService
         protected PdfStorage $storage,
     ) {}
 
+    // /**
+    //  * Stream dokumen Dynamic langsung ke browser tanpa disimpan.
+    //  */
+    // public function stream(PdfDocumentType $type, array $context, ?string $filename = null): Response
+    // {
+    //     $definition = $this->registry->get($type);
+    //     $this->assertClassification($type, $definition, PdfClassification::DYNAMIC);
+
+    //     $dto = $this->resolve($type, $context);
+    //     $pdf = $this->templateEngine->render($definition['view'], $dto->toArray(), $definition);
+
+    //     $this->logGenerated($type, $context);
+
+    //     return $pdf->stream($filename ?? $this->buildFilename($type, $dto));
+    // }
+
+    // public function download(PdfDocumentType $type, array $context, ?string $filename = null): Response
+    // {
+    //     $definition = $this->registry->get($type);
+    //     $this->assertClassification($type, $definition, PdfClassification::DYNAMIC);
+
+    //     $dto = $this->resolve($type, $context);
+    //     $pdf = $this->templateEngine->render($definition['view'], $dto->toArray(), $definition);
+
+    //     $this->logGenerated($type, $context);
+
+    //     return $pdf->download($filename ?? $this->buildFilename($type, $dto));
+    // }
+
     /**
      * Stream dokumen Dynamic langsung ke browser tanpa disimpan.
      */
-    public function stream(PdfDocumentType $type, array $context, ?string $filename = null): Response
+    public function stream(PdfDocumentType $type, array $context, ?string $filename = null): StreamedResponse
     {
         $definition = $this->registry->get($type);
         $this->assertClassification($type, $definition, PdfClassification::DYNAMIC);
@@ -33,10 +62,23 @@ class PdfService
 
         $this->logGenerated($type, $context);
 
-        return $pdf->stream($filename ?? $this->buildFilename($type, $dto));
+        $safeFilename = Str::ascii($filename ?? $this->buildFilename($type, $dto));
+
+        // WAJIB STREAM UNTUK LIVEWIRE
+        return response()->stream(
+            fn() => print($pdf->output()),
+            200,
+            [
+                'Content-Type' => 'application/pdf',
+                'Content-Disposition' => 'inline; filename="' . $safeFilename . '"'
+            ]
+        );
     }
 
-    public function download(PdfDocumentType $type, array $context, ?string $filename = null): Response
+    /**
+     * Download dokumen Dynamic.
+     */
+    public function download(PdfDocumentType $type, array $context, ?string $filename = null): StreamedResponse
     {
         $definition = $this->registry->get($type);
         $this->assertClassification($type, $definition, PdfClassification::DYNAMIC);
@@ -46,7 +88,14 @@ class PdfService
 
         $this->logGenerated($type, $context);
 
-        return $pdf->download($filename ?? $this->buildFilename($type, $dto));
+        $safeFilename = Str::ascii($filename ?? $this->buildFilename($type, $dto));
+
+        // WAJIB STREAM DOWNLOAD UNTUK LIVEWIRE
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            $safeFilename,
+            ['Content-Type' => 'application/pdf']
+        );
     }
 
     /**

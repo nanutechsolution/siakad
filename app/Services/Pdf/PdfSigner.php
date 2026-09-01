@@ -42,19 +42,31 @@ class PdfSigner
             if ($authority->scope === 'PRODI') {
                 if (empty($scope['prodi_id'])) {
                     throw new RuntimeException(
-                        "Otoritas [{$authority->label}] dikonfigurasi scope PRODI, tapi dokumen ini tidak menyediakan prodi_id mahasiswa."
+                        "Otoritas [{$authority->label}] dikonfigurasi untuk tingkat Program Studi, namun dokumen ini tidak memiliki data Program Studi."
                     );
                 }
                 $query->where('trx_person_jabatan.prodi_id', $scope['prodi_id']);
-                $scopeLabel = " (prodi_id: {$scope['prodi_id']})";
+
+                // Cek nama prodi ke database berdasarkan prodi_id
+                $namaProdi = \Illuminate\Support\Facades\DB::table('ref_prodi')
+                    ->where('id', $scope['prodi_id'])
+                    ->value('nama_prodi') ?? ('ID ' . $scope['prodi_id']);
+
+                $scopeLabel = " pada Program Studi {$namaProdi}";
             } elseif ($authority->scope === 'FAKULTAS') {
                 if (empty($scope['fakultas_id'])) {
                     throw new RuntimeException(
-                        "Otoritas [{$authority->label}] dikonfigurasi scope FAKULTAS, tapi dokumen ini tidak menyediakan fakultas_id mahasiswa."
+                        "Otoritas [{$authority->label}] dikonfigurasi untuk tingkat Fakultas, namun dokumen ini tidak memiliki data Fakultas."
                     );
                 }
                 $query->where('trx_person_jabatan.fakultas_id', $scope['fakultas_id']);
-                $scopeLabel = " (fakultas_id: {$scope['fakultas_id']})";
+
+                // Cek nama fakultas ke database berdasarkan fakultas_id
+                $namaFakultas = \Illuminate\Support\Facades\DB::table('ref_fakultas')
+                    ->where('id', $scope['fakultas_id'])
+                    ->value('nama_fakultas') ?? ('ID ' . $scope['fakultas_id']);
+
+                $scopeLabel = " pada Fakultas {$namaFakultas}";
             }
             $person = $query
                 ->orderByDesc('trx_person_jabatan.tanggal_mulai')
@@ -70,8 +82,8 @@ class PdfSigner
 
             if (! $pejabat) {
                 throw new RuntimeException(
-                    "Tidak ditemukan pejabat aktif untuk jabatan_id [{$authority->jabatan_id}] ({$authority->label}){$scopeLabel}. " .
-                        'Dokumen tidak dapat diterbitkan tanpa penandatangan yang sah.'
+                    "Tidak ditemukan pejabat aktif untuk jabatan {$authority->label}{$scopeLabel}. " .
+                        "Dokumen tidak dapat diterbitkan tanpa penandatangan yang sah."
                 );
             }
 

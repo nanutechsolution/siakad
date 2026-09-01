@@ -16,13 +16,16 @@ use Filament\Actions\Contracts\HasActions;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Concerns\InteractsWithForms;
 use Filament\Forms\Contracts\HasForms;
+use Filament\Notifications\Notification; // TAMBAHAN IMPORT
 use Filament\Pages\Page;
+use RuntimeException; // TAMBAHAN IMPORT
 
 class CetakDokumenPage extends Page implements HasActions, HasForms
 {
     use InteractsWithActions;
     use InteractsWithForms;
     use HasPageShield;
+
     protected string $view = 'filament.clusters.pembimbing-akademik.pages.cetak-dokumen-page';
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-printer';
     protected static ?int $navigationSort = 7;
@@ -30,6 +33,18 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
 
     protected static ?string $title = 'Cetak Dokumen Pembimbing Akademik';
     protected static ?string $cluster = PembimbingAkademikCluster::class;
+
+    /**
+     * Helper untuk membersihkan karakter kotor non-UTF-8 dari database
+     */
+    protected function sanitizeUtf8(?string $string): string
+    {
+        if (empty($string)) {
+            return '';
+        }
+        return mb_convert_encoding($string, 'UTF-8', 'UTF-8');
+    }
+
     protected function dosenSearchField(string $name = 'dosen_id', string $label = 'Dosen'): Select
     {
         return Select::make($name)
@@ -40,7 +55,9 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
                 ->orWhereHas('person', fn($p) => $p->where('nama_lengkap', 'like', "%{$search}%"))
                 ->limit(20)
                 ->get()
-                ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"]))
+                ->mapWithKeys(fn(TrxDosen $d) => [
+                    $d->id => $this->sanitizeUtf8($d->person?->nama_lengkap) . ' (' . $this->sanitizeUtf8($d->nidn) . ')'
+                ]))
             ->getOptionLabelUsing(fn($value) => optional(TrxDosen::find($value))?->nidn)
             ->required();
     }
@@ -63,21 +80,24 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
                         ->limit(20)
                         ->get()
                         ->mapWithKeys(fn(PembimbingAkademik $r) => [
-                            $r->id => ($r->mahasiswa ? $r->mahasiswa->nim : $r->kelas?->nama_kelas) . ' — ' . $r->dosen?->person?->nama_lengkap,
+                            $r->id => $this->sanitizeUtf8($r->mahasiswa ? $r->mahasiswa->nim : $r->kelas?->nama_kelas) . ' - ' . $this->sanitizeUtf8($r->dosen?->person?->nama_lengkap),
                         ]))
                     ->getOptionLabelUsing(function ($value) {
                         $r = PembimbingAkademik::find($value);
+                        if (! $r) return null;
 
-                        if (! $r) {
-                            return null;
-                        }
-
-                        return ($r->mahasiswa ? $r->mahasiswa->nim : $r->kelas?->nama_kelas) . ' — ' . $r->dosen?->person?->nama_lengkap;
+                        return $this->sanitizeUtf8($r->mahasiswa ? $r->mahasiswa->nim : $r->kelas?->nama_kelas) . ' - ' . $this->sanitizeUtf8($r->dosen?->person?->nama_lengkap);
                     })
                     ->required(),
             ])
-            ->action(fn(array $data) => app(PembimbingAkademikPdfService::class)
-                ->downloadSkPenugasan(PembimbingAkademik::findOrFail($data['pembimbing_akademik_id'])));
+            ->action(function (array $data) {
+                try {
+                    return app(PembimbingAkademikPdfService::class)
+                        ->downloadSkPenugasan(PembimbingAkademik::findOrFail($data['pembimbing_akademik_id']));
+                } catch (RuntimeException $e) {
+                    $this->sendErrorNotification($e->getMessage());
+                }
+            });
     }
 
     public function skMassalDosenAction(): Action
@@ -85,12 +105,17 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
         return Action::make('skMassalDosen')
             ->label('Cetak SK Massal')
             ->icon('heroicon-o-document-duplicate')
-            ->form([
+            ->schema([
                 $this->dosenSearchField('dosen_id', 'Dosen')
                     ->helperText('Satu file PDF berisi seluruh penugasan aktif dosen ini.'),
             ])
-            ->action(fn(array $data) => app(PembimbingAkademikPdfService::class)
-                ->downloadSkMassalDosen($data['dosen_id']));
+            ->action(function (array $data) {
+                try {
+                    return app(PembimbingAkademikPdfService::class)->downloadSkMassalDosen($data['dosen_id']);
+                } catch (RuntimeException $e) {
+                    $this->sendErrorNotification($e->getMessage());
+                }
+            });
     }
 
     public function daftarPembimbingAction(): Action
@@ -108,7 +133,13 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
                     ->options(fn() => RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun'))
                     ->searchable(),
             ])
-            ->action(fn(array $data) => app(PembimbingAkademikPdfService::class)->downloadDaftarPembimbing($data));
+            ->action(function (array $data) {
+                try {
+                    return app(PembimbingAkademikPdfService::class)->downloadDaftarPembimbing($data);
+                } catch (RuntimeException $e) {
+                    $this->sendErrorNotification($e->getMessage());
+                }
+            });
     }
 
     public function bimbinganDosenAction(): Action
@@ -118,10 +149,15 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             ->icon('heroicon-o-identification')
             ->form([
                 $this->dosenSearchField('dosen_id', 'Dosen')
-                    ->helperText('Daftar seluruh mahasiswa/kelas yang dibimbing dosen ini — cocok untuk lampiran laporan kinerja.'),
+                    ->helperText('Daftar seluruh mahasiswa/kelas yang dibimbing dosen ini - cocok untuk lampiran laporan kinerja.'),
             ])
-            ->action(fn(array $data) => app(PembimbingAkademikPdfService::class)
-                ->downloadDaftarBimbinganDosen($data['dosen_id']));
+            ->action(function (array $data) {
+                try {
+                    return app(PembimbingAkademikPdfService::class)->downloadDaftarBimbinganDosen($data['dosen_id']);
+                } catch (RuntimeException $e) {
+                    $this->sendErrorNotification($e->getMessage());
+                }
+            });
     }
 
     public function laporanMonitoringAction(): Action
@@ -132,6 +168,25 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             ->color('gray')
             ->requiresConfirmation()
             ->modalDescription('Laporan berisi ringkasan statistik + daftar lengkap mahasiswa yang belum punya Dosen Wali saat ini.')
-            ->action(fn() => app(PembimbingAkademikPdfService::class)->downloadLaporanMonitoring());
+            ->action(function () {
+                try {
+                    return app(PembimbingAkademikPdfService::class)->downloadLaporanMonitoring();
+                } catch (RuntimeException $e) {
+                    $this->sendErrorNotification($e->getMessage());
+                }
+            });
+    }
+
+    /**
+     * Helper untuk menampilkan notifikasi error secara konsisten
+     */
+    protected function sendErrorNotification(string $message): void
+    {
+        Notification::make()
+            ->title('Gagal Mencetak Dokumen')
+            ->body($message)
+            ->danger()
+            ->duration(8000) // Tampil 8 detik agar pengguna punya waktu membaca
+            ->send();
     }
 }

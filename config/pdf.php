@@ -162,6 +162,34 @@ return [
             'requires_signature' => true,
             'requires_qr' => true,
         ],
+
+        PdfDocumentType::SK_PEMBIMBING_AKADEMIK_MASSAL->value => [
+            'resolver' => \App\Services\Pdf\Resolvers\SkMassalDosenPdfResolver::class,
+            'view' => 'pdf.sk-penugasan-massal',
+
+            // 1. UBAH KLASIFIKASI MENJADI ARCHIVED
+            'classification' => PdfClassification::ARCHIVED->value,
+            'paper' => 'a4',
+            'orientation' => 'portrait',
+
+            // 2. NYALAKAN FITUR TTD, QR, DAN PENOMORAN
+            'requires_number' => true,
+            'nomor_format' => '{SEQ:4}/SKPA-MASSAL/{KODE_UNIT}/{BULAN_ROMAWI}/{TAHUN}', // Sesuaikan format kampus
+            'kode_jenis' => 'SKPAM',
+            'requires_signature' => true,
+            'requires_qr' => true,
+        ],
+
+        PdfDocumentType::DAFTAR_PEMBIMBING->value => [
+            'resolver' => \App\Services\Pdf\Resolvers\DaftarPembimbingPdfResolver::class,
+            'view' => 'pdf.daftar-pembimbing', // Sesuaikan dengan nama file blade Anda
+            'classification' => PdfClassification::DYNAMIC->value,
+            'paper' => 'a4',
+
+            'requires_signature' => true,
+            'requires_qr' => true,
+            'orientation' => 'landscape',
+        ],
     ],
 
 ];
