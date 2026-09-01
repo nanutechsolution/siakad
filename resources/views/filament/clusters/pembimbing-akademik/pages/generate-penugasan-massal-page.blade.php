@@ -150,8 +150,19 @@
             Periksa hasil pembagian sebelum diproses. Anda masih bisa mengganti dosen pada baris tertentu.
         </x-slot>
 
+        {{--
+            wire:loading + wire:target="reassignTarget" mengunci interaksi (drag/dropdown)
+            selama request reassignTarget masih diproses server, supaya user tidak bisa
+            memicu drag/klik baru yang bisa balapan (race condition) dengan request
+            sebelumnya pada koneksi lambat.
+        --}}
         <div
-            x-data="{ query: '' }"
+            x-data="{
+        query: '',
+        dosenOptions: @js($dosenOptions),
+    }"
+            wire:loading.class="opacity-60 pointer-events-none"
+            wire:target="reassignTarget"
             class="space-y-3"
             wire:key="preview-groups-wrapper">
             <div class="flex items-center justify-between gap-3">
@@ -159,14 +170,27 @@
                     <x-filament::input type="text" x-model="query" placeholder="Cari kelas / mahasiswa..." />
                 </x-filament::input.wrapper>
                 <p class="hidden text-xs text-gray-400 dark:text-gray-500 sm:block">
-                    Seret baris ke grup dosen lain untuk memindahkan, atau pakai menu di kanan tiap baris.
+                    Pencarian hanya berlaku untuk baris yang sedang ditampilkan — klik "Tampilkan lebih banyak" dulu kalau target yang dicari belum kelihatan. Seret baris ke grup dosen lain untuk memindahkan, atau pakai menu di kanan tiap baris.
                 </p>
             </div>
 
             @foreach ($previewGrouped as $group)
+            @php
+            $limit = $groupRenderLimit[$group['dosen_id']] ?? $this::PREVIEW_ROW_CHUNK;
+            $visibleRows = array_slice($group['rows'], 0, $limit);
+            $sisaRows = count($group['rows']) - count($visibleRows);
+            @endphp
+            {{--
+                x-show grup TIDAK lagi bergantung pada array `labels` yang di-snapshot
+                sekali saat Alpine init (bug lama: labels bisa basi setelah drag & drop
+                memindahkan baris ke grup ini, karena wire:key grup stabil sehingga
+                Alpine tidak re-init x-data). Sekarang di-scan langsung dari DOM
+                ($el.querySelectorAll) setiap kali dievaluasi, jadi selalu sinkron
+                dengan hasil render Livewire terkini.
+            --}}
             <div
-                x-data="{ open: true, labels: @js(collect($group['rows'])->pluck('target_label')->map(fn ($l) => strtolower($l))->values()->all()) }"
-                x-show="query === '' || labels.length === 0 || labels.some((l) => l.includes(query.toLowerCase()))"
+                x-data="{ open: true }"
+                x-show="query === '' || Array.from($el.querySelectorAll('[data-index]')).some((li) => li.dataset.label.includes(query.toLowerCase()))"
                 class="overflow-hidden rounded-lg border border-gray-200 dark:border-white/10"
                 wire:key="preview-group-{{ $group['dosen_id'] }}">
                 <button
@@ -181,30 +205,48 @@
                 </button>
 
                 {{-- data-dosen-group menandai elemen ini sebagai satu Sortable list;
-             semua list berbagi group name "preview-targets" sehingga baris
-             bisa di-drag lintas dosen. Lihat script di bawah. --}}
+                             semua list berbagi group name "preview-targets" sehingga baris
+                             bisa di-drag lintas dosen. Lihat script di bawah. --}}
                 <ul
                     x-show="open"
                     data-dosen-group="{{ $group['dosen_id'] }}"
                     class="divide-y divide-gray-100 dark:divide-white/5">
-                    @forelse ($group['rows'] as $row)
-                    @php $index = array_search($row, $preview, true); @endphp
+                    @forelse ($visibleRows as $row)
                     <li
-                        wire:key="preview-row-{{ $index }}"
-                        data-index="{{ $index }}"
-                        x-show="query === '' || @js(strtolower($row['target_label'])).includes(query.toLowerCase())"
+                        wire:key="preview-row-{{ $row['index'] }}"
+                        data-index="{{ $row['index'] }}"
+                        data-label="{{ strtolower($row['target_label']) }}"
+                        x-show="query === '' || $el.dataset.label.includes(query.toLowerCase())"
                         class="drag-row flex cursor-grab items-center gap-3 bg-white px-4 py-2 text-sm active:cursor-grabbing dark:bg-gray-900">
                         <span class="drag-handle shrink-0 text-gray-300 dark:text-gray-600">
                             <x-heroicon-m-bars-2 class="h-4 w-4" />
                         </span>
                         <span class="flex-1 text-gray-700 dark:text-gray-300">{{ $row['target_label'] }}</span>
-                        <select
-                            class="fi-select-input w-56 rounded-lg border-gray-300 text-xs shadow-sm dark:border-gray-600 dark:bg-gray-700"
-                            wire:change="reassignTarget({{ $index }}, $event.target.value)">
-                            @foreach ($dosenOptions as $id => $label)
-                            <option value="{{ $id }}" @selected($row['dosen_id']==$id)>{{ $label }}</option>
-                            @endforeach
-                        </select>
+                        {{--
+                            wire:key di sini sengaja disertakan dosen_id-nya. Kalau
+                            dosen_id baris ini berubah (lewat dropdown ini sendiri atau
+                            drag & drop), key berubah -> Livewire dipaksa membuat ulang
+                            elemen ini dari HTML server terbaru, sehingga dropdown TIDAK
+                            PERNAH menampilkan nilai basi walau ada morphing DOM lintas
+                            grup dosen.
+                        --}}
+                        <div
+                            wire:key="select-{{ $row['index'] }}-{{ $row['dosen_id'] }}"
+                            x-data="{
+        selected: @js($row['dosen_id']),
+    }"
+                            class="w-56">
+                            <select
+                                x-model="selected"
+                                @change="$wire.reassignTarget({{ $row['index'] }}, selected)"
+                                class="fi-select-input w-full rounded-lg border-gray-300 text-xs shadow-sm dark:border-gray-600 dark:bg-gray-700">
+                                <template x-for="[id, label] in Object.entries(dosenOptions)" :key="id">
+                                    <option
+                                        :value="id"
+                                        x-text="label"></option>
+                                </template>
+                            </select>
+                        </div>
                     </li>
                     @empty
                     <li class="no-drag px-4 py-6 text-center text-xs text-gray-400 dark:text-gray-600">
@@ -212,6 +254,15 @@
                     </li>
                     @endforelse
                 </ul>
+
+                @if ($sisaRows > 0)
+                <button
+                    type="button"
+                    wire:click="expandGroupRows({{ $group['dosen_id'] }})"
+                    class="no-drag w-full border-t border-gray-100 px-4 py-2 text-center text-xs font-medium text-primary-600 hover:bg-gray-50 dark:border-white/10 dark:text-primary-400 dark:hover:bg-white/5">
+                    Tampilkan {{ min($sisaRows, $this::PREVIEW_ROW_CHUNK) }} baris lagi ({{ $sisaRows }} belum ditampilkan)
+                </button>
+                @endif
             </div>
             @endforeach
         </div>
@@ -265,19 +316,32 @@
             Kembali
         </x-filament::button>
 
+        {{--
+            Guard `running` mencegah double-submit: klik ganda/cepat pada tombol
+            Proses tidak lagi memicu dua loop run() berjalan bersamaan (yang bisa
+            membuat processBatch() dipanggil paralel dan merusak counter $processed).
+        --}}
         <div
             x-data="{
+                    running: false,
                     async run() {
-                        await $wire.startProcessing();
-                        let done = false;
-                        while (! done) {
-                            let result = await $wire.processBatch(10);
-                            done = result.done;
+                        if (this.running) return;
+                        this.running = true;
+                        try {
+                            await $wire.startProcessing();
+                            let done = false;
+                            while (! done) {
+                                let result = await $wire.processBatch(10);
+                                done = result.done;
+                            }
+                        } finally {
+                            this.running = false;
                         }
                     },
                 }">
-            <x-filament::button color="warning" x-on:click="run()">
-                Proses {{ count($preview) }} Penugasan Ini
+            <x-filament::button color="warning" x-on:click="run()" x-bind:disabled="running">
+                <span x-show="! running">Proses {{ count($preview) }} Penugasan Ini</span>
+                <span x-show="running" x-cloak>Memproses...</span>
             </x-filament::button>
         </div>
     </div>

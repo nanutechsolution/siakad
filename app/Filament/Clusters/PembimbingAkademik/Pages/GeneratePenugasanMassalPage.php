@@ -24,7 +24,6 @@ use Filament\Forms\Contracts\HasForms;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Schema;
-use Illuminate\Support\Collection;
 
 /**
  * Generate Penugasan Dosen Wali Massal.
@@ -35,6 +34,12 @@ use Illuminate\Support\Collection;
  * bisa disisipkan di antara Step milik Wizard. Sebagai gantinya, step
  * dikendalikan sendiri lewat $currentStep, dan tiap field schema
  * disembunyikan/ditampilkan lewat ->visible() sesuai step aktif.
+ *
+ * PRINSIP STATE: $preview (dan turunannya $previewGrouped) adalah
+ * satu-satunya sumber kebenaran. Alpine/SortableJS di Blade HANYA
+ * mengurus interaksi UI (drag, search, collapse) — setiap perubahan
+ * data (drag, ganti dropdown) selalu ditulis balik ke $preview lewat
+ * method Livewire, lalu tampilan mengikuti hasil render server.
  */
 class GeneratePenugasanMassalPage extends Page implements HasForms
 {
@@ -75,6 +80,15 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
     /** @var array<int, string> */
     public array $dosenOptions = [];
 
+    /**
+     * Cache nama & NIDN per dosen id, diisi sekali saat generatePreview().
+     * Dipakai oleh rebuildGroupedPreview() supaya drag & drop / ganti
+     * dropdown tidak perlu query ulang ke DB setiap kali dipanggil.
+     *
+     * @var array<int, array{nama: string, nidn: string}>
+     */
+    public array $dosenMeta = [];
+
     public bool $previewGenerated = false;
 
     public bool $isProcessing = false;
@@ -85,6 +99,17 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
 
     /** @var array<int, array{label: string, status: 'ok'|'gagal'}> */
     public array $liveFeed = [];
+
+    public const int PREVIEW_ROW_CHUNK = 100;
+
+    /** Batas jumlah entri yang disimpan di $liveFeed, supaya payload Livewire
+     *  tidak membengkak tanpa batas pada proses dengan ribuan target. */
+    public const int LIVE_FEED_LIMIT = 200;
+
+    /** @var array<int, int> batas jumlah baris yang dirender per grup dosen —
+     *  supaya preview dengan target ribuan tidak menghasilkan ratusan ribu
+     *  elemen <option> sekaligus dan menghabiskan memory */
+    public array $groupRenderLimit = [];
 
     public function mount(): void
     {
@@ -331,6 +356,9 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
             return;
         }
 
+        // CheckboxList mengembalikan value sebagai string ("12"), bukan int —
+        // normalisasi supaya konsisten dengan reassignTarget() (yang menerima
+        // int $dosenId) dan dengan pola yang sudah dipakai di refreshDistribusi().
         $dosenIds = array_map('intval', $dosenIds);
 
         if ($konfigurasi->mode === PembimbingAkademikMode::PER_KELAS) {
@@ -342,9 +370,11 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
                 'target_id' => $kelas->id,
                 'target_label' => $kelas->nama_kelas,
                 'dosen_id' => $dosenIds[$i % count($dosenIds)],
+                'index' => $i,
             ]);
         } else {
             $targets = Mahasiswa::query()
+                ->with('person')
                 ->where('prodi_id', $state['prodi_id'])
                 ->where('angkatan_id', $state['angkatan_id'])
                 ->whereNull('deleted_at')
@@ -358,13 +388,28 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
                 'target_id' => $mhs->id,
                 'target_label' => $mhs->nim . ' - ' . $mhs->person?->nama_lengkap,
                 'dosen_id' => $dosenIds[$i % count($dosenIds)],
+                'index' => $i,
             ]);
         }
 
-        $this->dosenOptions = TrxDosen::query()
+        // Query dosen sekali di sini, lalu turunkan dua struktur darinya:
+        // dosenOptions (label lengkap utk dropdown) dan dosenMeta (nama/nidn
+        // terpisah utk avatar & badge di previewGrouped). Ini menghindari
+        // rebuildGroupedPreview() harus query ulang ke DB tiap kali dipanggil.
+        $dosenCollection = TrxDosen::query()
+            ->with('person')
             ->whereIn('id', $dosenIds)
-            ->get()
+            ->get();
+
+        $this->dosenOptions = $dosenCollection
             ->mapWithKeys(fn(TrxDosen $d) => [$d->id => "{$d->person?->nama_lengkap} ({$d->nidn})"])
+            ->all();
+
+        $this->dosenMeta = $dosenCollection
+            ->mapWithKeys(fn(TrxDosen $d) => [$d->id => [
+                'nama' => $d->person?->nama_lengkap ?? '—',
+                'nidn' => $d->nidn ?? '',
+            ]])
             ->all();
 
         $this->preview = $rows->values()->all();
@@ -372,6 +417,7 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
         $this->processed = 0;
         $this->totalGagal = 0;
         $this->liveFeed = [];
+        $this->groupRenderLimit = [];
 
         $this->rebuildGroupedPreview();
 
@@ -385,12 +431,30 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
     }
 
     /**
-     * Ganti dosen untuk satu baris preview langsung dari tabel (tanpa
-     * mengulang seluruh generate), lalu susun ulang pengelompokan.
+     * Menambah batas render untuk satu grup dosen sebanyak satu chunk lagi.
+     * Dipanggil dari tombol "Tampilkan lebih banyak" di Blade.
+     */
+    public function expandGroupRows(int $dosenId): void
+    {
+        $this->groupRenderLimit[$dosenId] = ($this->groupRenderLimit[$dosenId] ?? static::PREVIEW_ROW_CHUNK) + static::PREVIEW_ROW_CHUNK;
+    }
+
+    /**
+     * Ganti dosen untuk satu baris preview langsung dari tabel (dropdown)
+     * atau dari drag & drop, lalu susun ulang pengelompokan.
      */
     public function reassignTarget(int $index, int $dosenId): void
     {
         if (! isset($this->preview[$index])) {
+            return;
+        }
+
+        // [SECURITY] $dosenId berasal dari client (value dropdown, atau
+        // atribut data-dosen-group hasil drag & drop) — keduanya bisa
+        // dimanipulasi lewat devtools. Tolak kalau dosen tsb bukan bagian
+        // dari dosen yang dipilih di Step 2, supaya tidak ada target yang
+        // bisa "dititipkan" ke dosen yang tidak sah.
+        if (! isset($this->dosenOptions[$dosenId])) {
             return;
         }
 
@@ -400,11 +464,6 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
 
     protected function rebuildGroupedPreview(): void
     {
-        $dosen = TrxDosen::query()
-            ->whereIn('id', array_keys($this->dosenOptions))
-            ->get()
-            ->keyBy('id');
-
         $rowsByDosen = collect($this->preview)->groupBy('dosen_id');
 
         // Bangun grup dari $this->dosenOptions (semua dosen yang dipilih di
@@ -412,15 +471,20 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
         // dosen yang kebetulan sedang 0 target (misal semua barisnya baru
         // saja di-drag ke dosen lain) tetap punya dropzone yang tampil,
         // bukan menghilang dari layar.
+        //
+        // Nama/NIDN diambil dari $this->dosenMeta (di-cache saat
+        // generatePreview()) — TIDAK query DB lagi di sini, karena method
+        // ini dipanggil berulang kali setiap ada drag/ganti dropdown.
         $this->previewGrouped = collect($this->dosenOptions)
             ->keys()
-            ->map(function ($dosenId) use ($dosen, $rowsByDosen) {
+            ->map(function ($dosenId) use ($rowsByDosen) {
                 $dosenId = (int) $dosenId;
+                $meta = $this->dosenMeta[$dosenId] ?? null;
 
                 return [
                     'dosen_id' => $dosenId,
-                    'nama' => $dosen->get($dosenId)?->person?->nama_lengkap ?? '—',
-                    'nidn' => $dosen->get($dosenId)?->nidn ?? '',
+                    'nama' => $meta['nama'] ?? '—',
+                    'nidn' => $meta['nidn'] ?? '',
                     'rows' => $rowsByDosen->get($dosenId, collect())->values()->all(),
                 ];
             })
@@ -445,6 +509,17 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
      */
     public function processBatch(int $batchSize = 10): array
     {
+        // [FIX] Kalau proses sudah dihentikan lewat stopProcessing() (user
+        // menekan "Hentikan sisa proses"), jangan lanjut memproses batch
+        // berikutnya meskipun loop di Alpine masih memanggil method ini.
+        if (! $this->isProcessing) {
+            return [
+                'done' => true,
+                'processed' => $this->processed,
+                'total' => count($this->preview),
+            ];
+        }
+
         // Sama seperti di generatePreview(): pakai $this->data, bukan
         // $this->form->getState(), karena field-field terkait sudah hidden
         // di step ini dan tidak akan ter-dehydrate.
@@ -454,6 +529,19 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
         $slice = collect($this->preview)->slice($this->processed, $batchSize);
 
         foreach ($slice as $row) {
+            // [SECURITY] Validasi ulang dosen_id di sisi server tepat sebelum
+            // benar-benar disimpan — jangan hanya mengandalkan validasi yang
+            // sudah dilakukan di reassignTarget(). Ini baris pertahanan kedua
+            // supaya data yang benar-benar tersimpan ke DB selalu memakai
+            // dosen yang sah, apa pun yang terjadi di sisi client.
+            if (! isset($this->dosenOptions[$row['dosen_id']])) {
+                $this->totalGagal++;
+                $this->pushLiveFeed($row['target_label'] . ' (dosen tidak valid)', 'gagal');
+                $this->processed++;
+
+                continue;
+            }
+
             try {
                 $service->tugaskan([
                     'jenis' => PembimbingAkademikJenis::DOSEN_WALI->value,
@@ -498,6 +586,21 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
     }
 
     /**
+     * Menambahkan satu entri ke live feed proses batch. Dibatasi jumlahnya
+     * (LIVE_FEED_LIMIT) supaya payload Livewire tidak membengkak tanpa
+     * batas pada proses dengan ribuan target — Blade menampilkan versi
+     * terbalik (terbaru dulu), jadi cukup menyimpan N entri terakhir.
+     */
+    protected function pushLiveFeed(string $label, string $status): void
+    {
+        $this->liveFeed[] = ['label' => $label, 'status' => $status];
+
+        if (count($this->liveFeed) > static::LIVE_FEED_LIMIT) {
+            $this->liveFeed = array_slice($this->liveFeed, -static::LIVE_FEED_LIMIT);
+        }
+    }
+
+    /**
      * Menghentikan sisa batch dari sisi client. Baris yang sudah
      * ter-commit sebelum tombol ini ditekan TIDAK dibatalkan/rollback —
      * label tombol & pesan di Blade harus jujur soal ini.
@@ -521,6 +624,8 @@ class GeneratePenugasanMassalPage extends Page implements HasForms
         $this->processed = 0;
         $this->totalGagal = 0;
         $this->liveFeed = [];
+        $this->groupRenderLimit = [];
+        $this->dosenMeta = [];
         $this->isProcessing = false;
         $this->currentStep = 1;
     }
