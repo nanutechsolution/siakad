@@ -70,112 +70,110 @@ class TagihanMahasiswasTable
                     }),
             ])->stackedOnMobile()
             ->recordActions([
-                ActionGroup::make([
-                    ViewAction::make()
-                        ->label('Rincian Biaya'),
-                    Action::make('cetak-invoice')
-                        ->label('Cetak Invoice')
-                        ->icon('heroicon-o-printer')
-                        ->color('success')
-                        ->action(function (TagihanMahasiswa $record) {
-                            $document = app(PdfService::class)->generateArchived(
-                                type: PdfDocumentType::INVOICE_TAGIHAN,
-                                context: ['tagihan_id' => $record->id],
-                                documentableType: TagihanMahasiswa::class,
-                                documentableId: $record->id,
-                            );
-                            return app(PdfService::class)->downloadArchived($document);
-                        }),
-                    // Aksi 2: Tombol Cerdas Upload Bukti Bayar
-                    Action::make('upload_bukti')
-                        ->label('Konfirmasi Bayar')
-                        ->icon('heroicon-o-arrow-up-tray')
-                        ->color('warning')
-                        ->visible(fn($record) => $record->status_bayar !== 'LUNAS')
-                        ->disabled(function ($record) {
-                            return \App\Models\PembayaranMahasiswa::where('tagihan_id', $record->id)
-                                ->where('status_verifikasi_id', StatusVerifikasiPembayaran::PENDING)
-                                ->exists();
-                        })
+                ViewAction::make()
+                    ->label('Rincian Biaya'),
+                Action::make('cetak-invoice')
+                    ->label('Cetak Invoice')
+                    ->icon('heroicon-o-printer')
+                    ->color('success')
+                    ->action(function (TagihanMahasiswa $record) {
+                        $document = app(PdfService::class)->generateArchived(
+                            type: PdfDocumentType::INVOICE_TAGIHAN,
+                            context: ['tagihan_id' => $record->id],
+                            documentableType: TagihanMahasiswa::class,
+                            documentableId: $record->id,
+                        );
+                        return app(PdfService::class)->downloadArchived($document);
+                    }),
+                // Aksi 2: Tombol Cerdas Upload Bukti Bayar
+                Action::make('upload_bukti')
+                    ->label('Konfirmasi Bayar')
+                    ->icon('heroicon-o-arrow-up-tray')
+                    ->color('warning')
+                    ->visible(fn($record) => $record->status_bayar !== 'LUNAS')
+                    ->disabled(function ($record) {
+                        return \App\Models\PembayaranMahasiswa::where('tagihan_id', $record->id)
+                            ->where('status_verifikasi_id', StatusVerifikasiPembayaran::PENDING)
+                            ->exists();
+                    })
 
-                        ->tooltip(function ($record) {
-                            $adaPending = \App\Models\PembayaranMahasiswa::where('tagihan_id', $record->id)
-                                ->where('status_verifikasi_id', StatusVerifikasiPembayaran::PENDING)
-                                ->exists();
+                    ->tooltip(function ($record) {
+                        $adaPending = \App\Models\PembayaranMahasiswa::where('tagihan_id', $record->id)
+                            ->where('status_verifikasi_id', StatusVerifikasiPembayaran::PENDING)
+                            ->exists();
 
-                            return $adaPending ? 'Harap tunggu, ada bukti pembayaran Anda yang sedang diverifikasi Admin.' : 'Klik untuk upload bukti transfer';
-                        })
-                        ->schema([
-                            Grid::make(2)->schema([
-                                TextInput::make('nominal_bayar')
-                                    ->label('Nominal Yang Dibayarkan (Rp)')
-                                    ->numeric()
-                                    ->required()
-                                    ->minValue(1)
-                                    ->helperText(function ($record) {
-                                        return 'Sisa tagihan saat ini Rp ' .
-                                            number_format(
-                                                $record->total_tagihan - $record->total_bayar,
-                                                0,
-                                                ',',
-                                                '.'
-                                            ) .
-                                            '. Jika pembayaran lebih, saldo akan disimpan sebagai kredit mahasiswa.';
-                                    })
-                                    // ->maxValue(fn($record) => ($record->total_tagihan - $record->total_bayar))
-                                    ->placeholder('Masukkan jumlah pembayaran...'),
-                                DateTimePicker::make('waktu_transfer')
-                                    ->label('Tanggal & Waktu Transfer')
-                                    ->default(now())
-                                    ->required(),
-                            ]),
-                            Select::make('bank_tujuan')
-                                ->label('Rekening Bank Kampus Tujuan')
+                        return $adaPending ? 'Harap tunggu, ada bukti pembayaran Anda yang sedang diverifikasi Admin.' : 'Klik untuk upload bukti transfer';
+                    })
+                    ->schema([
+                        Grid::make(2)->schema([
+                            TextInput::make('nominal_bayar')
+                                ->label('Nominal Yang Dibayarkan (Rp)')
+                                ->numeric()
                                 ->required()
-                                ->options(function () {
-                                    return BankKampus::where('is_active', true)
-                                        ->get()
-                                        ->mapWithKeys(function ($bank) {
-                                            $formatTampilan = "{$bank->nama_bank} ({$bank->atas_nama}) - {$bank->no_rekening}";
-                                            return [$formatTampilan => $formatTampilan];
-                                        });
-                                }),
-
-                            FileUpload::make('file_bukti')
-                                ->label('Upload Foto/Scan Bukti Transfer')
-                                ->image()
-                                ->disk('public')
-                                ->maxSize(2048)
-                                ->directory('bukti-pembayaran-mahasiswa')
+                                ->minValue(1)
+                                ->helperText(function ($record) {
+                                    return 'Sisa tagihan saat ini Rp ' .
+                                        number_format(
+                                            $record->total_tagihan - $record->total_bayar,
+                                            0,
+                                            ',',
+                                            '.'
+                                        ) .
+                                        '. Jika pembayaran lebih, saldo akan disimpan sebagai kredit mahasiswa.';
+                                })
+                                // ->maxValue(fn($record) => ($record->total_tagihan - $record->total_bayar))
+                                ->placeholder('Masukkan jumlah pembayaran...'),
+                            DateTimePicker::make('waktu_transfer')
+                                ->label('Tanggal & Waktu Transfer')
+                                ->default(now())
                                 ->required(),
+                        ]),
+                        Select::make('bank_tujuan')
+                            ->label('Rekening Bank Kampus Tujuan')
+                            ->required()
+                            ->options(function () {
+                                return BankKampus::where('is_active', true)
+                                    ->get()
+                                    ->mapWithKeys(function ($bank) {
+                                        $formatTampilan = "{$bank->nama_bank} ({$bank->atas_nama}) - {$bank->no_rekening}";
+                                        return [$formatTampilan => $formatTampilan];
+                                    });
+                            }),
 
-                            Textarea::make('catatan')
-                                ->label('Catatan Tambahan (Opsional)')
-                                ->placeholder('Misal: Pembayaran cicilan SPP ke-2')
-                                ->rows(2),
-                        ])
-                        ->action(function (array $data, $record) {
-                            // 1. Rangkai data mentah menjadi payload seragam
-                            $payload = [
-                                'tagihan_id'          => $record->id,
-                                'tagihan_type' => 'tagihan_mahasiswa',
-                                'nominal_bayar'       => $data['nominal_bayar'],
-                                'tanggal_bayar'       => $data['waktu_transfer'],
-                                'bukti_bayar_path'    => $data['file_bukti'],
-                                'keterangan_pengirim' => "Bank Tujuan: {$data['bank_tujuan']} | Catatan: " . ($data['catatan'] ?? '-'),
-                            ];
+                        FileUpload::make('file_bukti')
+                            ->label('Upload Foto/Scan Bukti Transfer')
+                            ->image()
+                            ->disk('public')
+                            ->maxSize(2048)
+                            ->directory('bukti-pembayaran-mahasiswa')
+                            ->required(),
 
-                            // 2. Panggil Service/Adapter (Satu baris, tanpa transaksi DB manual!)
-                            app(MahasiswaUploadChannel::class)->process($payload);
+                        Textarea::make('catatan')
+                            ->label('Catatan Tambahan (Opsional)')
+                            ->placeholder('Misal: Pembayaran cicilan SPP ke-2')
+                            ->rows(2),
+                    ])
+                    ->action(function (array $data, $record) {
+                        // 1. Rangkai data mentah menjadi payload seragam
+                        $payload = [
+                            'tagihan_id'          => $record->id,
+                            'tagihan_type' => 'tagihan_mahasiswa',
+                            'nominal_bayar'       => $data['nominal_bayar'],
+                            'tanggal_bayar'       => $data['waktu_transfer'],
+                            'bukti_bayar_path'    => $data['file_bukti'],
+                            'keterangan_pengirim' => "Bank Tujuan: {$data['bank_tujuan']} | Catatan: " . ($data['catatan'] ?? '-'),
+                        ];
 
-                            // 3. Kirim notifikasi sukses
-                            Notification::make()
-                                ->success()
-                                ->title('Bukti Terkirim')
-                                ->body('Bukti pembayaran berhasil diunggah dan sedang menunggu verifikasi Staf Keuangan.')
-                                ->send();
-                        })
-                ])
+                        // 2. Panggil Service/Adapter (Satu baris, tanpa transaksi DB manual!)
+                        app(MahasiswaUploadChannel::class)->process($payload);
+
+                        // 3. Kirim notifikasi sukses
+                        Notification::make()
+                            ->success()
+                            ->title('Bukti Terkirim')
+                            ->body('Bukti pembayaran berhasil diunggah dan sedang menunggu verifikasi Staf Keuangan.')
+                            ->send();
+                    })
             ]);
     }
 }
