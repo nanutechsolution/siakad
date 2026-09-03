@@ -39,7 +39,7 @@ class MahasiswasTable
                     ->label('')
                     ->circular()
                     ->defaultImageUrl(fn($record) => 'https://ui-avatars.com/api/?name=' . urlencode($record->person?->nama_lengkap ?? '?') . '&color=7C3AED&background=EDE9FE')
-                    ->size(40),
+                    ->imageSize(40),
 
                 TextColumn::make('person.nama_lengkap')
                     ->label('Nama Mahasiswa')

@@ -24,6 +24,8 @@ final readonly class PembayaranIntakeData
         public string $idempotencyKey,
         public ?string $buktiBayarPath = null,
         public ?string $keteranganPengirim = null,
+        // Tambahan: Properti untuk menampung ID Bank Kampus
+        public ?int $bankKampusId = null,
     ) {}
 
     public static function make(
@@ -35,16 +37,19 @@ final readonly class PembayaranIntakeData
         ?string $idempotencyKey = null,
         ?string $buktiBayarPath = null,
         ?string $keteranganPengirim = null,
+        ?int $bankKampusId = null,
     ): self {
         return new self(
             tagihanId: $tagihanId,
             tagihanType: $tagihanType,
+            // Format aman untuk database tipe DECIMAL(19,2)
             nominalBayar: number_format((float) $nominalBayar, 2, '.', ''),
             tanggalBayar: $tanggalBayar,
             metodePembayaran: $metodePembayaran,
             idempotencyKey: $idempotencyKey ?? self::generateIdempotencyKey($metodePembayaran),
             buktiBayarPath: $buktiBayarPath,
             keteranganPengirim: $keteranganPengirim,
+            bankKampusId: $bankKampusId,
         );
     }
 

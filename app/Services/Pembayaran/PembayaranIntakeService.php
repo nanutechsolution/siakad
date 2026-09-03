@@ -40,14 +40,15 @@ class PembayaranIntakeService
         }
 
         $pembayaran = PembayaranMahasiswa::create([
-            'idempotency_key' => $data->idempotencyKey,
-            'tagihan_id' => $data->tagihanId,
-            'tagihan_type' => $data->tagihanType,
-            'nominal_bayar' => $data->nominalBayar,
-            'tanggal_bayar' => $data->tanggalBayar,
-            'metode_pembayaran' => $data->metodePembayaran,
-            'bukti_bayar_path' => $data->buktiBayarPath,
-            'keterangan_pengirim' => $data->keteranganPengirim,
+            'idempotency_key'      => $data->idempotencyKey,
+            'tagihan_id'           => $data->tagihanId,
+            'tagihan_type'         => $data->tagihanType,
+            'nominal_bayar'        => $data->nominalBayar,
+            'tanggal_bayar'        => $data->tanggalBayar,
+            'metode_pembayaran'    => $data->metodePembayaran,
+            'bukti_bayar_path'     => $data->buktiBayarPath,
+            'keterangan_pengirim'  => $data->keteranganPengirim,
+            'bank_kampus_id'       => $data->bankKampusId,
             'status_verifikasi_id' => StatusVerifikasiPembayaran::PENDING,
         ]);
 
