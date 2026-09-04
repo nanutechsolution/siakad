@@ -60,11 +60,12 @@ class VerifikasiPembayaransTable
                     ->sortable()
                     ->wrap()
                     ->toggleable(),
-                TextColumn::make('tagihan.kode_transaksi')
-                    ->label('No. Tagihan')
-                    ->searchable()
-                    ->copyable()
-                    ->color('gray'),
+
+                // TextColumn::make('tagihan.kode_transaksi')
+                //     ->label('No. Tagihan')
+                //     ->searchable()
+                //     ->copyable()
+                //     ->color('gray'),
 
                 TextColumn::make('nominal_bayar')
                     ->label('Nominal Bayar')
@@ -77,6 +78,72 @@ class VerifikasiPembayaransTable
                     ->label('Tgl Transfer')
                     ->dateTime('d M Y, H:i')
                     ->sortable(),
+
+                TextColumn::make('bukti_bayar_path')
+                    ->label('Bukti')
+                    ->formatStateUsing(fn() => 'Lihat Bukti')
+                    ->badge()
+                    ->color('info')
+                    ->action(
+                        Action::make('lihat_bukti')
+                            ->modalHeading('Bukti Pembayaran')
+                            ->modalSubmitAction(false)
+                            ->modalCancelActionLabel('Tutup')
+                            ->modalContent(function ($record) {
+                                $disk = 'public';
+                                if (!Storage::disk($disk)->exists($record->bukti_bayar_path)) {
+                                    return new HtmlString('
+                        <div class="text-center p-6 text-danger-600 dark:text-danger-400 font-medium">
+                            ⚠️ File bukti pembayaran tidak ditemukan.
+                        </div>
+                    ');
+                                }
+                                $mimeType = Storage::disk($disk)
+                                    ->mimeType($record->bukti_bayar_path);
+
+                                $fileUrl = Storage::disk($disk)
+                                    ->url($record->bukti_bayar_path);
+
+                                // Preview gambar
+                                if (str_starts_with($mimeType, 'image/')) {
+                                    return new HtmlString('
+                        <div class="flex justify-center p-4">
+                            <img 
+                                src="' . $fileUrl . '" 
+                                alt="Bukti Pembayaran"
+                                class="max-w-full max-h-[70vh] rounded-lg shadow"
+                            />
+                        </div>
+                    ');
+                                }
+
+                                // Preview PDF
+                                if ($mimeType === 'application/pdf') {
+                                    return new HtmlString('
+                        <div class="p-4">
+                            <iframe
+                                src="' . $fileUrl . '"
+                                class="w-full h-[70vh] rounded-lg border"
+                            ></iframe>
+                        </div>
+                    ');
+                                }
+
+                                return new HtmlString('
+                    <div class="text-center p-6">
+                        File tidak dapat dipreview.
+                        <br>
+                        <a 
+                            href="' . $fileUrl . '" 
+                            target="_blank"
+                            class="text-primary-600 underline"
+                        >
+                            Download File
+                        </a>
+                    </div>
+                ');
+                            })
+                    ),
                 TextColumn::make('status_verifikasi_id')
                     ->label('Status')
                     ->badge()
