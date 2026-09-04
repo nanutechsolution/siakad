@@ -240,7 +240,6 @@ class TagihanMahasiswasTable
                                 FileUpload::make('file_bukti')
                                     ->label('Upload Foto/Scan Bukti Transfer')
                                     ->image()
-                                    // FIX: helper text mengklaim "JPG/PNG" — validasi sekarang menegakkannya.
                                     ->acceptedFileTypes(['image/jpeg', 'image/png'])
                                     ->imageEditor()
                                     ->disk('public')
@@ -348,7 +347,6 @@ class TagihanMahasiswasTable
                             'catatan'          => $data['catatan'] ?? null,
                         ];
 
-                        // FIX: kegagalan proses (mis. validasi service layer) sebelumnya tidak
                         // ditangani sama sekali — mahasiswa hanya melihat error generik dan
                         // kehilangan seluruh isian wizard-nya.
                         try {

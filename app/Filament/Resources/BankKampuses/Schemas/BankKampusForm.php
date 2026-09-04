@@ -22,8 +22,12 @@ class BankKampusForm
                 TextInput::make('no_rekening')
                     ->label('Nomor Rekening')
                     ->required()
-                    ->numeric() // Memastikan hanya angka
-                    ->maxLength(255),
+                    ->maxLength(255)
+                    ->placeholder('Contoh: 1234567890')
+                    ->rule('regex:/^[0-9]+$/')
+                    ->validationMessages([
+                        'regex' => 'Nomor rekening hanya boleh berisi angka.',
+                    ]),
 
                 TextInput::make('atas_nama')
                     ->label('Atas Nama')
