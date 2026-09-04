@@ -214,35 +214,26 @@ class TagihanMahasiswasTable
                                     ->required()
                                     ->allowHtml()
                                     ->searchable()
-                                    ->searchPrompt('Cari nama bank...')
-                                    // FIX: baris hasil pencarian sekarang memakai partial view yang sama
-                                    // dengan daftar awal, supaya tampilannya konsisten begitu diketik.
-                                    ->getSearchResultsUsing(function (string $search) {
-                                        return BankKampus::query()
+                                    ->options(
+                                        BankKampus::query()
                                             ->where('is_active', true)
-                                            ->where('nama_bank', 'like', "%{$search}%")
-                                            ->limit(50)
                                             ->get()
                                             ->mapWithKeys(fn($bank) => [
-                                                $bank->id => view('components.bank-option-label', ['bank' => $bank])->render(),
-                                            ]);
-                                    })
-                                    // FIX: label untuk value yang sudah terpilih di-resolve satu per satu,
-                                    // bukan me-render ulang seluruh daftar bank di setiap render form.
-                                    ->getOptionLabelUsing(function ($value): ?string {
-                                        $bank = BankKampus::find($value);
-
-                                        return $bank
-                                            ? view('components.bank-option-label', ['bank' => $bank])->render()
-                                            : null;
-                                    })
-                                    ->helperText('Pilih bank tujuan tempat Anda mentransfer uang pembayaran.'),
+                                                $bank->id => view(
+                                                    'components.bank-option-label',
+                                                    ['bank' => $bank]
+                                                )->render(),
+                                            ])
+                                            ->toArray()
+                                    )
+                                    ->helperText(
+                                        'Pilih bank tujuan tempat Anda mentransfer uang pembayaran.'
+                                    ),
 
                                 DateTimePicker::make('waktu_transfer')
                                     ->label('Tanggal & Waktu di Struk Transfer')
                                     ->default(now())
                                     ->required()
-                                    // FIX: struk transfer tidak mungkin bertanggal di masa depan.
                                     ->maxDate(now())
                                     ->helperText('Sesuaikan dengan tanggal dan jam yang tertera pada bukti transfer Anda.'),
 
