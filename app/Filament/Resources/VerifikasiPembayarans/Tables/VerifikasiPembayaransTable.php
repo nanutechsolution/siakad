@@ -43,7 +43,23 @@ class VerifikasiPembayaransTable
                     ->sortable()
                     ->description(fn($record) => $record->tagihan?->mahasiswa?->nim)
                     ->weight('bold'),
-
+                TextColumn::make('tagihan.mahasiswa.prodi.nama_prodi')
+                    ->label('Program Studi')
+                    ->searchable(
+                        query: function (Builder $query, string $search): Builder {
+                            return $query->whereHas(
+                                'tagihan.mahasiswa.prodi',
+                                fn(Builder $q) => $q->where(
+                                    'nama_prodi',
+                                    'like',
+                                    "%{$search}%"
+                                )
+                            );
+                        }
+                    )
+                    ->sortable()
+                    ->wrap()
+                    ->toggleable(),
                 TextColumn::make('tagihan.kode_transaksi')
                     ->label('No. Tagihan')
                     ->searchable()
