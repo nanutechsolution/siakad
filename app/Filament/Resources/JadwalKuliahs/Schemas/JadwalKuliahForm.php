@@ -328,18 +328,18 @@ class JadwalKuliahForm
                                         ->schema([
                                             Toggle::make('is_koordinator')
                                                 ->label('Koordinator')
-                                                ->default(false),
+                                                ->default(true),
 
                                             Toggle::make('is_penilai')
                                                 ->label('Penilai Nilai')
-                                                ->default(false),
+                                                ->default(true),
                                         ]),
 
                                     TextInput::make('rencana_tatap_muka')
                                         ->label('Rencana Tatap Muka')
                                         ->required()
                                         ->numeric()
-                                        ->default(14),
+                                        ->default(16),
                                 ])
                                 ->itemLabel(fn(array $state): ?string => 'Dosen Pengajar')
                                 ->addActionLabel('Tambah Dosen')
