@@ -83,6 +83,13 @@ class PengisianKrsPage extends Page implements HasForms
 
         // Cek Periode Pengisian KRS
         $now = now();
+        if (!$this->activeTa->buka_krs) {
+            $this->setIneligible(
+                'Pengisian KRS saat ini ditutup oleh administrator.'
+            );
+
+            return;
+        }
         if ($now->lt($this->activeTa->tgl_mulai_krs) || $now->gt($this->activeTa->tgl_selesai_krs)) {
             $this->setIneligible('Saat ini BUKAN masa pengisian KRS. Jadwal KRS: ' .
                 $this->activeTa->tgl_mulai_krs->format('d M Y') . ' s/d ' . $this->activeTa->tgl_selesai_krs->format('d M Y'));
