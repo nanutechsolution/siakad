@@ -107,14 +107,91 @@ class VerifikasiPembayaransTable
                                 // Preview gambar
                                 if (str_starts_with($mimeType, 'image/')) {
                                     return new HtmlString('
-                        <div class="flex justify-center p-4">
-                            <img 
-                                src="' . $fileUrl . '" 
-                                alt="Bukti Pembayaran"
-                                class="max-w-full max-h-[70vh] rounded-lg shadow"
-                            />
-                        </div>
-                    ');
+        <div class="flex flex-col items-center gap-4 p-4">
+
+            <div class="flex gap-2">
+                <button
+                    type="button"
+                    onclick="zoomBukti(-0.25)"
+                    class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                >
+                    −
+                </button>
+
+                <button
+                    type="button"
+                    onclick="resetZoomBukti()"
+                    class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                >
+                    Reset
+                </button>
+
+                <button
+                    type="button"
+                    onclick="zoomBukti(0.25)"
+                    class="px-3 py-2 rounded-lg bg-gray-100 hover:bg-gray-200 dark:bg-gray-800 dark:hover:bg-gray-700"
+                >
+                    +
+                </button>
+            </div>
+
+            <div
+                class="w-full overflow-auto"
+                style="max-height: 70vh;"
+            >
+                <div class="flex justify-center">
+                    <img
+                        id="bukti-pembayaran-image"
+                        src="' . $fileUrl . '"
+                        alt="Bukti Pembayaran"
+                        class="rounded-lg shadow cursor-zoom-in"
+                        style="
+                            max-width: none;
+                            max-height: none;
+                            width: auto;
+                            height: auto;
+                            transform: scale(1);
+                            transform-origin: center center;
+                            transition: transform 0.2s ease;
+                        "
+                    />
+                </div>
+            </div>
+
+        </div>
+
+        <script>
+            window.buktiZoom = 1;
+
+            window.zoomBukti = function(amount) {
+                window.buktiZoom += amount;
+
+                if (window.buktiZoom < 0.5) {
+                    window.buktiZoom = 0.5;
+                }
+
+                if (window.buktiZoom > 4) {
+                    window.buktiZoom = 4;
+                }
+
+                const image = document.getElementById("bukti-pembayaran-image");
+
+                if (image) {
+                    image.style.transform = "scale(" + window.buktiZoom + ")";
+                }
+            };
+
+            window.resetZoomBukti = function() {
+                window.buktiZoom = 1;
+
+                const image = document.getElementById("bukti-pembayaran-image");
+
+                if (image) {
+                    image.style.transform = "scale(1)";
+                }
+            };
+        </script>
+    ');
                                 }
 
                                 // Preview PDF
