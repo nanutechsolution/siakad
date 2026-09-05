@@ -143,7 +143,7 @@ class KrsValidationService
             $detailMsg = collect($compliance['unmet'])
                 ->map(fn($u) => "{$u['nama']}: Rp " . number_format($u['terbayar'], 0, ',', '.') . " / Rp " . number_format($u['target'], 0, ',', '.'))
                 ->implode('; ');
-            return KrsValidationResult::fail('GATE_KEUANGAN', "Belum memenuhi policy: {$detailMsg}");
+            return KrsValidationResult::fail('GATE_KEUANGAN', "Belum memenuhi Syarat Untuk KRS, Silakan Melalukan Minimal: {$detailMsg}");
         }
 
         return KrsValidationResult::pass('GATE_KEUANGAN');
