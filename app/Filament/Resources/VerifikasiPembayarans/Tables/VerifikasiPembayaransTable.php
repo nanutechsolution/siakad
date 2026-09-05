@@ -24,7 +24,7 @@ class VerifikasiPembayaransTable
     {
         return $table
             ->defaultSort('created_at', 'desc')
-            ->modifyQueryUsing(fn(Builder $query) => $query->with(['tagihan.mahasiswa']))
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['tagihan.mahasiswa.angkatan']))
             ->columns([
                 TextColumn::make('tagihan.mahasiswa.person.nama_lengkap')
                     ->label('Mahasiswa')
@@ -61,12 +61,18 @@ class VerifikasiPembayaransTable
                     ->wrap()
                     ->toggleable(),
 
-                // TextColumn::make('tagihan.kode_transaksi')
-                //     ->label('No. Tagihan')
-                //     ->searchable()
-                //     ->copyable()
-                //     ->color('gray'),
-
+                TextColumn::make('tagihan.kode_transaksi')
+                    ->label('No. Tagihan')
+                    ->searchable()
+                    ->copyable()
+                    ->color('gray'),
+                TextColumn::make('tagihan.mahasiswa.angkatan.id_tahun')
+                    ->label('Angkatan')
+                    ->badge()
+                    ->color('gray')
+                    ->sortable()
+                    ->searchable()
+                    ->toggleable(),
                 TextColumn::make('nominal_bayar')
                     ->label('Nominal Bayar')
                     ->money('IDR')
