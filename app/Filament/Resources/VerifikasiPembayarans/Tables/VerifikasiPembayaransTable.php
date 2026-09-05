@@ -144,10 +144,10 @@ class VerifikasiPembayaransTable
                 SelectFilter::make('prodi')
                     ->label('Program Studi')
                     ->searchable()
-                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id_prodi')->toArray()) // Sesuaikan key 'id_prodi' dengan nama PK tabel Anda
+                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray()) // Sesuaikan key 'id' dengan nama PK tabel Anda
                     ->query(function (Builder $query, array $data) {
                         if (empty($data['value'])) return $query;
-                        return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id_prodi', $data['value']));
+                        return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id', $data['value']));
                     }),
 
                 // UX: Filter Angkatan
