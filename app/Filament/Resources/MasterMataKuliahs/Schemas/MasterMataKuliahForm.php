@@ -41,7 +41,7 @@ class MasterMataKuliahForm
                                         ->required()
                                         ->minLength(2)
                                         ->maxLength(20)
-                                        ->regex('/^[A-Z0-9]+$/')
+                                        // ->regex('/^[A-Z0-9]+$/')
                                         ->live(onBlur: true)
                                         ->afterStateUpdated(
                                             fn(Set $set, ?string $state) => $set('kode_mk', strtoupper(trim((string) $state)))
@@ -58,7 +58,7 @@ class MasterMataKuliahForm
                                         )
                                         ->validationMessages([
                                             'required' => 'Kode Mata Kuliah wajib diisi.',
-                                            'regex' => 'Kode Mata Kuliah hanya boleh berisi huruf kapital dan angka tanpa spasi (cth: MKU101).',
+                                            // 'regex' => 'Kode Mata Kuliah hanya boleh berisi huruf kapital dan angka tanpa spasi (cth: MKU101).',
                                             'unique' => 'Kode Mata Kuliah ini sudah dipakai pada Program Studi yang sama.',
                                         ])
                                         ->placeholder('Cth: MKU101'),
