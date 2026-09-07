@@ -47,10 +47,15 @@ class VerifikasiPembayaransTable
                     ->description(fn($record) => $record->tagihan?->mahasiswa?->nim)
                     ->weight('bold'),
 
-                // UI/UX: Menggabungkan Prodi & Angkatan jadi 1 kolom agar hemat ruang tabel
                 TextColumn::make('tagihan.mahasiswa.prodi.nama_prodi')
                     ->label('Prodi & Angkatan')
-                    ->searchable()
+                    ->searchable(
+                        query: function (Builder $query, string $search): Builder {
+                            return $query->whereHas('tagihan.mahasiswa.prodi', function ($q) use ($search) {
+                                $q->where('nama_prodi', 'like', "%{$search}%");
+                            });
+                        }
+                    )
                     ->sortable()
                     ->description(fn($record) => 'Angkatan: ' . ($record->tagihan?->mahasiswa?->angkatan?->id_tahun ?? '-'))
                     ->wrap()
