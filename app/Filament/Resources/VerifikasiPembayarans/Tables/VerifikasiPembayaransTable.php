@@ -106,7 +106,7 @@ class VerifikasiPembayaransTable
                     ->sortable()
                     ->toggleable(isToggledHiddenByDefault: false),
             ])
-            ->defaultSort('created_at', 'desc')
+            ->defaultSort('created_at', 'asc')
             ->filters([
                 SelectFilter::make('status_verifikasi_id')
                     ->label('Status')
