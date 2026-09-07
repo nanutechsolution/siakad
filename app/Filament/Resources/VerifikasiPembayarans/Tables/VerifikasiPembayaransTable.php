@@ -100,6 +100,11 @@ class VerifikasiPembayaransTable
                     ->badge()
                     ->formatStateUsing(fn(StatusVerifikasiPembayaran $state): string => $state->label())
                     ->color(fn(StatusVerifikasiPembayaran $state): string => $state->badgeColor()),
+                TextColumn::make('created_at')
+                    ->label('Waktu Upload')
+                    ->since()
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: false),
             ])
             ->defaultSort('created_at', 'desc')
             ->filters([
