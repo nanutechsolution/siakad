@@ -73,12 +73,6 @@ class VerifikasiPembayaransTable
                     ->summarize(
                         Sum::make()->label('Total')->money('IDR')
                     ),
-
-                TextColumn::make('tanggal_bayar')
-                    ->label('Tgl Transfer')
-                    ->dateTime('d M Y, H:i')
-                    ->sortable(),
-
                 TextColumn::make('bukti_bayar_path')
                     ->label('Bukti')
                     ->formatStateUsing(fn() => 'Lihat Bukti')
@@ -100,11 +94,27 @@ class VerifikasiPembayaransTable
                     ->badge()
                     ->formatStateUsing(fn(StatusVerifikasiPembayaran $state): string => $state->label())
                     ->color(fn(StatusVerifikasiPembayaran $state): string => $state->badgeColor()),
-                TextColumn::make('created_at')
-                    ->label('Waktu Upload')
-                    ->since()
+                TextColumn::make('tanggal_bayar')
+                    ->label('Tgl Transfer & Input')
+                    ->dateTime('d M Y, H:i') // Menampilkan tanggal transfer sebagai teks utama
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true),
+                    // Menambahkan tanggal upload/input di bawahnya sebagai deskripsi
+                    ->description(fn($record) => $record->created_at ? 'Diinput: ' . $record->created_at->format('d M Y, H:i') : '-')
+                    // UX: Memberi warna kuning (warning) jika mahasiswa telat upload bukti > 1 hari dari tanggal transfer
+                    ->color(function ($record) {
+                        if (!$record->tanggal_bayar || !$record->created_at) {
+                            return null;
+                        }
+
+                        // Pastikan formatnya Carbon untuk menghitung selisih hari
+                        $tglBayar = \Carbon\Carbon::parse($record->tanggal_bayar);
+
+                        if ($record->created_at->diffInDays($tglBayar) > 1) {
+                            return 'warning';
+                        }
+
+                        return null; // Warna default (hitam/putih) jika jarak harinya wajar
+                    }),
             ])
             ->defaultSort('created_at', 'asc')
             ->filters([
