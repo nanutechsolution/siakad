@@ -104,7 +104,7 @@ class VerifikasiPembayaransTable
                     ->label('Waktu Upload')
                     ->since()
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: false),
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('created_at', 'asc')
             ->filters([
