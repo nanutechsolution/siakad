@@ -3,30 +3,32 @@
 namespace App\Filament\Resources\MasterMataKuliahs;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Clusters\Matakuliah\MatakuliahCluster;
 use App\Filament\Resources\MasterMataKuliahs\Pages\CreateMasterMataKuliah;
 use App\Filament\Resources\MasterMataKuliahs\Pages\EditMasterMataKuliah;
 use App\Filament\Resources\MasterMataKuliahs\Pages\ListMasterMataKuliahs;
 use App\Filament\Resources\MasterMataKuliahs\Schemas\MasterMataKuliahForm;
 use App\Filament\Resources\MasterMataKuliahs\Tables\MasterMataKuliahsTable;
 use App\Models\MasterMataKuliah;
+use BackedEnum;
 use Filament\Resources\Resource;
 use Filament\Schemas\Schema;
+use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\SoftDeletingScope;
 
 class MasterMataKuliahResource extends Resource
 {
+    
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
     protected static ?string $model = MasterMataKuliah::class;
     protected static ?string $slug = 'master-akademik/mata-kuliah';
     protected static ?string $modelLabel = 'Mata Kuliah';
     protected static ?string $pluralModelLabel = 'Mata Kuliah';
     protected static ?string $recordTitleAttribute = 'nama_mk';
     protected static ?int $navigationSort = 3;
-    public static function getNavigationGroup(): ?string
-    {
-        return NavigationGroup::MASTER->value;
-    }
+    protected static ?string $cluster = MatakuliahCluster::class;
     public static function form(Schema $schema): Schema
     {
         return MasterMataKuliahForm::configure($schema);
