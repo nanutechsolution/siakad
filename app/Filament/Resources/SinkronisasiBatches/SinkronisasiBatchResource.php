@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\SinkronisasiBatches;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Resources\GeneratorBatches\RelationManagers\LogsRelationManager;
 use App\Filament\Resources\SinkronisasiBatches\Pages\CreateSinkronisasiBatch;
 use App\Filament\Resources\SinkronisasiBatches\Pages\EditSinkronisasiBatch;
 use App\Filament\Resources\SinkronisasiBatches\Pages\ListSinkronisasiBatches;
@@ -48,7 +49,8 @@ class SinkronisasiBatchResource extends Resource
     public static function getRelations(): array
     {
         return [
-            //
+            RelationManagers\LogsRelationManager::class,
+            RelationManagers\ReviewItemsRelationManager::class,
         ];
     }
 
