@@ -195,6 +195,7 @@ class SinkronisasiTagihanService
                 $adjustment = KeuanganAdjustment::create([
                     'nomor_adjustment' => 'ADJ-SYNC-' . date('Ymd') . '-' . Str::upper(Str::random(6)),
                     'tagihan_id' => $item->tagihan_id,
+                    'komponen_biaya_id' => $item->komponen_biaya_id,
                     'jenis_adjustment' => 'KOREKSI_NOMINAL_SINKRONISASI',
                     'nominal' => $item->selisih(),
                     'keterangan' => "Hasil Sinkronisasi Tagihan: komponen #{$item->komponen_biaya_id} "

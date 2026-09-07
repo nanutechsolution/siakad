@@ -37,7 +37,35 @@ class AdjustmentPostingService
                 throw new AdjustmentException('Tagihan telah mengalami perubahan sejak adjustment ini diajukan. Harap tolak adjustment ini dan buat pengajuan ulang.');
             }
 
-            // 3. Kalkulasi Tagihan Baru
+            // =========================================================================
+            // 3. UPDATE RINCIAN/DETAIL TAGIHAN BERDASARKAN KOMPONEN BIAYA
+            // =========================================================================
+            if ($adjustment->komponen_biaya_id) {
+                $detailTagihan = DB::table('tagihan_mahasiswas_details')
+                    ->where('tagihan_id', $tagihan->id)
+                    ->where('komponen_biaya_id', $adjustment->komponen_biaya_id)
+                    ->lockForUpdate()
+                    ->first();
+
+                if ($detailTagihan) {
+                    // Tambahkan nilai nominal adjustment ke nominal dasar yang ada di detail
+                    $nominalBaruDetail = (float) $detailTagihan->nominal_dasar + (float) $adjustment->nominal;
+
+                    if ($nominalBaruDetail < 0) {
+                        throw new AdjustmentException('Nominal komponen detail tagihan menjadi negatif setelah penyesuaian. Operasi dibatalkan.');
+                    }
+
+                    DB::table('tagihan_mahasiswas_details')
+                        ->where('id', $detailTagihan->id)
+                        ->update([
+                            'nominal_dasar' => $nominalBaruDetail,
+                            'updated_at' => now(),
+                        ]);
+                }
+            }
+            // =========================================================================
+
+            // 4. Kalkulasi Tagihan Baru (Header)
             $oldTotalTagihan = (float) $tagihan->total_tagihan;
             $newTotalTagihan = $oldTotalTagihan + (float) $adjustment->nominal;
 
@@ -48,7 +76,7 @@ class AdjustmentPostingService
             $kelebihanBayar = 0.0;
             $totalBayar = (float) $tagihan->total_bayar;
 
-            // 4. Deteksi Overpayment & Penyesuaian total_bayar
+            // 5. Deteksi Overpayment & Penyesuaian total_bayar
             if ($totalBayar > $newTotalTagihan) {
                 $kelebihanBayar = $totalBayar - $newTotalTagihan;
 
@@ -60,7 +88,6 @@ class AdjustmentPostingService
                 $tagihan->total_bayar = $newTotalTagihan;
                 $tagihan->status_bayar = 'LUNAS';
 
-
                 $this->prosesKelebihanBayar($tagihan->mahasiswa_id, $kelebihanBayar, $adjustment);
             } else {
                 // Update status bayar untuk kasus normal / penambahan tagihan
@@ -68,14 +95,13 @@ class AdjustmentPostingService
                     $totalBayar,
                     $newTotalTagihan,
                 );
-                // $tagihan->status_bayar = $this->kalkulasiStatusBayar($tagihan->total_bayar, $newTotalTagihan);
             }
 
-            // 5. Update Tagihan Header
+            // 6. Update Tagihan Header
             $tagihan->total_tagihan = $newTotalTagihan;
             $tagihan->save();
 
-            // 6. Catat ke General Ledger (Buku Besar)
+            // 7. Catat ke General Ledger (Buku Besar)
             $saldoBerjalan = $this->hitungSaldoBerjalanTerakhir($tagihan->mahasiswa_id);
             $nominalAdj = (float) $adjustment->nominal;
 
@@ -93,7 +119,7 @@ class AdjustmentPostingService
                 'keterangan' => 'Penyesuaian tagihan: ' . $adjustment->keterangan,
             ]);
 
-            // 7. Finalisasi Status Adjustment
+            // 8. Finalisasi Status Adjustment
             $adjustment->update([
                 'status' => StatusAdjustment::DIPOSTING,
                 'diposting_at' => now(),
