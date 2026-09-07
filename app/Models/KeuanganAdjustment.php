@@ -27,6 +27,7 @@ class KeuanganAdjustment extends Model
 
     protected $fillable = [
         'tagihan_id',
+        'komponen_biaya_id',
         'nomor_adjustment',
         'jenis_adjustment',
         'nominal',
