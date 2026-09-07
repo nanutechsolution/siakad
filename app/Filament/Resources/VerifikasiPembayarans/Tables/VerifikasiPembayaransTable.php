@@ -99,6 +99,7 @@ class VerifikasiPembayaransTable
                     ->formatStateUsing(fn(StatusVerifikasiPembayaran $state): string => $state->label())
                     ->color(fn(StatusVerifikasiPembayaran $state): string => $state->badgeColor()),
             ])
+            ->defaultSort('created_at', 'desc')
             ->filters([
                 SelectFilter::make('status_verifikasi_id')
                     ->label('Status')
