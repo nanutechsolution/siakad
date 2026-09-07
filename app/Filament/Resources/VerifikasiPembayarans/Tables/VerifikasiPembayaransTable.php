@@ -155,20 +155,20 @@ class VerifikasiPembayaransTable
                         return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id', $data['value']));
                     }),
 
-                // UX: Filter Angkatan
                 SelectFilter::make('angkatan')
                     ->label('Angkatan (Tahun)')
                     ->searchable()
-                    ->options(fn() => RefAngkatan::pluck('id_tahun', 'id_tahun')->toArray()) // Sesuaikan dengan model Angkatan Anda
+                    ->options(fn() => RefAngkatan::pluck('id_tahun', 'id_tahun')->toArray())
                     ->query(function (Builder $query, array $data) {
-                        if (empty($data['value'])) return $query;
-                        return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id_tahun', $data['value']));
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('tagihan.mahasiswa.angkatan', function ($q) use ($data) {
+                            $q->where('id_tahun', $data['value']);
+                        });
                     }),
             ])
-            // UI/UX: Letakkan filter di atas tabel & jadikan 3 kolom sejajar
-            ->filtersLayout(FiltersLayout::AboveContent)
-            ->filtersFormColumns(3)
-
             ->recordActions([
                 ActionGroup::make([
                     // 1. ACTION: TERIMA (VERIFIKASI)
