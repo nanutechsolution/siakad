@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\RefRuangs\Schemas;
 
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
@@ -27,11 +28,32 @@ class RefRuangForm
                                 ->maxLength(100),
                         ]),
 
-                        TextInput::make('kapasitas')
-                            ->required()
-                            ->numeric()
-                            ->minValue(1)
-                            ->default(40),
+                        Grid::make(2)->schema([
+                            TextInput::make('kapasitas')
+                                ->required()
+                                ->numeric()
+                                ->minValue(1)
+                                ->default(40),
+
+                            Select::make('jenis_ruang')
+                                ->label('Jenis Ruangan')
+                                ->options([
+                                    'TEORI' => 'Teori',
+                                    'LABORATORIUM' => 'Laboratorium',
+                                    'STUDIO' => 'Studio'
+                                ])
+                                ->default('TEORI')
+                                ->required(),
+
+
+                        ]),
+                        Select::make('prodi_id')
+                            ->label('Eksklusif Untuk Prodi')
+                            ->relationship('prodi', 'nama_prodi')
+                            ->placeholder('Pilih Prodi (Kosongkan jika ruang bersama)')
+                            ->searchable()
+                            ->preload()
+                            ->nullable(),
                     ]),
 
                 Section::make('Konfigurasi Absensi Geospasial')

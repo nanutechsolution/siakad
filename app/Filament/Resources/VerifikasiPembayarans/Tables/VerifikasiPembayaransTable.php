@@ -15,7 +15,6 @@ use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\Summarizers\Sum;
 use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
@@ -127,7 +126,7 @@ class VerifikasiPembayaransTable
                 SelectFilter::make('prodi')
                     ->label('Program Studi')
                     ->searchable()
-                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray()) // Sesuaikan key 'id' dengan nama PK tabel Anda
+                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray()) 
                     ->query(function (Builder $query, array $data) {
                         if (empty($data['value'])) return $query;
                         return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id', $data['value']));

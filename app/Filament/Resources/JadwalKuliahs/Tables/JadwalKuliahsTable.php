@@ -11,6 +11,7 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -95,7 +96,14 @@ class JadwalKuliahsTable
                             default => 'success',
                         };
                     }),
-
+                IconColumn::make('is_locked')
+                    ->label('Status Final')
+                    ->boolean()
+                    ->trueIcon('heroicon-o-lock-closed')
+                    ->falseIcon('heroicon-o-lock-open')
+                    ->trueColor('danger')
+                    ->falseColor('gray')
+                    ->tooltip('Jika terkunci (merah), jadwal ini aman dari timpaan saat BAAK melakukan Generate ulang.'),
                 TextColumn::make('tahunAkademik.nama_tahun')
                     ->label('Tahun Akademik')
                     ->badge()
@@ -166,6 +174,13 @@ class JadwalKuliahsTable
                     }),
             ])
             ->recordActions([
+                Action::make('toggleLock')
+                    ->label(fn($record) => $record->is_locked ? 'Buka Kunci' : 'Kunci Jadwal')
+                    ->icon(fn($record) => $record->is_locked ? 'heroicon-o-lock-open' : 'heroicon-o-lock-closed')
+                    ->color(fn($record) => $record->is_locked ? 'gray' : 'danger')
+                    ->action(function ($record) {
+                        $record->update(['is_locked' => !$record->is_locked]);
+                    }),
                 EditAction::make(),
             ])
             ->toolbarActions([

@@ -5,10 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\BelongsTo; // Tambahkan import ini
 
 class RefRuang extends Model
 {
     use HasFactory;
+
     protected static function boot()
     {
         parent::boot();
@@ -24,6 +26,7 @@ class RefRuang extends Model
             }
         });
     }
+
     /**
      * The table associated with the model.
      *
@@ -67,5 +70,23 @@ class RefRuang extends Model
     public function jadwalKuliahs(): HasMany
     {
         return $this->hasMany(JadwalKuliah::class, 'ruang_id');
+    }
+
+    /**
+     * Relasi ke Prodi (Untuk ruangan eksklusif milik prodi tertentu)
+     */
+    public function prodi(): BelongsTo
+    {
+        return $this->belongsTo(RefProdi::class, 'prodi_id');
+    }
+
+    public function scopeTeori($query)
+    {
+        return $query->where('jenis_ruang', 'TEORI');
+    }
+
+    public function scopeLaboratorium($query)
+    {
+        return $query->where('jenis_ruang', 'LABORATORIUM');
     }
 }

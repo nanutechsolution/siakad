@@ -305,4 +305,12 @@ class JadwalKuliah extends Model implements HasScopeStrategy
             })
             ->implode(', ');
     }
+
+    /**
+     * Relasi ke tabel pivot/penugasan dosen (jadwal_kuliah_dosen)
+     */
+    public function dosenPengampus(): HasMany
+    {
+        return $this->hasMany(JadwalKuliahDosen::class, 'jadwal_kuliah_id');
+    }
 }
