@@ -34,6 +34,8 @@ class VerifikasiPembayaransTable
             ->columns([
                 TextColumn::make('tagihan.mahasiswa.person.nama_lengkap')
                     ->label('Mahasiswa')
+                    ->copyable()
+                    ->copyMessage('Nama disalin')
                     ->searchable(
                         // UX: Bisa mencari nama mahasiswa ATAU NIM sekaligus
                         query: function (Builder $query, string $search): Builder {
@@ -131,104 +133,105 @@ class VerifikasiPembayaransTable
                     }),
             ])
             ->recordActions([
-                ActionGroup::make([
-                    // 1. ACTION: TERIMA (VERIFIKASI)
-                    Action::make('approve')
-                        ->label('Terima Pembayaran')
-                        ->icon('heroicon-o-check-circle')
-                        ->color('success')
-                        ->visible(
-                            fn($record) =>
-                            $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING
-                                && auth()->user()->can('ApprovePembayaran')
-                        )
-                        ->requiresConfirmation()
-                        ->modalHeading(fn(PembayaranMahasiswa $record) => 'Setujui Pembayaran ' . ($record->tagihan?->mahasiswa?->person?->nama_lengkap ?? 'Mahasiswa') . '?')
+                // 1. ACTION: TERIMA (VERIFIKASI)
+                Action::make('approve')
+                    ->label('Terima')
+                    ->icon('heroicon-m-check-circle')
+                    ->icon('heroicon-o-check-circle')
+                    ->color('success')
+                    ->button()
+                    ->visible(
+                        fn($record) =>
+                        $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING
+                            && auth()->user()->can('ApprovePembayaran')
+                    )
+                    ->requiresConfirmation()
+                    ->modalHeading(fn(PembayaranMahasiswa $record) => 'Setujui Pembayaran ' . ($record->tagihan?->mahasiswa?->person?->nama_lengkap ?? 'Mahasiswa') . '?')
 
-                        ->modalDescription(fn(PembayaranMahasiswa $record) => new HtmlString(
-                            'Anda akan menerima pembayaran sebesar <strong>Rp ' . number_format($record->nominal_bayar, 0, ',', '.') . '</strong>.<br><br>Tindakan ini akan mengesahkan pembayaran, mendistribusikan alokasi biaya, dan memperbarui saldo mahasiswa jika ada sisa bayar. Tindakan ini tidak bisa diurungkan.'
-                        ))
-                        ->action(function (PembayaranMahasiswa $record) {
-                            abort_unless(auth()->user()->can('ApprovePembayaran'), 403);
-                            try {
-                                app(PembayaranVerificationService::class)->verifikasi(
-                                    $record,
-                                    auth()->id()
-                                );
-
-                                Notification::make()
-                                    ->title('Pembayaran Disetujui')
-                                    ->body('Dana pembayaran atas nama ' . ($record->tagihan?->mahasiswa?->person?->nama_lengkap ?? 'mahasiswa') . ' telah dialokasikan.')
-                                    ->success()
-                                    ->send();
-                            } catch (\Exception $e) {
-                                Notification::make()
-                                    ->title('Gagal Menyetujui Pembayaran')
-                                    ->body($e->getMessage())
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
-
-                    // 2. ACTION: TOLAK (REJECT)
-                    Action::make('reject')
-                        ->label('Tolak Pembayaran')
-                        ->icon('heroicon-o-x-circle')
-                        ->color('danger')
-                        ->visible(
-                            fn($record) =>
-                            $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING
-                                && auth()->user()->can('TolakPembayaran')
-                        )
-                        ->requiresConfirmation()
-                        ->modalHeading('Tolak Bukti Pembayaran')
-                        ->modalDescription('Berikan alasan yang jelas kepada mahasiswa mengapa bukti pembayaran ini ditolak (misal: gambar buram, nominal kurang).')
-                        ->schema([
-                            Textarea::make('alasan_penolakan')
-                                ->label('Alasan Penolakan')
-                                ->required()
-                                ->placeholder('Misal: Bukti transfer tidak terbaca / Nominal tidak sesuai.')
-                                ->rows(3),
-                        ])
-                        ->action(function (PembayaranMahasiswa $record, array $data) {
-                            abort_unless(auth()->user()->can('TolakPembayaran'), 403);
-                            try {
-                                // Panggil method tolak() dengan ID, User ID, dan Catatan
-                                app(PembayaranVerificationService::class)->tolak(
-                                    $record->id,
-                                    auth()->id(), // ID Admin yang menolak
-                                    $data['alasan_penolakan'] // Catatan dimasukkan ke sini
-                                );
-
-                                Notification::make()
-                                    ->title('Pembayaran Ditolak')
-                                    ->body('Status telah diubah menjadi Ditolak.')
-                                    ->success()
-                                    ->send();
-                            } catch (\Exception $e) {
-                                Notification::make()
-                                    ->title('Gagal Menolak Pembayaran')
-                                    ->body($e->getMessage())
-                                    ->danger()
-                                    ->send();
-                            }
-                        }),
-                    Action::make('cetak-kwitansi')
-                        ->label('Cetak Kwitansi')
-                        ->icon('heroicon-o-receipt-percent')
-                        ->color('success')
-                        ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::VERIFIED)
-                        ->action(function ($record) {
-                            $document = app(PdfService::class)->generateArchived(
-                                type: PdfDocumentType::KWITANSI,
-                                context: ['pembayaran_id' => $record->id],
-                                documentableType: PembayaranMahasiswa::class,
-                                documentableId: $record->id,
+                    ->modalDescription(fn(PembayaranMahasiswa $record) => new HtmlString(
+                        'Anda akan menerima pembayaran sebesar <strong>Rp ' . number_format($record->nominal_bayar, 0, ',', '.') . '</strong>.<br><br>Tindakan ini akan mengesahkan pembayaran, mendistribusikan alokasi biaya, dan memperbarui saldo mahasiswa jika ada sisa bayar. Tindakan ini tidak bisa diurungkan.'
+                    ))
+                    ->action(function (PembayaranMahasiswa $record) {
+                        abort_unless(auth()->user()->can('ApprovePembayaran'), 403);
+                        try {
+                            app(PembayaranVerificationService::class)->verifikasi(
+                                $record,
+                                auth()->id()
                             );
 
-                            return app(PdfService::class)->downloadArchived($document);
-                        }),
-                ]),
+                            Notification::make()
+                                ->title('Pembayaran Disetujui')
+                                ->body('Dana pembayaran atas nama ' . ($record->tagihan?->mahasiswa?->person?->nama_lengkap ?? 'mahasiswa') . ' telah dialokasikan.')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Gagal Menyetujui Pembayaran')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+
+                // 2. ACTION: TOLAK (REJECT)
+                Action::make('reject')
+                    ->label('Tolak')
+                    ->icon('heroicon-o-x-circle')
+                    ->color('danger')
+                    ->button()
+                    ->visible(
+                        fn($record) =>
+                        $record->status_verifikasi_id === StatusVerifikasiPembayaran::PENDING
+                            && auth()->user()->can('TolakPembayaran')
+                    )
+                    ->requiresConfirmation()
+                    ->modalHeading('Tolak Bukti Pembayaran')
+                    ->modalDescription('Berikan alasan yang jelas kepada mahasiswa mengapa bukti pembayaran ini ditolak (misal: gambar buram, nominal kurang).')
+                    ->schema([
+                        Textarea::make('alasan_penolakan')
+                            ->label('Alasan Penolakan')
+                            ->required()
+                            ->placeholder('Misal: Bukti transfer tidak terbaca / Nominal tidak sesuai.')
+                            ->rows(3),
+                    ])
+                    ->action(function (PembayaranMahasiswa $record, array $data) {
+                        abort_unless(auth()->user()->can('TolakPembayaran'), 403);
+                        try {
+                            // Panggil method tolak() dengan ID, User ID, dan Catatan
+                            app(PembayaranVerificationService::class)->tolak(
+                                $record->id,
+                                auth()->id(), // ID Admin yang menolak
+                                $data['alasan_penolakan'] // Catatan dimasukkan ke sini
+                            );
+
+                            Notification::make()
+                                ->title('Pembayaran Ditolak')
+                                ->body('Status telah diubah menjadi Ditolak.')
+                                ->success()
+                                ->send();
+                        } catch (\Exception $e) {
+                            Notification::make()
+                                ->title('Gagal Menolak Pembayaran')
+                                ->body($e->getMessage())
+                                ->danger()
+                                ->send();
+                        }
+                    }),
+                Action::make('cetak-kwitansi')
+                    ->label('Cetak Kwitansi')
+                    ->icon('heroicon-o-receipt-percent')
+                    ->color('success')
+                    ->visible(fn($record) => $record->status_verifikasi_id === StatusVerifikasiPembayaran::VERIFIED)
+                    ->action(function ($record) {
+                        $document = app(PdfService::class)->generateArchived(
+                            type: PdfDocumentType::KWITANSI,
+                            context: ['pembayaran_id' => $record->id],
+                            documentableType: PembayaranMahasiswa::class,
+                            documentableId: $record->id,
+                        );
+
+                        return app(PdfService::class)->downloadArchived($document);
+                    }),
             ])
             ->toolbarActions([]);
     }
