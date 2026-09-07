@@ -143,22 +143,22 @@ class VerifikasiPembayaransTable
                                 && auth()->user()->can('ApprovePembayaran')
                         )
                         ->requiresConfirmation()
-                        ->modalHeading('Setujui Pembayaran?')
-                        ->modalDescription('Tindakan ini akan mengesahkan pembayaran, mendistribusikan alokasi biaya, dan memperbarui saldo mahasiswa jika ada sisa bayar. Tindakan ini tidak bisa diurungkan.')
-                        // Hapus ->form() catatan_admin karena method verifikasi() di Service tidak menerimanya
+                        ->modalHeading(fn(PembayaranMahasiswa $record) => 'Setujui Pembayaran ' . ($record->tagihan?->mahasiswa?->person?->nama_lengkap ?? 'Mahasiswa') . '?')
+
+                        ->modalDescription(fn(PembayaranMahasiswa $record) => new HtmlString(
+                            'Anda akan menerima pembayaran sebesar <strong>Rp ' . number_format($record->nominal_bayar, 0, ',', '.') . '</strong>.<br><br>Tindakan ini akan mengesahkan pembayaran, mendistribusikan alokasi biaya, dan memperbarui saldo mahasiswa jika ada sisa bayar. Tindakan ini tidak bisa diurungkan.'
+                        ))
                         ->action(function (PembayaranMahasiswa $record) {
                             abort_unless(auth()->user()->can('ApprovePembayaran'), 403);
                             try {
-
-                                // Panggil method verifikasi() dengan meneruskan ID Pembayaran dan ID Admin yang login
                                 app(PembayaranVerificationService::class)->verifikasi(
                                     $record,
-                                    auth()->id() // Mengambil ID user admin yang sedang login
+                                    auth()->id()
                                 );
 
                                 Notification::make()
                                     ->title('Pembayaran Disetujui')
-                                    ->body('Dana telah dialokasikan ke tagihan mahasiswa.')
+                                    ->body('Dana pembayaran atas nama ' . ($record->tagihan?->mahasiswa?->person?->nama_lengkap ?? 'mahasiswa') . ' telah dialokasikan.')
                                     ->success()
                                     ->send();
                             } catch (\Exception $e) {
