@@ -58,21 +58,21 @@ class TagihanMahasiswaInfolist
                     ])
                     ->collapsible(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Konfirmasi Pembayaran
-                |--------------------------------------------------------------------------
-                */
+                // /*
+                // |--------------------------------------------------------------------------
+                // | Konfirmasi Pembayaran
+                // |--------------------------------------------------------------------------
+                // */
 
-                Section::make('Konfirmasi Pembayaran')
-                    ->description('Upload bukti transfer apabila pembayaran dilakukan secara manual.')
-                    ->icon('heroicon-o-arrow-up-tray')
-                    ->schema([
-                        ViewEntry::make('upload')
-                            ->hiddenLabel()
-                            ->view('filament.mahasiswa.tagihan.invoice-upload'),
-                    ])
-                    ->visible(fn($record) => $record->status_bayar !== 'LUNAS'),
+                // Section::make('Konfirmasi Pembayaran')
+                //     ->description('Upload bukti transfer apabila pembayaran dilakukan secara manual.')
+                //     ->icon('heroicon-o-arrow-up-tray')
+                //     ->schema([
+                //         ViewEntry::make('upload')
+                //             ->hiddenLabel()
+                //             ->view('filament.mahasiswa.tagihan.invoice-upload'),
+                //     ])
+                //     ->visible(fn($record) => $record->status_bayar !== 'LUNAS'),
 
             ]);
     }
