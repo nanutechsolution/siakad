@@ -130,5 +130,8 @@ class AppServiceProvider extends ServiceProvider
             'tagihan_mahasiswa_detail' => \App\Models\TagihanMahasiswaDetail::class,
             'ref_gelar' => \App\Models\RefGelar::class,
         ]);
+
+
+        
     }
 }

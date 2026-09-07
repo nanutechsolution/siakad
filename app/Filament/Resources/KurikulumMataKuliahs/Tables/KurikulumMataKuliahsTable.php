@@ -7,6 +7,7 @@ use App\Models\KurikulumMataKuliah;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
+use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
@@ -31,8 +32,8 @@ class KurikulumMataKuliahsTable
                     ->weight('bold')
                     ->color('primary')
                     ->description(
-                        fn (KurikulumMataKuliah $record): string =>
-                            $record->kurikulum?->prodi?->nama_prodi
+                        fn(KurikulumMataKuliah $record): string =>
+                        $record->kurikulum?->prodi?->nama_prodi
                             ?? 'Program studi tidak tersedia'
                     )
                     ->icon('heroicon-o-academic-cap')
@@ -54,8 +55,8 @@ class KurikulumMataKuliahsTable
                     ->weight('bold')
                     ->color('gray')
                     ->description(
-                        fn (KurikulumMataKuliah $record): string =>
-                            $record->mataKuliah?->nama_mk
+                        fn(KurikulumMataKuliah $record): string =>
+                        $record->mataKuliah?->nama_mk
                             ?? 'Mata kuliah tidak ditemukan'
                     ),
 
@@ -71,10 +72,10 @@ class KurikulumMataKuliahsTable
                     ->alignCenter()
                     ->badge()
                     ->formatStateUsing(
-                        fn ($state): string => "Semester {$state}"
+                        fn($state): string => "Semester {$state}"
                     )
                     ->color(
-                        fn ($state): string => match ((int) $state) {
+                        fn($state): string => match ((int) $state) {
                             1, 2 => 'info',
                             3, 4 => 'primary',
                             5, 6 => 'warning',
@@ -92,8 +93,8 @@ class KurikulumMataKuliahsTable
                 TextColumn::make('total_sks')
                     ->label('Beban')
                     ->state(
-                        fn (KurikulumMataKuliah $record): int =>
-                            (int) $record->sks_tatap_muka
+                        fn(KurikulumMataKuliah $record): int =>
+                        (int) $record->sks_tatap_muka
                             + (int) $record->sks_praktek
                             + (int) $record->sks_lapangan
                     )
@@ -104,13 +105,13 @@ class KurikulumMataKuliahsTable
                     ->badge()
                     ->color('success')
                     ->description(
-                        fn (KurikulumMataKuliah $record): string =>
-                            sprintf(
-                                'TM %d · P %d · L %d',
-                                $record->sks_tatap_muka,
-                                $record->sks_praktek,
-                                $record->sks_lapangan,
-                            )
+                        fn(KurikulumMataKuliah $record): string =>
+                        sprintf(
+                            'TM %d · P %d · L %d',
+                            $record->sks_tatap_muka,
+                            $record->sks_praktek,
+                            $record->sks_lapangan,
+                        )
                     ),
 
                 /*
@@ -124,21 +125,21 @@ class KurikulumMataKuliahsTable
                     ->alignCenter()
                     ->badge()
                     ->formatStateUsing(
-                        fn (string $state): string => match ($state) {
+                        fn(string $state): string => match ($state) {
                             'W' => 'Wajib',
                             'P' => 'Pilihan',
                             default => $state,
                         }
                     )
                     ->color(
-                        fn (string $state): string => match ($state) {
+                        fn(string $state): string => match ($state) {
                             'W' => 'primary',
                             'P' => 'warning',
                             default => 'gray',
                         }
                     )
                     ->icon(
-                        fn (string $state): string => match ($state) {
+                        fn(string $state): string => match ($state) {
                             'W' => 'heroicon-o-check-circle',
                             'P' => 'heroicon-o-adjustments-horizontal',
                             default => 'heroicon-o-question-mark-circle',
@@ -157,20 +158,20 @@ class KurikulumMataKuliahsTable
                     ->alignCenter()
                     ->badge()
                     ->formatStateUsing(
-                        fn (int $state): string =>
-                            $state > 0
-                                ? "{$state} MK"
-                                : 'Tidak ada'
+                        fn(int $state): string =>
+                        $state > 0
+                            ? "{$state} MK"
+                            : 'Tidak ada'
                     )
                     ->color(
-                        fn (int $state): string =>
-                            $state > 0 ? 'warning' : 'gray'
+                        fn(int $state): string =>
+                        $state > 0 ? 'warning' : 'gray'
                     )
                     ->icon(
-                        fn (int $state): string =>
-                            $state > 0
-                                ? 'heroicon-o-link'
-                                : 'heroicon-o-minus'
+                        fn(int $state): string =>
+                        $state > 0
+                            ? 'heroicon-o-link'
+                            : 'heroicon-o-minus'
                     ),
 
                 /*
@@ -298,7 +299,36 @@ class KurikulumMataKuliahsTable
 
             ->toolbarActions([
                 BulkActionGroup::make([
-                    DeleteBulkAction::make(),
+                    DeleteBulkAction::make()
+                        ->successNotification(null) // matikan notifikasi default bawaan
+                        ->action(function (DeleteBulkAction $action, \Illuminate\Support\Collection $records) {
+                            $berhasil = 0;
+                            $gagal = [];
+
+                            foreach ($records as $record) {
+                                try {
+                                    $record->delete();
+                                    $berhasil++;
+                                } catch (\RuntimeException $e) {
+                                    $gagal[] = "{$record->mataKuliah?->nama_mk}: {$e->getMessage()}";
+                                }
+                            }
+
+                            if ($berhasil > 0) {
+                                Notification::make()
+                                    ->success()
+                                    ->title("{$berhasil} data berhasil dihapus")
+                                    ->send();
+                            }
+
+                            if ($gagal) {
+                                Notification::make()
+                                    ->danger()
+                                    ->title('Sebagian data tidak bisa dihapus')
+                                    ->body(implode("\n", $gagal))
+                                    ->send();
+                            }
+                        })
                 ]),
             ])
 

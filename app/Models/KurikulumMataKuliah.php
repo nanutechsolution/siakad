@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\SoftDeletes;
 use Spatie\Activitylog\Models\Concerns\LogsActivity;
 use Spatie\Activitylog\Support\LogOptions;
 
@@ -16,7 +17,7 @@ class KurikulumMataKuliah extends Model implements HasScopeStrategy
 {
 
     use LogsActivity;
-
+    use SoftDeletes;
     public function getActivitylogOptions(): LogOptions
     {
         return LogOptions::defaults()
@@ -109,5 +110,24 @@ class KurikulumMataKuliah extends Model implements HasScopeStrategy
     public function menjadiPrasyaratUntuk(): HasMany
     {
         return $this->hasMany(KurikulumMkPrasyarat::class, 'prasyarat_kurikulum_mk_id');
+    }
+
+
+    /**
+     * Guard: MK yang sudah punya jadwal kuliah tidak boleh dihapus.
+     */
+    protected static function booted(): void
+    {
+        static::deleting(function (KurikulumMataKuliah $record) {
+            $adaJadwal = JadwalKuliah::where('mata_kuliah_id', $record->mata_kuliah_id)
+                ->where('kurikulum_id', $record->kurikulum_id)
+                ->exists();
+
+            if ($adaJadwal) {
+                throw new \RuntimeException(
+                    "MK ini tidak bisa dihapus karena sudah memiliki jadwal kuliah. Nonaktifkan saja."
+                );
+            }
+        });
     }
 }
