@@ -82,56 +82,16 @@ class VerifikasiPembayaransTable
                     ->formatStateUsing(fn() => 'Lihat Bukti')
                     ->badge()
                     ->color('info')
-                    ->action(
-                        // (Action modal lihat_bukti Anda tetap sama)
-                        Action::make('lihat_bukti')
-                            ->modalHeading('Bukti Pembayaran')
-                            ->modalSubmitAction(false)
-                            ->modalCancelActionLabel('Tutup')
-                            ->modalContent(function ($record) {
-                                $disk = 'public';
-                                if (!Storage::disk($disk)->exists($record->bukti_bayar_path)) {
-                                    return new HtmlString('<div class="text-center p-6 text-danger-600 font-medium">⚠️ File bukti tidak ditemukan.</div>');
-                                }
+                    ->url(function ($record) {
+                        $disk = 'public';
 
-                                $mimeType = Storage::disk($disk)->mimeType($record->bukti_bayar_path);
-                                $fileUrl = Storage::disk($disk)->url($record->bukti_bayar_path);
+                        if (!Storage::disk($disk)->exists($record->bukti_bayar_path)) {
+                            return null;
+                        }
 
-                                if (str_starts_with($mimeType, 'image/')) {
-                                    return new HtmlString('
-                                        <div class="flex flex-col items-center gap-4 p-4">
-                                            <div class="flex gap-2">
-                                                <button type="button" onclick="zoomBukti(-0.25)" class="px-3 py-2 rounded bg-gray-100">−</button>
-                                                <button type="button" onclick="resetZoomBukti()" class="px-3 py-2 rounded bg-gray-100">Reset</button>
-                                                <button type="button" onclick="zoomBukti(0.25)" class="px-3 py-2 rounded bg-gray-100">+</button>
-                                            </div>
-                                            <div class="w-full overflow-auto" style="max-height: 70vh;">
-                                                <div class="flex justify-center">
-                                                    <img id="bukti-pembayaran-image" src="' . $fileUrl . '" class="rounded-lg shadow cursor-zoom-in" style="transition: transform 0.2s; transform-origin: center;" />
-                                                </div>
-                                            </div>
-                                        </div>
-                                        <script>
-                                            window.buktiZoom = 1;
-                                            window.zoomBukti = function(amount) {
-                                                window.buktiZoom = Math.min(Math.max(window.buktiZoom + amount, 0.5), 4);
-                                                document.getElementById("bukti-pembayaran-image").style.transform = "scale(" + window.buktiZoom + ")";
-                                            };
-                                            window.resetZoomBukti = function() {
-                                                window.buktiZoom = 1;
-                                                document.getElementById("bukti-pembayaran-image").style.transform = "scale(1)";
-                                            };
-                                        </script>
-                                    ');
-                                }
-
-                                if ($mimeType === 'application/pdf') {
-                                    return new HtmlString('<div class="p-4"><iframe src="' . $fileUrl . '" class="w-full h-[70vh] rounded-lg border"></iframe></div>');
-                                }
-
-                                return new HtmlString('<div class="text-center p-6"><a href="' . $fileUrl . '" target="_blank" class="text-primary-600 underline">Download File</a></div>');
-                            })
-                    ),
+                        return Storage::disk($disk)->url($record->bukti_bayar_path);
+                    })
+                    ->openUrlInNewTab(),
 
                 TextColumn::make('status_verifikasi_id')
                     ->label('Status')
