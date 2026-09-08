@@ -6,6 +6,7 @@ use App\Enums\NavigationGroup;
 use App\Models\Kelas;
 use App\Models\DosenPengampu;
 use App\Models\KurikulumMataKuliah;
+use App\Models\Mahasiswa;
 use App\Models\MasterKurikulum;
 use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
@@ -25,6 +26,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 
 class PlottingDosenPage extends Page implements HasTable
@@ -43,7 +45,63 @@ class PlottingDosenPage extends Page implements HasTable
     {
         return RefTahunAkademik::where('is_active', 1)->value('id');
     }
+    protected function getKelasTarget(
+        KurikulumMataKuliah $record
+    ): Collection {
+        $prodiId = $record->mataKuliah?->prodi_id;
+        $semesterMk = (int) $record->semester_paket;
 
+        if (! $prodiId || ! $semesterMk) {
+            return collect();
+        }
+
+        return Mahasiswa::query()
+            ->where('prodi_id', $prodiId)
+            ->whereNull('deleted_at')
+            ->whereNotNull('kelas_id')
+            ->with('kelas')
+            ->get()
+            ->filter(
+                fn(Mahasiswa $mahasiswa) =>
+                $this->getSemesterBerjalan($mahasiswa) === $semesterMk
+            )
+            ->pluck('kelas')
+            ->filter()
+            ->unique('id')
+            ->sortBy('nama_kelas')
+            ->values();
+    }
+    protected function getSemesterBerjalan(Mahasiswa $mahasiswa): ?int
+    {
+        $tahunAktif = RefTahunAkademik::find(
+            $this->getTahunAkademikAktifId()
+        );
+
+        $tahunMulai = RefTahunAkademik::find(
+            $mahasiswa->mulai_studi_tahun_akademik_id
+        );
+
+        if (! $tahunAktif || ! $tahunMulai) {
+            return null;
+        }
+
+        // Pendek tidak dihitung sebagai semester reguler.
+        if (
+            $tahunAktif->semester === 3 ||
+            $tahunMulai->semester === 3
+        ) {
+            return null;
+        }
+
+        $tahunMulaiAngka = (int) substr($tahunMulai->kode_tahun, 0, 4);
+        $tahunAktifAngka = (int) substr($tahunAktif->kode_tahun, 0, 4);
+
+        $selisihTahun = $tahunAktifAngka - $tahunMulaiAngka;
+
+        return ($selisihTahun * 2)
+            + ($tahunAktif->semester - $tahunMulai->semester)
+            + 1;
+    }
     public function table(Table $table): Table
     {
         $tahunAktifId = $this->getTahunAkademikAktifId();
@@ -111,19 +169,69 @@ class PlottingDosenPage extends Page implements HasTable
                 TextColumn::make('kelas_dibuka')
                     ->label('Kelas')
                     ->badge()
-                    ->getStateUsing(function (KurikulumMataKuliah $record) {
+                    ->state(function (KurikulumMataKuliah $record): string {
+                        $target = $this->getKelasTarget($record);
 
-                        return $record->dosenPengampus
-                            ->pluck('kelas.nama_kelas')
+                        if ($target->isEmpty()) {
+                            return '0 / 0';
+                        }
+
+                        $plottedIds = $record->dosenPengampus
+                            ->pluck('kelas_id')
                             ->filter()
-                            ->unique()
-                            ->values()
-                            ->toArray();
-                    })
-                    ->color('primary')
-                    ->separator(',')
-                    ->placeholder('Belum ada kelas'),
+                            ->unique();
 
+                        $jumlahPlotted = $plottedIds
+                            ->intersect($target->pluck('id'))
+                            ->count();
+
+                        return "{$jumlahPlotted} / {$target->count()}";
+                    })
+                    ->color(function (KurikulumMataKuliah $record): string {
+                        $target = $this->getKelasTarget($record);
+
+                        if ($target->isEmpty()) {
+                            return 'gray';
+                        }
+
+                        $plottedIds = $record->dosenPengampus
+                            ->pluck('kelas_id')
+                            ->filter()
+                            ->unique();
+
+                        $jumlahPlotted = $plottedIds
+                            ->intersect($target->pluck('id'))
+                            ->count();
+
+                        return match (true) {
+                            $jumlahPlotted === 0 => 'danger',
+                            $jumlahPlotted < $target->count() => 'warning',
+                            default => 'success',
+                        };
+                    })
+                    ->tooltip(function (KurikulumMataKuliah $record): string {
+                        $target = $this->getKelasTarget($record);
+
+                        if ($target->isEmpty()) {
+                            return 'Tidak ditemukan kelas target.';
+                        }
+
+                        $plottedIds = $record->dosenPengampus
+                            ->pluck('kelas_id')
+                            ->filter()
+                            ->unique();
+
+                        $belum = $target
+                            ->filter(
+                                fn(Kelas $kelas) =>
+                                ! $plottedIds->contains($kelas->id)
+                            )
+                            ->pluck('nama_kelas');
+
+                        return $belum->isEmpty()
+                            ? 'Semua kelas sudah dipetakan.'
+                            : 'Belum dipetakan: ' . $belum->implode(', ');
+                    }),
                 TextColumn::make('dosen_terlibat')
                     ->label('Dosen Pengampu')
                     ->badge()
@@ -142,24 +250,42 @@ class PlottingDosenPage extends Page implements HasTable
                 TextColumn::make('status_plot')
                     ->label('Status')
                     ->badge()
-                    ->state(
-                        fn(KurikulumMataKuliah $record): string =>
-                        $record->dosenPengampus->isNotEmpty()
-                            ? 'Sudah Diplot'
-                            : 'Belum Diplot'
-                    )
-                    ->color(
-                        fn(string $state): string =>
-                        $state === 'Sudah Diplot'
-                            ? 'success'
-                            : 'warning'
-                    )
-                    ->icon(
-                        fn(string $state): string =>
-                        $state === 'Sudah Diplot'
-                            ? 'heroicon-o-check-circle'
-                            : 'heroicon-o-exclamation-circle'
-                    ),
+                    ->state(function (KurikulumMataKuliah $record): string {
+                        $target = $this->getKelasTarget($record);
+
+                        if ($target->isEmpty()) {
+                            return 'Tidak Ada Kelas';
+                        }
+
+                        $targetIds = $target->pluck('id');
+
+                        $plottedIds = $record->dosenPengampus
+                            ->pluck('kelas_id')
+                            ->filter()
+                            ->unique();
+
+                        $jumlahPlotted = $plottedIds
+                            ->intersect($targetIds)
+                            ->count();
+
+                        return match (true) {
+                            $jumlahPlotted === 0 => 'Belum Dipetakan',
+                            $jumlahPlotted < $target->count() => 'Belum Lengkap',
+                            default => 'Lengkap',
+                        };
+                    })
+                    ->color(fn(string $state): string => match ($state) {
+                        'Lengkap' => 'success',
+                        'Belum Lengkap' => 'warning',
+                        'Belum Dipetakan' => 'danger',
+                        default => 'gray',
+                    })
+                    ->icon(fn(string $state): string => match ($state) {
+                        'Lengkap' => 'heroicon-o-check-circle',
+                        'Belum Lengkap' => 'heroicon-o-exclamation-triangle',
+                        'Belum Dipetakan' => 'heroicon-o-x-circle',
+                        default => 'heroicon-o-minus-circle',
+                    }),
 
             ])
             ->filters([
