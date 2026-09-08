@@ -51,10 +51,14 @@ class PlottingDosenPage extends Page implements HasTable
         return $table
             ->query(
                 KurikulumMataKuliah::query()
+                    ->visibleTo(auth()->user())
                     ->with([
                         'mataKuliah',
                         'dosenPengampus' => function ($query) use ($tahunAktifId) {
-                            $query->where('tahun_akademik_id', $tahunAktifId);
+                            $query->where(
+                                'tahun_akademik_id',
+                                $tahunAktifId
+                            );
                         },
                         'dosenPengampus.kelas',
                         'dosenPengampus.dosen.person',
