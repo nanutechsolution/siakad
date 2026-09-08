@@ -167,18 +167,11 @@ class PlottingDosenPage extends Page implements HasTable
                     ->label('Kurikulum')
                     ->options(
                         MasterKurikulum::query()
-                            ->orderByDesc('tahun_mulai')
+                            ->visibleTo(auth()->user())
                             ->orderBy('nama_kurikulum')
                             ->pluck('nama_kurikulum', 'id')
                             ->toArray()
-                    )
-                    ->searchable()
-                    ->preload()
-                    ->query(function (Builder $query, array $data) {
-                        if (filled($data['value'] ?? null)) {
-                            $query->where('kurikulum_id', $data['value']);
-                        }
-                    }),
+                    ),
                 // =========================
                 // FILTER SEMESTER
                 // =========================
@@ -359,6 +352,7 @@ class PlottingDosenPage extends Page implements HasTable
                                             }
 
                                             return Kelas::query()
+                                                ->visibleTo(auth()->user())
                                                 ->where('prodi_id', $prodiId)
                                                 ->where('angkatan_id', $angkatanId)
                                                 ->where('program_id', $programId)
