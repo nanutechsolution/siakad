@@ -6,6 +6,7 @@ use App\Enums\NavigationGroup;
 use App\Filament\Resources\TrxDosens\Pages\CreateTrxDosen;
 use App\Filament\Resources\TrxDosens\Pages\EditTrxDosen;
 use App\Filament\Resources\TrxDosens\Pages\ListTrxDosens;
+use App\Filament\Resources\TrxDosens\RelationManagers\KetersediaansRelationManager;
 use App\Filament\Resources\TrxDosens\Schemas\TrxDosenForm;
 use App\Filament\Resources\TrxDosens\Tables\TrxDosensTable;
 use App\Models\TrxDosen;
@@ -41,7 +42,7 @@ class TrxDosenResource extends Resource
 
     public static function getRelations(): array
     {
-        return [];
+        return [KetersediaansRelationManager::class];
     }
 
     public static function getPages(): array

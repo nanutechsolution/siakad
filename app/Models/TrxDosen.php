@@ -164,4 +164,18 @@ class TrxDosen extends Model implements HasScopeStrategy
             ? ($this->person?->nama_dengan_gelar ?? '(Dosen tidak ditemukan)')
             : ($this->person()->value('nama_lengkap') ?? '(Dosen tidak ditemukan)');
     }
+
+    /**
+     * Relasi ke pengaturan batas waktu mengajar dosen (Whitelist)
+     */
+    public function ketersediaans()
+    {
+        // Pastikan 'dosen_id' adalah nama kolom foreign key yang ada di tabel dosen_ketersediaans
+        return $this->hasMany(DosenKetersediaan::class, 'dosen_id');
+    }
+
+    public function dosenPengampus()
+    {
+        return $this->hasMany(\App\Models\DosenPengampu::class, 'mata_kuliah_id');
+    }
 }

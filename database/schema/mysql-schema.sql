@@ -251,6 +251,47 @@ CREATE TABLE `dosen_dokumen` (
   CONSTRAINT `dosen_dokumen_reviewed_by_foreign` FOREIGN KEY (`reviewed_by`) REFERENCES `users` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `dosen_ketersediaans`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dosen_ketersediaans` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `hari` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jam_mulai` time NOT NULL,
+  `jam_selesai` time NOT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `dosen_pengampus`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `dosen_pengampus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tahun_akademik_id` bigint unsigned NOT NULL,
+  `mata_kuliah_id` bigint unsigned NOT NULL,
+  `kelas_id` bigint unsigned NOT NULL,
+  `ruang_id` bigint unsigned DEFAULT NULL COMMENT 'Opsional: Kunci jadwal MK ini di ruang tertentu',
+  `dosen_id` char(36) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `is_koordinator` tinyint(1) NOT NULL DEFAULT '0',
+  `is_penilai` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `dosen_pengampu_unique_assignment` (`tahun_akademik_id`,`mata_kuliah_id`,`kelas_id`,`dosen_id`),
+  KEY `dosen_pengampus_mata_kuliah_id_foreign` (`mata_kuliah_id`),
+  KEY `dosen_pengampus_kelas_id_foreign` (`kelas_id`),
+  KEY `dosen_pengampus_dosen_id_foreign` (`dosen_id`),
+  KEY `dosen_pengampus_ruang_id_foreign` (`ruang_id`),
+  CONSTRAINT `dosen_pengampus_dosen_id_foreign` FOREIGN KEY (`dosen_id`) REFERENCES `trx_dosen` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `dosen_pengampus_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `dosen_pengampus_mata_kuliah_id_foreign` FOREIGN KEY (`mata_kuliah_id`) REFERENCES `master_mata_kuliahs` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `dosen_pengampus_ruang_id_foreign` FOREIGN KEY (`ruang_id`) REFERENCES `ref_ruang` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `dosen_pengampus_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `dosen_profile_change_requests`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -411,6 +452,63 @@ CREATE TABLE `imports` (
   CONSTRAINT `imports_user_id_foreign` FOREIGN KEY (`user_id`) REFERENCES `users` (`id`) ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `jadwal_generator_batches`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jadwal_generator_batches` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `tahun_akademik_id` bigint unsigned NOT NULL,
+  `prodi_id` bigint unsigned NOT NULL,
+  `config_snapshot` json NOT NULL COMMENT 'Simpan konfigurasi hari, jam operasional, dan slot SKS',
+  `status` enum('RUNNING','PREVIEW','COMMITTED','FAILED') COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'RUNNING',
+  `total_generated` int NOT NULL DEFAULT '0',
+  `total_failed` int NOT NULL DEFAULT '0',
+  `created_by` char(36) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  `kampus_id` bigint unsigned DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `jadwal_generator_batches_tahun_akademik_id_foreign` (`tahun_akademik_id`),
+  KEY `jadwal_generator_batches_prodi_id_foreign` (`prodi_id`),
+  KEY `jadwal_generator_batches_created_by_foreign` (`created_by`),
+  KEY `jadwal_generator_batches_kampus_id_foreign` (`kampus_id`),
+  CONSTRAINT `jadwal_generator_batches_created_by_foreign` FOREIGN KEY (`created_by`) REFERENCES `users` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `jadwal_generator_batches_kampus_id_foreign` FOREIGN KEY (`kampus_id`) REFERENCES `ref_kampus` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `jadwal_generator_batches_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_generator_batches_tahun_akademik_id_foreign` FOREIGN KEY (`tahun_akademik_id`) REFERENCES `ref_tahun_akademik` (`id`) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `jadwal_generator_results`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `jadwal_generator_results` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `batch_id` bigint unsigned NOT NULL,
+  `mata_kuliah_id` bigint unsigned NOT NULL,
+  `kelas_id` bigint unsigned NOT NULL,
+  `dosen_pengampu_ids` json NOT NULL COMMENT 'Array dari ID tabel dosen_pengampus',
+  `sks_real` int NOT NULL COMMENT 'SKS dari kurikulum_mata_kuliah',
+  `hari` varchar(10) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `jam_mulai` time DEFAULT NULL,
+  `jam_selesai` time DEFAULT NULL,
+  `ruang_id` bigint unsigned DEFAULT NULL,
+  `estimasi_kapasitas_dibutuhkan` int NOT NULL DEFAULT '0',
+  `is_success` tinyint(1) NOT NULL DEFAULT '0',
+  `failure_reason` varchar(255) COLLATE utf8mb4_unicode_ci DEFAULT NULL,
+  `optimization_score` int NOT NULL DEFAULT '0',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  KEY `jadwal_generator_results_batch_id_foreign` (`batch_id`),
+  KEY `jadwal_generator_results_mata_kuliah_id_foreign` (`mata_kuliah_id`),
+  KEY `jadwal_generator_results_kelas_id_foreign` (`kelas_id`),
+  KEY `jadwal_generator_results_ruang_id_foreign` (`ruang_id`),
+  CONSTRAINT `jadwal_generator_results_batch_id_foreign` FOREIGN KEY (`batch_id`) REFERENCES `jadwal_generator_batches` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_generator_results_kelas_id_foreign` FOREIGN KEY (`kelas_id`) REFERENCES `kelas` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_generator_results_mata_kuliah_id_foreign` FOREIGN KEY (`mata_kuliah_id`) REFERENCES `master_mata_kuliahs` (`id`) ON DELETE CASCADE,
+  CONSTRAINT `jadwal_generator_results_ruang_id_foreign` FOREIGN KEY (`ruang_id`) REFERENCES `ref_ruang` (`id`) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `jadwal_komponen_nilai`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -442,6 +540,7 @@ CREATE TABLE `jadwal_kuliah` (
   `jam_selesai` time DEFAULT NULL,
   `ruang_id` bigint unsigned DEFAULT NULL,
   `kuota_kelas` int NOT NULL DEFAULT '40',
+  `is_locked` tinyint(1) NOT NULL DEFAULT '0' COMMENT 'Jika true, jadwal ini aman dari timpaan generator ulang',
   `isi_kelas` int NOT NULL DEFAULT '0',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
@@ -599,7 +698,8 @@ CREATE TABLE `keuangan_adjustments` (
   `id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nomor_adjustment` varchar(50) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `tagihan_id` char(36) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
-  `jenis_adjustment` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `komponen_biaya_id` bigint unsigned DEFAULT NULL,
+  `jenis_adjustment` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
   `nominal` decimal(15,2) NOT NULL,
   `keterangan` text CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci,
   `status` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'DRAFT',
@@ -970,6 +1070,7 @@ CREATE TABLE `kurikulum_mata_kuliah` (
   `sifat_mk` char(1) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'W',
   `created_at` timestamp NULL DEFAULT NULL,
   `updated_at` timestamp NULL DEFAULT NULL,
+  `deleted_at` timestamp NULL DEFAULT NULL,
   PRIMARY KEY (`id`),
   UNIQUE KEY `kurikulum_mata_kuliah_kurikulum_id_mata_kuliah_id_unique` (`kurikulum_id`,`mata_kuliah_id`),
   KEY `kurikulum_mata_kuliah_mata_kuliah_id_foreign` (`mata_kuliah_id`),
@@ -2342,6 +2443,7 @@ CREATE TABLE `pembayaran_mahasiswas` (
   `nominal_bayar` decimal(19,2) NOT NULL,
   `tanggal_bayar` datetime NOT NULL,
   `metode_pembayaran` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'MANUAL',
+  `bank_kampus_id` bigint unsigned DEFAULT NULL,
   `bukti_bayar_path` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `keterangan_pengirim` varchar(255) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci DEFAULT NULL,
   `status_verifikasi_id` tinyint unsigned NOT NULL DEFAULT '1',
@@ -2357,6 +2459,8 @@ CREATE TABLE `pembayaran_mahasiswas` (
   KEY `pembayaran_mahasiswas_status_verifikasi_id_index` (`status_verifikasi_id`),
   KEY `pembayaran_mahasiswas_verified_by_foreign` (`verified_by`),
   KEY `pembayaran_mahasiswas_tagihan_type_id_index` (`tagihan_type`,`tagihan_id`),
+  KEY `pembayaran_mahasiswas_bank_kampus_id_foreign` (`bank_kampus_id`),
+  CONSTRAINT `pembayaran_mahasiswas_bank_kampus_id_foreign` FOREIGN KEY (`bank_kampus_id`) REFERENCES `bank_kampuses` (`id`) ON DELETE SET NULL,
   CONSTRAINT `pembayaran_mahasiswas_status_verifikasi_id_foreign` FOREIGN KEY (`status_verifikasi_id`) REFERENCES `ref_status_verifikasi_pembayaran` (`id`) ON DELETE RESTRICT ON UPDATE CASCADE,
   CONSTRAINT `pembayaran_mahasiswas_verified_by_foreign` FOREIGN KEY (`verified_by`) REFERENCES `users` (`id`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
@@ -2692,6 +2796,21 @@ CREATE TABLE `ref_jabatan` (
   UNIQUE KEY `ref_jabatan_kode_jabatan_unique` (`kode_jabatan`)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
+DROP TABLE IF EXISTS `ref_kampus`;
+/*!40101 SET @saved_cs_client     = @@character_set_client */;
+/*!50503 SET character_set_client = utf8mb4 */;
+CREATE TABLE `ref_kampus` (
+  `id` bigint unsigned NOT NULL AUTO_INCREMENT,
+  `kode_kampus` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `nama_kampus` varchar(255) COLLATE utf8mb4_unicode_ci NOT NULL,
+  `alamat` text COLLATE utf8mb4_unicode_ci,
+  `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `created_at` timestamp NULL DEFAULT NULL,
+  `updated_at` timestamp NULL DEFAULT NULL,
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `ref_kampus_kode_kampus_unique` (`kode_kampus`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+/*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ref_komponen_nilai`;
 /*!40101 SET @saved_cs_client     = @@character_set_client */;
 /*!50503 SET character_set_client = utf8mb4 */;
@@ -2790,13 +2909,20 @@ CREATE TABLE `ref_ruang` (
   `id` bigint unsigned NOT NULL AUTO_INCREMENT,
   `kode_ruang` varchar(20) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
   `nama_ruang` varchar(100) CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci NOT NULL,
+  `jenis_ruang` varchar(50) COLLATE utf8mb4_unicode_ci NOT NULL DEFAULT 'TEORI' COMMENT 'TEORI, LABORATORIUM, STUDIO',
   `kapasitas` int NOT NULL DEFAULT '40',
   `latitude` decimal(10,8) DEFAULT NULL COMMENT 'Koordinat garis lintang ruangan',
   `longitude` decimal(11,8) DEFAULT NULL COMMENT 'Koordinat garis bujur ruangan',
   `radius_meter` int NOT NULL DEFAULT '50' COMMENT 'Radius jangkauan absen dari titik koordinat',
+  `prodi_id` bigint unsigned DEFAULT NULL COMMENT 'Isi jika ruangan ini eksklusif milik prodi tertentu',
   `is_active` tinyint(1) NOT NULL DEFAULT '1',
+  `kampus_id` bigint unsigned DEFAULT NULL,
   PRIMARY KEY (`id`),
-  UNIQUE KEY `ref_ruang_kode_ruang_unique` (`kode_ruang`)
+  UNIQUE KEY `ref_ruang_kode_ruang_unique` (`kode_ruang`),
+  KEY `ref_ruang_prodi_id_foreign` (`prodi_id`),
+  KEY `ref_ruang_kampus_id_foreign` (`kampus_id`),
+  CONSTRAINT `ref_ruang_kampus_id_foreign` FOREIGN KEY (`kampus_id`) REFERENCES `ref_kampus` (`id`) ON DELETE SET NULL,
+  CONSTRAINT `ref_ruang_prodi_id_foreign` FOREIGN KEY (`prodi_id`) REFERENCES `ref_prodi` (`id`) ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 /*!40101 SET character_set_client = @saved_cs_client */;
 DROP TABLE IF EXISTS `ref_skala_nilai`;
@@ -3578,3 +3704,16 @@ INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (276,'2026_08_13_13
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (277,'2026_08_13_134221_protect_jadwal_kuliah_dosen',31);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (278,'2026_08_14_204113_add_angkatan_foreign_key_to_kelas_table',32);
 INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (279,'2026_08_14_220127_add_mulai_studi_tahun_akademik_id_to_mahasiswas_table',33);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (280,'2026_09_03_144325_add_bank_kampus_id_to_pembayaran_mahasiswas_table',34);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (281,'2026_09_07_225312_add_deleted_at_to_kurikulum_mata_kuliah_table',35);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (282,'2026_09_08_001237_alter_jenis_adjustment_length_on_keuangan_adjustments_table',36);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (283,'2026_09_08_002159_add_komponen_biaya_id_to_keuangan_adjustments_table',37);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (284,'2026_09_08_012220_add_jenis_ruang_to_ref_ruang_table',38);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (285,'2026_09_08_012221_create_dosen_pengampus_table',38);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (286,'2026_09_08_012223_create_jadwal_generator_batches_table',38);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (287,'2026_09_08_012225_create_jadwal_generator_results_table',38);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (288,'2026_09_08_015534_add_ruang_id_to_dosen_pengampus_table',39);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (289,'2026_09_08_020535_add_is_locked_to_jadwal_kuliahs_table',40);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (290,'2026_09_08_150313_create_dosen_ketersediaans_table',41);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (291,'2026_09_08_222642_create_ref_kampuses_table',42);
+INSERT INTO `migrations` (`id`, `migration`, `batch`) VALUES (292,'2026_09_08_222647_add_kampus_id_to_related_tables',42);

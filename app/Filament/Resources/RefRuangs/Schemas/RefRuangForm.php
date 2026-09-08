@@ -44,16 +44,26 @@ class RefRuangForm
                                 ])
                                 ->default('TEORI')
                                 ->required(),
-
-
                         ]),
-                        Select::make('prodi_id')
-                            ->label('Eksklusif Untuk Prodi')
-                            ->relationship('prodi', 'nama_prodi')
-                            ->placeholder('Pilih Prodi (Kosongkan jika ruang bersama)')
-                            ->searchable()
-                            ->preload()
-                            ->nullable(),
+
+                        // --- TAMBAHAN BARU: LOKASI KAMPUS DIBUAT SEJAJAR DENGAN PRODI ---
+                        Grid::make(2)->schema([
+                            Select::make('kampus_id')
+                                ->label('Lokasi Kampus (Fisik Ruangan)')
+                                ->relationship('kampus', 'nama_kampus')
+                                ->required()
+                                ->searchable()
+                                ->preload()
+                                ->helperText('Wajib diisi agar mesin jadwal tidak salah menempatkan kelas.'),
+
+                            Select::make('prodi_id')
+                                ->label('Eksklusif Untuk Prodi')
+                                ->relationship('prodi', 'nama_prodi')
+                                ->placeholder('Pilih Prodi (Kosongkan jika ruang bersama)')
+                                ->searchable()
+                                ->preload()
+                                ->nullable(),
+                        ]),
                     ]),
 
                 Section::make('Konfigurasi Absensi Geospasial')

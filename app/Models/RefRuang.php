@@ -89,4 +89,8 @@ class RefRuang extends Model
     {
         return $query->where('jenis_ruang', 'LABORATORIUM');
     }
+    public function kampus()
+    {
+        return $this->belongsTo(RefKampus::class, 'kampus_id');
+    }
 }

@@ -2,37 +2,47 @@
 
 namespace App\Filament\Resources\DosenPengampus\Tables;
 
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Filters\SelectFilter;
-use Filament\Tables\Filters\TernaryFilter;
-use Illuminate\Database\Eloquent\Builder;
 use App\Models\DosenPengampu;
+use App\Models\RefAngkatan;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction as ActionsEditAction;
+use Filament\Actions\ViewAction;
+use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Filters\TernaryFilter;
+use Filament\Tables\Table;
+use Illuminate\Database\Eloquent\Builder;
 
 class DosenPengampusTable
 {
     public static function configure(Table $table): Table
     {
         return $table
-            ->defaultSort('created_at', 'desc') // Mengurutkan dari data yang paling baru diinput
+            // FIX: eager load semua relasi yang dipakai kolom — sebelumnya N+1 query per baris
+            ->modifyQueryUsing(fn(Builder $query) => $query->with([
+                'tahunAkademik',
+                'kelas.prodi',
+                'kelas.angkatan',
+                'mataKuliah',
+                'dosen.person',
+                'ruang',
+            ]))
+            ->defaultSort('created_at', 'desc')
             ->columns([
                 TextColumn::make('tahunAkademik.nama_tahun')
                     ->label('Tahun Akademik')
                     ->badge()
                     ->color('gray')
                     ->sortable()
-                    ->toggleable(isToggledHiddenByDefault: true), // Disembunyikan default agar tabel tidak terlalu lebar
+                    ->toggleable(isToggledHiddenByDefault: true),
 
                 TextColumn::make('kelas.nama_kelas')
                     ->label('Kelas & Prodi')
                     ->sortable()
                     ->searchable()
                     ->weight('bold')
-                    // Menampilkan Nama Prodi dan Angkatan di bawah Nama Kelas
                     ->description(
                         fn(DosenPengampu $record): string => ($record->kelas?->prodi?->nama_prodi ?? 'Prodi Unknown') .
                             ' (Angkatan: ' . ($record->kelas?->angkatan?->id_tahun ?? '-') . ')'
@@ -43,7 +53,6 @@ class DosenPengampusTable
                     ->sortable()
                     ->searchable()
                     ->wrap()
-                    // Menampilkan Kode MK dan SKS di bawah Nama Mata Kuliah
                     ->description(
                         fn(DosenPengampu $record): string => ($record->mataKuliah?->kode_mk ?? '-') . ' • ' .
                             ($record->mataKuliah?->sks_default ?? '0') . ' SKS'
@@ -59,9 +68,9 @@ class DosenPengampusTable
                 IconColumn::make('is_koordinator')
                     ->label('Koordinator')
                     ->boolean()
-                    ->trueIcon('heroicon-s-star')      // Ikon bintang solid jika koordinator
-                    ->falseIcon('heroicon-o-minus')    // Ikon minus jika dosen anggota biasa
-                    ->trueColor('warning')             // Warna emas/kuning
+                    ->trueIcon('heroicon-s-star')
+                    ->falseIcon('heroicon-o-minus')
+                    ->trueColor('warning')
                     ->falseColor('gray')
                     ->tooltip('Koordinator bertugas menginput nilai akhir mahasiswa.')
                     ->alignCenter(),
@@ -74,6 +83,13 @@ class DosenPengampusTable
                     ->icon(fn($state) => $state ? 'heroicon-o-lock-closed' : 'heroicon-o-sparkles')
                     ->tooltip('Apakah MK ini dikunci pada Lab/Ruangan spesifik?')
                     ->toggleable(),
+
+                TextColumn::make('created_at')
+                    ->label('Diinput Pada')
+                    ->since()
+                    ->tooltip(fn(DosenPengampu $record) => $record->created_at?->format('d M Y, H:i'))
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
                 SelectFilter::make('tahun_akademik_id')
@@ -81,13 +97,11 @@ class DosenPengampusTable
                     ->label('Tahun Akademik')
                     ->preload(),
 
-                // --- FILTER ANGKATAN (Mencari menembus relasi Kelas) ---
                 SelectFilter::make('angkatan')
                     ->label('Filter Angkatan')
-                    ->options(fn() => \App\Models\RefAngkatan::orderBy('id_tahun', 'desc')->pluck('id_tahun', 'id_tahun'))
+                    ->options(fn() => RefAngkatan::orderBy('id_tahun', 'desc')->pluck('id_tahun', 'id_tahun'))
                     ->query(function (Builder $query, array $data) {
                         if (!empty($data['value'])) {
-                            // Mencari dosen pengampu yang mengajar di kelas dengan angkatan yang dipilih
                             $query->whereHas('kelas', function ($q) use ($data) {
                                 $q->where('angkatan_id', $data['value']);
                             });
@@ -95,7 +109,6 @@ class DosenPengampusTable
                     })
                     ->searchable()
                     ->preload(),
-                // --------------------------------------------------------
 
                 SelectFilter::make('kelas_id')
                     ->relationship('kelas', 'nama_kelas')
@@ -110,12 +123,17 @@ class DosenPengampusTable
                     ->falseLabel('Hanya Anggota Tim'),
             ])
             ->recordActions([
+                ViewAction::make(),
                 ActionsEditAction::make(),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
                     DeleteBulkAction::make(),
                 ]),
-            ]);
+            ])
+            ->emptyStateHeading('Belum Ada Dosen Pengampu')
+            ->emptyStateDescription('Belum ada penugasan dosen pengampu yang tercatat. Klik "Buat" untuk menambahkan.')
+            ->emptyStateIcon('heroicon-o-user-group')
+            ->striped();
     }
 }

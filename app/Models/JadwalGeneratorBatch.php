@@ -34,4 +34,8 @@ class JadwalGeneratorBatch extends Model
     {
         return $this->hasMany(JadwalGeneratorResult::class, 'batch_id');
     }
+    public function kampus()
+    {
+        return $this->belongsTo(RefKampus::class, 'kampus_id');
+    }
 }
