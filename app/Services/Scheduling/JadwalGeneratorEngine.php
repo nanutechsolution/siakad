@@ -7,8 +7,10 @@ use App\Models\JadwalGeneratorBatch;
 use App\Models\JadwalGeneratorResult;
 use App\Models\RefRuang;
 use App\Models\JadwalKuliah;
+use App\Models\Kelas;
 use App\Models\MahasiswaKelas;
 use App\Models\KurikulumMataKuliah;
+use App\Models\MasterKurikulum;
 use Carbon\Carbon;
 
 class JadwalGeneratorEngine
@@ -109,6 +111,7 @@ class JadwalGeneratorEngine
 
     public function execute(): void
     {
+
         if (empty($this->ruangTersedia)) {
             $this->batch->update([
                 'status' => 'PREVIEW',
@@ -131,19 +134,30 @@ class JadwalGeneratorEngine
         $pengampus = DosenPengampu::with(['kelas', 'mataKuliah'])
             ->where('tahun_akademik_id', $this->batch->tahun_akademik_id)
             ->whereHas('kelas', function ($query) {
-                $query->where('prodi_id', $this->batch->prodi_id);
+                $query
+                    ->where('prodi_id', $this->batch->prodi_id)
+                    ->where('kampus_id', $this->batch->kampus_id);
             })
             ->get()
-            // --- 3. FILTER SAKTI: Coret kelas yang sudah dibuat manual! ---
             ->filter(function ($item) use ($kombinasiSudahAda) {
+                // Defense-in-depth:
+                // Pastikan object kelas yang benar-benar dimuat
+                // juga berasal dari kampus batch.
+                if (!$item->kelas) {
+                    return false;
+                }
+
+                if ((int) $item->kelas->kampus_id !== (int) $this->batch->kampus_id) {
+                    return false;
+                }
+
                 $key = $item->mata_kuliah_id . '-' . $item->kelas_id;
+
                 return !in_array($key, $kombinasiSudahAda);
             })
-            // --------------------------------------------------------------
             ->groupBy(function ($item) {
                 return $item->mata_kuliah_id . '-' . $item->kelas_id;
             });
-
         // Jika setelah di-filter ternyata semua kelas sudah punya jadwal (kosong)
         if ($pengampus->isEmpty()) {
             $this->batch->update([
@@ -169,11 +183,24 @@ class JadwalGeneratorEngine
 
             $kapasitasDibutuhkan = MahasiswaKelas::where('kelas_id', $kelasId)->whereNull('tanggal_keluar')->count();
             $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0 ? $kapasitasDibutuhkan : ($firstItem->kelas->kapasitas ?? 40);
+            $kurikulumMK = $this->getKurikulumMataKuliahForKelas(
+                $mkId,
+                $firstItem->kelas
+            );
+            $jenisRuangDibutuhkan = (
+                $kurikulumMK &&
+                $kurikulumMK->sks_praktek > 0
+            )
+                ? 'LABORATORIUM'
+                : 'TEORI';
 
-            $kurikulumMK = KurikulumMataKuliah::where('mata_kuliah_id', $mkId)->first();
-            $jenisRuangDibutuhkan = ($kurikulumMK && $kurikulumMK->sks_praktek > 0) ? 'LABORATORIUM' : 'TEORI';
-            $sksTotal = $kurikulumMK ? ($kurikulumMK->sks_tatap_muka + $kurikulumMK->sks_praktek) : 2;
-
+            $sksTotal = $kurikulumMK
+                ? (
+                    (int) $kurikulumMK->sks_tatap_muka +
+                    (int) $kurikulumMK->sks_praktek +
+                    (int) $kurikulumMK->sks_lapangan
+                )
+                : 2;
             $result = new JadwalGeneratorResult([
                 'batch_id' => $this->batch->id,
                 'mata_kuliah_id' => $mkId,
@@ -336,22 +363,51 @@ class JadwalGeneratorEngine
                 if ($dosenBentrok) continue;
 
                 foreach ($this->ruangTersedia as $ruang) {
-                    if ($reqRuangId && $ruang['id'] != $reqRuangId) continue;
-                    if (!is_null($ruang['prodi_id']) && $ruang['prodi_id'] != $kelasProdiId) continue;
-
-                    $isRoomMatch = ($ruang['jenis_ruang'] === $jenisRuang && $ruang['kapasitas'] >= $kapasitas) || $reqRuangId;
-
-                    if ($isRoomMatch) {
-                        if (!$this->isTimeOverlap($this->trackerRuang, $ruang['id'], $hari, $jamMulai, $jamSelesai)) {
-                            return [
-                                'success' => true,
-                                'hari' => $hari,
-                                'jam_mulai' => $jamMulai,
-                                'jam_selesai' => $jamSelesai,
-                                'ruang_id' => $ruang['id'],
-                            ];
-                        }
+                    // Jika dosen pengampu menentukan ruang tertentu,
+                    // hanya ruang tersebut yang boleh digunakan.
+                    if ($reqRuangId && (int) $ruang['id'] !== (int) $reqRuangId) {
+                        continue;
                     }
+
+                    // Ruang yang memiliki pembatasan prodi
+                    // hanya boleh digunakan oleh prodi yang sesuai.
+                    if (
+                        !is_null($ruang['prodi_id']) &&
+                        (int) $ruang['prodi_id'] !== (int) $kelasProdiId
+                    ) {
+                        continue;
+                    }
+
+                    // Jenis ruang harus sesuai kebutuhan mata kuliah.
+                    if ($ruang['jenis_ruang'] !== $jenisRuang) {
+                        continue;
+                    }
+
+                    // Kapasitas ruang harus mencukupi.
+                    if ((int) $ruang['kapasitas'] < $kapasitas) {
+                        continue;
+                    }
+
+                    // Ruang tidak boleh bentrok dengan jadwal lain.
+                    if (
+                        $this->isTimeOverlap(
+                            $this->trackerRuang,
+                            $ruang['id'],
+                            $hari,
+                            $jamMulai,
+                            $jamSelesai
+                        )
+                    ) {
+                        continue;
+                    }
+
+                    return [
+                        'success' => true,
+                        'hari' => $hari,
+                        'jam_mulai' => $jamMulai,
+                        'jam_selesai' => $jamSelesai,
+                        'ruang_id' => $ruang['id'],
+                    ];
                 }
             }
         }
@@ -360,5 +416,27 @@ class JadwalGeneratorEngine
             'success' => false,
             'reason' => "Gagal: Ruang penuh / Dosen jadwalnya bentrok atau sedang mengajar di Kampus Cabang lain pada hari tersebut."
         ];
+    }
+
+    protected function getKurikulumMataKuliahForKelas(
+        int $mataKuliahId,
+        Kelas $kelas
+    ): ?KurikulumMataKuliah {
+        $tahunAngkatan = (int) $kelas->angkatan_id;
+
+        $kurikulum = MasterKurikulum::query()
+            ->where('prodi_id', $kelas->prodi_id)
+            ->where('tahun_mulai', '<=', $tahunAngkatan)
+            ->orderByDesc('tahun_mulai')
+            ->first();
+
+        if (!$kurikulum) {
+            return null;
+        }
+
+        return KurikulumMataKuliah::query()
+            ->where('kurikulum_id', $kurikulum->id)
+            ->where('mata_kuliah_id', $mataKuliahId)
+            ->first();
     }
 }

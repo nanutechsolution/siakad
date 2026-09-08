@@ -195,4 +195,9 @@ class Kelas extends Model implements HasScopeStrategy
     {
         return $this->hasMany(Krs::class, 'kelas_id');
     }
+
+    public function kampus(): BelongsTo
+    {
+        return $this->belongsTo(RefKampus::class, 'kampus_id');
+    }
 }

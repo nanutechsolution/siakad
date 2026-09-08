@@ -17,20 +17,20 @@ class JadwalGeneratorBatchInfolist
                     ->schema([
                         TextEntry::make('tahunAkademik.nama_tahun')
                             ->label('Tahun Akademik'),
-                        
+
                         TextEntry::make('prodi.nama_prodi')
                             ->label('Program Studi'),
-                            
+
                         TextEntry::make('status')
                             ->badge()
-                            ->color(fn (string $state): string => match ($state) {
+                            ->color(fn(string $state): string => match ($state) {
                                 'RUNNING' => 'warning',
                                 'PREVIEW' => 'info',
                                 'COMMITTED' => 'success',
                                 'FAILED' => 'danger',
                                 default => 'gray',
                             }),
-                            
+
                         TextEntry::make('created_at')
                             ->label('Waktu Generate')
                             ->dateTime('d M Y, H:i'),
@@ -42,7 +42,7 @@ class JadwalGeneratorBatchInfolist
                             ->label('Berhasil Dijadwalkan')
                             ->badge()
                             ->color('success'),
-                            
+
                         TextEntry::make('total_failed')
                             ->label('Gagal Plotting (Bentrok/Ruang Penuh)')
                             ->badge()
@@ -50,14 +50,15 @@ class JadwalGeneratorBatchInfolist
                     ])->columns(2),
 
                 Section::make('Konfigurasi Parameter Mesin (Snapshot)')
+                    ->collapsed()
                     ->description('Pengaturan jam dan hari yang digunakan mesin saat jadwal ini di-generate.')
                     ->schema([
                         TextEntry::make('config_snapshot.hari')
                             ->label('Hari Operasional')
                             ->badge()
                             ->color('gray')
-                            ->formatStateUsing(fn ($state) => is_array($state) ? implode(', ', $state) : $state),
-                            
+                            ->formatStateUsing(fn($state) => is_array($state) ? implode(', ', $state) : $state),
+
                         RepeatableEntry::make('config_snapshot.slots')
                             ->label('Blok Waktu Aktif')
                             ->schema([

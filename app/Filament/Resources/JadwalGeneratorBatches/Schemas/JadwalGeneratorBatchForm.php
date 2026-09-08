@@ -121,7 +121,7 @@ class JadwalGeneratorBatchForm
                             ->required(),
                     ])
                     ->default([
-                        ['mulai' => '12:00', 'selesai' => '13:00'],
+                        ['mulai' => '12:30', 'selesai' => '13:00'],
                     ])
                     ->columns(2)
                     ->collapsible()

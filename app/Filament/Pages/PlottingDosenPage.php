@@ -2,6 +2,7 @@
 
 namespace App\Filament\Pages;
 
+use App\Enums\NavigationGroup;
 use App\Models\Kelas;
 use App\Models\DosenPengampu;
 use App\Models\KurikulumMataKuliah;
@@ -9,6 +10,7 @@ use App\Models\MasterKurikulum;
 use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
+use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -28,9 +30,11 @@ use Illuminate\Support\Facades\DB;
 class PlottingDosenPage extends Page implements HasTable
 {
     use InteractsWithTable;
+    use HasPageShield;
 
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Plotting Dosen';
+    protected static string|\UnitEnum|null $navigationGroup = NavigationGroup::PERKULIAHAN->value;
 
     protected static ?string $title = 'Plotting Dosen Pengampu - Ganjil 2026/2027';
     protected string $view = 'filament.pages.plotting-dosen-page';
@@ -63,12 +67,11 @@ class PlottingDosenPage extends Page implements HasTable
                     ->sortable()
                     ->weight('bold')
                     ->wrap()
-                    ->description(fn(KurikulumMataKuliah $record) => sprintf(
+                    ->description(fn(KurikulumMataKuliah $record): string => sprintf(
                         '%s · Semester %d',
                         $record->mataKuliah?->kode_mk ?? '-',
                         $record->semester_paket
                     )),
-
                 TextColumn::make('sifat_mk')
                     ->label('Sifat')
                     ->badge()
@@ -120,8 +123,7 @@ class PlottingDosenPage extends Page implements HasTable
                 TextColumn::make('dosen_terlibat')
                     ->label('Dosen Pengampu')
                     ->badge()
-                    ->getStateUsing(function (KurikulumMataKuliah $record) {
-
+                    ->getStateUsing(function (KurikulumMataKuliah $record): array {
                         return $record->dosenPengampus
                             ->pluck('dosen.person.nama_lengkap')
                             ->filter()
@@ -131,45 +133,41 @@ class PlottingDosenPage extends Page implements HasTable
                     })
                     ->color('success')
                     ->separator(',')
-                    ->placeholder('Belum ada dosen'),
-
-                IconColumn::make('status_plot')
+                    ->placeholder('Belum ada dosen')
+                    ->wrap(),
+                TextColumn::make('status_plot')
                     ->label('Status')
-                    ->getStateUsing(
-                        fn(KurikulumMataKuliah $record): bool =>
-                        $record->dosenPengampus->isNotEmpty()
-                    )
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-exclamation-circle')
-                    ->trueColor('success')
-                    ->falseColor('warning')
-                    ->tooltip(
+                    ->badge()
+                    ->state(
                         fn(KurikulumMataKuliah $record): string =>
                         $record->dosenPengampus->isNotEmpty()
-                            ? 'Sudah terplot'
-                            : 'Belum diplot'
+                            ? 'Sudah Diplot'
+                            : 'Belum Diplot'
                     )
-                    ->alignCenter(),
+                    ->color(
+                        fn(string $state): string =>
+                        $state === 'Sudah Diplot'
+                            ? 'success'
+                            : 'warning'
+                    )
+                    ->icon(
+                        fn(string $state): string =>
+                        $state === 'Sudah Diplot'
+                            ? 'heroicon-o-check-circle'
+                            : 'heroicon-o-exclamation-circle'
+                    ),
 
             ])
             ->filters([
                 SelectFilter::make('kurikulum_id')
                     ->label('Kurikulum')
-                    ->options(function () {
-                        $prodiId = $this->tableFilters['prodi_id']['value'] ?? null;
-
-                        $query = MasterKurikulum::query()
-                            ->orderByDesc('tahun_mulai');
-
-                        if (filled($prodiId)) {
-                            $query->where('prodi_id', $prodiId);
-                        }
-
-                        return $query
+                    ->options(
+                        MasterKurikulum::query()
+                            ->orderByDesc('tahun_mulai')
+                            ->orderBy('nama_kurikulum')
                             ->pluck('nama_kurikulum', 'id')
-                            ->toArray();
-                    })
+                            ->toArray()
+                    )
                     ->searchable()
                     ->preload()
                     ->query(function (Builder $query, array $data) {
@@ -266,13 +264,29 @@ class PlottingDosenPage extends Page implements HasTable
                             ->groupBy('kelas_id');
 
                         foreach ($grouped as $kelasId => $pengampus) {
+                            $kelas = $pengampus->first()?->kelas;
+
                             $data[] = [
+                                'angkatan_id' => $kelas?->angkatan_id,
+                                'program_id' => $kelas?->program_id,
                                 'kelas_id' => $kelasId,
-                                'dosen_ids' => $pengampus->pluck('dosen_id')->toArray(),
+                                'dosen_ids' => $pengampus->pluck('dosen_id')->values()->toArray(),
                                 'koordinator_id' => $pengampus
                                     ->firstWhere('is_koordinator', true)
                                     ?->dosen_id,
                                 'ruang_id' => $pengampus->first()?->ruang_id,
+                            ];
+                        }
+
+                        // Jika belum ada plotting, tampilkan 1 form kosong
+                        if (empty($data)) {
+                            $data[] = [
+                                'angkatan_id' => null,
+                                'program_id' => null,
+                                'kelas_id' => null,
+                                'dosen_ids' => [],
+                                'koordinator_id' => null,
+                                'ruang_id' => null,
                             ];
                         }
 
@@ -289,7 +303,6 @@ class PlottingDosenPage extends Page implements HasTable
                                 ->reorderable(false)
                                 ->collapsible(false)
                                 ->itemLabel(function (array $state): ?string {
-
                                     if (! filled($state['kelas_id'] ?? null)) {
                                         return 'Kelas Baru';
                                     }
@@ -299,31 +312,60 @@ class PlottingDosenPage extends Page implements HasTable
                                     return $kelas?->nama_kelas ?? 'Kelas Baru';
                                 })
                                 ->schema([
+                                    Select::make('angkatan_id')
+                                        ->label('Angkatan')
+                                        ->options(
+                                            \App\Models\RefAngkatan::query()
+                                                ->orderByDesc('id_tahun')
+                                                ->pluck('id_tahun', 'id_tahun')
+                                        )
+                                        ->required()
+                                        ->searchable()
+                                        ->preload()
+                                        ->live()
+                                        ->afterStateUpdated(function (callable $set) {
+                                            $set('program_id', null);
+                                            $set('kelas_id', null);
+                                        }),
+
+                                    Select::make('program_id')
+                                        ->label('Program')
+                                        ->options(
+                                            \App\Models\RefProgram::query()
+                                                ->orderBy('nama_program')
+                                                ->pluck('nama_program', 'id')
+                                        )
+                                        ->required()
+                                        ->searchable()
+                                        ->preload()
+                                        ->live()
+                                        ->afterStateUpdated(function (callable $set) {
+                                            $set('kelas_id', null);
+                                        }),
+
                                     Select::make('kelas_id')
                                         ->label('Pilih Kelas')
-                                        ->options(function () use ($record) {
+                                        ->options(function (Get $get) use ($record) {
                                             $prodiId = $record->mataKuliah?->prodi_id;
+                                            $angkatanId = $get('angkatan_id');
+                                            $programId = $get('program_id');
 
-                                            if (! $prodiId) {
+                                            if (! $prodiId || ! $angkatanId || ! $programId) {
                                                 return [];
                                             }
 
                                             return Kelas::query()
                                                 ->where('prodi_id', $prodiId)
-                                                ->with([
-                                                    'prodi',
-                                                    'angkatan',
-                                                    'program',
-                                                ])
-                                                ->orderByDesc('angkatan_id')
+                                                ->where('angkatan_id', $angkatanId)
+                                                ->where('program_id', $programId)
+                                                ->with(['prodi', 'angkatan', 'program'])
                                                 ->orderBy('nama_kelas')
                                                 ->get()
                                                 ->mapWithKeys(fn(Kelas $kelas) => [
                                                     $kelas->id => sprintf(
-                                                        '%s · %s · Angkatan %s · %s',
+                                                        '%s · %s · %s',
                                                         $kelas->nama_kelas,
                                                         $kelas->prodi?->kode_prodi_internal ?? '-',
-                                                        $kelas->angkatan?->id_tahun ?? $kelas->angkatan_id,
                                                         $kelas->program?->nama_program ?? '-',
                                                     ),
                                                 ])
@@ -333,10 +375,15 @@ class PlottingDosenPage extends Page implements HasTable
                                         ->searchable()
                                         ->preload()
                                         ->live()
-                                        ->distinct(),
+                                        ->disabled(
+                                            fn(Get $get): bool =>
+                                            ! filled($get('angkatan_id')) ||
+                                                ! filled($get('program_id'))
+                                        )
+                                        ->helperText('Pilih Angkatan dan Program terlebih dahulu.'),
 
                                     Select::make('dosen_ids')
-                                        ->label('Pilih Dosen (Bisa >1)')
+                                        ->label('Dosen Pengampu')
                                         ->multiple()
                                         ->searchable()
                                         ->required()
@@ -369,18 +416,19 @@ class PlottingDosenPage extends Page implements HasTable
                                                     );
 
                                                     $warning = $totalSks >= 12
-                                                        ? ' ⚠️ (Overload)'
+                                                        ? ' ⚠️ Overload'
                                                         : '';
 
                                                     return [
                                                         $dosen->id =>
-                                                        "{$dosen->person->nama_lengkap} - Beban: {$totalSks} SKS{$warning}",
+                                                        "{$dosen->person->nama_lengkap} · {$totalSks} SKS{$warning}",
                                                     ];
-                                                });
+                                                })
+                                                ->toArray();
                                         }),
 
                                     Select::make('koordinator_id')
-                                        ->label('Koordinator Kelas')
+                                        ->label('Koordinator')
                                         ->placeholder('— Tidak ada koordinator —')
                                         ->options(function (Get $get) {
                                             $selectedIds = $get('dosen_ids') ?? [];
@@ -393,15 +441,13 @@ class PlottingDosenPage extends Page implements HasTable
                                                 ->whereIn('id', $selectedIds)
                                                 ->with('person')
                                                 ->get()
-                                                ->mapWithKeys(
-                                                    fn($dosen) => [
-                                                        $dosen->id =>
-                                                        $dosen->person->nama_lengkap,
-                                                    ]
-                                                );
+                                                ->mapWithKeys(fn($dosen) => [
+                                                    $dosen->id => $dosen->person->nama_lengkap,
+                                                ])
+                                                ->toArray();
                                         })
                                         ->helperText(
-                                            'Opsional. Pilih salah satu dari dosen yang dipilih di atas.'
+                                            'Opsional. Pilih salah satu dosen pengampu sebagai koordinator.'
                                         ),
 
                                     Select::make('ruang_id')
@@ -415,12 +461,10 @@ class PlottingDosenPage extends Page implements HasTable
                                         ->searchable()
                                         ->preload()
                                         ->helperText(
-                                            'Kosongkan jika ruang ditentukan otomatis saat generate jadwal.'
+                                            'Kosongkan agar ruang ditentukan otomatis oleh Scheduler.'
                                         ),
                                 ])
                                 ->columns(2)
-                                ->addActionLabel('Tambah Kelas Baru')
-                                ->reorderable(false),
                         ];
                     })
                     ->action(function (array $data, KurikulumMataKuliah $record): void {

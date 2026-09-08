@@ -19,7 +19,7 @@ class KelasForm
         // Buat closure untuk mengecek apakah kelas sudah punya mahasiswa
         $hasStudents = function (?Kelas $record) {
             if (!$record) return false;
-            
+
             return DB::table('mahasiswa_kelas')
                 ->where('kelas_id', $record->id)
                 ->whereNull('tanggal_keluar') // Pastikan cek yang aktif saja
@@ -74,7 +74,14 @@ class KelasForm
                             ->preload()
                             ->disabled($hasStudents)
                             ->dehydrated(),
-
+                        Select::make('kampus_id')
+                            ->label('Kampus')
+                            ->relationship('kampus', 'nama_kampus')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->disabled($hasStudents)
+                            ->dehydrated(),
                         TextInput::make('kapasitas')
                             ->label('Kapasitas Kelas (Mahasiswa)')
                             ->numeric()

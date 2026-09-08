@@ -42,6 +42,13 @@ class ManajemenkelasForm
                             ->options(fn() => RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun'))
                             ->searchable()
                             ->required(),
+                        Select::make('kampus_id')
+                            ->label('Kampus')
+                            ->relationship('kampus', 'nama_kampus')
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->dehydrated(),
                         TextInput::make('kapasitas')
                             ->label('Kapasitas')
                             ->numeric()

@@ -175,7 +175,7 @@ class ViewJadwalGeneratorBatch extends ViewRecord
     protected function getFooterWidgets(): array
     {
         return [
-            \App\Filament\Resources\JadwalGeneratorBatches\Widgets\NativeCalendarWidget::class,
+            // \App\Filament\Resources\JadwalGeneratorBatches\Widgets\NativeCalendarWidget::class,
         ];
     }
 

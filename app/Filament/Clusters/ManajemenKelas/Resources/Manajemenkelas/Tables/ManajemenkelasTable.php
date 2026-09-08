@@ -72,9 +72,15 @@ class ManajemenkelasTable
                     ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                     ->searchable()
                     ->preload(),
+
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
                     ->options(fn() => RefAngkatan::query()->orderByDesc('id_tahun')->pluck('id_tahun', 'id_tahun')),
+                SelectFilter::make('kampus_id')
+                    ->label('Kampus')
+                    ->relationship('kampus', 'nama_kampus')
+                    ->searchable()
+                    ->preload(),
             ])
             ->recordActions([
                 EditAction::make(),

@@ -66,6 +66,11 @@ class KelasTable
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
                     ->options(fn() => DB::table('ref_angkatan')->pluck('id_tahun', 'id_tahun')->toArray()),
+                SelectFilter::make('kampus_id')
+                    ->label('Kampus')
+                    ->relationship('kampus', 'nama_kampus')
+                    ->searchable()
+                    ->preload(),
             ])
             ->recordActions([
                 ActionsEditAction::make(),
