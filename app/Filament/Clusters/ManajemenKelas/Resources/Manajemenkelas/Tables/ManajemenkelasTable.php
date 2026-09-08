@@ -55,11 +55,17 @@ class ManajemenkelasTable
                     })
                     ->badge()
                     ->color(function (Kelas $record): string {
-                        return $record->kampus_id ? 'success' : 'danger';
+                        return match ($record->kampus_id) {
+                            1 => 'success',
+                            2 => 'info',
+                            3 => 'warning',
+                            4 => 'primary',
+                            default => 'danger',
+                        };
                     })
                     ->icon(function (Kelas $record): string {
                         return $record->kampus_id
-                            ? 'heroicon-o-check-circle'
+                            ? 'heroicon-o-building-office-2'
                             : 'heroicon-o-exclamation-triangle';
                     })
                     ->sortable(),
