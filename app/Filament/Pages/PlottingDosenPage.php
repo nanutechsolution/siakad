@@ -51,51 +51,42 @@ class PlottingDosenPage extends Page implements HasTable
         $prodiId = $record->mataKuliah?->prodi_id;
         $semesterMk = (int) $record->semester_paket;
 
-        if (! $prodiId || ! $semesterMk || ! $record->kurikulum_id) {
+        if (! $prodiId || ! $semesterMk) {
+            return collect();
+        }
+
+        $tahunAktif = RefTahunAkademik::find(
+            $this->getTahunAkademikAktifId()
+        );
+
+        if (! $tahunAktif) {
             return collect();
         }
 
         /*
-     * Cari mahasiswa yang:
-     * - berada di prodi MK
-     * - menggunakan kurikulum yang sama
-     * - semester berjalannya sama dengan semester MK
-     */
-        $mahasiswa = Mahasiswa::query()
-            ->where('prodi_id', $prodiId)
-            ->where('kurikulum_id', $record->kurikulum_id)
-            ->whereNull('deleted_at')
-            ->get();
-
-        /*
-     * Ambil angkatan mahasiswa yang saat ini
-     * sedang berada pada semester MK tersebut.
-     */
-        $angkatanIds = $mahasiswa
-            ->filter(
-                fn(Mahasiswa $m): bool =>
-                $this->getSemesterBerjalan($m) === $semesterMk
-            )
-            ->pluck('angkatan_id')
-            ->filter()
-            ->unique()
-            ->values();
-
-        if ($angkatanIds->isEmpty()) {
-            return collect();
-        }
-
-        /*
-     * Target kelas ditentukan dari:
-     * - Prodi
-     * - Angkatan
+     * Contoh TA aktif:
+     * 20261 = Ganjil 2026/2027
      *
-     * BUKAN dari mahasiswas.kelas_id.
+     * Semester 1 → Angkatan 2026
+     * Semester 2 → Angkatan 2026
+     * Semester 3 → Angkatan 2025
+     * Semester 4 → Angkatan 2025
+     * Semester 5 → Angkatan 2024
+     * Semester 6 → Angkatan 2024
      */
+        $tahunAktifAngkatan = (int) substr(
+            $tahunAktif->kode_tahun,
+            0,
+            4
+        );
+
+        $angkatanTarget = $tahunAktifAngkatan
+            - intdiv($semesterMk - 1, 2);
+
         return Kelas::query()
             ->visibleTo(auth()->user())
             ->where('prodi_id', $prodiId)
-            ->whereIn('angkatan_id', $angkatanIds)
+            ->where('angkatan_id', $angkatanTarget)
             ->with([
                 'prodi',
                 'angkatan',
