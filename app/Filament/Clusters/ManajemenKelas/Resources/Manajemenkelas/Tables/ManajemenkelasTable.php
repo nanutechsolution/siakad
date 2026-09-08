@@ -25,22 +25,45 @@ class ManajemenkelasTable
     public static function configure(Table $table): Table
     {
         return $table
+            ->modifyQueryUsing(fn($query) => $query->with(['prodi', 'program', 'kampus']))
             ->columns([
                 TextColumn::make('nama_kelas')
                     ->label('Nama Kelas')
                     ->searchable()
                     ->sortable(),
+
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
                     ->formatStateUsing(fn(?string $state) => $state ? Utf8::clean($state) : null)
                     ->searchable(),
+
                 TextColumn::make('program.nama_program')
                     ->label('Program')
                     ->formatStateUsing(fn(?string $state) => $state ? Utf8::clean($state) : null)
                     ->searchable(),
+
                 TextColumn::make('angkatan_id')
                     ->label('Angkatan')
                     ->sortable(),
+
+                TextColumn::make('status_kampus')
+                    ->label('Plot Kampus')
+                    ->getStateUsing(function (Kelas $record): string {
+                        return $record->kampus_id
+                            ? ($record->kampus?->nama_kampus ?? 'Kampus tidak ditemukan')
+                            : 'BELUM DI-PLOT';
+                    })
+                    ->badge()
+                    ->color(function (Kelas $record): string {
+                        return $record->kampus_id ? 'success' : 'danger';
+                    })
+                    ->icon(function (Kelas $record): string {
+                        return $record->kampus_id
+                            ? 'heroicon-o-check-circle'
+                            : 'heroicon-o-exclamation-triangle';
+                    })
+                    ->sortable(),
+
                 TextColumn::make('anggota')
                     ->label('Anggota Aktif')
                     ->getStateUsing(function (Kelas $record) {
