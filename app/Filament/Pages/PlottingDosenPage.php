@@ -51,56 +51,100 @@ class PlottingDosenPage extends Page implements HasTable
         $prodiId = $record->mataKuliah?->prodi_id;
         $semesterMk = (int) $record->semester_paket;
 
-        if (! $prodiId || ! $semesterMk) {
+        if (! $prodiId || ! $semesterMk || ! $record->kurikulum_id) {
             return collect();
         }
 
-        return Mahasiswa::query()
+        /*
+     * Cari mahasiswa yang:
+     * - berada di prodi MK
+     * - menggunakan kurikulum yang sama
+     * - semester berjalannya sama dengan semester MK
+     */
+        $mahasiswa = Mahasiswa::query()
             ->where('prodi_id', $prodiId)
+            ->where('kurikulum_id', $record->kurikulum_id)
             ->whereNull('deleted_at')
-            ->whereNotNull('kelas_id')
-            ->with('kelas')
-            ->get()
+            ->get();
+
+        /*
+     * Ambil angkatan mahasiswa yang saat ini
+     * sedang berada pada semester MK tersebut.
+     */
+        $angkatanIds = $mahasiswa
             ->filter(
-                fn(Mahasiswa $mahasiswa) =>
-                $this->getSemesterBerjalan($mahasiswa) === $semesterMk
+                fn(Mahasiswa $m): bool =>
+                $this->getSemesterBerjalan($m) === $semesterMk
             )
-            ->pluck('kelas')
+            ->pluck('angkatan_id')
             ->filter()
-            ->unique('id')
-            ->sortBy('nama_kelas')
+            ->unique()
             ->values();
+
+        if ($angkatanIds->isEmpty()) {
+            return collect();
+        }
+
+        /*
+     * Target kelas ditentukan dari:
+     * - Prodi
+     * - Angkatan
+     *
+     * BUKAN dari mahasiswas.kelas_id.
+     */
+        return Kelas::query()
+            ->visibleTo(auth()->user())
+            ->where('prodi_id', $prodiId)
+            ->whereIn('angkatan_id', $angkatanIds)
+            ->with([
+                'prodi',
+                'angkatan',
+                'program',
+            ])
+            ->orderBy('nama_kelas')
+            ->get();
     }
     protected function getSemesterBerjalan(Mahasiswa $mahasiswa): ?int
     {
-        $tahunAktif = RefTahunAkademik::find(
-            $this->getTahunAkademikAktifId()
-        );
+        $tahunAktifId = $this->getTahunAkademikAktifId();
 
-        $tahunMulai = RefTahunAkademik::find(
-            $mahasiswa->mulai_studi_tahun_akademik_id
-        );
-
-        if (! $tahunAktif || ! $tahunMulai) {
+        if (! $tahunAktifId || ! $mahasiswa->mulai_studi_tahun_akademik_id) {
             return null;
         }
 
-        // Pendek tidak dihitung sebagai semester reguler.
-        if (
-            $tahunAktif->semester === 3 ||
-            $tahunMulai->semester === 3
-        ) {
+        /*
+     * Semester 3 (Pendek) tidak dihitung sebagai semester reguler.
+     */
+        $periode = RefTahunAkademik::query()
+            ->whereIn('semester', [1, 2])
+            ->whereNotNull('tanggal_mulai')
+            ->orderBy('tanggal_mulai')
+            ->orderBy('id')
+            ->get();
+
+        $indexAktif = $periode->search(
+            fn(RefTahunAkademik $item): bool =>
+            (int) $item->id === (int) $tahunAktifId
+        );
+
+        $indexMulai = $periode->search(
+            fn(RefTahunAkademik $item): bool =>
+            (int) $item->id === (int) $mahasiswa->mulai_studi_tahun_akademik_id
+        );
+
+        if ($indexAktif === false || $indexMulai === false) {
             return null;
         }
 
-        $tahunMulaiAngka = (int) substr($tahunMulai->kode_tahun, 0, 4);
-        $tahunAktifAngka = (int) substr($tahunAktif->kode_tahun, 0, 4);
-
-        $selisihTahun = $tahunAktifAngka - $tahunMulaiAngka;
-
-        return ($selisihTahun * 2)
-            + ($tahunAktif->semester - $tahunMulai->semester)
-            + 1;
+        /*
+     * Contoh:
+     *
+     * 2025 Ganjil → Semester 1
+     * 2025 Genap  → Semester 2
+     * 2026 Ganjil → Semester 3
+     * 2026 Genap  → Semester 4
+     */
+        return ($indexAktif - $indexMulai) + 1;
     }
     public function table(Table $table): Table
     {
