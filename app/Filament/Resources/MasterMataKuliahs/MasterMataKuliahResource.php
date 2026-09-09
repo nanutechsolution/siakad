@@ -52,7 +52,7 @@ class MasterMataKuliahResource extends Resource
     public static function getPages(): array
     {
         return [
-            'create' => CreateMasterMataKuliah::route('/create'),
+            'index' => ListMasterMataKuliahs::route('/'),
         ];
     }
 
