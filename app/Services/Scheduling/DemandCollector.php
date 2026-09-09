@@ -18,8 +18,7 @@ class DemandCollector
 
     public function __construct(
         protected array $ruangTersedia, // dari batch, sudah difilter kampus_id + is_active
-    ) {
-    }
+    ) {}
 
     /** @return DemandItem[] */
     public function collect(JadwalGeneratorBatch $batch): array
@@ -29,7 +28,7 @@ class DemandCollector
         $jadwalProduction = JadwalKuliah::where('tahun_akademik_id', $batch->tahun_akademik_id)
             ->get(['mata_kuliah_id', 'kelas_id']);
         $kombinasiSudahAda = $jadwalProduction
-            ->map(fn ($jp) => $jp->mata_kuliah_id . '-' . $jp->kelas_id)
+            ->map(fn($jp) => $jp->mata_kuliah_id . '-' . $jp->kelas_id)
             ->all();
 
         // --- PERBAIKAN BUG C: filter juga berdasarkan kampus_id kelas, bukan
@@ -47,7 +46,7 @@ class DemandCollector
                 $key = $item->mata_kuliah_id . '-' . $item->kelas_id;
                 return !in_array($key, $kombinasiSudahAda, true);
             })
-            ->groupBy(fn ($item) => $item->mata_kuliah_id . '-' . $item->kelas_id);
+            ->groupBy(fn($item) => $item->mata_kuliah_id . '-' . $item->kelas_id);
 
         $items = [];
 
@@ -82,8 +81,6 @@ class DemandCollector
         $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0 ? $kapasitasDibutuhkan : ($firstItem->kelas->kapasitas ?? 40);
 
         $kurikulumMK = $this->getKurikulumMataKuliahForKelas($mkId, $firstItem->kelas);
-
-        // --- PERBAIKAN BUG E: dulu diam-diam fallback ke 2 SKS. Sekarang
         // item yang tidak punya definisi kurikulum langsung dicatat sebagai
         // pre-failure yang jelas, bukan dijadwalkan dengan durasi tebakan. ---
         if (!$kurikulumMK) {
@@ -119,7 +116,7 @@ class DemandCollector
         // dipakai utk precheck kapasitas yang konsisten dgn CandidateGenerator
         // (perbaikan bug B7: precheck lama tidak mempertimbangkan eksklusivitas prodi).
         $ruangBolehDipakai = $ruangSesuaiJenis->filter(
-            fn ($r) => is_null($r['prodi_id']) || $r['prodi_id'] == $kelasProdiId
+            fn($r) => is_null($r['prodi_id']) || $r['prodi_id'] == $kelasProdiId
         );
 
         if (!$reqRuangId && $ruangBolehDipakai->isEmpty()) {
@@ -196,8 +193,29 @@ class DemandCollector
         return $skor;
     }
 
-    protected function getKurikulumMataKuliahForKelas(int $mataKuliahId, $kelas): ?KurikulumMataKuliah
-    {
+    // protected function getKurikulumMataKuliahForKelas(int $mataKuliahId, $kelas): ?KurikulumMataKuliah
+    // {
+    //     $tahunAngkatan = (int) $kelas->angkatan_id;
+
+    //     $kurikulum = MasterKurikulum::query()
+    //         ->where('prodi_id', $kelas->prodi_id)
+    //         ->where('tahun_mulai', '<=', $tahunAngkatan)
+    //         ->orderByDesc('tahun_mulai')
+    //         ->first();
+
+    //     if (!$kurikulum) {
+    //         return null;
+    //     }
+
+    //     return KurikulumMataKuliah::query()
+    //         ->where('kurikulum_id', $kurikulum->id)
+    //         ->where('mata_kuliah_id', $mataKuliahId)
+    //         ->first();
+    // }
+    protected function getKurikulumMataKuliahForKelas(
+        int $mataKuliahId,
+        $kelas
+    ): ?KurikulumMataKuliah {
         $tahunAngkatan = (int) $kelas->angkatan_id;
 
         $kurikulum = MasterKurikulum::query()
@@ -206,13 +224,33 @@ class DemandCollector
             ->orderByDesc('tahun_mulai')
             ->first();
 
-        if (!$kurikulum) {
-            return null;
-        }
-
-        return KurikulumMataKuliah::query()
+        $kurikulumMK = $kurikulum
+            ? KurikulumMataKuliah::query()
             ->where('kurikulum_id', $kurikulum->id)
             ->where('mata_kuliah_id', $mataKuliahId)
-            ->first();
+            ->first()
+            : null;
+
+        dd([
+            'kelas' => [
+                'id' => $kelas->id,
+                'nama' => $kelas->nama_kelas,
+                'prodi_id' => $kelas->prodi_id,
+                'angkatan_id' => $kelas->angkatan_id,
+            ],
+
+            'mata_kuliah_id_dari_dosen_pengampu' => $mataKuliahId,
+
+            'kurikulum' => $kurikulum ? [
+                'id' => $kurikulum->id,
+                'prodi_id' => $kurikulum->prodi_id,
+                'nama' => $kurikulum->nama_kurikulum,
+                'tahun_mulai' => $kurikulum->tahun_mulai,
+            ] : null,
+
+            'kurikulum_mata_kuliah' => $kurikulumMK?->toArray(),
+        ]);
+
+        return $kurikulumMK;
     }
 }
