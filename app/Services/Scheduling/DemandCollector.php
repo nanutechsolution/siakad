@@ -193,29 +193,8 @@ class DemandCollector
         return $skor;
     }
 
-    // protected function getKurikulumMataKuliahForKelas(int $mataKuliahId, $kelas): ?KurikulumMataKuliah
-    // {
-    //     $tahunAngkatan = (int) $kelas->angkatan_id;
-
-    //     $kurikulum = MasterKurikulum::query()
-    //         ->where('prodi_id', $kelas->prodi_id)
-    //         ->where('tahun_mulai', '<=', $tahunAngkatan)
-    //         ->orderByDesc('tahun_mulai')
-    //         ->first();
-
-    //     if (!$kurikulum) {
-    //         return null;
-    //     }
-
-    //     return KurikulumMataKuliah::query()
-    //         ->where('kurikulum_id', $kurikulum->id)
-    //         ->where('mata_kuliah_id', $mataKuliahId)
-    //         ->first();
-    // }
-    protected function getKurikulumMataKuliahForKelas(
-        int $mataKuliahId,
-        $kelas
-    ): ?KurikulumMataKuliah {
+    protected function getKurikulumMataKuliahForKelas(int $mataKuliahId, $kelas): ?KurikulumMataKuliah
+    {
         $tahunAngkatan = (int) $kelas->angkatan_id;
 
         $kurikulum = MasterKurikulum::query()
@@ -224,33 +203,13 @@ class DemandCollector
             ->orderByDesc('tahun_mulai')
             ->first();
 
-        $kurikulumMK = $kurikulum
-            ? KurikulumMataKuliah::query()
+        if (!$kurikulum) {
+            return null;
+        }
+
+        return KurikulumMataKuliah::query()
             ->where('kurikulum_id', $kurikulum->id)
             ->where('mata_kuliah_id', $mataKuliahId)
-            ->first()
-            : null;
-
-        dd([
-            'kelas' => [
-                'id' => $kelas->id,
-                'nama' => $kelas->nama_kelas,
-                'prodi_id' => $kelas->prodi_id,
-                'angkatan_id' => $kelas->angkatan_id,
-            ],
-
-            'mata_kuliah_id_dari_dosen_pengampu' => $mataKuliahId,
-
-            'kurikulum' => $kurikulum ? [
-                'id' => $kurikulum->id,
-                'prodi_id' => $kurikulum->prodi_id,
-                'nama' => $kurikulum->nama_kurikulum,
-                'tahun_mulai' => $kurikulum->tahun_mulai,
-            ] : null,
-
-            'kurikulum_mata_kuliah' => $kurikulumMK?->toArray(),
-        ]);
-
-        return $kurikulumMK;
+            ->first();
     }
 }
