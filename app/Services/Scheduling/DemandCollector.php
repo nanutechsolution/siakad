@@ -10,6 +10,7 @@ use App\Models\MahasiswaKelas;
 use App\Models\MasterKurikulum;
 use App\Models\RefRuang;
 use App\Services\Scheduling\Support\DemandItem;
+use Illuminate\Support\Facades\Log;
 
 class DemandCollector
 {
@@ -76,8 +77,21 @@ class DemandCollector
         $dosenIds = $dosenList->pluck('dosen_id')->all();
         $kelasProdiId = $firstItem->kelas->prodi_id ?? 0;
         $reqRuangId = $firstItem->ruang_id ?? null;
+        $kapasitasDibutuhkan = MahasiswaKelas::query()
+            ->where('mahasiswa_kelas.kelas_id', $kelasId)
+            ->whereNull('mahasiswa_kelas.tanggal_keluar')
+            ->join(
+                'mahasiswas',
+                'mahasiswas.id',
+                '=',
+                'mahasiswa_kelas.mahasiswa_id'
+            )
+            ->where('mahasiswas.prodi_id', $kelasProdiId)
+            ->count();
 
-        $kapasitasDibutuhkan = MahasiswaKelas::where('kelas_id', $kelasId)->whereNull('tanggal_keluar')->count();
+        $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0
+            ? $kapasitasDibutuhkan
+            : ($firstItem->kelas->kapasitas ?? 40);
         $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0 ? $kapasitasDibutuhkan : ($firstItem->kelas->kapasitas ?? 40);
 
         $kurikulumMK = $this->getKurikulumMataKuliahForKelas($mkId, $firstItem->kelas);
@@ -96,10 +110,65 @@ class DemandCollector
             return null;
         }
 
-        $jenisRuangDibutuhkan = $kurikulumMK->sks_praktek > 0 ? 'LABORATORIUM' : 'TEORI';
-        $sksTotal = (int) $kurikulumMK->sks_tatap_muka + (int) $kurikulumMK->sks_praktek + (int) $kurikulumMK->sks_lapangan;
+        $sksTatapMuka = (int) $kurikulumMK->sks_tatap_muka;
+        $sksPraktek = (int) $kurikulumMK->sks_praktek;
+        $sksLapangan = (int) $kurikulumMK->sks_lapangan;
 
-        $ruangSesuaiJenis = collect($this->ruangTersedia)->where('jenis_ruang', $jenisRuangDibutuhkan);
+        $sksTotal = $sksTatapMuka + $sksPraktek + $sksLapangan;
+
+        /*
+|--------------------------------------------------------------------------
+| RUANG
+|--------------------------------------------------------------------------
+| Jika admin sudah memilih ruang pada dosen_pengampus,
+| pilihan tersebut menjadi constraint utama.
+*/
+        if ($reqRuangId) {
+
+            // Cari ruang yang dipilih admin dari ruang yang tersedia di batch
+            $ruangTetap = collect($this->ruangTersedia)
+                ->firstWhere('id', $reqRuangId);
+            if (
+                $ruangTetap &&
+                !is_null($ruangTetap['prodi_id']) &&
+                (int) $ruangTetap['prodi_id'] !== (int) $kelasProdiId
+            ) {
+                $this->preFailures[] = [
+                    'mata_kuliah_id' => $mkId,
+                    'kelas_id' => $kelasId,
+                    'reason' => "CRITICAL: Ruang '{$ruangTetap['nama_ruang']}' merupakan ruang eksklusif prodi lain dan tidak boleh digunakan oleh prodi ini.",
+                    'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
+                    'sks_real' => $sksTotal,
+                    'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
+                ];
+
+                return null;
+            }
+
+            /*
+     * ADMIN SUDAH MEMILIH RUANG
+     *
+     * Jangan override dengan sks_praktek.
+     * Ruang pilihan admin dihormati.
+     */
+            $jenisRuangDibutuhkan = $ruangTetap['jenis_ruang'];
+
+            // Untuk fixed room, ruang yang digunakan hanya ruang tersebut.
+            $ruangSesuaiJenis = collect([$ruangTetap]);
+        } else {
+
+            /*
+     * ADMIN BELUM MEMILIH RUANG
+     *
+     * Generator menentukan ruang berdasarkan komposisi SKS.
+     */
+            $jenisRuangDibutuhkan = $sksPraktek > $sksTatapMuka
+                ? 'LABORATORIUM'
+                : 'TEORI';
+
+            $ruangSesuaiJenis = collect($this->ruangTersedia)
+                ->where('jenis_ruang', $jenisRuangDibutuhkan);
+        }
 
         if ($ruangSesuaiJenis->isEmpty()) {
             $this->preFailures[] = [
@@ -110,41 +179,89 @@ class DemandCollector
                 'sks_real' => $sksTotal,
                 'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
             ];
+
             return null;
         }
 
-        // Ruang yang boleh dipakai kelas ini (prodi-exclusive atau umum) --
-        // dipakai utk precheck kapasitas yang konsisten dgn CandidateGenerator
-        // (perbaikan bug B7: precheck lama tidak mempertimbangkan eksklusivitas prodi).
-        $ruangBolehDipakai = $ruangSesuaiJenis->filter(
-            fn($r) => is_null($r['prodi_id']) || $r['prodi_id'] == $kelasProdiId
-        );
+        /*
+|--------------------------------------------------------------------------
+| RUANG YANG BOLEH DIPAKAI
+|--------------------------------------------------------------------------
+| Fixed room:
+|   → pilihan admin dihormati.
+|
+| Automatic room:
+|   → tetap filter berdasarkan prodi-exclusive / ruang umum.
+*/
+        if ($reqRuangId) {
+            // Admin sudah menentukan ruang → hormati pilihan admin
+            $ruangBolehDipakai = $ruangSesuaiJenis;
+        } else {
+            // Auto → hanya ruang umum atau ruang milik prodi
+            $ruangBolehDipakai = $ruangSesuaiJenis->filter(
+                fn($r) =>
+                is_null($r['prodi_id'])
+                    || $r['prodi_id'] == $kelasProdiId
+            );
+        }
 
+        // Jika auto dan tidak ada ruang yang boleh digunakan
         if (!$reqRuangId && $ruangBolehDipakai->isEmpty()) {
             $this->preFailures[] = [
                 'mata_kuliah_id' => $mkId,
                 'kelas_id' => $kelasId,
-                'reason' => "CRITICAL: Tidak ada ruang jenis {$jenisRuangDibutuhkan} yang boleh dipakai prodi ini di kampus ini (semua ruang sejenis eksklusif milik prodi lain).",
+                'reason' => "CRITICAL: Tidak ada ruang {$jenisRuangDibutuhkan} yang boleh digunakan prodi ini.",
                 'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
                 'sks_real' => $sksTotal,
                 'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
             ];
+
             return null;
         }
 
-        $maxKapasitasTersedia = $reqRuangId ? PHP_INT_MAX : $ruangBolehDipakai->max('kapasitas');
-        if (!$reqRuangId && $kapasitasDibutuhkan > $maxKapasitasTersedia) {
-            $this->preFailures[] = [
-                'mata_kuliah_id' => $mkId,
-                'kelas_id' => $kelasId,
-                'reason' => "CRITICAL: Butuh {$kapasitasDibutuhkan} kursi, tapi ruang {$jenisRuangDibutuhkan} yang boleh dipakai prodi ini maksimal hanya {$maxKapasitasTersedia} kursi.",
-                'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
-                'sks_real' => $sksTotal,
-                'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
-            ];
-            return null;
-        }
 
+        /*
+|--------------------------------------------------------------------------
+| VALIDASI KAPASITAS RUANG
+|--------------------------------------------------------------------------
+*/
+        if ($reqRuangId) {
+
+            // Ruang sudah dipilih admin → wajib dicek kapasitasnya
+            $kapasitasRuang = (int) (
+                $ruangBolehDipakai->first()['kapasitas'] ?? 0
+            );
+
+            if ($kapasitasRuang < $kapasitasDibutuhkan) {
+                $this->preFailures[] = [
+                    'mata_kuliah_id' => $mkId,
+                    'kelas_id' => $kelasId,
+                    'reason' => "CRITICAL: Ruang yang dipilih admin hanya memiliki {$kapasitasRuang} kursi, sedangkan kelas membutuhkan {$kapasitasDibutuhkan} kursi.",
+                    'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
+                    'sks_real' => $sksTotal,
+                    'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
+                ];
+
+                return null;
+            }
+        } else {
+
+            // Auto → cari kapasitas terbesar dari ruang yang diperbolehkan
+            $maxKapasitasTersedia = $ruangBolehDipakai->max('kapasitas');
+
+            if ($kapasitasDibutuhkan > $maxKapasitasTersedia) {
+                $this->preFailures[] = [
+                    'mata_kuliah_id' => $mkId,
+                    'kelas_id' => $kelasId,
+                    'reason' => "CRITICAL: Butuh {$kapasitasDibutuhkan} kursi, tapi ruang {$jenisRuangDibutuhkan} yang boleh dipakai prodi ini maksimal hanya {$maxKapasitasTersedia} kursi.",
+                    'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
+                    'sks_real' => $sksTotal,
+                    'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
+                ];
+
+                return null;
+            }
+        }
         return new DemandItem(
             mataKuliahId: $mkId,
             kelasId: $kelasId,
@@ -196,20 +313,47 @@ class DemandCollector
 
     protected function getKurikulumMataKuliahForKelas(int $mataKuliahId, $kelas): ?KurikulumMataKuliah
     {
-        $tahunAngkatan = (int) $kelas->angkatan_id;
+        $kurikulumIds = MahasiswaKelas::query()
+            ->where('mahasiswa_kelas.kelas_id', $kelas->id)
+            ->whereNull('mahasiswa_kelas.tanggal_keluar')
+            ->join(
+                'mahasiswas',
+                'mahasiswas.id',
+                '=',
+                'mahasiswa_kelas.mahasiswa_id'
+            )
+            ->where('mahasiswas.prodi_id', $kelas->prodi_id)
+            ->whereNotNull('mahasiswas.kurikulum_id')
+            ->pluck('mahasiswas.kurikulum_id')
+            ->unique();
 
-        $kurikulum = MasterKurikulum::query()
-            ->where('prodi_id', $kelas->prodi_id)
-            ->where('tahun_mulai', '<=', $tahunAngkatan)
-            ->orderByDesc('tahun_mulai')
-            ->first();
+        if ($kurikulumIds->count() > 1) {
+            $this->preFailures[] = [
+                'mata_kuliah_id' => $mataKuliahId,
+                'kelas_id' => $kelas->id,
+                'reason' => 'Mahasiswa dalam kelas memiliki lebih dari satu kurikulum aktif.',
+                'dosen_pengampu_ids' => [],
+                'sks_real' => 0,
+                'estimasi_kapasitas_dibutuhkan' => 0,
+            ];
 
-        if (!$kurikulum) {
+            Log::warning('Kelas memiliki multiple kurikulum', [
+                'kelas_id' => $kelas->id,
+                'prodi_id' => $kelas->prodi_id,
+                'kurikulum_ids' => $kurikulumIds->values()->all(),
+            ]);
+
+            return null;
+        }
+
+        $kurikulumId = $kurikulumIds->first();
+
+        if (!$kurikulumId) {
             return null;
         }
 
         return KurikulumMataKuliah::query()
-            ->where('kurikulum_id', $kurikulum->id)
+            ->where('kurikulum_id', $kurikulumId)
             ->where('mata_kuliah_id', $mataKuliahId)
             ->first();
     }

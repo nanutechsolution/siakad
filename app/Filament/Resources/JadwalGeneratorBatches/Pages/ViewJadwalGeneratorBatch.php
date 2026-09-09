@@ -11,6 +11,7 @@ use App\Models\MahasiswaKelas;
 use App\Models\RefRuang;
 use Exception;
 use Filament\Actions\Action;
+use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
@@ -23,80 +24,250 @@ class ViewJadwalGeneratorBatch extends ViewRecord
     protected function getHeaderActions(): array
     {
         return [
-            // --- 1. TOMBOL UTAMA: GENERATE (YANG HILANG SEBELUMNYA) ---
+            /*
+         * ============================================================
+         * GENERATE / RE-GENERATE
+         * ============================================================
+         */
             Action::make('generate')
-                ->label('Mulai Generate / Re-Generate Jadwal')
+                ->label(
+                    fn($record) =>
+                    $record->status === 'PREVIEW'
+                        ? 'Generate Ulang'
+                        : 'Mulai Generate'
+                )
                 ->icon('heroicon-o-cpu-chip')
                 ->color('primary')
+                ->size('sm')
                 ->requiresConfirmation()
-                ->modalHeading('Mulai Proses Komputasi Skala Besar?')
-                ->modalDescription('Karena memproses ratusan jadwal membutuhkan waktu, sistem akan mengerjakannya di latar belakang. Anda bisa merefresh halaman nanti untuk melihat hasilnya. Mesin akan otomatis mempertimbangkan jadwal batch lain yang masih aktif (belum publish) di tahun akademik ini, jadi urutan generate antar prodi tidak menyebabkan bias.')
-                ->hidden(fn($record) => in_array($record->status, ['RUNNING', 'COMMITTED']))
+                ->modalHeading(
+                    fn($record) =>
+                    $record->status === 'PREVIEW'
+                        ? 'Generate Ulang Jadwal?'
+                        : 'Mulai Generate Jadwal?'
+                )
+                ->modalDescription(
+                    'Sistem akan membuat jadwal secara otomatis berdasarkan '
+                        . 'dosen pengampu, kelas, kurikulum, ketersediaan ruang, '
+                        . 'waktu operasional, dan konflik jadwal. '
+                        . 'Hasil sebelumnya akan dihapus dan dibuat ulang.'
+                )
+                ->modalSubmitActionLabel('Ya, Mulai Generate')
+                ->modalCancelActionLabel('Batal')
+                ->hidden(
+                    fn($record) =>
+                    in_array($record->status, ['RUNNING', 'COMMITTED'], true)
+                )
                 ->action(function ($record) {
 
-                    // 1. Bersihkan draf lama dan ubah status ke RUNNING
                     $record->results()->delete();
+
                     $record->update([
                         'status' => 'RUNNING',
                         'total_generated' => 0,
                         'total_failed' => 0,
                         'quality_score' => null,
                         'quality_summary' => null,
+                        'failure_reason' => null,
                     ]);
 
-                    // 2. KEMBALI KE MODE ENTERPRISE: Lempar ke Antrean!
-                    \App\Jobs\GenerateJadwalJob::dispatch($record->id);
+                    GenerateJadwalJob::dispatch($record->id);
 
-                    // 3. Notifikasi bahwa tugas sudah dititipkan
                     Notification::make()
-                        ->title('Tugas Masuk ke Antrean Server!')
-                        ->body('Server sedang memproses jadwal di latar belakang. Status saat ini RUNNING.')
+                        ->title('Generate dimulai')
+                        ->body(
+                            'Proses pembuatan jadwal berjalan di background. '
+                                . 'Silakan tunggu sampai status berubah menjadi PREVIEW.'
+                        )
                         ->success()
                         ->send();
                 }),
 
-            // --- 2. TOMBOL DARURAT: RESET STATUS ---
-            Action::make('reset_status')
-                ->label('Tersangkut? Force Reset Status')
-                ->icon('heroicon-o-arrow-path')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalHeading('Reset Status ke Draf?')
-                ->modalDescription('Gunakan ini hanya jika status terus-menerus RUNNING selama berjam-jam.')
-                ->visible(fn($record) => $record->status === 'RUNNING')
-                ->action(function ($record) {
-                    $record->update([
-                        'status' => 'PREVIEW', // Kita set ke PREVIEW agar tombol Generate bisa muncul lagi
-                        'failure_reason' => 'Di-reset paksa oleh admin karena tersangkut.'
-                    ]);
-                    Notification::make()->title('Status berhasil di-reset!')->success()->send();
-                }),
-
-            // --- 3. TOMBOL FINAL: PUBLISH KE SIAKAD ---
+            /*
+         * ============================================================
+         * APPROVE & PUBLISH
+         * ============================================================
+         */
             Action::make('approveAndPublish')
-                ->label('Approve & Publish ke SIAKAD')
+                ->label('Approve & Publish')
                 ->icon('heroicon-o-check-badge')
                 ->color('success')
+                ->size('sm')
                 ->requiresConfirmation()
+                ->modalWidth('2xl')
                 ->modalHeading('Publish Jadwal ke SIAKAD')
-                ->modalDescription(function ($record) {
-                    // --- BARU: tampilkan quality_score di modal supaya operator
-                    // punya bahan pertimbangan sebelum publish, bukan cuma
-                    // total_generated/total_failed. ---
-                    $skorInfo = filled($record->quality_score)
-                        ? "\n\n📊 Skor kualitas batch ini: " . number_format($record->quality_score, 1) . " / 100"
-                        . ($record->quality_score < 60 ? " -- tergolong RENDAH, pertimbangkan cek dulu distribusi jadwalnya di tab Preview sebelum publish." : ".")
-                        : '';
+                ->modalDescription(
+                    'Periksa ringkasan hasil generate sebelum jadwal dipublikasikan.'
+                )
+                ->modalContent(function ($record) {
+                    $success = $record->results()
+                        ->where('status', 'success')
+                        ->count();
 
-                    return "Apakah Anda yakin jadwal ini sudah final? \n\n" .
-                        "⚠️ PERHATIAN: Sistem akan otomatis menghapus jadwal lama pada kelas yang sama (Anti-Duplikat), " .
-                        "KECUALI jadwal yang sudah ditandai 'Terkunci' (Locked) di lapangan. Jadwal yang terkunci akan dipertahankan."
-                        . $skorInfo;
+                    $needsAdjustment = $record->results()
+                        ->where('status', 'needs_adjustment')
+                        ->count();
+
+                    $failed = $record->results()
+                        ->whereIn('status', [
+                            'master_failure',
+                            'critical_conflict',
+                        ])
+                        ->count();
+
+                    $score = filled($record->quality_score)
+                        ? number_format($record->quality_score, 1)
+                        : '-';
+
+                    return new \Illuminate\Support\HtmlString(
+                        <<<HTML
+            <div class="space-y-5">
+
+                <div class="grid grid-cols-1 gap-3 sm:grid-cols-3">
+
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Jadwal Berhasil
+                        </div>
+
+                        <div class="mt-1 text-2xl font-bold text-success-600">
+                            {$success}
+                        </div>
+
+                        <div class="mt-1 text-xs text-gray-500">
+                            siap dipublish
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Perlu Penyesuaian
+                        </div>
+
+                        <div class="mt-1 text-2xl font-bold text-warning-600">
+                            {$needsAdjustment}
+                        </div>
+
+                        <div class="mt-1 text-xs text-gray-500">
+                            belum dipublish
+                        </div>
+                    </div>
+
+                    <div class="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-gray-700 dark:bg-gray-800">
+                        <div class="text-sm font-medium text-gray-500 dark:text-gray-400">
+                            Skor Kualitas
+                        </div>
+
+                        <div class="mt-1 text-2xl font-bold text-primary-600">
+                            {$score}
+                            <span class="text-sm font-medium text-gray-500">
+                                / 100
+                            </span>
+                        </div>
+
+                        <div class="mt-1 text-xs text-gray-500">
+                            kualitas hasil generate
+                        </div>
+                    </div>
+
+                </div>
+
+                <div class="rounded-xl border border-primary-200 bg-primary-50 p-4 dark:border-primary-800 dark:bg-primary-950/30">
+                    <div class="flex gap-3">
+
+                        <div class="mt-0.5 shrink-0">
+                            <svg
+                                class="h-5 w-5 text-primary-600"
+                                xmlns="http://www.w3.org/2000/svg"
+                                fill="none"
+                                viewBox="0 0 24 24"
+                                stroke-width="1.8"
+                                stroke="currentColor"
+                            >
+                                <path
+                                    stroke-linecap="round"
+                                    stroke-linejoin="round"
+                                    d="M12 9v3.75m0 3.75h.007v.008H12v-.008ZM10.34 3.94 2.69 17.25A1.5 1.5 0 0 0 3.99 19.5h16.02a1.5 1.5 0 0 0 1.3-2.25L13.66 3.94a1.91 1.91 0 0 0-3.32 0Z"
+                                />
+                            </svg>
+                        </div>
+
+                        <div>
+                            <div class="font-semibold text-primary-900 dark:text-primary-100">
+                                Yang akan terjadi saat Publish
+                            </div>
+
+                            <ul class="mt-2 space-y-1.5 text-sm text-primary-800 dark:text-primary-200">
+                                <li>• {$success} jadwal berhasil akan masuk ke SIAKAD.</li>
+                                <li>• Jadwal lama pada kelas yang sama akan digantikan.</li>
+                                <li>• Jadwal yang sudah <strong>terkunci</strong> tidak akan dihapus.</li>
+                                <li>• Jadwal yang masih perlu penyesuaian tidak akan dipublish.</li>
+                            </ul>
+                        </div>
+
+                    </div>
+                </div>
+                <div class="text-center text-sm text-gray-500 dark:text-gray-400">
+                    Pastikan hasil pada tab <strong>Preview</strong> sudah diperiksa
+                    sebelum melanjutkan.
+                </div>
+
+            </div>
+            HTML
+                    );
                 })
-                ->visible(fn() => $this->record->status === 'PREVIEW')
+                ->modalSubmitActionLabel('Ya, Publish ke SIAKAD')
+                ->modalCancelActionLabel('Kembali ke Preview')
+                ->visible(fn($record) => $record->status === 'PREVIEW')
                 ->action(function () {
                     $this->commitToProduction();
                 }),
+
+            /*
+         * ============================================================
+         * MORE / DARURAT
+         * ============================================================
+         */
+            ActionGroup::make([
+                Action::make('reset_status')
+                    ->label('Reset Status')
+                    ->icon('heroicon-o-arrow-path')
+                    ->color('danger')
+                    ->requiresConfirmation()
+                    ->modalHeading('Reset Batch?')
+                    ->modalDescription(
+                        'Gunakan hanya jika proses generate berhenti '
+                            . 'terlalu lama pada status RUNNING. '
+                            . 'Reset tidak menjalankan ulang proses generate.'
+                    )
+                    ->modalSubmitActionLabel('Ya, Reset Status')
+                    ->modalCancelActionLabel('Batal')
+                    ->visible(
+                        fn($record) =>
+                        $record->status === 'RUNNING'
+                    )
+                    ->action(function ($record) {
+
+                        $record->update([
+                            'status' => 'PREVIEW',
+                            'failure_reason' =>
+                            'Status di-reset secara manual oleh admin.',
+                        ]);
+
+                        Notification::make()
+                            ->title('Status berhasil di-reset')
+                            ->body(
+                                'Batch dikembalikan ke PREVIEW. '
+                                    . 'Anda dapat menjalankan Generate kembali.'
+                            )
+                            ->success()
+                            ->send();
+                    }),
+            ])
+                ->label('Lainnya')
+                ->icon('heroicon-o-ellipsis-vertical')
+                ->color('gray')
+                ->button(),
         ];
     }
 

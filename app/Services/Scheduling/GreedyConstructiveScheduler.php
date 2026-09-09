@@ -10,14 +10,29 @@ class GreedyConstructiveScheduler
     public function __construct(
         protected CandidateGenerator $generator,
         protected CandidateScorer $scorer,
-    ) {
-    }
+    ) {}
 
     /**
      * @param DemandItem[] $items sudah terurut most-constrained-first
-     * @return array{assigned: array, failed: array}
-     *   assigned: list of ['item' => DemandItem, 'candidate' => Candidate]
-     *   failed: list of ['item' => DemandItem, 'reason' => string]
+     *
+     * @return array{
+     *     assigned: array,
+     *     failed: array
+     * }
+     *
+     * assigned:
+     * list of [
+     *     'item' => DemandItem,
+     *     'candidate' => Candidate
+     * ]
+     *
+     * failed:
+     * list of [
+     *     'item' => DemandItem,
+     *     'status' => string,
+     *     'failure_code' => ?string,
+     *     'reason' => ?string
+     * ]
      */
     public function run(array $items, ScheduleTracker $tracker): array
     {
@@ -27,13 +42,32 @@ class GreedyConstructiveScheduler
         foreach ($items as $item) {
             $result = $this->generator->generate($item, $tracker);
 
+            /*
+             * Tidak ada kandidat.
+             *
+             * Jangan lagi membuang informasi status dari CandidateGenerator.
+             */
             if (empty($result['candidates'])) {
-                $failed[] = ['item' => $item, 'reason' => $result['reason']];
+                $failed[] = [
+                    'item' => $item,
+                    'status' => $result['status'] ?? 'needs_adjustment',
+                    'failure_code' => $result['failure_code'] ?? null,
+                    'reason' => $result['reason'] ?? null,
+                ];
+
                 continue;
             }
 
-            $scored = $this->scorer->scoreAll($result['candidates'], $item, $tracker);
-            $terbaik = $scored[0]; // sudah diurutkan skor terkecil = terbaik
+            /*
+             * Ada kandidat.
+             */
+            $scored = $this->scorer->scoreAll(
+                $result['candidates'],
+                $item,
+                $tracker
+            );
+
+            $terbaik = $scored[0];
 
             $tracker->reserve(
                 $item->dosenIds,
@@ -45,9 +79,15 @@ class GreedyConstructiveScheduler
                 $item->kelasProdiId
             );
 
-            $assigned[] = ['item' => $item, 'candidate' => $terbaik];
+            $assigned[] = [
+                'item' => $item,
+                'candidate' => $terbaik,
+            ];
         }
 
-        return ['assigned' => $assigned, 'failed' => $failed];
+        return [
+            'assigned' => $assigned,
+            'failed' => $failed,
+        ];
     }
 }

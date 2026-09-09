@@ -10,11 +10,14 @@ use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TimePicker;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\TextInput;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Schemas\Components\Grid;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Components\Wizard;
 use Filament\Schemas\Components\Wizard\Step;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\HtmlString;
 
 class JadwalGeneratorBatchForm
@@ -41,7 +44,19 @@ class JadwalGeneratorBatchForm
             ])
                 ->columnSpanFull()
                 ->skippable(false)
-                ->persistStepInQueryString(),
+                ->persistStepInQueryString()
+                ->submitAction(
+                    new HtmlString(
+                        Blade::render(<<<'BLADE'
+                        <x-filament::button
+                            type="submit"
+                            size="sm"
+                        >
+                           Mulai Generate / Re-Generate Jadwal
+                        </x-filament::button>
+                    BLADE)
+                    )
+                ),
         ]);
     }
 
@@ -71,8 +86,9 @@ class JadwalGeneratorBatchForm
                         Select::make('prodi_id')
                             ->relationship('prodi', 'nama_prodi')
                             ->required()
-                            ->searchable()
-                            ->live(),
+
+                            ->preload()
+                            ->searchable(),
                     ])->columns(2),
 
                 Section::make('Ringkasan Beban')
@@ -114,7 +130,7 @@ class JadwalGeneratorBatchForm
     {
         return Step::make('Aturan & Waktu')
             ->icon('heroicon-o-clock')
-            ->description('Atur mode durasi, hari aktif, shift, dan jam istirahat.')
+            ->description('Atur hari operasional, jam masuk/pulang, dan jam istirahat.')
             ->schema([
                 Section::make('Aturan & Mode Waktu')
                     ->description('Pilih bagaimana mesin harus menghitung jam selesai perkuliahan.')
@@ -122,12 +138,8 @@ class JadwalGeneratorBatchForm
                         Radio::make('config_snapshot.mode_waktu')
                             ->label('Mode Penghitungan Durasi Kelas')
                             ->options([
-                                'dinamis' => 'Mode Dinamis SKS (jam selesai memanjang otomatis sesuai jumlah SKS)',
-                                'statis' => 'Mode Statis / Blok Kaku (waktu persis mengikuti blok jam di bawah)',
-                            ])
-                            ->descriptions([
-                                'dinamis' => 'Cocok kalau tiap mata kuliah bisa punya durasi berbeda.',
-                                'statis' => 'Cocok kalau semua kelas harus pas mengisi blok jam yang sama.',
+                                'dinamis' => 'Mode Dinamis SKS (jam selesai otomatis sesuai SKS)',
+                                'statis' => 'Mode Statis / Blok Kaku',
                             ])
                             ->default('dinamis')
                             ->live()
@@ -142,65 +154,106 @@ class JadwalGeneratorBatchForm
                             ->required(fn(Get $get) => $get('config_snapshot.mode_waktu') === 'dinamis'),
                     ])->columns(1),
 
-                Section::make('Hari & Shift')
-                    ->description('Tentukan hari aktif dan titik awal shift. Jangan masukkan rentang waktu istirahat di sini.')
-                    ->schema([
-                        CheckboxList::make('config_snapshot.hari')
-                            ->label('Hari Operasional')
-                            ->options([
-                                'Senin' => 'Senin',
-                                'Selasa' => 'Selasa',
-                                'Rabu' => 'Rabu',
-                                'Kamis' => 'Kamis',
-                                'Jumat' => 'Jumat',
-                                'Sabtu' => 'Sabtu',
-                            ])
-                            ->default(['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'])
-                            ->columns(3)
-                            ->required()
-                            ->helperText('Mesin akan meratakan beban di semua hari yang dicentang -- makin sedikit hari dicentang, makin padat tiap harinya.'),
+                // -- SETTING HARI DAN JAM OPERASIONAL --
+                Section::make('Hari & Jam Operasional')
+                    ->description('Tentukan hari aktif dan rentang waktu ketersediaan kampus. Matikan toggle jika kampus libur pada hari tersebut.')
+                    ->schema(self::getHariSchema()),
 
-                        Repeater::make('config_snapshot.slots')
-                            ->label('Titik Jam Masuk Kelas (Shift)')
-                            ->schema([
-                                TimePicker::make('mulai')->label('Jam Masuk')->seconds(false)->required(),
-                                TimePicker::make('selesai')
-                                    ->label(fn(Get $get) => $get('../../config_snapshot.mode_waktu') === 'statis' ? 'Jam Selesai' : 'Batas Tutup Shift')
-                                    ->seconds(false)
-                                    ->required(),
-                            ])
-                            ->default([
-                                ['mulai' => '08:00', 'selesai' => '09:30'],
-                                ['mulai' => '09:30', 'selesai' => '11:00'],
-                                ['mulai' => '11:00', 'selesai' => '12:30'],
-                                ['mulai' => '13:00', 'selesai' => '14:30'],
-                                ['mulai' => '14:30', 'selesai' => '16:00'],
-                            ])
-                            ->columns(2)
-                            ->collapsible()
-                            ->reorderable()
-                            ->addActionLabel('Tambah Shift')
-                            ->required(),
-                    ]),
-
+                // -- SETTING JAM ISTIRAHAT --
                 Section::make('Waktu Istirahat / Jeda')
-                    ->description('Mesin menolak menjadwalkan kelas yang durasinya menabrak atau memakan rentang jam ini.')
+                    ->description('Atur jam istirahat. Anda bisa membuat aturan istirahat yang berbeda untuk hari tertentu (misal: istirahat khusus hari Jumat).')
                     ->schema([
                         Repeater::make('config_snapshot.jam_istirahat')
                             ->hiddenLabel()
-                            ->addActionLabel('Tambah Jam Istirahat')
+                            ->addActionLabel('Tambah Aturan Istirahat')
                             ->schema([
-                                TimePicker::make('mulai')->label('Mulai Istirahat')->seconds(false)->required(),
-                                TimePicker::make('selesai')->label('Selesai Istirahat')->seconds(false)->required(),
+                                CheckboxList::make('hari')
+                                    ->label('Berlaku untuk Hari')
+                                    ->options([
+                                        'Senin' => 'Senin',
+                                        'Selasa' => 'Selasa',
+                                        'Rabu' => 'Rabu',
+                                        'Kamis' => 'Kamis',
+                                        'Jumat' => 'Jumat',
+                                        'Sabtu' => 'Sabtu',
+                                    ])
+                                    ->columns(3)
+                                    ->required(),
+
+                                Grid::make(2)->schema([
+                                    TimePicker::make('mulai')
+                                        ->label('Mulai Istirahat')
+                                        ->seconds(false)
+                                        ->required(),
+                                    TimePicker::make('selesai')
+                                        ->label('Selesai Istirahat')
+                                        ->seconds(false)
+                                        ->required(),
+                                ]),
                             ])
-                            ->default([['mulai' => '12:00', 'selesai' => '13:00']])
-                            ->columns(2)
+                            ->default([
+                                [
+                                    'hari' => ['Senin', 'Selasa', 'Rabu', 'Kamis'],
+                                    'mulai' => '12:00',
+                                    'selesai' => '13:00'
+                                ]
+                            ])
+                            ->columns(1)
                             ->collapsible()
                             ->required(),
                     ]),
+
+                Section::make('Aturan Transisi & Kenyamanan')
+                    ->description('Atur toleransi jeda antar kelas agar jadwal lebih manusiawi.')
+                    ->schema([
+                        \Filament\Forms\Components\TextInput::make('config_snapshot.menit_transisi')
+                            ->label('Jeda Pindah Kelas / Transisi (Menit)')
+                            ->numeric()
+                            ->default(10)
+                            ->suffix('menit')
+                            ->helperText('Waktu luang yang diberikan mesin setelah suatu kelas selesai agar ruang bisa dibersihkan atau mahasiswa/dosen bisa pindah ruangan.'),
+                    ])->columns(1),
             ]);
     }
+    protected static function getHariSchema(): array
+    {
+        $days = ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat', 'Sabtu'];
+        $schema = [];
 
+        foreach ($days as $day) {
+            // Preset jam selesai sesuai kebiasaan hari
+            $defaultSelesai = match ($day) {
+                'Jumat' => '14:00',
+                'Sabtu' => '14:00',
+                default => '16:00',
+            };
+
+            $schema[] = Grid::make(3)
+                ->schema([
+                    \Filament\Forms\Components\Toggle::make("config_snapshot.hari.{$day}.aktif")
+                        ->label("Hari {$day}")
+                        ->inline(false)
+                        ->default(true)
+                        ->live(), // Wajib live agar bisa trigger hide/show jam
+
+                    \Filament\Forms\Components\TimePicker::make("config_snapshot.hari.{$day}.mulai")
+                        ->label('Jam Mulai')
+                        ->seconds(false)
+                        ->default('08:00')
+                        ->visible(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif"))
+                        ->required(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif")),
+
+                    \Filament\Forms\Components\TimePicker::make("config_snapshot.hari.{$day}.selesai")
+                        ->label('Jam Selesai')
+                        ->seconds(false)
+                        ->default($defaultSelesai)
+                        ->visible(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif"))
+                        ->required(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif")),
+                ])->columnSpanFull();
+        }
+
+        return $schema;
+    }
     protected static function stepBobotDanRingkasan(): Step
     {
         $opsiTingkat = [
@@ -271,9 +324,9 @@ class JadwalGeneratorBatchForm
                 Section::make('Sebelum Anda lanjut')
                     ->icon('heroicon-o-information-circle')
                     ->schema([
-                        Placeholder::make('info_langkah_selanjutnya')
+                        TextEntry::make('info_langkah_selanjutnya')
                             ->hiddenLabel()
-                            ->content(new HtmlString(
+                            ->state(new HtmlString(
                                 '<div style="font-size:0.9rem; color:#4b5563;">'
                                     . 'Menyimpan pengaturan ini <b>belum</b> membuat jadwal apa pun. '
                                     . 'Setelah disimpan, Anda akan diarahkan ke halaman detail batch untuk menekan tombol '

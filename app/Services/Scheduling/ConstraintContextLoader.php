@@ -70,7 +70,6 @@ class ConstraintContextLoader
     }
 
     /**
-     * Sumber 2 (BARU -- perbaikan bug B1): jadwal hasil batch LAIN yang masih
      * aktif (PREVIEW atau RUNNING, artinya belum di-publish dan belum
      * ditolak/reset) untuk tahun akademik yang sama. Batch yang sudah
      * COMMITTED tidak perlu diambil di sini karena datanya sudah pindah ke

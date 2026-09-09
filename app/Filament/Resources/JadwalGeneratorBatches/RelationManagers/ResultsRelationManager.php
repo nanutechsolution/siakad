@@ -13,6 +13,7 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TimePicker;
 use Filament\Schemas\Components\Grid;
+use Filament\Tables\Filters\SelectFilter;
 use Illuminate\Support\HtmlString;
 
 class ResultsRelationManager extends RelationManager
@@ -24,19 +25,23 @@ class ResultsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
-            ->description('Draf jadwal hasil komputasi mesin. Periksa jika ada baris berstatus Gagal, perbaiki data masternya, lalu tekan "Generate Ulang".')
-            ->defaultSort('is_success', 'asc') // Selalu tampilkan yang GAGAL di urutan teratas
+            ->description(
+                'Draf jadwal hasil komputasi mesin. Periksa baris yang berstatus ' .
+                    '"Perlu Penyesuaian", "Gagal Master", atau "Konflik Kritis", ' .
+                    'perbaiki data yang diperlukan, lalu tekan "Generate Ulang".'
+            )
+            ->defaultSort(function ($query) {
+                $query->orderByRaw("
+            CASE status
+                WHEN 'critical_conflict' THEN 1
+                WHEN 'master_failure' THEN 2
+                WHEN 'needs_adjustment' THEN 3
+                WHEN 'success' THEN 4
+                ELSE 5
+            END
+        ");
+            }) // Selalu tampilkan yang GAGAL di urutan teratas
             ->columns([
-                IconColumn::make('is_success')
-                    ->label('Status')
-                    ->boolean()
-                    ->trueIcon('heroicon-o-check-circle')
-                    ->falseIcon('heroicon-o-x-circle')
-                    ->trueColor('success')
-                    ->falseColor('danger')
-                    ->alignCenter(),
-
-                // 1. INFO MATA KULIAH, SKS, & PRODI
                 TextColumn::make('mataKuliah.nama_mk')
                     ->label('Mata Kuliah & Prodi')
                     ->weight('bold')
@@ -83,8 +88,10 @@ class ResultsRelationManager extends RelationManager
                 TextColumn::make('hari')
                     ->label('Alokasi Jadwal & Ruang')
                     ->formatStateUsing(function ($record) {
-                        if (!$record->is_success) {
-                            return new HtmlString('<span style="color: #ef4444; font-weight: bold;">❌ Belum Dapat Slot</span>');
+                        if ($record->status !== 'success') {
+                            return new HtmlString(
+                                '<span style="color: #f59e0b; font-weight: bold;">⚠️ Belum Mendapat Slot</span>'
+                            );
                         }
 
                         $mulai = $record->jam_mulai ? Carbon::parse($record->jam_mulai)->format('H:i') : '--:--';
@@ -104,13 +111,27 @@ class ResultsRelationManager extends RelationManager
                     }),
 
                 // 5. KETERANGAN / ANALISIS
-                TextColumn::make('failure_reason')
-                    ->label('Analisis Mesin')
-                    ->color(fn($record) => $record->is_success ? 'success' : 'danger')
+                TextColumn::make('status')
+                    ->label('Status & Keterangan')
+                    ->badge()
+                    ->formatStateUsing(fn(?string $state): string => match ($state) {
+                        'success' => 'BERHASIL',
+                        'needs_adjustment' => 'PERLU PENYESUAIAN',
+                        'master_failure' => 'GAGAL MASTER',
+                        'critical_conflict' => 'KONFLIK KRITIS',
+                        default => 'BELUM DIANALISIS',
+                    })
+                    ->color(fn(?string $state): string => match ($state) {
+                        'success' => 'success',
+                        'needs_adjustment' => 'warning',
+                        'master_failure' => 'danger',
+                        'critical_conflict' => 'danger',
+                        default => 'gray',
+                    })
+                    ->description(fn($record) => $record->failure_reason ?: 'Jadwal berhasil ditemukan.')
                     ->wrap()
-                    ->formatStateUsing(fn($record) => $record->is_success ? '✅ Sempurna' : $record->failure_reason)
-                    ->copyable(fn($record) => !$record->is_success)
-                    ->copyMessage('Analisis disalin!'),
+                    ->alignCenter()
+                    ->sortable(),
 
                 // 6. SKOR KUALITAS (BARU -- dari CandidateScorer + LocalSearchOptimizer,
                 // sebelumnya dihitung dan disimpan ke optimization_score tapi tidak
@@ -119,7 +140,6 @@ class ResultsRelationManager extends RelationManager
                     ->label('Skor')
                     ->badge()
                     ->alignCenter()
-                    ->visible(fn($record) => $record?->is_success)
                     ->color(fn(?int $state): string => match (true) {
                         $state === null => 'gray',
                         $state >= 80 => 'success',
@@ -130,11 +150,14 @@ class ResultsRelationManager extends RelationManager
                     ->tooltip('Seberapa baik slot ini dibanding kandidat lain yang tersedia (0-100, makin tinggi makin merata bebannya).'),
             ])
             ->filters([
-                TernaryFilter::make('is_success')
-                    ->label('Status Plotting')
-                    ->placeholder('Semua Jadwal')
-                    ->trueLabel('Hanya yang Berhasil')
-                    ->falseLabel('Hanya yang Gagal (Butuh Perbaikan)'),
+                SelectFilter::make('status')
+                    ->label('Status')
+                    ->options([
+                        'success' => 'BERHASIL',
+                        'needs_adjustment' => 'PERLU PENYESUAIAN',
+                        'master_failure' => 'GAGAL MASTER',
+                        'critical_conflict' => 'KONFLIK KRITIS',
+                    ])
             ])
             ->headerActions([])
 

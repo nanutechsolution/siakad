@@ -118,9 +118,20 @@ class JadwalGeneratorEngine
 
     protected function simpanHasil(array $assigned, array $failed, array $preFailures): void
     {
-        $skorMentahMaks = empty($assigned) ? 0.0 : max(array_map(fn($a) => $a['candidate']->skor, $assigned));
+        $skorMentahMaks = empty($assigned)
+            ? 0.0
+            : max(array_map(
+                fn($a) => $a['candidate']->skor,
+                $assigned
+            ));
+
         $qualityScorer = new QualityScorer();
 
+        /*
+     * ============================================================
+     * HASIL BERHASIL
+     * ============================================================
+     */
         foreach ($assigned as $entry) {
             $item = $entry['item'];
             $c = $entry['candidate'];
@@ -132,17 +143,40 @@ class JadwalGeneratorEngine
                 'dosen_pengampu_ids' => $item->dosenPengampuRowIds,
                 'sks_real' => $item->sksTotal,
                 'estimasi_kapasitas_dibutuhkan' => $item->kapasitasDibutuhkan,
+
                 'is_success' => true,
+                'status' => 'success',
+                'failure_code' => null,
+
+                /*
+             * roomNote digunakan sebagai keterangan hasil.
+             *
+             * Contoh:
+             * "Ruang pilihan admin 'R-101' penuh pada slot ini.
+             *  Sistem otomatis memilih ruang alternatif."
+             */
+                'failure_reason' => $c->roomNote,
+
                 'hari' => $c->hari,
                 'jam_mulai' => $c->jamMulai,
                 'jam_selesai' => $c->jamSelesai,
                 'ruang_id' => $c->ruangId,
-                'optimization_score' => $qualityScorer->skorAssignment($c->skor, $skorMentahMaks),
+
+                'optimization_score' => $qualityScorer->skorAssignment(
+                    $c->skor,
+                    $skorMentahMaks
+                ),
             ]);
         }
 
+        /*
+     * ============================================================
+     * HASIL GAGAL / PERLU PENYESUAIAN
+     * ============================================================
+     */
         foreach ($failed as $entry) {
             $item = $entry['item'];
+
             JadwalGeneratorResult::create([
                 'batch_id' => $this->batch->id,
                 'mata_kuliah_id' => $item->mataKuliahId,
@@ -150,11 +184,25 @@ class JadwalGeneratorEngine
                 'dosen_pengampu_ids' => $item->dosenPengampuRowIds,
                 'sks_real' => $item->sksTotal,
                 'estimasi_kapasitas_dibutuhkan' => $item->kapasitasDibutuhkan,
+
                 'is_success' => false,
-                'failure_reason' => $entry['reason'],
+                'status' => $entry['status'] ?? 'needs_adjustment',
+                'failure_code' => $entry['failure_code'] ?? null,
+                'failure_reason' => $entry['reason'] ?? null,
+
+                'hari' => null,
+                'jam_mulai' => null,
+                'jam_selesai' => null,
+                'ruang_id' => null,
+                'optimization_score' => null,
             ]);
         }
 
+        /*
+     * ============================================================
+     * PRE-FAILURE / MASTER FAILURE
+     * ============================================================
+     */
         foreach ($preFailures as $pf) {
             JadwalGeneratorResult::create([
                 'batch_id' => $this->batch->id,
@@ -163,8 +211,17 @@ class JadwalGeneratorEngine
                 'dosen_pengampu_ids' => $pf['dosen_pengampu_ids'],
                 'sks_real' => $pf['sks_real'],
                 'estimasi_kapasitas_dibutuhkan' => $pf['estimasi_kapasitas_dibutuhkan'],
+
                 'is_success' => false,
-                'failure_reason' => $pf['reason'],
+                'status' => 'master_failure',
+                'failure_code' => $pf['failure_code'] ?? null,
+                'failure_reason' => $pf['reason'] ?? null,
+
+                'hari' => null,
+                'jam_mulai' => null,
+                'jam_selesai' => null,
+                'ruang_id' => null,
+                'optimization_score' => null,
             ]);
         }
     }

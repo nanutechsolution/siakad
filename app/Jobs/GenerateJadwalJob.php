@@ -27,24 +27,54 @@ class GenerateJadwalJob implements ShouldQueue
 
     public function handle(): void
     {
-        // 1. Cari data Batch
         $batch = JadwalGeneratorBatch::find($this->batchId);
 
-        if (!$batch) return;
+        if (!$batch) {
+            Log::warning('GenerateJadwalJob: Batch tidak ditemukan', [
+                'batch_id' => $this->batchId,
+            ]);
+
+            return;
+        }
+
+        Log::info('GenerateJadwalJob: MULAI', [
+            'batch_id' => $batch->id,
+            'tahun_akademik_id' => $batch->tahun_akademik_id,
+            'prodi_id' => $batch->prodi_id,
+            'kampus_id' => $batch->kampus_id,
+        ]);
 
         try {
-            // 2. Panggil Mesin Jadwal seperti biasa
             $engine = new JadwalGeneratorEngine($batch);
 
-            // Di dalam execute() ini, status otomatis akan diubah menjadi 'PREVIEW' saat selesai
+            Log::info('GenerateJadwalJob: Engine dibuat', [
+                'batch_id' => $batch->id,
+            ]);
+
             $engine->execute();
-        } catch (\Exception $e) {
-            // 3. Fallback Keselamatan: Jika mesin error (crash/memori penuh), kembalikan status ke FAILED
+
+            Log::info('GenerateJadwalJob: SELESAI', [
+                'batch_id' => $batch->id,
+                'status' => $batch->fresh()->status,
+                'total_generated' => $batch->fresh()->total_generated,
+                'total_failed' => $batch->fresh()->total_failed,
+            ]);
+        } catch (\Throwable $e) {
+            Log::error('GenerateJadwalJob: EXCEPTION', [
+                'batch_id' => $batch->id,
+                'exception' => get_class($e),
+                'message' => $e->getMessage(),
+                'file' => $e->getFile(),
+                'line' => $e->getLine(),
+                'trace' => $e->getTraceAsString(),
+            ]);
+
             $batch->update([
                 'status' => 'FAILED',
                 'failure_reason' => 'Server Crash: ' . $e->getMessage(),
             ]);
-            Log::error('Jadwal Generator Error: ' . $e->getMessage());
+
+            throw $e;
         }
     }
 }

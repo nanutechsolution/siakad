@@ -11,5 +11,11 @@ class Candidate
         public int $ruangId,
         public int $kapasitasRuang,
         public float $skor = 0.0,
+
+        // normal | preferred_fallback
+        public string $roomSource = 'normal',
+
+        // Keterangan jika menggunakan ruang alternatif.
+        public ?string $roomNote = null,
     ) {}
 }
