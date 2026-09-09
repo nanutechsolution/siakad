@@ -81,6 +81,7 @@ class DemandCollector
         $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0 ? $kapasitasDibutuhkan : ($firstItem->kelas->kapasitas ?? 40);
 
         $kurikulumMK = $this->getKurikulumMataKuliahForKelas($mkId, $firstItem->kelas);
+
         // item yang tidak punya definisi kurikulum langsung dicatat sebagai
         // pre-failure yang jelas, bukan dijadwalkan dengan durasi tebakan. ---
         if (!$kurikulumMK) {
