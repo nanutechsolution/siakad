@@ -26,7 +26,7 @@ class KurikulumMataKuliahResource extends Resource
     protected static ?string $modelLabel = 'Pemetaan MK Kurikulum';
     protected static ?string $pluralModelLabel = 'Pemetaan Mata Kuliah';
     protected static ?int $navigationSort = 5;
-
+    
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMap;
     public static function form(Schema $schema): Schema
     {
@@ -52,6 +52,8 @@ class KurikulumMataKuliahResource extends Resource
     {
         return [
             'index' => ListKurikulumMataKuliahs::route('/'),
+            'create' => CreateKurikulumMataKuliah::route('/create'),
+            'edit' => EditKurikulumMataKuliah::route('/{record}/edit'),
         ];
     }
 }
