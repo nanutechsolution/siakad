@@ -111,6 +111,23 @@ class ResultsRelationManager extends RelationManager
                     ->formatStateUsing(fn($record) => $record->is_success ? '✅ Sempurna' : $record->failure_reason)
                     ->copyable(fn($record) => !$record->is_success)
                     ->copyMessage('Analisis disalin!'),
+
+                // 6. SKOR KUALITAS (BARU -- dari CandidateScorer + LocalSearchOptimizer,
+                // sebelumnya dihitung dan disimpan ke optimization_score tapi tidak
+                // pernah ditampilkan di UI mana pun)
+                TextColumn::make('optimization_score')
+                    ->label('Skor')
+                    ->badge()
+                    ->alignCenter()
+                    ->visible(fn($record) => $record?->is_success)
+                    ->color(fn(?int $state): string => match (true) {
+                        $state === null => 'gray',
+                        $state >= 80 => 'success',
+                        $state >= 60 => 'warning',
+                        default => 'danger',
+                    })
+                    ->formatStateUsing(fn(?int $state) => $state !== null ? $state : '-')
+                    ->tooltip('Seberapa baik slot ini dibanding kandidat lain yang tersedia (0-100, makin tinggi makin merata bebannya).'),
             ])
             ->filters([
                 TernaryFilter::make('is_success')
@@ -173,6 +190,8 @@ class ResultsRelationManager extends RelationManager
                             // PENTING: Jika sebelumnya gagal, ubah statusnya jadi SUKSES!
                             'is_success' => true,
                             'failure_reason' => '🛠️ Diintervensi Manual oleh Operator',
+                            // Skor dikosongkan karena ini bukan hasil mesin lagi
+                            'optimization_score' => null,
                         ]);
 
                         return $record;

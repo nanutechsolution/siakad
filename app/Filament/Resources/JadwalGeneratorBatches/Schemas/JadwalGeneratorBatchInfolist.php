@@ -1,184 +1,75 @@
 <?php
 
-namespace App\Filament\Resources\JadwalGeneratorBatches\Pages;
+namespace App\Filament\Resources\JadwalGeneratorBatches\Schemas;
 
-use App\Filament\Resources\JadwalGeneratorBatches\JadwalGeneratorBatchResource;
-use App\Models\DosenPengampu;
-use App\Models\JadwalKuliah;
-use App\Models\JadwalKuliahDosen;
-use Exception;
-use Filament\Actions\Action;
-use Filament\Notifications\Notification;
-use Filament\Resources\Pages\ViewRecord;
-use Illuminate\Support\Facades\DB;
+use Filament\Schemas\Schema;
+use Filament\Infolists\Components\TextEntry;
+use Filament\Infolists\Components\RepeatableEntry;
+use Filament\Schemas\Components\Section;
 
-class ViewJadwalGeneratorBatch extends ViewRecord
+class JadwalGeneratorBatchInfolist
 {
-    protected static string $resource = JadwalGeneratorBatchResource::class;
-
-    protected function getHeaderActions(): array
+    public static function configure(Schema $schema): Schema
     {
-        return [
-            Action::make('generate')
-                ->label('Mulai Generate / Re-Generate Jadwal')
-                ->icon('heroicon-o-cpu-chip')
-                ->color('primary')
-                ->requiresConfirmation()
-                ->modalHeading('Mulai Proses Komputasi Skala Besar?')
-                ->modalDescription('Karena memproses ratusan jadwal membutuhkan waktu, sistem akan mengerjakannya di latar belakang. Anda bisa merefresh halaman nanti untuk melihat hasilnya. Mesin akan otomatis mempertimbangkan jadwal batch lain yang masih aktif (belum publish) di tahun akademik ini, jadi urutan generate antar prodi tidak menyebabkan bias.')
-                ->hidden(fn($record) => in_array($record->status, ['RUNNING', 'COMMITTED']))
-                ->action(function ($record) {
+        return $schema
+            ->components([
+                Section::make('Informasi Eksekusi')
+                    ->schema([
+                        TextEntry::make('tahunAkademik.nama_tahun')
+                            ->label('Tahun Akademik'),
 
-                    // 1. Bersihkan draf lama dan ubah status ke RUNNING
-                    $record->results()->delete();
-                    $record->update([
-                        'status' => 'RUNNING',
-                        'total_generated' => 0,
-                        'total_failed' => 0,
-                        'quality_score' => null,
-                        'quality_summary' => null,
-                    ]);
+                        TextEntry::make('prodi.nama_prodi')
+                            ->label('Program Studi'),
 
-                    // 2. KEMBALI KE MODE ENTERPRISE: Lempar ke Antrean!
-                    \App\Jobs\GenerateJadwalJob::dispatch($record->id);
+                        TextEntry::make('status')
+                            ->badge()
+                            ->color(fn(string $state): string => match ($state) {
+                                'RUNNING' => 'warning',
+                                'PREVIEW' => 'info',
+                                'COMMITTED' => 'success',
+                                'FAILED' => 'danger',
+                                default => 'gray',
+                            }),
 
-                    // 3. Notifikasi bahwa tugas sudah dititipkan
-                    Notification::make()
-                        ->title('Tugas Masuk ke Antrean Server!')
-                        ->body('Server sedang memproses jadwal di latar belakang. Status saat ini RUNNING.')
-                        ->success()
-                        ->send();
-                }),
+                        TextEntry::make('created_at')
+                            ->label('Waktu Generate')
+                            ->dateTime('d M Y, H:i'),
+                    ])->columns(4),
 
-            // --- 2. TOMBOL DARURAT: RESET STATUS ---
-            Action::make('reset_status')
-                ->label('Tersangkut? Force Reset Status')
-                ->icon('heroicon-o-arrow-path')
-                ->color('danger')
-                ->requiresConfirmation()
-                ->modalHeading('Reset Status ke Draf?')
-                ->modalDescription('Gunakan ini hanya jika status terus-menerus RUNNING selama berjam-jam.')
-                ->visible(fn($record) => $record->status === 'RUNNING')
-                ->action(function ($record) {
-                    $record->update([
-                        'status' => 'PREVIEW', // Kita set ke PREVIEW agar tombol Generate bisa muncul lagi
-                        'failure_reason' => 'Di-reset paksa oleh admin karena tersangkut.'
-                    ]);
-                    Notification::make()->title('Status berhasil di-reset!')->success()->send();
-                }),
+                Section::make('Statistik Hasil Penjadwalan')
+                    ->schema([
+                        TextEntry::make('total_generated')
+                            ->label('Berhasil Dijadwalkan')
+                            ->badge()
+                            ->color('success'),
 
-            // --- 3. TOMBOL FINAL: PUBLISH KE SIAKAD ---
-            Action::make('approveAndPublish')
-                ->label('Approve & Publish ke SIAKAD')
-                ->icon('heroicon-o-check-badge')
-                ->color('success')
-                ->requiresConfirmation()
-                ->modalHeading('Publish Jadwal ke SIAKAD')
-                ->modalDescription(function ($record) {
-                    // --- BARU: tampilkan quality_score di modal supaya operator
-                    // punya bahan pertimbangan sebelum publish, bukan cuma
-                    // total_generated/total_failed. ---
-                    $skorInfo = filled($record->quality_score)
-                        ? "\n\n📊 Skor kualitas batch ini: " . number_format($record->quality_score, 1) . " / 100"
-                        . ($record->quality_score < 60 ? " -- tergolong RENDAH, pertimbangkan cek dulu distribusi jadwalnya di tab Preview sebelum publish." : ".")
-                        : '';
+                        TextEntry::make('total_failed')
+                            ->label('Gagal Plotting (Bentrok/Ruang Penuh)')
+                            ->badge()
+                            ->color('danger'),
+                    ])->columns(2),
 
-                    return "Apakah Anda yakin jadwal ini sudah final? \n\n" .
-                        "⚠️ PERHATIAN: Sistem akan otomatis menghapus jadwal lama pada kelas yang sama (Anti-Duplikat), " .
-                        "KECUALI jadwal yang sudah ditandai 'Terkunci' (Locked) di lapangan. Jadwal yang terkunci akan dipertahankan."
-                        . $skorInfo;
-                })
-                ->visible(fn() => $this->record->status === 'PREVIEW')
-                ->action(function () {
-                    $this->commitToProduction();
-                }),
-        ];
-    }
+                Section::make('Konfigurasi Parameter Mesin (Snapshot)')
+                    ->collapsed()
+                    ->description('Pengaturan jam dan hari yang digunakan mesin saat jadwal ini di-generate.')
+                    ->schema([
+                        TextEntry::make('config_snapshot.hari')
+                            ->label('Hari Operasional')
+                            ->badge()
+                            ->color('gray')
+                            ->formatStateUsing(fn($state) => is_array($state) ? implode(', ', $state) : $state),
 
-    /**
-     * Memindahkan data dari Sandbox (Results) ke Production (Jadwal Kuliah)
-     */
-    protected function commitToProduction(): void
-    {
-        DB::beginTransaction();
-
-        try {
-            $results = $this->record->results()->where('is_success', true)->get();
-
-            if ($results->isEmpty()) {
-                throw new Exception("Tidak ada jadwal sukses yang bisa dipublish.");
-            }
-
-            // Bersihkan jadwal lama (Anti-Duplikat)
-            $kelasIdsInBatch = $results->pluck('kelas_id')->unique()->toArray();
-
-            $existingJadwals = JadwalKuliah::where('tahun_akademik_id', $this->record->tahun_akademik_id)
-                ->whereIn('kelas_id', $kelasIdsInBatch)
-                ->where('is_locked', false)
-                ->get();
-
-            foreach ($existingJadwals as $jadwalLama) {
-                JadwalKuliahDosen::where('jadwal_kuliah_id', $jadwalLama->id)->delete();
-                $jadwalLama->delete();
-            }
-
-            // Simpan jadwal baru 
-            foreach ($results as $result) {
-                $isAlreadyLocked = JadwalKuliah::where('kelas_id', $result->kelas_id)
-                    ->where('mata_kuliah_id', $result->mata_kuliah_id)
-                    ->where('is_locked', true)
-                    ->exists();
-
-                if ($isAlreadyLocked) continue;
-
-                $jadwalBaru = JadwalKuliah::create([
-                    'tahun_akademik_id' => $this->record->tahun_akademik_id,
-                    'mata_kuliah_id' => $result->mata_kuliah_id,
-                    'kelas_id' => $result->kelas_id,
-                    'ruang_id' => $result->ruang_id,
-                    'hari' => $result->hari,
-                    'jam_mulai' => $result->jam_mulai,
-                    'jam_selesai' => $result->jam_selesai,
-                    'kuota_kelas' => $result->estimasi_kapasitas_dibutuhkan,
-                    'is_locked' => false,
-                ]);
-
-                $dosenPengampuIds = $result->dosen_pengampu_ids ?? [];
-
-                if (!empty($dosenPengampuIds)) {
-                    $pengampus = DosenPengampu::whereIn('id', $dosenPengampuIds)->get();
-
-                    foreach ($pengampus as $pengampu) {
-                        JadwalKuliahDosen::create([
-                            'jadwal_kuliah_id' => $jadwalBaru->id,
-                            'dosen_id' => $pengampu->dosen_id,
-                            'is_koordinator' => $pengampu->is_koordinator,
-                            'is_penilai' => true,
-                        ]);
-                    }
-                }
-            }
-
-            $this->record->update(['status' => 'COMMITTED']);
-            DB::commit();
-
-            Notification::make()
-                ->title('Berhasil Publish')
-                ->body('Jadwal berhasil diperbarui. Jadwal lama yang tidak terkunci telah digantikan.')
-                ->success()
-                ->send();
-
-            redirect(request()->header('Referer')); // Auto-refresh setelah publish
-
-        } catch (Exception $e) {
-            DB::rollBack();
-
-            Notification::make()
-                ->title('Gagal Publish')
-                ->body('Terjadi kesalahan sistem: ' . $e->getMessage())
-                ->danger()
-                ->persistent()
-                ->send();
-        }
+                        RepeatableEntry::make('config_snapshot.slots')
+                            ->label('Blok Waktu Aktif')
+                            ->schema([
+                                TextEntry::make('mulai')
+                                    ->label('Mulai'),
+                                TextEntry::make('selesai')
+                                    ->label('Selesai'),
+                            ])
+                            ->columns(2)
+                            ->grid(3), // Menampilkan slot ke dalam bentuk grid agar ringkas
+                    ])->columns(1),
+            ]);
     }
 }

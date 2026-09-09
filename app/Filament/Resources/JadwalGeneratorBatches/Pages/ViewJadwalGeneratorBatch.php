@@ -30,13 +30,19 @@ class ViewJadwalGeneratorBatch extends ViewRecord
                 ->color('primary')
                 ->requiresConfirmation()
                 ->modalHeading('Mulai Proses Komputasi Skala Besar?')
-                ->modalDescription('Karena memproses ratusan jadwal membutuhkan waktu, sistem akan mengerjakannya di latar belakang. Anda bisa merefresh halaman nanti untuk melihat hasilnya.')
+                ->modalDescription('Karena memproses ratusan jadwal membutuhkan waktu, sistem akan mengerjakannya di latar belakang. Anda bisa merefresh halaman nanti untuk melihat hasilnya. Mesin akan otomatis mempertimbangkan jadwal batch lain yang masih aktif (belum publish) di tahun akademik ini, jadi urutan generate antar prodi tidak menyebabkan bias.')
                 ->hidden(fn($record) => in_array($record->status, ['RUNNING', 'COMMITTED']))
                 ->action(function ($record) {
 
                     // 1. Bersihkan draf lama dan ubah status ke RUNNING
                     $record->results()->delete();
-                    $record->update(['status' => 'RUNNING', 'total_generated' => 0, 'total_failed' => 0]);
+                    $record->update([
+                        'status' => 'RUNNING',
+                        'total_generated' => 0,
+                        'total_failed' => 0,
+                        'quality_score' => null,
+                        'quality_summary' => null,
+                    ]);
 
                     // 2. KEMBALI KE MODE ENTERPRISE: Lempar ke Antrean!
                     \App\Jobs\GenerateJadwalJob::dispatch($record->id);
@@ -73,10 +79,19 @@ class ViewJadwalGeneratorBatch extends ViewRecord
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('Publish Jadwal ke SIAKAD')
-                ->modalDescription(function () {
+                ->modalDescription(function ($record) {
+                    // --- BARU: tampilkan quality_score di modal supaya operator
+                    // punya bahan pertimbangan sebelum publish, bukan cuma
+                    // total_generated/total_failed. ---
+                    $skorInfo = filled($record->quality_score)
+                        ? "\n\n📊 Skor kualitas batch ini: " . number_format($record->quality_score, 1) . " / 100"
+                        . ($record->quality_score < 60 ? " -- tergolong RENDAH, pertimbangkan cek dulu distribusi jadwalnya di tab Preview sebelum publish." : ".")
+                        : '';
+
                     return "Apakah Anda yakin jadwal ini sudah final? \n\n" .
                         "⚠️ PERHATIAN: Sistem akan otomatis menghapus jadwal lama pada kelas yang sama (Anti-Duplikat), " .
-                        "KECUALI jadwal yang sudah ditandai 'Terkunci' (Locked) di lapangan. Jadwal yang terkunci akan dipertahankan.";
+                        "KECUALI jadwal yang sudah ditandai 'Terkunci' (Locked) di lapangan. Jadwal yang terkunci akan dipertahankan."
+                        . $skorInfo;
                 })
                 ->visible(fn() => $this->record->status === 'PREVIEW')
                 ->action(function () {
