@@ -1,0 +1,82 @@
+<?php
+
+namespace App\Services\Scheduling;
+
+use App\Services\Scheduling\Support\Candidate;
+use App\Services\Scheduling\Support\DemandItem;
+use App\Services\Scheduling\Support\ScheduleTracker;
+
+class CandidateScorer
+{
+    /**
+     * Bobot default -- bisa dipindah ke config_snapshot kalau nanti mau
+     * dikontrol dari form Filament tanpa deploy ulang.
+     */
+    protected array $bobot = [
+        'distribusi_hari' => 3.0,
+        'distribusi_slot' => 2.0,
+        'distribusi_dosen' => 2.5,
+        'fit_kapasitas' => 2.0,
+        'distribusi_ruang' => 1.5,
+        'fairness_prodi' => 1.5,
+    ];
+
+    public function __construct(
+        protected array $hariOperasional,
+        protected array $slotMulaiList,
+    ) {
+    }
+
+    /** Mengisi Candidate::$skor pada setiap kandidat (skor lebih KECIL = lebih baik). */
+    public function scoreAll(array $candidates, DemandItem $item, ScheduleTracker $tracker): array
+    {
+        foreach ($candidates as $c) {
+            $c->skor = $this->score($c, $item, $tracker);
+        }
+
+        usort($candidates, fn (Candidate $a, Candidate $b) => $a->skor <=> $b->skor);
+
+        return $candidates;
+    }
+
+    protected function score(Candidate $c, DemandItem $item, ScheduleTracker $tracker): float
+    {
+        $skor = 0.0;
+
+        // Distribusi hari: makin di atas rata-rata beban hari itu, makin dihindari
+        $rataHari = $tracker->rataRataBebanHari($this->hariOperasional);
+        $skor += $this->bobot['distribusi_hari'] * $this->deviasiRelatif($tracker->bebanHari($c->hari), $rataHari);
+
+        // Distribusi slot
+        $rataSlot = $tracker->rataRataBebanSlot($this->hariOperasional, $this->slotMulaiList);
+        $skor += $this->bobot['distribusi_slot'] * $this->deviasiRelatif($tracker->bebanSlot($c->hari, $c->jamMulai), $rataSlot);
+
+        // Distribusi beban dosen per hari (rata-rata dari SEMUA dosen di item ini)
+        foreach ($item->dosenIds as $dId) {
+            $rataDosen = $tracker->rataRataBebanDosen($dId, $this->hariOperasional);
+            $skor += ($this->bobot['distribusi_dosen'] / max(count($item->dosenIds), 1))
+                * $this->deviasiRelatif($tracker->bebanDosenHari($dId, $c->hari), $rataDosen);
+        }
+
+        // Fit kapasitas: hindari ruang jauh lebih besar dari kebutuhan (soft #6, req #7)
+        $selisih = $c->kapasitasRuang - $item->kapasitasDibutuhkan;
+        $skor += $this->bobot['fit_kapasitas'] * min($selisih / max($item->kapasitasDibutuhkan, 1), 3.0);
+
+        // Distribusi pemakaian ruang
+        $rataRuang = $tracker->rataRataBebanRuang([$c->ruangId]);
+        $skor += $this->bobot['distribusi_ruang'] * $this->deviasiRelatif($tracker->bebanRuang($c->ruangId), $rataRuang);
+
+        // Fairness antar prodi: hindari prodi ini "memborong" hari yang sama terus-menerus
+        $skor += $this->bobot['fairness_prodi'] * $tracker->bebanProdiHari($item->kelasProdiId, $c->hari) * 0.5;
+
+        return $skor;
+    }
+
+    protected function deviasiRelatif(float $nilai, float $rata): float
+    {
+        if ($rata <= 0) {
+            return $nilai > 0 ? 1.0 : 0.0;
+        }
+        return max(($nilai - $rata) / $rata, 0);
+    }
+}
