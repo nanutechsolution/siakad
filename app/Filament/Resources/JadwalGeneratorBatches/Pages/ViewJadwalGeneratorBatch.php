@@ -171,17 +171,4 @@ class ViewJadwalGeneratorBatch extends ViewRecord
                 ->send();
         }
     }
-
-    protected function getFooterWidgets(): array
-    {
-        return [
-            // \App\Filament\Resources\JadwalGeneratorBatches\Widgets\NativeCalendarWidget::class,
-        ];
-    }
-
-    // Pastikan widget mendapatkan lebar penuh (full-width)
-    public function getFooterWidgetsColumns(): int | array
-    {
-        return 1;
-    }
 }
