@@ -208,7 +208,7 @@ class JadwalGeneratorEngine
                 'jam_mulai' => null,
                 'jam_selesai' => null,
                 'ruang_id' => null,
-                'optimization_score' => null,
+                'optimization_score' => 0,
             ]);
         }
 
@@ -235,7 +235,7 @@ class JadwalGeneratorEngine
                 'jam_mulai' => null,
                 'jam_selesai' => null,
                 'ruang_id' => null,
-                'optimization_score' => null,
+                'optimization_score' => 0,
             ]);
         }
     }
