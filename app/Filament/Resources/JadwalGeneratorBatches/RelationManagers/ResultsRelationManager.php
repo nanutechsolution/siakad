@@ -25,6 +25,7 @@ class ResultsRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->poll(fn($livewire) => $livewire->getOwnerRecord()->status === 'RUNNING' ? '2s' : null)
             ->description(
                 'Draf jadwal hasil komputasi mesin. Periksa baris yang berstatus ' .
                     '"Perlu Penyesuaian", "Gagal Master", atau "Konflik Kritis", ' .

@@ -5,6 +5,7 @@ namespace App\Services\Scheduling;
 use App\Services\Scheduling\Support\Candidate;
 use App\Services\Scheduling\Support\DemandItem;
 use App\Services\Scheduling\Support\ScheduleTracker;
+use Carbon\Carbon;
 
 class CandidateScorer
 {
@@ -19,22 +20,38 @@ class CandidateScorer
         'fit_kapasitas' => 2.0,
         'distribusi_ruang' => 1.5,
         'fairness_prodi' => 1.5,
+        'preferensi_pagi' => 50.0,
     ];
+
+    protected array $slotMulaiList = [];
 
     public function __construct(
         protected array $hariOperasional,
-        protected array $slotMulaiList,
+        protected array $jamOperasional,
     ) {
+        $slots = [];
+
+        foreach ($this->jamOperasional as $ops) {
+            $start = Carbon::parse($ops['mulai'] ?? '08:00');
+            $end = Carbon::parse($ops['selesai'] ?? '16:00');
+
+            while ($start->lessThan($end)) {
+                $slots[] = $start->format('H:i');
+                $start->addMinutes(15);
+            }
+        }
+
+        $this->slotMulaiList = array_values(array_unique($slots));
+        sort($this->slotMulaiList);
     }
 
-    /** Mengisi Candidate::$skor pada setiap kandidat (skor lebih KECIL = lebih baik). */
     public function scoreAll(array $candidates, DemandItem $item, ScheduleTracker $tracker): array
     {
         foreach ($candidates as $c) {
             $c->skor = $this->score($c, $item, $tracker);
         }
 
-        usort($candidates, fn (Candidate $a, Candidate $b) => $a->skor <=> $b->skor);
+        usort($candidates, fn(Candidate $a, Candidate $b) => $a->skor <=> $b->skor);
 
         return $candidates;
     }
@@ -47,7 +64,7 @@ class CandidateScorer
         $rataHari = $tracker->rataRataBebanHari($this->hariOperasional);
         $skor += $this->bobot['distribusi_hari'] * $this->deviasiRelatif($tracker->bebanHari($c->hari), $rataHari);
 
-        // Distribusi slot
+        // Distribusi slot (Sekarang berbasis kelipatan 15 menit)
         $rataSlot = $tracker->rataRataBebanSlot($this->hariOperasional, $this->slotMulaiList);
         $skor += $this->bobot['distribusi_slot'] * $this->deviasiRelatif($tracker->bebanSlot($c->hari, $c->jamMulai), $rataSlot);
 
@@ -58,7 +75,7 @@ class CandidateScorer
                 * $this->deviasiRelatif($tracker->bebanDosenHari($dId, $c->hari), $rataDosen);
         }
 
-        // Fit kapasitas: hindari ruang jauh lebih besar dari kebutuhan (soft #6, req #7)
+        // Fit kapasitas: hindari ruang jauh lebih besar dari kebutuhan
         $selisih = $c->kapasitasRuang - $item->kapasitasDibutuhkan;
         $skor += $this->bobot['fit_kapasitas'] * min($selisih / max($item->kapasitasDibutuhkan, 1), 3.0);
 
@@ -66,8 +83,26 @@ class CandidateScorer
         $rataRuang = $tracker->rataRataBebanRuang([$c->ruangId]);
         $skor += $this->bobot['distribusi_ruang'] * $this->deviasiRelatif($tracker->bebanRuang($c->ruangId), $rataRuang);
 
-        // Fairness antar prodi: hindari prodi ini "memborong" hari yang sama terus-menerus
+        // Fairness antar prodi
         $skor += $this->bobot['fairness_prodi'] * $tracker->bebanProdiHari($item->kelasProdiId, $c->hari) * 0.5;
+
+        
+        // ----------------------------------------------------------------------
+        // 1. Konversi jam kandidat saat ini menjadi total menit
+        $waktuArray = explode(':', $c->jamMulai);
+        $menitHariIni = ((int)$waktuArray[0] * 60) + (int)$waktuArray[1];
+
+        // 2. AMBIL JAM BUKA KAMPUS HARI INI DARI FORM UI (Tidak pakai asumsi lagi)
+        $jamBukaKampus = $this->jamOperasional[$c->hari]['mulai'] ?? '08:00';
+        $bukaArray = explode(':', $jamBukaKampus);
+        $menitBuka = ((int)$bukaArray[0] * 60) + (int)$bukaArray[1];
+
+        // 3. Hitung seberapa jauh jam kandidat ini bergeser dari jam buka kampus
+        $menitDariPagi = max($menitHariIni - $menitBuka, 0);
+
+        // Setiap 15 menit bergeser dari jam buka, kandidat akan diberi PENALTI skor.
+        $skor += $this->bobot['preferensi_pagi'] * ($menitDariPagi / 15);
+        // ----------------------------------------------------------------------
 
         return $skor;
     }

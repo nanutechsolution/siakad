@@ -12,9 +12,10 @@ class JadwalGeneratorEngine
     protected JadwalGeneratorBatch $batch;
     protected array $ruangTersedia;
     protected array $hariOperasional;
-    protected array $slotWaktu;
+    protected array $jamOperasional;
     protected string $modeWaktu;
     protected int $menitPerSks;
+    protected int $menitTransisi;
     protected array $jamIstirahat;
 
     public function __construct(JadwalGeneratorBatch $batch)
@@ -28,16 +29,30 @@ class JadwalGeneratorEngine
 
         $this->modeWaktu = $config['mode_waktu'] ?? 'dinamis';
         $this->menitPerSks = (int) ($config['menit_per_sks'] ?? 45);
-        $this->jamIstirahat = $config['jam_istirahat'] ?? [['mulai' => '12:00', 'selesai' => '13:00']];
-        $this->hariOperasional = !empty($config['hari']) ? $config['hari'] : ['Senin', 'Selasa', 'Rabu', 'Kamis', 'Jumat'];
-        $this->slotWaktu = !empty($config['slots']) ? $config['slots'] : [
-            ['mulai' => '08:00', 'selesai' => '09:30'],
-            ['mulai' => '09:30', 'selesai' => '11:00'],
-            ['mulai' => '11:00', 'selesai' => '12:30'],
-            ['mulai' => '13:00', 'selesai' => '14:30'],
-            ['mulai' => '14:30', 'selesai' => '16:00'],
-        ];
 
+        // 1. PERBAIKAN: Paksa transisi jadi 0 jika mode statis
+        $this->menitTransisi = $this->modeWaktu === 'statis' ? 0 : (int) ($config['menit_transisi'] ?? 10);
+
+        $this->jamIstirahat = $config['jam_istirahat'] ?? [];
+
+        // --- PARSING DATA HARI & JAM OPERASIONAL (STRUKTUR BARU) ---
+        $rawHari = $config['hari'] ?? [];
+        $this->hariOperasional = [];
+        $this->jamOperasional = [];
+
+        foreach ($rawHari as $day => $settings) {
+            // Cek apakah hari tersebut dicentang 'aktif' di form
+            if (isset($settings['aktif']) && $settings['aktif'] === true) {
+                $this->hariOperasional[] = $day;
+                $this->jamOperasional[$day] = [
+                    'mulai' => $settings['mulai'] ?? '08:00',
+                    'selesai' => $settings['selesai'] ?? '16:00',
+                    'slots' => $settings['slots'] ?? [],
+                ];
+            }
+        }
+
+        // --- FILTER RUANG ---
         $ruangQuery = RefRuang::where('is_active', 1)->orderBy('kapasitas', 'asc');
         if ($this->batch->kampus_id) {
             $ruangQuery->where('kampus_id', $this->batch->kampus_id);
@@ -57,12 +72,8 @@ class JadwalGeneratorEngine
             return;
         }
 
-        // --- Lock per (tahun_akademik_id, kampus_id): mencegah dua batch di
-        // kampus+TA yang sama diproses worker berbeda secara bersamaan, yang
-        // akan membuat masing-masing bekerja dari snapshot tracker yang basi
-        // (perbaikan bug B6 -- race condition antar batch). ---
         $lockKey = "jadwal-generator:{$this->batch->tahun_akademik_id}:{$this->batch->kampus_id}";
-        $lock = Cache::lock($lockKey, 900); // selaras dgn timeout job (15 menit)
+        $lock = Cache::lock($lockKey, 900);
 
         if (!$lock->get()) {
             $this->batch->update([
@@ -81,17 +92,20 @@ class JadwalGeneratorEngine
             $demandItems = $collector->collect($this->batch);
             $preFailures = $collector->getPreFailures();
 
+            // ⚠️ PERHATIKAN BAGIAN INI: Parameter yang dilempar ke CandidateGenerator disesuaikan
             $generator = new CandidateGenerator(
                 $this->hariOperasional,
-                $this->slotWaktu,
+                $this->jamOperasional, // Menggantikan $this->slotWaktu
                 $this->jamIstirahat,
                 $this->modeWaktu,
                 $this->menitPerSks,
+                $this->menitTransisi, // Tambahan parameter baru
                 $this->ruangTersedia,
-                $context['limitasiWaktuDosen'],
+                $context['limitasiWaktuDosen']
             );
-            $slotMulaiList = array_column($this->slotWaktu, 'mulai');
-            $scorer = new CandidateScorer($this->hariOperasional, $slotMulaiList);
+
+            // Karena tidak ada lagi global slot, parameter Scorer mungkin butuh penyesuaian
+            $scorer = new CandidateScorer($this->hariOperasional, $this->jamOperasional);
 
             $constructive = new GreedyConstructiveScheduler($generator, $scorer);
             $hasil = $constructive->run($demandItems, $tracker);

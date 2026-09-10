@@ -4,8 +4,8 @@ namespace App\Filament\Resources\JadwalGeneratorBatches\Schemas;
 
 use Filament\Schemas\Schema;
 use Filament\Infolists\Components\TextEntry;
-use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Schemas\Components\Section;
+use Illuminate\Support\HtmlString;
 
 class JadwalGeneratorBatchInfolist
 {
@@ -48,28 +48,6 @@ class JadwalGeneratorBatchInfolist
                             ->badge()
                             ->color('danger'),
                     ])->columns(2),
-
-                Section::make('Konfigurasi Parameter Mesin (Snapshot)')
-                    ->collapsed()
-                    ->description('Pengaturan jam dan hari yang digunakan mesin saat jadwal ini di-generate.')
-                    ->schema([
-                        TextEntry::make('config_snapshot.hari')
-                            ->label('Hari Operasional')
-                            ->badge()
-                            ->color('gray')
-                            ->formatStateUsing(fn($state) => is_array($state) ? implode(', ', $state) : $state),
-
-                        RepeatableEntry::make('config_snapshot.slots')
-                            ->label('Blok Waktu Aktif')
-                            ->schema([
-                                TextEntry::make('mulai')
-                                    ->label('Mulai'),
-                                TextEntry::make('selesai')
-                                    ->label('Selesai'),
-                            ])
-                            ->columns(2)
-                            ->grid(3), // Menampilkan slot ke dalam bentuk grid agar ringkas
-                    ])->columns(1),
             ]);
     }
 }

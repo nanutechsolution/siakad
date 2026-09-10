@@ -205,12 +205,15 @@ class JadwalGeneratorBatchForm
 
                 Section::make('Aturan Transisi & Kenyamanan')
                     ->description('Atur toleransi jeda antar kelas agar jadwal lebih manusiawi.')
+                    ->visible(fn(Get $get) => $get('config_snapshot.mode_waktu') === 'dinamis')
                     ->schema([
                         \Filament\Forms\Components\TextInput::make('config_snapshot.menit_transisi')
                             ->label('Jeda Pindah Kelas / Transisi (Menit)')
                             ->numeric()
                             ->default(10)
                             ->suffix('menit')
+                            // Pastikan field ini hanya wajib diisi jika tampil (Mode Dinamis)
+                            ->required(fn(Get $get) => $get('config_snapshot.mode_waktu') === 'dinamis')
                             ->helperText('Waktu luang yang diberikan mesin setelah suatu kelas selesai agar ruang bisa dibersihkan atau mahasiswa/dosen bisa pindah ruangan.'),
                     ])->columns(1),
             ]);
@@ -221,35 +224,82 @@ class JadwalGeneratorBatchForm
         $schema = [];
 
         foreach ($days as $day) {
-            // Preset jam selesai sesuai kebiasaan hari
-            $defaultSelesai = match ($day) {
+            // 1. Preset untuk Mode Dinamis (Jam Buka/Tutup)
+            $defaultSelesaiDinamis = match ($day) {
                 'Jumat' => '14:00',
                 'Sabtu' => '14:00',
                 default => '16:00',
             };
 
-            $schema[] = Grid::make(3)
+            // 2. Preset untuk Mode Statis (Blok Shift)
+            $defaultSlotsStatis = match ($day) {
+                'Jumat' => [
+                    ['mulai' => '08:00', 'selesai' => '09:30'],
+                    ['mulai' => '08:00', 'selesai' => '09:30'],
+                    ['mulai' => '09:30', 'selesai' => '11:00'],
+                    ['mulai' => '11:00', 'selesai' => '12:30'],
+                    ['mulai' => '13:00', 'selesai' => '14:00'],
+                    // Shift Jumat berhenti di sini (sebelum Jumatan)
+                ],
+                'Sabtu' => [
+                    ['mulai' => '08:00', 'selesai' => '09:30'],
+                    ['mulai' => '09:30', 'selesai' => '11:00'],
+                    ['mulai' => '11:00', 'selesai' => '12:30'],
+                    ['mulai' => '13:00', 'selesai' => '14:00'],
+                    ],
+                default => [
+                    // Shift standar Senin - Kamis (Full sampai 16:00)
+                    ['mulai' => '08:00', 'selesai' => '09:30'],
+                    ['mulai' => '09:30', 'selesai' => '11:00'],
+                    ['mulai' => '11:00', 'selesai' => '12:30'],
+                    ['mulai' => '13:00', 'selesai' => '14:30'],
+                    ['mulai' => '14:30', 'selesai' => '16:00'],
+                ],
+            };
+
+            $schema[] = Section::make("Hari {$day}")
                 ->schema([
                     \Filament\Forms\Components\Toggle::make("config_snapshot.hari.{$day}.aktif")
-                        ->label("Hari {$day}")
-                        ->inline(false)
+                        ->label("Aktifkan Hari {$day}")
                         ->default(true)
-                        ->live(), // Wajib live agar bisa trigger hide/show jam
+                        ->live(),
 
-                    \Filament\Forms\Components\TimePicker::make("config_snapshot.hari.{$day}.mulai")
-                        ->label('Jam Mulai')
-                        ->seconds(false)
-                        ->default('08:00')
-                        ->visible(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif"))
-                        ->required(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif")),
+                    // TAMPIL JIKA MODE DINAMIS
+                    Grid::make(2)
+                        ->visible(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif") && $get('config_snapshot.mode_waktu') === 'dinamis')
+                        ->schema([
+                            \Filament\Forms\Components\TimePicker::make("config_snapshot.hari.{$day}.mulai")
+                                ->label('Jam Buka Kampus')
+                                ->seconds(false)
+                                ->default('08:00'),
+                            \Filament\Forms\Components\TimePicker::make("config_snapshot.hari.{$day}.selesai")
+                                ->label('Jam Tutup Kampus')
+                                ->seconds(false)
+                                ->default($defaultSelesaiDinamis),
+                        ]),
 
-                    \Filament\Forms\Components\TimePicker::make("config_snapshot.hari.{$day}.selesai")
-                        ->label('Jam Selesai')
-                        ->seconds(false)
-                        ->default($defaultSelesai)
-                        ->visible(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif"))
-                        ->required(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif")),
-                ])->columnSpanFull();
+                    // TAMPIL JIKA MODE STATIS
+                    \Filament\Forms\Components\Repeater::make("config_snapshot.hari.{$day}.slots")
+                        ->label('Blok Jam Pelajaran (Shift)')
+                        ->visible(fn(Get $get) => $get("config_snapshot.hari.{$day}.aktif") && $get('config_snapshot.mode_waktu') === 'statis')
+                        ->schema([
+                            \Filament\Forms\Components\TimePicker::make('mulai')
+                                ->label('Jam Masuk')
+                                ->seconds(false)
+                                ->required(),
+                            \Filament\Forms\Components\TimePicker::make('selesai')
+                                ->label('Jam Selesai')
+                                ->seconds(false)
+                                ->required(),
+                        ])
+                        ->default($defaultSlotsStatis)
+                        ->columns(2)
+                        ->collapsible()
+                        ->reorderable()
+                        ->addActionLabel('Tambah Shift'),
+                ])
+                ->collapsible()
+                ->collapsed(fn(Get $get) => !$get("config_snapshot.hari.{$day}.aktif"));
         }
 
         return $schema;

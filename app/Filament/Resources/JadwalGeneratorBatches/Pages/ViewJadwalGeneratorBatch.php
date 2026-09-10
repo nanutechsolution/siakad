@@ -7,20 +7,24 @@ use App\Jobs\GenerateJadwalJob;
 use App\Models\DosenPengampu;
 use App\Models\JadwalKuliah;
 use App\Models\JadwalKuliahDosen;
-use App\Models\MahasiswaKelas;
-use App\Models\RefRuang;
 use Exception;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\HtmlString;
 
 class ViewJadwalGeneratorBatch extends ViewRecord
 {
     protected static string $resource = JadwalGeneratorBatchResource::class;
+    protected function getPollingInterval(): ?string
+    {
+        // 1. PAKSA AMBIL DATA TERBARU DARI DATABASE
+        $this->record->refresh();
 
+        // 2. CEK STATUS TERBARU
+        return $this->record->status === 'RUNNING' ? '2s' : null;
+    }
     protected function getHeaderActions(): array
     {
         return [
@@ -216,7 +220,7 @@ class ViewJadwalGeneratorBatch extends ViewRecord
             HTML
                     );
                 })
-                ->modalSubmitActionLabel('Ya, Publish ke SIAKAD')
+                ->modalSubmitActionLabel('Ya, Publish')
                 ->modalCancelActionLabel('Kembali ke Preview')
                 ->visible(fn($record) => $record->status === 'PREVIEW')
                 ->action(function () {
