@@ -131,9 +131,15 @@ class VerifikasiPembayaransTable
                     ->label('Program Studi')
                     ->searchable()
                     ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray())
-                    ->query(function (Builder $query, array $data) {
-                        if (empty($data['value'])) return $query;
-                        return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id', $data['value']));
+                    ->query(function (Builder $query, array $data): Builder {
+                        if (blank($data['value'] ?? null)) {
+                            return $query;
+                        }
+
+                        return $query->whereHas(
+                            'tagihan.mahasiswa',
+                            fn(Builder $q) => $q->where('prodi_id', $data['value'])
+                        );
                     }),
 
                 SelectFilter::make('angkatan')
