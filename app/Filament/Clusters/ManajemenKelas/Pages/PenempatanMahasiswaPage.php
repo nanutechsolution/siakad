@@ -303,7 +303,7 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                 SelectFilter::make('kelas_id')
                     ->label('Kelas Saat Ini')
                     ->searchable()
-                    ->options(function (array $data) {
+                    ->options(function () {
                         $user = auth()->user();
 
                         $resolver = app(FormResolver::class);
