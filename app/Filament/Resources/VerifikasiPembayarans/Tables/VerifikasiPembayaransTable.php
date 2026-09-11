@@ -119,14 +119,18 @@ class VerifikasiPembayaransTable
             ->filters([
                 SelectFilter::make('status_verifikasi_id')
                     ->label('Status')
-                    ->options(StatusVerifikasiPembayaran::class)
-                    ->default(StatusVerifikasiPembayaran::PENDING->value),
+                    ->options([
+                        1 => 'Menunggu Verifikasi',
+                        2 => 'Terverifikasi',
+                        3 => 'Ditolak',
+                    ])
+                    ->default(1),
 
                 // UX: Filter Prodi. Jika nested (level 3) sering error, gunakan form query builder seperti ini
                 SelectFilter::make('prodi')
                     ->label('Program Studi')
                     ->searchable()
-                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray()) 
+                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray())
                     ->query(function (Builder $query, array $data) {
                         if (empty($data['value'])) return $query;
                         return $query->whereHas('tagihan.mahasiswa', fn($q) => $q->where('id', $data['value']));
