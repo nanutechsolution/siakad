@@ -1024,28 +1024,36 @@ class RiwayatPembimbingPage extends Page implements HasTable
             | HEADER ACTIONS
             |--------------------------------------------------------------------------
             */
+            /*
+            |--------------------------------------------------------------------------
+            | HEADER ACTIONS
+            |--------------------------------------------------------------------------
+            */
             ->headerActions([
                 Action::make('export')
                     ->label('Export Excel')
                     ->icon('heroicon-o-arrow-down-tray')
                     ->color('gray')
                     ->action(
-                        fn() => Excel::download(
-                            new PembimbingAkademikExport(
-                                PembimbingAkademik::query()
-                                    ->with([
-                                        'mahasiswa.person',
-                                        'mahasiswa.angkatan',
-                                        'kelas.prodi',
-                                        'kelas.angkatan',
-                                        'dosen.person',
-                                    ])
-                                    ->withTrashed()
-                            ),
-                            'riwayat-pembimbing-' .
-                                now()->format('Ymd-His') .
-                                '.xlsx'
-                        )
+                        function (\Filament\Tables\Contracts\HasTable $livewire) {
+                            // 1. Ambil query tabel yang sudah terfilter dan tersortir
+                            $filteredQuery = $livewire->getFilteredTableQuery();
+
+                            // 2. Tambahkan eager loading relasi khusus untuk kebutuhan Excel
+                            $exportQuery = $filteredQuery->with([
+                                'mahasiswa.person',
+                                'mahasiswa.angkatan',
+                                'kelas.prodi',
+                                'kelas.angkatan',
+                                'dosen.person',
+                            ]);
+
+                            // 3. Lakukan proses download
+                            return Excel::download(
+                                new PembimbingAkademikExport($exportQuery),
+                                'riwayat-pembimbing-' . now()->format('Ymd-His') . '.xlsx'
+                            );
+                        }
                     ),
             ])
 
