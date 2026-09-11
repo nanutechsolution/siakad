@@ -29,7 +29,14 @@ class VerifikasiPembayaransTable
             ->defaultSort('created_at', 'desc')
             ->striped() // UI: Memudahkan membaca baris
             ->deferLoading() // UX: Loading skeleton saat data banyak
-            ->modifyQueryUsing(fn(Builder $query) => $query->with(['tagihan.mahasiswa.angkatan', 'tagihan.mahasiswa.prodi']))
+            ->modifyQueryUsing(
+                fn(Builder $query) => $query->with([
+                    'tagihan.mahasiswa.angkatan',
+                    'tagihan.mahasiswa.prodi',
+                    'tagihan.mahasiswa.person',
+                    'verifiedBy.person',
+                ])
+            )
             ->columns([
                 TextColumn::make('tagihan.mahasiswa.person.nama_lengkap')
                     ->label('Mahasiswa')
@@ -141,41 +148,82 @@ class VerifikasiPembayaransTable
                 SelectFilter::make('status_verifikasi_id')
                     ->label('Status')
                     ->options([
-                        1 => 'Menunggu Verifikasi',
-                        2 => 'Terverifikasi',
-                        3 => 'Ditolak',
+                        StatusVerifikasiPembayaran::PENDING->value =>
+                        StatusVerifikasiPembayaran::PENDING->label(),
+
+                        StatusVerifikasiPembayaran::VERIFIED->value =>
+                        StatusVerifikasiPembayaran::VERIFIED->label(),
+
+                        StatusVerifikasiPembayaran::REJECTED->value =>
+                        StatusVerifikasiPembayaran::REJECTED->label(),
                     ])
-                    ->default(1),
+                    ->default(
+                        StatusVerifikasiPembayaran::PENDING->value
+                    ),
 
                 // UX: Filter Prodi. Jika nested (level 3) sering error, gunakan form query builder seperti ini
                 SelectFilter::make('prodi')
                     ->label('Program Studi')
                     ->searchable()
-                    ->options(fn() => RefProdi::pluck('nama_prodi', 'id')->toArray())
-                    ->query(function (Builder $query, array $data): Builder {
-                        if (blank($data['value'] ?? null)) {
-                            return $query;
-                        }
+                    ->options(
+                        fn() =>
+                        RefProdi::query()
+                            ->orderBy('nama_prodi')
+                            ->pluck('nama_prodi', 'id')
+                            ->toArray()
+                    )
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            if (blank($data['value'] ?? null)) {
+                                return $query;
+                            }
 
-                        return $query->whereHas(
-                            'tagihan.mahasiswa',
-                            fn(Builder $q) => $q->where('prodi_id', $data['value'])
-                        );
-                    }),
+                            return $query->whereHas(
+                                'tagihan.mahasiswa',
+                                fn(Builder $q) =>
+                                $q->where(
+                                    'prodi_id',
+                                    $data['value']
+                                )
+                            );
+                        }
+                    ),
 
                 SelectFilter::make('angkatan')
-                    ->label('Angkatan (Tahun)')
+                    ->label('Angkatan')
                     ->searchable()
-                    ->options(fn() => RefAngkatan::pluck('id_tahun', 'id_tahun')->toArray())
-                    ->query(function (Builder $query, array $data) {
-                        if (empty($data['value'])) {
-                            return $query;
-                        }
+                    ->options(
+                        fn() =>
+                        RefAngkatan::query()
+                            ->orderByDesc('id_tahun')
+                            ->pluck(
+                                'id_tahun',
+                                'id_tahun'
+                            )
+                            ->toArray()
+                    )
+                    ->query(
+                        function (
+                            Builder $query,
+                            array $data
+                        ): Builder {
+                            if (blank($data['value'] ?? null)) {
+                                return $query;
+                            }
 
-                        return $query->whereHas('tagihan.mahasiswa.angkatan', function ($q) use ($data) {
-                            $q->where('id_tahun', $data['value']);
-                        });
-                    }),
+                            return $query->whereHas(
+                                'tagihan.mahasiswa.angkatan',
+                                fn($q) =>
+                                $q->where(
+                                    'id_tahun',
+                                    $data['value']
+                                )
+                            );
+                        }
+                    ),
             ])
             ->recordActions([
                 // 1. ACTION: TERIMA (VERIFIKASI)
