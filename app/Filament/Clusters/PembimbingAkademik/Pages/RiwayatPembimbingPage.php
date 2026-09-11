@@ -23,6 +23,7 @@ use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
@@ -516,7 +517,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                     ->trueColor('danger')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-            ->filtersFormColumns(3)
+
             ->filters([
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
@@ -878,7 +879,8 @@ class RiwayatPembimbingPage extends Page implements HasTable
 
 
 
-            ])
+            ], FiltersLayout::AboveContent)
+            ->filtersFormColumns(4)
             ->headerActions([
                 Action::make('export')
                     ->label('Export Excel')
