@@ -152,9 +152,24 @@ class JadwalKuliahsTable
 
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
-                    ->relationship('kelas', 'nama_kelas')
+                    ->options(function () {
+                        return \App\Models\Kelas::query()
+                            ->with(['prodi', 'angkatan'])
+                            ->orderByDesc('angkatan_id')
+                            ->orderBy('nama_kelas')
+                            ->get()
+                            ->mapWithKeys(fn($kelas) => [
+                                $kelas->id => sprintf(
+                                    '%s-%s-%s',
+                                    $kelas->nama_kelas,
+                                    $kelas->prodi->kode_prodi_internal ?? 'UMUM',
+                                    $kelas->angkatan->id_tahun ?? '-'
+                                ),
+                            ]);
+                    })
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->native(false),
 
                 SelectFilter::make('hari')
                     ->options([
