@@ -303,39 +303,36 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                 SelectFilter::make('kelas_id')
                     ->label('Kelas Saat Ini')
                     ->searchable()
-                    ->options(function () {
+                    ->options(function (array $data) {
                         $user = auth()->user();
 
-                        $resolver =
-                            app(FormResolver::class);
+                        $resolver = app(FormResolver::class);
 
-                        $prodiIds =
-                            $resolver
-                            ->accessibleProdiIds($user);
+                        $prodiIds = $resolver->accessibleProdiIds($user);
 
                         if ($prodiIds === []) {
                             return [];
                         }
 
-                        return Kelas::query()
-                            ->whereIn(
-                                'prodi_id',
-                                $prodiIds
-                            )
-                            ->orderBy(
-                                'angkatan_id',
-                                'desc'
-                            )
+                        $query = Kelas::query()
+                            ->whereIn('prodi_id', $prodiIds);
+
+                        // Ambil nilai filter Program Studi
+                        $prodiId = $this->getTableFilters()['prodi_id']['value'] ?? null;
+
+                        if (filled($prodiId)) {
+                            $query->where('prodi_id', $prodiId);
+                        }
+
+                        return $query
+                            ->orderByDesc('angkatan_id')
                             ->orderBy('nama_kelas')
                             ->get()
                             ->mapWithKeys(
                                 fn(Kelas $kelas) => [
-                                    $kelas->id =>
-                                    sprintf(
+                                    $kelas->id => sprintf(
                                         '%s — Angkatan %s',
-                                        Utf8::clean(
-                                            $kelas->nama_kelas
-                                        ),
+                                        Utf8::clean($kelas->nama_kelas),
                                         $kelas->angkatan_id
                                     ),
                                 ]
@@ -347,25 +344,15 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                             Builder $query,
                             array $data
                         ): Builder {
-                            if (
-                                blank(
-                                    $data['value'] ?? null
-                                )
-                            ) {
+                            if (blank($data['value'] ?? null)) {
                                 return $query;
                             }
 
                             return $query->whereHas(
                                 'mahasiswaKelas',
-                                fn($q) =>
-                                $q
-                                    ->where(
-                                        'kelas_id',
-                                        $data['value']
-                                    )
-                                    ->whereNull(
-                                        'tanggal_keluar'
-                                    )
+                                fn($q) => $q
+                                    ->where('kelas_id', $data['value'])
+                                    ->whereNull('tanggal_keluar')
                             );
                         }
                     ),
