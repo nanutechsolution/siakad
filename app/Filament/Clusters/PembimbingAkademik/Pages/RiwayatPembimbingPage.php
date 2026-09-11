@@ -282,9 +282,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                                     );
                             });
                         }
-                    )
-                    ->sortable(),
-
+                    ),
                 /*
                 |--------------------------------------------------------------------------
                 | PROGRAM STUDI
@@ -363,15 +361,10 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 | DOSEN
                 |--------------------------------------------------------------------------
                 */
-                /*
-                |--------------------------------------------------------------------------
-                | DOSEN
-                |--------------------------------------------------------------------------
-                */
                 // UBAH NAMA KEY-NYA JADI RELASI LANGSUNG
                 TextColumn::make('dosen.person.nama_lengkap')
                     ->label('Dosen Pembimbing')
-                    ->formatStateUsing( // Ganti ->state menjadi ->formatStateUsing
+                    ->formatStateUsing(
                         fn(?string $state): string =>
                         Utf8::clean($state) ?: '-'
                     )
@@ -523,18 +516,8 @@ class RiwayatPembimbingPage extends Page implements HasTable
                     ->trueColor('danger')
                     ->toggleable(isToggledHiddenByDefault: true),
             ])
-
-            /*
-            |--------------------------------------------------------------------------
-            | FILTERS
-            |--------------------------------------------------------------------------
-            */
+            ->filtersFormColumns(3)
             ->filters([
-                /*
-                |--------------------------------------------------------------------------
-                | PROGRAM STUDI
-                |--------------------------------------------------------------------------
-                */
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
                     ->placeholder('Semua Program Studi')
@@ -569,11 +552,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | ANGKATAN
-                |--------------------------------------------------------------------------
-                */
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
                     ->placeholder('Semua Angkatan')
@@ -624,19 +602,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | KELAS
-                |--------------------------------------------------------------------------
-                |
-                | Hasil dropdown:
-                |
-                | A — TI — 2024
-                | B — TI — 2024
-                | A — SI — 2024
-                |
-                |--------------------------------------------------------------------------
-                */
+
                 SelectFilter::make('kelas_id')
                     ->label('Kelas')
                     ->placeholder('Semua Kelas')
@@ -725,11 +691,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | DOSEN
-                |--------------------------------------------------------------------------
-                */
                 SelectFilter::make('dosen_id')
                     ->label('Dosen Pembimbing')
                     ->placeholder('Semua Dosen Pembimbing')
@@ -763,11 +724,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | JENIS
-                |--------------------------------------------------------------------------
-                */
+
                 SelectFilter::make('jenis')
                     ->label('Jenis Penugasan')
                     ->placeholder('Semua Jenis')
@@ -775,11 +732,6 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         PembimbingAkademikJenis::options()
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | STATUS
-                |--------------------------------------------------------------------------
-                */
                 SelectFilter::make('status')
                     ->label('Status Penugasan')
                     ->placeholder('Semua Status')
@@ -787,11 +739,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         PembimbingAkademikStatus::options()
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | PEMBIMBING UTAMA
-                |--------------------------------------------------------------------------
-                */
+
                 SelectFilter::make('is_primary')
                     ->label('Pembimbing')
                     ->placeholder('Utama & Pendamping')
@@ -815,11 +763,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | SK
-                |--------------------------------------------------------------------------
-                */
+
                 SelectFilter::make('sk')
                     ->label('Dokumen SK')
                     ->placeholder('Semua')
@@ -852,11 +796,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | PERIODE TANGGAL MULAI
-                |--------------------------------------------------------------------------
-                */
+
                 Filter::make('tanggal_mulai')
                     ->label('Tanggal Mulai Penugasan')
                     ->schema([
@@ -898,11 +838,7 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | NOMOR SK
-                |--------------------------------------------------------------------------
-                */
+
                 Filter::make('nomor_sk')
                     ->label('Nomor SK')
                     ->schema([
@@ -940,25 +876,9 @@ class RiwayatPembimbingPage extends Page implements HasTable
                         }
                     ),
 
-                /*
-                |--------------------------------------------------------------------------
-                | DATA DIHAPUS
-                |--------------------------------------------------------------------------
-                */
-                TrashedFilter::make()
-                    ->label('Data Dihapus'),
-            ])
 
-            /*
-            |--------------------------------------------------------------------------
-            | HEADER ACTIONS
-            |--------------------------------------------------------------------------
-            */
-            /*
-            |--------------------------------------------------------------------------
-            | HEADER ACTIONS
-            |--------------------------------------------------------------------------
-            */
+
+            ])
             ->headerActions([
                 Action::make('export')
                     ->label('Export Excel')
