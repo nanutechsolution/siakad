@@ -363,13 +363,17 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 | DOSEN
                 |--------------------------------------------------------------------------
                 */
-                TextColumn::make('dosen_info')
+                /*
+                |--------------------------------------------------------------------------
+                | DOSEN
+                |--------------------------------------------------------------------------
+                */
+                // UBAH NAMA KEY-NYA JADI RELASI LANGSUNG
+                TextColumn::make('dosen.person.nama_lengkap')
                     ->label('Dosen Pembimbing')
-                    ->state(
-                        fn(PembimbingAkademik $record): string =>
-                        Utf8::clean(
-                            $record->dosen?->person?->nama_lengkap
-                        ) ?: '-'
+                    ->formatStateUsing( // Ganti ->state menjadi ->formatStateUsing
+                        fn(?string $state): string =>
+                        Utf8::clean($state) ?: '-'
                     )
                     ->description(
                         fn(?PembimbingAkademik $record): ?string =>
@@ -378,32 +382,17 @@ class RiwayatPembimbingPage extends Page implements HasTable
                             : null
                     )
                     ->searchable(
-                        query: function (
-                            Builder $query,
-                            string $search
-                        ): Builder {
-                            return $query->whereHas(
-                                'dosen',
-                                function (Builder $dosen) use ($search): void {
-                                    $dosen->where(
-                                        'nidn',
-                                        'like',
-                                        "%{$search}%"
-                                    )->orWhereHas(
-                                        'person',
-                                        function (Builder $person) use ($search): void {
-                                            $person->where(
-                                                'nama_lengkap',
-                                                'like',
-                                                "%{$search}%"
-                                            );
-                                        }
-                                    );
-                                }
-                            );
+                        // Logic searchable bawaan Anda dibiarkan saja karena sudah sangat baik
+                        query: function (Builder $query, string $search): Builder {
+                            return $query->whereHas('dosen', function (Builder $dosen) use ($search): void {
+                                $dosen->where('nidn', 'like', "%{$search}%")
+                                    ->orWhereHas('person', function (Builder $person) use ($search): void {
+                                        $person->where('nama_lengkap', 'like', "%{$search}%");
+                                    });
+                            });
                         }
                     )
-                    ->sortable(),
+                    ->sortable(), // Sekarang sortable ini akan berfungsi!
 
                 /*
                 |--------------------------------------------------------------------------
