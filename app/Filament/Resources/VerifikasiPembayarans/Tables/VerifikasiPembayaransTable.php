@@ -93,6 +93,27 @@ class VerifikasiPembayaransTable
                     ->badge()
                     ->formatStateUsing(fn(StatusVerifikasiPembayaran $state): string => $state->label())
                     ->color(fn(StatusVerifikasiPembayaran $state): string => $state->badgeColor()),
+                TextColumn::make('verifiedBy.person.nama_lengkap')
+                    ->label('Verifikator')
+                    ->placeholder('Belum diverifikasi')
+                    ->description(function (PembayaranMahasiswa $record): ?string {
+                        return $record->verified_at
+                            ? $record->verified_at->format('d M Y, H:i')
+                            : 'Menunggu verifikasi';
+                    })
+                    ->icon(function (PembayaranMahasiswa $record): string {
+                        return $record->verified_at
+                            ? 'heroicon-o-check-badge'
+                            : 'heroicon-o-clock';
+                    })
+                    ->iconColor(function (PembayaranMahasiswa $record): string {
+                        return $record->verified_at
+                            ? 'success'
+                            : 'warning';
+                    })
+                    ->searchable()
+                    ->sortable()
+                    ->toggleable(),
                 TextColumn::make('tanggal_bayar')
                     ->label('Tgl Transfer & Input')
                     ->dateTime('d M Y, H:i') // Menampilkan tanggal transfer sebagai teks utama
