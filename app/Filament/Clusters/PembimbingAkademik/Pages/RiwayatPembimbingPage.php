@@ -10,6 +10,7 @@ use App\Filament\Clusters\PembimbingAkademik\PembimbingAkademikCluster;
 use App\Models\Kelas;
 use App\Models\PembimbingAkademik;
 use App\Models\RefAngkatan;
+use App\Models\TrxDosen;
 use App\Support\Utf8;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -799,56 +800,36 @@ class RiwayatPembimbingPage extends Page implements HasTable
                 | DOSEN
                 |--------------------------------------------------------------------------
                 */
-                Filter::make('dosen')
+                SelectFilter::make('dosen_id')
                     ->label('Dosen Pembimbing')
-                    ->schema([
-                        TextInput::make('search')
-                            ->label('Nama Dosen / NIDN')
-                            ->placeholder('Contoh: Dr. Budi atau 0123456789')
-                            ->prefixIcon('heroicon-o-magnifying-glass')
-                            ->autocomplete(false),
-                    ])
-                    ->query(
-                        function (
-                            Builder $query,
-                            array $data
-                        ): Builder {
-                            $search = trim($data['search'] ?? '');
+                    ->placeholder('Semua Dosen Pembimbing')
+                    ->options(
+                        function (): array {
+                            return TrxDosen::query()
+                                ->with('person')
+                                ->get()
+                                ->mapWithKeys(function ($dosen) {
+                                    $namaLengkap = Utf8::clean($dosen->person?->nama_lengkap) ?: 'Tanpa Nama';
+                                    $nidn = $dosen->nidn ? " (NIDN: {$dosen->nidn})" : '';
 
-                            if ($search === '') {
+                                    return [
+                                        $dosen->id => "{$namaLengkap}{$nidn}",
+                                    ];
+                                })
+                                ->toArray();
+                        }
+                    )
+                    ->searchable() // Mengaktifkan fitur pencarian di dalam dropdown
+                    ->query(
+                        function (Builder $query, array $data): Builder {
+                            $dosenId = $data['value'] ?? null;
+
+                            if (! filled($dosenId)) {
                                 return $query;
                             }
 
-                            return $query->whereHas(
-                                'dosen',
-                                function (Builder $dosen) use ($search): void {
-                                    $dosen
-                                        ->where(
-                                            'nidn',
-                                            'like',
-                                            "%{$search}%"
-                                        )
-                                        ->orWhereHas(
-                                            'person',
-                                            function (Builder $person) use ($search): void {
-                                                $person->where(
-                                                    'nama_lengkap',
-                                                    'like',
-                                                    "%{$search}%"
-                                                );
-                                            }
-                                        );
-                                }
-                            );
-                        }
-                    )
-                    ->indicateUsing(
-                        function (array $data): ?string {
-                            $search = trim($data['search'] ?? '');
-
-                            return $search
-                                ? "Dosen: {$search}"
-                                : null;
+                            // Memfilter berdasarkan foreign key dosen_id
+                            return $query->where('dosen_id', $dosenId);
                         }
                     ),
 
