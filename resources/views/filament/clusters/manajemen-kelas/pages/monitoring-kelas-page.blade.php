@@ -53,48 +53,7 @@
 
     </div>
 
-
-    {{-- =========================================================
-        KAPASITAS KELAS
-    ========================================================== --}}
-
-    <x-filament::section
-        class="mb-6"
-        collapsible>
-
-        <x-slot name="heading">
-            Kapasitas per Kelas
-        </x-slot>
-
-        <x-slot name="description">
-            Monitoring jumlah mahasiswa dan kapasitas setiap kelas
-            berdasarkan hak akses Anda.
-        </x-slot>
-
-
-        @php
-        $daftarKelas = $this->getKapasitasKelas();
-        @endphp
-
-
-        @if ($daftarKelas->isEmpty())
-
-        <div class="py-8 text-center">
-
-            <x-heroicon-o-academic-cap
-                class="mx-auto h-10 w-10 text-gray-400" />
-
-            <p class="mt-3 text-sm text-gray-500 dark:text-gray-400">
-                Belum ada kelas yang sesuai dengan filter.
-            </p>
-
-        </div>
-        @else
-
-        @endif
-
-    </x-filament::section>
-
+ 
 
     {{-- =========================================================
         MAHASISWA BELUM PUNYA KELAS
