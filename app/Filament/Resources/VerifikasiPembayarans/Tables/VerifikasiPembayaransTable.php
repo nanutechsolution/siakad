@@ -68,17 +68,6 @@ class VerifikasiPembayaransTable
                     ->description(fn($record) => 'Angkatan: ' . ($record->tagihan?->mahasiswa?->angkatan?->id_tahun ?? '-'))
                     ->wrap()
                     ->toggleable(),
-
-                TextColumn::make('nominal_bayar')
-                    ->label('Nominal Bayar')
-                    ->money('IDR')
-                    ->alignment('right')
-                    ->weight('bold')
-                    ->color('success')
-                    // UX: Menambahkan total uang di bawah tabel untuk admin keuangan
-                    ->summarize(
-                        Sum::make()->label('Total')->money('IDR')
-                    ),
                 TextColumn::make('bukti_bayar_path')
                     ->label('Bukti')
                     ->formatStateUsing(fn() => 'Lihat Bukti')
