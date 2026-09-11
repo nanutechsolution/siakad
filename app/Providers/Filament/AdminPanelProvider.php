@@ -39,10 +39,6 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => Blade::render('<x-active-academic-year />'),
             )
-            // ->renderHook(
-            //     PanelsRenderHook::SIDEBAR_NAV_START,
-            //     fn() => Blade::render('<livewire:navigation-search />'),
-            // )
             ->id('admin')
             ->path('admin')
             ->brandLogoHeight('2.25rem')

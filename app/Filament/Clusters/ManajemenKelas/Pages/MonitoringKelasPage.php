@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace App\Filament\Clusters\ManajemenKelas\Pages;
 
 use App\Domain\Authorization\Services\FormResolver;
+use App\Enums\StatusKuliah;
 use App\Filament\Clusters\ManajemenKelas\ManajemenKelasCluster;
 use App\Models\Kelas;
 use App\Models\Mahasiswa;
 use App\Models\RefAngkatan;
+use App\Models\RefTahunAkademik;
 use App\Services\Kelas\ManajemenKelasService;
 use App\Support\Utf8;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -36,7 +38,49 @@ class MonitoringKelasPage extends Page implements HasTable
 
     protected string $view =
     'filament.clusters.manajemen-kelas.pages.monitoring-kelas-page';
+    protected function tahunAkademikAktifId(): ?int
+    {
+        return RefTahunAkademik::query()
+            ->where('is_active', true)
+            ->value('id');
+    }
+    protected function mahasiswaPenempatanQuery(): Builder
+    {
+        $query = Mahasiswa::query()
+            ->whereNull('deleted_at')
+            ->whereIn('prodi_id', $this->accessibleProdiIds());
 
+        $tahunAkademikId = $this->tahunAkademikAktifId();
+
+        if ($tahunAkademikId === null) {
+            return $query;
+        }
+
+        return $query->where(function (Builder $query) use ($tahunAkademikId) {
+            $query
+                ->whereDoesntHave(
+                    'riwayatStatus',
+                    fn(Builder $q) =>
+                    $q->where(
+                        'tahun_akademik_id',
+                        $tahunAkademikId
+                    )
+                )
+                ->orWhereHas(
+                    'riwayatStatus',
+                    fn(Builder $q) =>
+                    $q
+                        ->where(
+                            'tahun_akademik_id',
+                            $tahunAkademikId
+                        )
+                        ->where(
+                            'status_kuliah',
+                            StatusKuliah::AKTIF->value
+                        )
+                );
+        });
+    }
     protected function service(): ManajemenKelasService
     {
         return app(ManajemenKelasService::class);
@@ -89,7 +133,7 @@ class MonitoringKelasPage extends Page implements HasTable
 
     public function getTotalMahasiswaTanpaKelas(): int
     {
-        return (clone $this->mahasiswaQuery())
+        return (clone $this->mahasiswaPenempatanQuery())
             ->whereDoesntHave(
                 'mahasiswaKelas',
                 fn(Builder $query) =>
@@ -102,7 +146,7 @@ class MonitoringKelasPage extends Page implements HasTable
     {
         return $table
             ->query(
-                $this->mahasiswaQuery()
+                $this->mahasiswaPenempatanQuery()
                     ->whereDoesntHave(
                         'mahasiswaKelas',
                         fn(Builder $query) =>
