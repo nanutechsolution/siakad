@@ -130,9 +130,12 @@ class KurikulumMataKuliah extends Model implements HasScopeStrategy
             }
         });
     }
-
-    public function dosenPengampus()
+    public function dosenPengampus(): HasMany
     {
-        return $this->hasMany(\App\Models\DosenPengampu::class, 'mata_kuliah_id');
+        return $this->hasMany(
+            DosenPengampu::class,
+            'mata_kuliah_id',
+            'mata_kuliah_id'
+        );
     }
 }
