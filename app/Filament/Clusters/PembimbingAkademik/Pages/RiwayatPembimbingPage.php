@@ -879,8 +879,8 @@ class RiwayatPembimbingPage extends Page implements HasTable
 
 
 
-            ], FiltersLayout::AboveContent)
-            ->filtersFormColumns(4)
+            ])
+            ->filtersFormColumns(2)
             ->headerActions([
                 Action::make('export')
                     ->label('Export Excel')
