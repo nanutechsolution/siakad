@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JadwalKuliahs\Tables;
 
 use App\Models\JadwalKuliah;
 use App\Models\RefTahunAkademik;
+use App\Models\TrxDosen;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Filament\Actions\Action;
 use Filament\Actions\BulkActionGroup;
@@ -160,7 +161,7 @@ class JadwalKuliahsTable
                             ->get()
                             ->mapWithKeys(fn($kelas) => [
                                 $kelas->id => sprintf(
-                                    '%s-%s-%s',
+                                    'Kelas %s-%s-%s',
                                     $kelas->nama_kelas,
                                     $kelas->prodi->kode_prodi_internal ?? 'UMUM',
                                     $kelas->angkatan->id_tahun ?? '-'
@@ -170,7 +171,32 @@ class JadwalKuliahsTable
                     ->searchable()
                     ->preload()
                     ->native(false),
-
+                SelectFilter::make('dosen_id')
+                    ->label('Dosen Pengajar')
+                    ->options(function () {
+                        return TrxDosen::query()
+                            ->with('person')
+                            ->get()
+                            ->mapWithKeys(fn($dosen) => [
+                                $dosen->id => $dosen->person->nama_lengkap ?? 'Tanpa Nama',
+                            ])
+                            ->sortBy(fn($nama) => $nama)
+                            ->toArray();
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->native(false)
+                    ->query(function (Builder $query, array $data): Builder {
+                        return $query->when(
+                            $data['value'] ?? null,
+                            fn(Builder $query, $dosenId) =>
+                            $query->whereHas(
+                                'dosenPengajars',
+                                fn(Builder $q) =>
+                                $q->where('dosen_id', $dosenId)
+                            )
+                        );
+                    }),
                 SelectFilter::make('hari')
                     ->options([
                         'Senin' => 'Senin',
