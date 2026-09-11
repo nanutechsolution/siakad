@@ -325,13 +325,17 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                         }
 
                         return $query
+                            ->with('prodi')
                             ->orderByDesc('angkatan_id')
                             ->orderBy('nama_kelas')
                             ->get()
                             ->mapWithKeys(
                                 fn(Kelas $kelas) => [
                                     $kelas->id => sprintf(
-                                        '%s — Angkatan %s',
+                                        '%s — %s — %s',
+                                        Utf8::clean(
+                                            $kelas->prodi?->kode_prodi_internal ?? '-'
+                                        ),
                                         Utf8::clean($kelas->nama_kelas),
                                         $kelas->angkatan_id
                                     ),
