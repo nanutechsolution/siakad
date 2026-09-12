@@ -17,7 +17,7 @@ class JadwalGeneratorEngine
     protected int $menitPerSks;
     protected int $menitTransisi;
     protected array $jamIstirahat;
-
+    protected int $kampusUtamaId;
     public function __construct(JadwalGeneratorBatch $batch)
     {
         $this->batch = $batch;
@@ -53,10 +53,23 @@ class JadwalGeneratorEngine
         }
 
         // --- FILTER RUANG ---
-        $ruangQuery = RefRuang::where('is_active', 1)->orderBy('kapasitas', 'asc');
-        if ($this->batch->kampus_id) {
-            $ruangQuery->where('kampus_id', $this->batch->kampus_id);
-        }
+        $ruangQuery = RefRuang::query()
+            ->where('is_active', 1)
+            ->orderBy('kapasitas', 'asc');
+        $this->ruangTersedia = $ruangQuery
+            ->get([
+                'id',
+                'kampus_id',
+                'nama_ruang',
+                'jenis_ruang',
+                'kapasitas',
+                'prodi_id',
+                'is_active',
+            ])
+            ->toArray();
+        // if ($this->batch->kampus_id) {
+        //     $ruangQuery->where('kampus_id', $this->batch->kampus_id);
+        // }
         $this->ruangTersedia = $ruangQuery->get()->toArray();
     }
 
@@ -87,12 +100,12 @@ class JadwalGeneratorEngine
             $loader = new ConstraintContextLoader();
             $context = $loader->load($this->batch);
             $tracker = $context['tracker'];
-
-            $collector = new DemandCollector($this->ruangTersedia);
+            $collector = new DemandCollector(
+                $this->ruangTersedia,
+                $this->kampusUtamaId,
+            );
             $demandItems = $collector->collect($this->batch);
             $preFailures = $collector->getPreFailures();
-
-            // ⚠️ PERHATIKAN BAGIAN INI: Parameter yang dilempar ke CandidateGenerator disesuaikan
             $generator = new CandidateGenerator(
                 $this->hariOperasional,
                 $this->jamOperasional, // Menggantikan $this->slotWaktu

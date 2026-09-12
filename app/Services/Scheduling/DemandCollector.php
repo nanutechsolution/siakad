@@ -18,7 +18,8 @@ class DemandCollector
     protected array $preFailures = [];
 
     public function __construct(
-        protected array $ruangTersedia, // dari batch, sudah difilter kampus_id + is_active
+        protected array $ruangTersedia,
+        protected int $kampusUtamaId,
     ) {}
 
     /** @return DemandItem[] */
@@ -77,6 +78,16 @@ class DemandCollector
         $dosenIds = $dosenList->pluck('dosen_id')->all();
         $kelasProdiId = $firstItem->kelas->prodi_id ?? 0;
         $reqRuangId = $firstItem->ruang_id ?? null;
+        $kelasKampusId = (int) ($firstItem->kelas->kampus_id ?? 0);
+
+        $assignedKampusId = $kelasKampusId;
+
+        $hasLocationAdjustment = false;
+
+        $adjustmentReasonCode = null;
+
+        $adjustmentReasonText = null;
+
         $kapasitasDibutuhkan = MahasiswaKelas::query()
             ->where('mahasiswa_kelas.kelas_id', $kelasId)
             ->whereNull('mahasiswa_kelas.tanggal_keluar')
@@ -167,14 +178,77 @@ class DemandCollector
                 : 'TEORI';
 
             $ruangSesuaiJenis = collect($this->ruangTersedia)
-                ->where('jenis_ruang', $jenisRuangDibutuhkan);
+                ->filter(function ($ruang) use (
+                    $jenisRuangDibutuhkan,
+                    $kelasKampusId
+                ) {
+                    return
+                        (int) ($ruang['kampus_id'] ?? 0) === $kelasKampusId
+                        && $ruang['jenis_ruang'] === $jenisRuangDibutuhkan;
+                });
         }
+
+        /*
+|--------------------------------------------------------------------------
+| FALLBACK LAB KE KAMPUS UTAMA
+|--------------------------------------------------------------------------
+|
+| Jika kelas berada di kampus yang tidak memiliki LAB aktif,
+| maka LAB dicari di Kampus Utama.
+|
+| Ini bukan failure.
+| Ini adalah SUCCESS_WITH_ADJUSTMENT.
+|
+*/
+
+        if (
+            $ruangSesuaiJenis->isEmpty()
+            && $jenisRuangDibutuhkan === 'LABORATORIUM'
+            && !$reqRuangId
+        ) {
+            $ruangMainCampus = collect($this->ruangTersedia)
+                ->filter(function ($ruang) {
+                    return
+                        (int) ($ruang['kampus_id'] ?? 0) === $this->kampusUtamaId
+                        && $ruang['jenis_ruang'] === 'LABORATORIUM';
+                });
+
+            if ($ruangMainCampus->isNotEmpty()) {
+
+                $ruangSesuaiJenis = $ruangMainCampus;
+
+                $assignedKampusId = $this->kampusUtamaId;
+
+                $hasLocationAdjustment = true;
+
+                $adjustmentReasonCode = 'LAB_FALLBACK_MAIN_CAMPUS';
+
+                $namaKampusAsal =
+                    $firstItem->kelas->kampus->nama_kampus
+                    ?? 'kampus asal';
+
+                $adjustmentReasonText =
+                    "Mata kuliah membutuhkan Laboratorium, tetapi Kampus "
+                    . $namaKampusAsal
+                    . " tidak memiliki LAB aktif. "
+                    . "Jadwal dialokasikan ke LAB Kampus A/Main Campus.";
+            }
+        }
+
+        /*
+|--------------------------------------------------------------------------
+| BARU GAGAL JIKA FALLBACK JUGA TIDAK ADA
+|--------------------------------------------------------------------------
+*/
 
         if ($ruangSesuaiJenis->isEmpty()) {
             $this->preFailures[] = [
                 'mata_kuliah_id' => $mkId,
                 'kelas_id' => $kelasId,
-                'reason' => "CRITICAL: Kampus ini tidak memiliki ruangan aktif berjenis {$jenisRuangDibutuhkan}.",
+                'reason' =>
+                "CRITICAL: Tidak ditemukan ruangan aktif berjenis "
+                    . "{$jenisRuangDibutuhkan} di kampus asal maupun "
+                    . "Kampus Utama.",
                 'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
                 'sks_real' => $sksTotal,
                 'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
@@ -266,12 +340,23 @@ class DemandCollector
             mataKuliahId: $mkId,
             kelasId: $kelasId,
             kelasProdiId: $kelasProdiId,
+
             dosenPengampuRowIds: $dosenList->pluck('id')->all(),
             dosenIds: $dosenIds,
+
             kapasitasDibutuhkan: $kapasitasDibutuhkan,
+
             jenisRuangDibutuhkan: $jenisRuangDibutuhkan,
             sksTotal: $sksTotal,
+
             reqRuangId: $reqRuangId,
+
+            kelasKampusId: $kelasKampusId,
+            assignedKampusId: $assignedKampusId,
+
+            hasLocationAdjustment: $hasLocationAdjustment,
+            adjustmentReasonCode: $adjustmentReasonCode,
+            adjustmentReasonText: $adjustmentReasonText,
         );
     }
 

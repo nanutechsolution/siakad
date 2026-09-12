@@ -3,10 +3,8 @@
 namespace App\Filament\Resources\JadwalGeneratorBatches\RelationManagers;
 
 use App\Filament\Resources\JadwalGeneratorBatches\JadwalGeneratorBatchResource;
-use Filament\Resources\RelationManagers\RelationManager;
-use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\TextColumn;
-use Filament\Tables\Filters\TernaryFilter;
+use Filament\Resources\RelationManagers\RelationManager; 
+use Filament\Tables\Columns\TextColumn; 
 use Filament\Tables\Table;
 use Carbon\Carbon;
 use Filament\Actions\EditAction;
