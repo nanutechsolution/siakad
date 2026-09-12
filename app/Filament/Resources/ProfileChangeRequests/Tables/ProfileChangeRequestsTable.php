@@ -4,6 +4,7 @@ namespace App\Filament\Resources\ProfileChangeRequests\Tables;
 
 use App\Models\ProfileChangeRequest;
 use Filament\Actions\Action;
+use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
@@ -14,6 +15,7 @@ use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Throwable;
 
@@ -161,6 +163,64 @@ class ProfileChangeRequestsTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    BulkAction::make('bulk_approve')
+                        ->label('Setujui Pengajuan')
+                        ->icon('heroicon-o-check-circle')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Setujui semua pengajuan terpilih?')
+                        ->modalDescription(
+                            'Semua pengajuan yang berstatus Menunggu akan diterapkan ke data resmi mahasiswa.'
+                        )
+                        ->action(function (Collection $records) {
+                            $approved = 0;
+                            $failed = 0;
+                            $skipped = 0;
+
+                            foreach ($records as $record) {
+                                /** @var ProfileChangeRequest $record */
+
+                                if ($record->status !== 'pending') {
+                                    $skipped++;
+                                    continue;
+                                }
+
+                                try {
+                                    $record->approve(Auth::user());
+                                    $approved++;
+                                } catch (UniqueConstraintViolationException $e) {
+                                    $failed++;
+
+                                    report($e);
+                                } catch (Throwable $e) {
+                                    $failed++;
+
+                                    report($e);
+                                }
+                            }
+
+                            $body = "Berhasil menyetujui {$approved} pengajuan.";
+
+                            if ($failed > 0) {
+                                $body .= " {$failed} pengajuan gagal diproses.";
+                            }
+
+                            if ($skipped > 0) {
+                                $body .= " {$skipped} pengajuan dilewati karena bukan status Menunggu.";
+                            }
+
+                            Notification::make()
+                                ->title(
+                                    $failed > 0
+                                        ? 'Proses selesai dengan beberapa kendala'
+                                        : 'Pengajuan berhasil disetujui'
+                                )
+                                ->body($body)
+                                ->color($failed > 0 ? 'warning' : 'success')
+                                ->send();
+                        })
+                        ->deselectRecordsAfterCompletion(),
+
                     DeleteBulkAction::make(),
                 ]),
             ]);
