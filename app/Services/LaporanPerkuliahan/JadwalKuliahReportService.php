@@ -107,6 +107,7 @@ class JadwalKuliahReportService
                 'ruang' => $jadwal->ruang?->nama_ruang ?? '-',
 
                 'kelas' => $jadwal->kelas?->nama_kelas ?? '-',
+                'angkatan' => $jadwal->kelas?->angkatan_id ?? '-',
             ]);
     }
 }

@@ -106,7 +106,9 @@
                 <td>{{ $row['dosen'] ?: '-' }}</td>
                 <td>{{ $row['prodi'] }}</td>
                 <td class="text-center text-muted">{{ $row['ruang'] ?: '-' }}</td>
-                <td class="text-center font-semibold">{{ $row['kelas'] }}</td>
+                <td class="text-center font-semibold">
+                    {{ $row['kelas'] }} - {{ $row['angkatan'] }}
+                </td>
             </tr>
             @empty
             <tr>
