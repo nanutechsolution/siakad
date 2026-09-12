@@ -5,6 +5,7 @@ namespace App\Filament\Resources\KurikulumMataKuliahs\Schemas;
 use App\Domain\Authorization\Services\OrganizationResolver;
 use App\Models\KurikulumMataKuliah;
 use App\Models\MasterKurikulum;
+use App\Models\MasterMataKuliah;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
@@ -62,12 +63,35 @@ class KurikulumMataKuliahForm
                                 ->required()
                                 ->searchable()
                                 ->preload()
+                                ->live()
                                 ->disabled(fn(Get $get): bool => blank($get('kurikulum_id')))
+                                ->afterStateUpdated(function (?int $state, Set $set) {
+                                    if (!$state) {
+                                        $set('sks_tatap_muka', 0);
+                                        $set('sks_praktek', 0);
+                                        $set('sks_lapangan', 0);
+
+                                        return;
+                                    }
+
+                                    $mataKuliah = MasterMataKuliah::find($state);
+
+                                    if (!$mataKuliah) {
+                                        return;
+                                    }
+
+                                    $set('sks_tatap_muka', $mataKuliah->sks_tatap_muka ?? 0);
+                                    $set('sks_praktek', $mataKuliah->sks_praktek ?? 0);
+                                    $set('sks_lapangan', $mataKuliah->sks_lapangan ?? 0);
+                                })
                                 ->unique(
-                                    ignoreRecord: true, // WAJIB, tanpa ini edit record yang sama selalu gagal validasi
-                                    modifyRuleUsing: fn(Get $get, $rule) => $rule->where('kurikulum_id', $get('kurikulum_id')),
+                                    ignoreRecord: true,
+                                    modifyRuleUsing: fn(Get $get, $rule) =>
+                                    $rule->where('kurikulum_id', $get('kurikulum_id')),
                                 )
-                                ->helperText('Satu mata kuliah hanya bisa dipetakan sekali dalam satu kurikulum yang sama.'),
+                                ->helperText(
+                                    'SKS otomatis diambil dari Master Mata Kuliah. Nilai masih dapat disesuaikan jika diperlukan.'
+                                ),
 
                             Grid::make(2)
                                 ->schema([
