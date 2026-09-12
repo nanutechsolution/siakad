@@ -48,6 +48,16 @@ class JadwalGeneratorBatchInfolist
                             ->badge()
                             ->color('danger'),
                     ])->columns(2),
+                Section::make('Detail Error')
+                    ->schema([
+                        TextEntry::make('error_message')
+                            ->label('Penyebab Gagal')
+                            ->columnSpanFull()
+                            ->copyable()
+                            ->prose(),
+                    ])
+                    ->visible(fn($record) => $record?->status === 'FAILED')
+                    ->columns(1),
             ]);
     }
 }
