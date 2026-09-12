@@ -22,15 +22,15 @@ class KurikulumTI26Seeder extends Seeder
         // 1. Buat / Ambil Data Master Kurikulum
         $kurikulum = DB::table('master_kurikulums')
             ->where('prodi_id', $prodi_id)
-            ->where('nama_kurikulum', 'Kurikulum TI 2024')
+            ->where('nama_kurikulum', 'Kurikulum TI 2026')
             ->first();
 
         if (!$kurikulum) {
             $kurikulumId = DB::table('master_kurikulums')->insertGetId([
                 'prodi_id'           => $prodi_id,
-                'nama_kurikulum'     => 'Kurikulum TI 2024',
-                'tahun_mulai'        => 2024,
-                'id_semester_mulai'  => '20241',
+                'nama_kurikulum'     => 'Kurikulum TI 2026',
+                'tahun_mulai'        => 2026,
+                'id_semester_mulai'  => '20261',
                 'is_active'          => 1,
                 'mode_krs'           => 'PAKET',
                 'jumlah_sks_lulus'   => 144,
