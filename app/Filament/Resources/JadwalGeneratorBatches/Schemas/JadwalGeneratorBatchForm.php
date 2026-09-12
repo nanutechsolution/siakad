@@ -4,6 +4,7 @@ namespace App\Filament\Resources\JadwalGeneratorBatches\Schemas;
 
 use App\Models\Kelas;
 use Filament\Forms\Components\CheckboxList;
+use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Repeater;
 use Filament\Forms\Components\Select;
@@ -68,6 +69,7 @@ class JadwalGeneratorBatchForm
             ->schema([
                 Section::make('Target Penjadwalan')
                     ->schema([
+
                         Select::make('kampus_id')
                             ->label('Lokasi Kampus')
                             ->relationship('kampus', 'nama_kampus')
@@ -76,7 +78,14 @@ class JadwalGeneratorBatchForm
                             ->preload()
                             ->live()
                             ->helperText('Menentukan ruang mana saja yang boleh dipakai mesin, dan prodi mana yang termasuk kampus ini.'),
-
+                        Hidden::make('config_snapshot.kampus_utama_id')
+                            ->default(
+                                fn() => \App\Models\RefKampus::query()
+                                    ->where('kode_kampus', 'KMP-01')
+                                    ->where('is_active', true)
+                                    ->value('id')
+                            )
+                            ->dehydrated(true),
                         Select::make('tahun_akademik_id')
                             ->relationship('tahunAkademik', 'nama_tahun')
                             ->default(fn() => \App\Models\RefTahunAkademik::where('is_active', 1)->value('id'))
@@ -235,7 +244,6 @@ class JadwalGeneratorBatchForm
             $defaultSlotsStatis = match ($day) {
                 'Jumat' => [
                     ['mulai' => '08:00', 'selesai' => '09:30'],
-                    ['mulai' => '08:00', 'selesai' => '09:30'],
                     ['mulai' => '09:30', 'selesai' => '11:00'],
                     ['mulai' => '11:00', 'selesai' => '12:30'],
                     ['mulai' => '13:00', 'selesai' => '14:00'],
@@ -246,7 +254,7 @@ class JadwalGeneratorBatchForm
                     ['mulai' => '09:30', 'selesai' => '11:00'],
                     ['mulai' => '11:00', 'selesai' => '12:30'],
                     ['mulai' => '13:00', 'selesai' => '14:00'],
-                    ],
+                ],
                 default => [
                     // Shift standar Senin - Kamis (Full sampai 16:00)
                     ['mulai' => '08:00', 'selesai' => '09:30'],

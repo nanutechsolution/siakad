@@ -27,12 +27,6 @@ class JadwalGeneratorEngine
             $config = json_decode($config, true);
         }
         $this->kampusUtamaId = (int) ($config['kampus_utama_id'] ?? 0);
-
-        if ($this->kampusUtamaId <= 0) {
-            throw new \RuntimeException(
-                'Kampus utama belum dikonfigurasi. Tidak dapat melakukan fallback LAB.'
-            );
-        }
         $this->modeWaktu = $config['mode_waktu'] ?? 'dinamis';
         $this->menitPerSks = (int) ($config['menit_per_sks'] ?? 45);
 
@@ -101,6 +95,13 @@ class JadwalGeneratorEngine
         }
 
         try {
+
+            if ($this->kampusUtamaId <= 0) {
+                throw new \RuntimeException(
+                    'Kampus utama belum dikonfigurasi pada config_snapshot. '
+                        . 'Fallback LAB tidak dapat dilakukan.'
+                );
+            }
             $loader = new ConstraintContextLoader();
             $context = $loader->load($this->batch);
             $tracker = $context['tracker'];
