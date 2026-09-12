@@ -78,17 +78,35 @@ class JadwalKuliahReportService
 
     public function exportRows(array $filters = []): \Illuminate\Support\Collection
     {
-        return $this->query($filters)->get()->map(fn(JadwalKuliah $jadwal) => [
-            'hari' => $jadwal->hari,
-            'jam_mulai' => optional($jadwal->jam_mulai)->format('H:i'),
-            'jam_selesai' => optional($jadwal->jam_selesai)->format('H:i'),
-            'kode_mk' => $jadwal->mataKuliah?->kode_mk,
-            'nama_mk' => $jadwal->mataKuliah?->nama_mk,
-            'sks' => $jadwal->mataKuliah?->sks_default,
-            'dosen' => $jadwal->dosenPengajars->map(fn($d) => $d->dosen?->person?->nama_lengkap)->filter()->implode(', '),
-            'prodi' => $jadwal->kelas?->prodi?->nama_prodi,
-            'ruang' => $jadwal->ruang?->nama_ruang,
-            'kelas' => $jadwal->kelas?->nama_kelas,
-        ]);
+        return $this->query($filters)
+            ->get()
+            ->map(fn(JadwalKuliah $jadwal) => [
+                'hari' => $jadwal->hari,
+
+                'jam_mulai' => $jadwal->jam_mulai
+                    ? substr($jadwal->jam_mulai, 0, 5)
+                    : '-',
+
+                'jam_selesai' => $jadwal->jam_selesai
+                    ? substr($jadwal->jam_selesai, 0, 5)
+                    : '-',
+
+                'kode_mk' => $jadwal->mataKuliah?->kode_mk ?? '-',
+
+                'nama_mk' => $jadwal->mataKuliah?->nama_mk ?? '-',
+
+                'sks' => $jadwal->mataKuliah?->sks_default ?? 0,
+
+                'dosen' => $jadwal->dosenPengajars
+                    ->map(fn($d) => $d->dosen?->person?->nama_lengkap)
+                    ->filter()
+                    ->implode(', '),
+
+                'prodi' => $jadwal->kelas?->prodi?->nama_prodi ?? '-',
+
+                'ruang' => $jadwal->ruang?->nama_ruang ?? '-',
+
+                'kelas' => $jadwal->kelas?->nama_kelas ?? '-',
+            ]);
     }
 }

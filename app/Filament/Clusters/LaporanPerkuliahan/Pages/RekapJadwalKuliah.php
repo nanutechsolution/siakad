@@ -184,7 +184,6 @@ class RekapJadwalKuliah extends Page implements HasTable
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.laporan-perkuliahan.rekap-jadwal-kuliah', [
             'rows' => $rows,
         ])->setPaper('a4', 'landscape');
-        dd($rows);
         return response()->streamDownload(
             fn() => print($pdf->output()),
             'rekap-jadwal-kuliah-' . now()->format('Ymd-His') . '.pdf'
