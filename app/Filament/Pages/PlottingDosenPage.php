@@ -413,6 +413,7 @@ class PlottingDosenPage extends Page implements HasTable
                     ->button()
                     ->modalHeading(fn(KurikulumMataKuliah $record) => "Plotting: {$record->mataKuliah->nama_mk}")
                     ->modalWidth('2xl')
+                    ->closeModalByClickingAway(false)
                     ->modalSubmitActionLabel('Simpan Plotting')
                     ->fillForm(function (KurikulumMataKuliah $record): array {
                         $data = [];
