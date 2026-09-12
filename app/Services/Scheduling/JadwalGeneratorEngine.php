@@ -26,7 +26,13 @@ class JadwalGeneratorEngine
         if (is_string($config)) {
             $config = json_decode($config, true);
         }
+        $this->kampusUtamaId = (int) ($config['kampus_utama_id'] ?? 0);
 
+        if ($this->kampusUtamaId <= 0) {
+            throw new \RuntimeException(
+                'Kampus utama belum dikonfigurasi. Tidak dapat melakukan fallback LAB.'
+            );
+        }
         $this->modeWaktu = $config['mode_waktu'] ?? 'dinamis';
         $this->menitPerSks = (int) ($config['menit_per_sks'] ?? 45);
 
@@ -73,11 +79,12 @@ class JadwalGeneratorEngine
     {
         if (empty($this->ruangTersedia)) {
             $this->batch->update([
-                'status' => 'PREVIEW',
+                'status' => 'FAILED',
                 'total_generated' => 0,
                 'total_failed' => 0,
-                'failure_reason' => 'CRITICAL: Tidak ada ruangan aktif yang ditemukan untuk kampus ini.',
+                'error_message' => 'CRITICAL: Tidak ada ruangan aktif yang ditemukan.',
             ]);
+
             return;
         }
 
@@ -87,8 +94,9 @@ class JadwalGeneratorEngine
         if (!$lock->get()) {
             $this->batch->update([
                 'status' => 'FAILED',
-                'failure_reason' => 'Kampus dan tahun akademik ini sedang diproses oleh batch lain. Coba lagi setelah batch tersebut selesai.',
+                'error_message' => 'Kampus dan tahun akademik ini sedang diproses oleh batch lain. Coba lagi setelah batch tersebut selesai.',
             ]);
+
             return;
         }
 
@@ -96,36 +104,66 @@ class JadwalGeneratorEngine
             $loader = new ConstraintContextLoader();
             $context = $loader->load($this->batch);
             $tracker = $context['tracker'];
+
             $collector = new DemandCollector(
                 $this->ruangTersedia,
                 $this->kampusUtamaId,
             );
+
             $demandItems = $collector->collect($this->batch);
             $preFailures = $collector->getPreFailures();
+
             $generator = new CandidateGenerator(
                 $this->hariOperasional,
-                $this->jamOperasional, // Menggantikan $this->slotWaktu
+                $this->jamOperasional,
                 $this->jamIstirahat,
                 $this->modeWaktu,
                 $this->menitPerSks,
-                $this->menitTransisi, // Tambahan parameter baru
+                $this->menitTransisi,
                 $this->ruangTersedia,
                 $context['limitasiWaktuDosen']
             );
 
-            // Karena tidak ada lagi global slot, parameter Scorer mungkin butuh penyesuaian
-            $scorer = new CandidateScorer($this->hariOperasional, $this->jamOperasional);
+            $scorer = new CandidateScorer(
+                $this->hariOperasional,
+                $this->jamOperasional
+            );
 
-            $constructive = new GreedyConstructiveScheduler($generator, $scorer);
-            $hasil = $constructive->run($demandItems, $tracker);
+            $constructive = new GreedyConstructiveScheduler(
+                $generator,
+                $scorer
+            );
 
-            $optimizer = new LocalSearchOptimizer($generator, $scorer);
-            $assigned = $optimizer->optimize($hasil['assigned'], $tracker);
+            $hasil = $constructive->run(
+                $demandItems,
+                $tracker
+            );
 
-            $this->simpanHasil($assigned, $hasil['failed'], $preFailures);
+            $optimizer = new LocalSearchOptimizer(
+                $generator,
+                $scorer
+            );
+
+            $assigned = $optimizer->optimize(
+                $hasil['assigned'],
+                $tracker
+            );
+
+            $this->simpanHasil(
+                $assigned,
+                $hasil['failed'],
+                $preFailures
+            );
 
             $qualityScorer = new QualityScorer();
-            $ringkasan = $qualityScorer->ringkasanBatch($assigned, array_merge($hasil['failed'], $preFailures));
+
+            $ringkasan = $qualityScorer->ringkasanBatch(
+                $assigned,
+                array_merge(
+                    $hasil['failed'],
+                    $preFailures
+                )
+            );
 
             $this->batch->update([
                 'status' => 'PREVIEW',
@@ -133,7 +171,24 @@ class JadwalGeneratorEngine
                 'total_failed' => count($hasil['failed']) + count($preFailures),
                 'quality_score' => $ringkasan['quality_score'],
                 'quality_summary' => $ringkasan['quality_summary'],
+                'error_message' => null,
             ]);
+        } catch (\Throwable $e) {
+
+            $this->batch->update([
+                'status' => 'FAILED',
+                'error_message' => sprintf(
+                    "[%s] %s\nFile: %s\nLine: %d",
+                    get_class($e),
+                    $e->getMessage(),
+                    $e->getFile(),
+                    $e->getLine(),
+                ),
+            ]);
+
+            report($e);
+
+            throw $e;
         } finally {
             $lock->release();
         }
