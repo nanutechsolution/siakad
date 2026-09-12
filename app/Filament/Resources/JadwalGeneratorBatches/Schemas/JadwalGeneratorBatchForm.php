@@ -203,7 +203,7 @@ class JadwalGeneratorBatchForm
                             ->default([
                                 [
                                     'hari' => ['Senin', 'Selasa', 'Rabu', 'Kamis'],
-                                    'mulai' => '12:00',
+                                    'mulai' => '12:30',
                                     'selesai' => '13:00'
                                 ]
                             ])
@@ -247,7 +247,6 @@ class JadwalGeneratorBatchForm
                     ['mulai' => '09:30', 'selesai' => '11:00'],
                     ['mulai' => '11:00', 'selesai' => '12:30'],
                     ['mulai' => '13:00', 'selesai' => '14:00'],
-                    // Shift Jumat berhenti di sini (sebelum Jumatan)
                 ],
                 'Sabtu' => [
                     ['mulai' => '08:00', 'selesai' => '09:30'],
@@ -256,7 +255,6 @@ class JadwalGeneratorBatchForm
                     ['mulai' => '13:00', 'selesai' => '14:00'],
                 ],
                 default => [
-                    // Shift standar Senin - Kamis (Full sampai 16:00)
                     ['mulai' => '08:00', 'selesai' => '09:30'],
                     ['mulai' => '09:30', 'selesai' => '11:00'],
                     ['mulai' => '11:00', 'selesai' => '12:30'],
