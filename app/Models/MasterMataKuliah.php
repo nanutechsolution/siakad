@@ -9,7 +9,6 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class MasterMataKuliah extends Model implements HasScopeStrategy
@@ -62,7 +61,7 @@ class MasterMataKuliah extends Model implements HasScopeStrategy
     }
     public static function getFakultasScopeColumn(): ?string
     {
-        return 'prodi.fakultas_id'; // dot-path -> whereHas('prodi', ...)
+        return 'prodi.fakultas_id';  
     }
 
     public static function getProdiScopeColumn(): ?string
