@@ -67,10 +67,6 @@ class JadwalGeneratorEngine
                 'is_active',
             ])
             ->toArray();
-        // if ($this->batch->kampus_id) {
-        //     $ruangQuery->where('kampus_id', $this->batch->kampus_id);
-        // }
-        $this->ruangTersedia = $ruangQuery->get()->toArray();
     }
 
     public function execute(): void
