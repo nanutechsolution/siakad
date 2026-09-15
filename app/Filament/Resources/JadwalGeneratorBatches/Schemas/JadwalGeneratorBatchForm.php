@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JadwalGeneratorBatches\Schemas;
 
 use App\Models\Kelas;
+use App\Models\RefProdi;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
 use Filament\Forms\Components\Placeholder;
@@ -92,12 +93,45 @@ class JadwalGeneratorBatchForm
                             ->required()
                             ->live(),
 
-                        Select::make('prodi_id')
-                            ->relationship('prodi', 'nama_prodi')
+                        Radio::make('config_snapshot.scope_prodi')
+                            ->label('Target Prodi')
+                            ->options([
+                                'all' => 'Semua Prodi di Kampus',
+                                'specific' => 'Prodi Tertentu',
+                            ])
+                            ->default('specific')
                             ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state === 'all') {
+                                    $set('prodi_id', null);
+                                }
+                            })
+                            ->columnSpanFull(),
 
+                        Select::make('prodi_id')
+                            ->label('Program Studi')
+                            ->options(function (Get $get) {
+                                $kampusId = $get('kampus_id');
+
+                                if (! $kampusId) {
+                                    return [];
+                                }
+
+                                return RefProdi::query()
+                                    ->whereHas('kelas', function ($query) use ($kampusId) {
+                                        $query->where('kampus_id', $kampusId);
+                                    })
+                                    ->orderBy('nama_prodi')
+                                    ->pluck('nama_prodi', 'id');
+                            })
+                            ->visible(fn(Get $get) => $get('config_snapshot.scope_prodi') === 'specific')
+                            ->required(fn(Get $get) => $get('config_snapshot.scope_prodi') === 'specific')
+                            ->searchable()
                             ->preload()
-                            ->searchable(),
+                            ->live()
+                            ->dehydrated(fn(Get $get) => $get('config_snapshot.scope_prodi') === 'specific')
+                            ->columnSpanFull(),
                     ])->columns(2),
 
                 Section::make('Ringkasan Beban')
@@ -108,29 +142,136 @@ class JadwalGeneratorBatchForm
                             ->hiddenLabel()
                             ->content(fn(Get $get) => self::ringkasanBebanHtml($get)),
                     ])
-                    ->visible(fn(Get $get) => filled($get('kampus_id')) && filled($get('prodi_id'))),
+                    ->visible(
+                        fn(Get $get) =>
+                        filled($get('kampus_id')) &&
+                            filled($get('config_snapshot.scope_prodi'))
+                    )
             ]);
     }
 
     protected static function ringkasanBebanHtml(Get $get): HtmlString
     {
         $kampusId = $get('kampus_id');
+        $scopeProdi = $get('config_snapshot.scope_prodi');
         $prodiId = $get('prodi_id');
 
-        $totalKelasProdi = Kelas::where('prodi_id', $prodiId)->count();
-        $kelasSesuaiKampus = Kelas::where('prodi_id', $prodiId)->where('kampus_id', $kampusId)->count();
-        $kelasKampusKosong = Kelas::where('prodi_id', $prodiId)->whereNull('kampus_id')->count();
+        if (! $kampusId || ! $scopeProdi) {
+            return new HtmlString(
+                '<div style="color:#6b7280;">
+                Silakan pilih kampus dan target prodi terlebih dahulu.
+            </div>'
+            );
+        }
+
+        // =========================
+        // PRODI TERTENTU
+        // =========================
+        if ($scopeProdi === 'specific') {
+            if (! $prodiId) {
+                return new HtmlString(
+                    '<div style="color:#6b7280;">
+                    Silakan pilih program studi.
+                </div>'
+                );
+            }
+
+            $totalKelasProdi = Kelas::query()
+                ->where('prodi_id', $prodiId)
+                ->count();
+
+            $kelasSesuaiKampus = Kelas::query()
+                ->where('prodi_id', $prodiId)
+                ->where('kampus_id', $kampusId)
+                ->count();
+
+            $kelasKampusKosong = Kelas::query()
+                ->where('prodi_id', $prodiId)
+                ->whereNull('kampus_id')
+                ->count();
+
+            $warning = '';
+
+            if ($kelasKampusKosong > 0) {
+                $warning = "<div style='margin-top:8px; padding:8px 12px; background:#fef3c7; border-radius:6px; color:#92400e;'>
+                ⚠️ Ada <b>{$kelasKampusKosong} kelas</b> di prodi ini yang belum diisi data kampusnya.
+                Kelas tersebut <b>TIDAK</b> akan ikut digenerate sampai datanya dilengkapi di halaman Kelas.
+            </div>";
+            }
+
+            return new HtmlString(
+                "<div>
+                Kelas di prodi ini yang cocok dengan kampus:
+                <b>{$kelasSesuaiKampus}</b>
+                dari total <b>{$totalKelasProdi}</b> kelas.
+            </div>"
+                    . $warning
+            );
+        }
+
+        // =========================
+        // SEMUA PRODI DI KAMPUS
+        // =========================
+
+        $prodiIds = Kelas::query()
+            ->where('kampus_id', $kampusId)
+            ->whereNotNull('prodi_id')
+            ->distinct()
+            ->pluck('prodi_id');
+
+        $jumlahProdi = $prodiIds->count();
+
+        $totalKelas = Kelas::query()
+            ->whereIn('prodi_id', $prodiIds)
+            ->count();
+
+        $kelasSesuaiKampus = Kelas::query()
+            ->where('kampus_id', $kampusId)
+            ->whereIn('prodi_id', $prodiIds)
+            ->count();
+
+        $kelasKampusKosong = Kelas::query()
+            ->whereIn('prodi_id', $prodiIds)
+            ->whereNull('kampus_id')
+            ->count();
+
+        $prodiNama = RefProdi::query()
+            ->whereIn('id', $prodiIds)
+            ->orderBy('nama_prodi')
+            ->pluck('nama_prodi')
+            ->implode(', ');
 
         $warning = '';
+
         if ($kelasKampusKosong > 0) {
-            $warning = "<div style='margin-top:8px; padding:8px 12px; background:#fef3c7; border-radius:6px; color:#92400e;'>"
-                . "⚠️ Ada <b>{$kelasKampusKosong} kelas</b> di prodi ini yang belum diisi data kampusnya. "
-                . "Kelas tersebut <b>TIDAK</b> akan ikut digenerate sampai datanya dilengkapi di halaman Kelas."
-                . "</div>";
+            $warning = "<div style='margin-top:8px; padding:8px 12px; background:#fef3c7; border-radius:6px; color:#92400e;'>
+            ⚠️ Ada <b>{$kelasKampusKosong} kelas</b> dari prodi yang dipilih
+            yang belum memiliki data kampus.
+            Kelas tersebut <b>TIDAK</b> akan ikut digenerate.
+        </div>";
         }
 
         return new HtmlString(
-            "<div>Kelas di prodi ini yang cocok kampus <b>{$kelasSesuaiKampus}</b> dari total <b>{$totalKelasProdi}</b> kelas prodi ini di semua kampus.</div>"
+            "<div>
+            <div style='margin-bottom:6px;'>
+                <b>Semua Prodi di Kampus</b>
+            </div>
+
+            <div>
+                Prodi yang ditemukan:
+                <b>{$jumlahProdi} prodi</b>
+            </div>
+
+            <div>
+                Total kelas yang cocok:
+                <b>{$kelasSesuaiKampus}</b>
+                dari <b>{$totalKelas}</b> kelas.
+            </div>
+
+            <div style='margin-top:6px; color:#6b7280;'>
+                {$prodiNama}
+            </div>
+        </div>"
                 . $warning
         );
     }

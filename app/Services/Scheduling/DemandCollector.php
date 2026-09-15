@@ -5,6 +5,7 @@ namespace App\Services\Scheduling;
 use App\Models\DosenPengampu;
 use App\Models\JadwalGeneratorBatch;
 use App\Models\JadwalKuliah;
+use App\Models\Kelas;
 use App\Models\KurikulumMataKuliah;
 use App\Models\MahasiswaKelas;
 use App\Models\MasterKurikulum;
@@ -23,44 +24,134 @@ class DemandCollector
     ) {}
 
     /** @return DemandItem[] */
+    /** @return DemandItem[] */
     public function collect(JadwalGeneratorBatch $batch): array
     {
         $this->preFailures = [];
 
         $jadwalProduction = JadwalKuliah::where('tahun_akademik_id', $batch->tahun_akademik_id)
             ->get(['mata_kuliah_id', 'kelas_id']);
+
         $kombinasiSudahAda = $jadwalProduction
             ->map(fn($jp) => $jp->mata_kuliah_id . '-' . $jp->kelas_id)
             ->all();
 
-        // --- PERBAIKAN BUG C: filter juga berdasarkan kampus_id kelas, bukan
-        // hanya prodi_id. Prodi bisa punya kelas di beberapa kampus; kelas
-        // yang kampus_id-nya belum diisi (NULL) sengaja TIDAK ikut tertarik
-        // sampai datanya dilengkapi (fail-safe, lihat komentar migration). ---
+        /*
+    |--------------------------------------------------------------------------
+    | TENTUKAN SCOPE PRODI
+    |--------------------------------------------------------------------------
+    |
+    | specific:
+    |   hanya 1 prodi sesuai batch->prodi_id
+    |
+    | all:
+    |   semua prodi yang memiliki kelas pada kampus target
+    |
+    */
+
+        $scopeProdi = data_get(
+            $batch->config_snapshot,
+            'scope_prodi',
+            'specific'
+        );
+
+        if ($scopeProdi === 'all') {
+
+            $prodiIds = Kelas::query()
+                ->where('kampus_id', $batch->kampus_id)
+                ->whereNotNull('prodi_id')
+                ->distinct()
+                ->pluck('prodi_id');
+        } else {
+
+            $prodiIds = collect([
+                $batch->prodi_id,
+            ])->filter()->values();
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | FAIL-SAFE
+    |--------------------------------------------------------------------------
+    */
+
+        if ($prodiIds->isEmpty()) {
+            Log::warning('DemandCollector: tidak ditemukan prodi target.', [
+                'batch_id' => $batch->id,
+                'kampus_id' => $batch->kampus_id,
+                'scope_prodi' => $scopeProdi,
+                'prodi_id' => $batch->prodi_id,
+            ]);
+
+            return [];
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | AMBIL DOSEN PENGAMPU
+    |--------------------------------------------------------------------------
+    |
+    | Semua prodi tetap dikumpulkan dalam SATU batch.
+    |
+    | Ini penting karena ScheduleTracker nantinya harus melihat:
+    | - bentrok dosen antar-prodi
+    | - bentrok ruang antar-prodi
+    | - bentrok kelas
+    |
+    */
+
         $pengampus = DosenPengampu::with(['kelas', 'mataKuliah'])
             ->where('tahun_akademik_id', $batch->tahun_akademik_id)
-            ->whereHas('kelas', function ($query) use ($batch) {
-                $query->where('prodi_id', $batch->prodi_id)
-                    ->where('kampus_id', $batch->kampus_id);
+            ->whereHas('kelas', function ($query) use ($batch, $prodiIds) {
+
+                $query
+                    ->where('kampus_id', $batch->kampus_id)
+                    ->whereIn('prodi_id', $prodiIds);
             })
             ->get()
             ->filter(function ($item) use ($kombinasiSudahAda) {
+
                 $key = $item->mata_kuliah_id . '-' . $item->kelas_id;
-                return !in_array($key, $kombinasiSudahAda, true);
+
+                return ! in_array($key, $kombinasiSudahAda, true);
             })
-            ->groupBy(fn($item) => $item->mata_kuliah_id . '-' . $item->kelas_id);
+            ->groupBy(
+                fn($item) => $item->mata_kuliah_id . '-' . $item->kelas_id
+            );
 
         $items = [];
 
         foreach ($pengampus as $dosenList) {
+
             $firstItem = $dosenList->first();
-            $item = $this->buildDemandItem($firstItem, $dosenList);
+
+            $item = $this->buildDemandItem(
+                $firstItem,
+                $dosenList
+            );
+
             if ($item !== null) {
                 $items[] = $item;
             }
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | MOST CONSTRAINED FIRST
+    |--------------------------------------------------------------------------
+    */
+
         $this->urutkanMostConstrainedFirst($items);
+
+        Log::info('DemandCollector selesai.', [
+            'batch_id' => $batch->id,
+            'kampus_id' => $batch->kampus_id,
+            'scope_prodi' => $scopeProdi,
+            'prodi_ids' => $prodiIds->values()->all(),
+            'jumlah_prodi' => $prodiIds->count(),
+            'jumlah_demand' => count($items),
+            'jumlah_pre_failure' => count($this->preFailures),
+        ]);
 
         return $items;
     }
