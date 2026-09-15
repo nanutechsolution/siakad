@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\JadwalGeneratorBatches\Schemas;
 
 use App\Models\Kelas;
+use App\Models\RefKampus;
 use App\Models\RefProdi;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Components\Hidden;
@@ -107,6 +108,26 @@ class JadwalGeneratorBatchForm
                                 }
                             })
                             ->helperText('Pilih kampus jika generator hanya ingin menjalankan satu kampus.')
+                            ->columnSpanFull(),
+                        Select::make('config_snapshot.kampus_utama_id')
+                            ->label('Kampus Utama untuk Fallback LAB')
+                            ->options(
+                                RefKampus::query()
+                                    ->orderBy('nama_kampus')
+                                    ->pluck('nama_kampus', 'id')
+                                    ->toArray()
+                            )
+                            ->default(
+                                fn() => RefKampus::query()
+                                    ->orderBy('id')
+                                    ->value('id')
+                            )
+                            ->required()
+                            ->searchable()
+                            ->preload()
+                            ->helperText(
+                                'Jika LAB di kampus asal tidak tersedia, sistem akan mencoba LAB di kampus utama ini.'
+                            )
                             ->columnSpanFull(),
                         Select::make('tahun_akademik_id')
                             ->relationship('tahunAkademik', 'nama_tahun')

@@ -20,7 +20,7 @@ class DemandCollector
 
     public function __construct(
         protected array $ruangTersedia,
-        protected int $kampusUtamaId,
+        protected ?int $kampusUtamaId = null,
     ) {}
 
     /** @return DemandItem[] */

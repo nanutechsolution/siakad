@@ -38,6 +38,12 @@ class JadwalGeneratorEngine
         $this->kampusUtamaId = !empty($config['kampus_utama_id'])
             ? (int) $config['kampus_utama_id']
             : null;
+        if ($this->kampusUtamaId === null) {
+            throw new \RuntimeException(
+                'Kampus utama belum dikonfigurasi. '
+                    . 'Kampus utama diperlukan untuk fallback LAB.'
+            );
+        }
         $this->modeWaktu = $config['mode_waktu'] ?? 'dinamis';
         $this->menitPerSks = (int) ($config['menit_per_sks'] ?? 45);
 
