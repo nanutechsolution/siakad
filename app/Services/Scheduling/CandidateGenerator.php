@@ -258,6 +258,16 @@ class CandidateGenerator
                 if ($ruang['jenis_ruang'] !== $item->jenisRuangDibutuhkan) continue;
                 if ((int) $ruang['kapasitas'] < (int) $item->kapasitasDibutuhkan) continue;
                 if (!is_null($ruang['prodi_id']) && (int) $ruang['prodi_id'] !== (int) $item->kelasProdiId) continue;
+                // ============================================================
+                // BATASI FALLBACK KAMPUS
+                // ============================================================
+                // Hanya LABORATORIUM yang boleh fallback lintas kampus.
+                if (
+                    $item->jenisRuangDibutuhkan !== 'LABORATORIUM'
+                    && (int) $ruang['kampus_id'] !== (int) $ruangPilihan['kampus_id']
+                ) {
+                    continue;
+                }
                 if ($tracker->isRuangBentrok($ruang['id'], $hari, $jamMulai, $jamSelesaiTransisi)) continue;
                 $kandidatAlternatif[] = $ruang;
             }
