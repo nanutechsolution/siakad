@@ -67,7 +67,6 @@ class CandidateGenerator
                         $alasanTerakhir
                     );
                 }
-
             } else {
 
                 $jamBuka = $this->jamOperasional[$hari]['mulai'] ?? '08:00';
@@ -155,7 +154,7 @@ class CandidateGenerator
                     $criticalCodes
                 ),
                 'reason' =>
-                    $alasanTerakhir
+                $alasanTerakhir
                     ?? 'Constraint ruang tidak dapat dipenuhi.',
             ];
         }
@@ -165,7 +164,7 @@ class CandidateGenerator
             'candidates' => [],
             'failure_code' => $failureCodes[0] ?? 'NO_FEASIBLE_SLOT',
             'reason' =>
-                $alasanTerakhir
+            $alasanTerakhir
                 ?? 'Tidak ditemukan kombinasi hari, jam, dan ruang yang valid.',
         ];
     }
@@ -406,7 +405,7 @@ class CandidateGenerator
                     'ruang' => [],
                     'failure_code' => 'FIXED_ROOM_NOT_FOUND',
                     'reason' =>
-                        "CRITICAL: Ruang pilihan admin "
+                    "CRITICAL: Ruang pilihan admin "
                         . "id={$item->reqRuangId} tidak aktif "
                         . "atau tidak tersedia dalam konteks generator.",
                 ];
@@ -422,13 +421,13 @@ class CandidateGenerator
             if (
                 !is_null($ruangPilihan['prodi_id'])
                 && (int) $ruangPilihan['prodi_id']
-                    !== (int) $item->kelasProdiId
+                !== (int) $item->kelasProdiId
             ) {
                 return [
                     'ruang' => [],
                     'failure_code' => 'FIXED_ROOM_PRODI',
                     'reason' =>
-                        "CRITICAL: Ruang pilihan admin "
+                    "CRITICAL: Ruang pilihan admin "
                         . "'{$ruangPilihan['nama_ruang']}' "
                         . "merupakan ruang eksklusif prodi lain.",
                 ];
@@ -445,7 +444,7 @@ class CandidateGenerator
                     'ruang' => [],
                     'failure_code' => 'FIXED_ROOM_CAPACITY',
                     'reason' =>
-                        "CRITICAL: Ruang pilihan admin "
+                    "CRITICAL: Ruang pilihan admin "
                         . "'{$ruangPilihan['nama_ruang']}' "
                         . "berkapasitas {$ruangPilihan['kapasitas']}, "
                         . "butuh {$item->kapasitasDibutuhkan}.",
@@ -463,7 +462,7 @@ class CandidateGenerator
                     'ruang' => [],
                     'failure_code' => 'FIXED_ROOM_TYPE',
                     'reason' =>
-                        "CRITICAL: Ruang pilihan admin "
+                    "CRITICAL: Ruang pilihan admin "
                         . "'{$ruangPilihan['nama_ruang']}' "
                         . "berjenis {$ruangPilihan['jenis_ruang']}, "
                         . "butuh {$item->jenisRuangDibutuhkan}.",
@@ -490,14 +489,14 @@ class CandidateGenerator
                         'ruang' => [],
                         'failure_code' => 'FIXED_LAB_UNAVAILABLE',
                         'reason' =>
-                            "Ruang LAB pilihan admin "
+                        "Ruang LAB pilihan admin "
                             . "'{$ruangPilihan['nama_ruang']}' "
                             . "sedang terpakai pada slot {$hari} "
                             . "{$jamMulai}-{$jamSelesaiTransisi}. "
                             . "LAB pilihan admin tidak boleh diganti.",
                         'room_source' => 'fixed',
                         'room_note' =>
-                            'LAB pilihan admin wajib digunakan. '
+                        'LAB pilihan admin wajib digunakan. '
                             . 'Tidak ada fallback ke laboratorium lain.',
                     ];
                 }
@@ -508,6 +507,35 @@ class CandidateGenerator
                     'reason' => null,
                     'room_source' => 'fixed',
                     'room_note' => null,
+                ];
+            }
+
+            // --------------------------------------------------------
+            // VALIDASI KAMPUS
+            //
+            // TEORI:
+            //   wajib kampus yang sama dengan kelas.
+            //
+            // LAB:
+            //   boleh lintas kampus sesuai aturan fallback.
+            //
+            // Hanya TEORI yang wajib same-campus di level fixed room.
+            // --------------------------------------------------------
+            if (
+                $ruangPilihan['jenis_ruang'] === 'TEORI'
+                && (
+                    is_null($ruangPilihan['kampus_id'])
+                    || (int) $ruangPilihan['kampus_id']
+                    !== (int) $item->kelasKampusId
+                )
+            ) {
+                return [
+                    'ruang' => [],
+                    'failure_code' => 'FIXED_ROOM_CAMPUS',
+                    'reason' =>
+                    "CRITICAL: Ruang TEORI pilihan admin "
+                        . "'{$ruangPilihan['nama_ruang']}' "
+                        . "berada di kampus berbeda dengan kelas.",
                 ];
             }
 
@@ -568,7 +596,7 @@ class CandidateGenerator
                     is_null($ruang['kampus_id'])
                     || is_null($ruangPilihan['kampus_id'])
                     || (int) $ruang['kampus_id']
-                        !== (int) $ruangPilihan['kampus_id']
+                    !== (int) $ruangPilihan['kampus_id']
                 ) {
                     continue;
                 }
@@ -582,7 +610,7 @@ class CandidateGenerator
                 if (
                     !is_null($ruang['prodi_id'])
                     && (int) $ruang['prodi_id']
-                        !== (int) $item->kelasProdiId
+                    !== (int) $item->kelasProdiId
                 ) {
                     continue;
                 }
@@ -609,7 +637,7 @@ class CandidateGenerator
                     'reason' => null,
                     'room_source' => 'preferred_fallback',
                     'room_note' =>
-                        "Ruang pilihan admin "
+                    "Ruang pilihan admin "
                         . "'{$ruangPilihan['nama_ruang']}' penuh. "
                         . "Sistem menggunakan alternatif ruang teori "
                         . "yang valid pada kampus yang sama.",
@@ -620,7 +648,7 @@ class CandidateGenerator
                 'ruang' => [],
                 'failure_code' => 'ROOM_UNAVAILABLE',
                 'reason' =>
-                    "Ruang pilihan '{$ruangPilihan['nama_ruang']}' "
+                "Ruang pilihan '{$ruangPilihan['nama_ruang']}' "
                     . "penuh dan tidak ada alternatif ruang teori "
                     . "yang valid pada kampus yang sama.",
             ];
@@ -633,7 +661,9 @@ class CandidateGenerator
 
         foreach ($this->ruangTersedia as $ruang) {
 
-            // Jenis harus sesuai
+            // --------------------------------------------------------
+            // JENIS RUANG HARUS SESUAI
+            // --------------------------------------------------------
             if (
                 $ruang['jenis_ruang']
                 !== $item->jenisRuangDibutuhkan
@@ -641,7 +671,33 @@ class CandidateGenerator
                 continue;
             }
 
-            // Kapasitas
+            // --------------------------------------------------------
+            // KAMPUS
+            //
+            // TEORI:
+            //   wajib kampus kelas.
+            //
+            // LAB:
+            //   normal      -> kampus kelas
+            //   fallback    -> kampus utama
+            //
+            // assignedKampusId sudah ditentukan oleh DemandCollector.
+            // --------------------------------------------------------
+            if (
+                (int) ($ruang['kampus_id'] ?? 0)
+                !== (int) $item->assignedKampusId
+            ) {
+                continue;
+            }
+
+            // Ruang tanpa kampus tidak boleh digunakan otomatis.
+            if (is_null($ruang['kampus_id'])) {
+                continue;
+            }
+
+            // --------------------------------------------------------
+            // KAPASITAS
+            // --------------------------------------------------------
             if (
                 (int) $ruang['kapasitas']
                 < (int) $item->kapasitasDibutuhkan
@@ -652,18 +708,20 @@ class CandidateGenerator
             // --------------------------------------------------------
             // RUANG KHUSUS PRODI
             //
-            // prodi_id NULL = umum
-            // prodi_id terisi = hanya prodi tersebut
+            // NULL = ruang umum
+            // terisi = hanya prodi tersebut
             // --------------------------------------------------------
             if (
                 !is_null($ruang['prodi_id'])
                 && (int) $ruang['prodi_id']
-                    !== (int) $item->kelasProdiId
+                !== (int) $item->kelasProdiId
             ) {
                 continue;
             }
 
-            // Bentrok
+            // --------------------------------------------------------
+            // BENTROK RUANG
+            // --------------------------------------------------------
             if (
                 $tracker->isRuangBentrok(
                     $ruang['id'],
@@ -683,7 +741,7 @@ class CandidateGenerator
                 'ruang' => [],
                 'failure_code' => 'ROOM_UNAVAILABLE',
                 'reason' =>
-                    'Semua ruang yang sesuai terpakai pada slot ini.',
+                'Semua ruang yang sesuai terpakai pada slot ini.',
             ];
         }
 
