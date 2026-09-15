@@ -784,6 +784,20 @@ class CandidateGenerator
                     continue;
                 }
 
+                // --------------------------------------------------------
+                // CONSTRAINT KAMPUS KELAS + DOSEN
+                // --------------------------------------------------------
+                if (
+                    !$this->ruangMemenuhiConstraintKampus(
+                        $item,
+                        $hari,
+                        $ruang,
+                        $tracker
+                    )
+                ) {
+                    continue;
+                }
+
                 $hasil[] = $ruang;
             }
 
@@ -912,5 +926,46 @@ class CandidateGenerator
         }
 
         return null;
+    }
+
+    protected function ruangMemenuhiConstraintKampus(
+        DemandItem $item,
+        string $hari,
+        array $ruang,
+        ScheduleTracker $tracker
+    ): bool {
+        $assignedKampusId = $ruang['kampus_id'] ?? null;
+
+        if ($assignedKampusId === null) {
+            return false;
+        }
+
+        $assignedKampusId = (int) $assignedKampusId;
+
+        // Kelas tidak boleh pindah kampus pada hari yang sama.
+        if (
+            $tracker->isKelasBedaKampusDiHari(
+                $item->kelasId,
+                $hari,
+                $assignedKampusId
+            )
+        ) {
+            return false;
+        }
+
+        // Dosen tidak boleh pindah kampus pada hari yang sama.
+        foreach ($item->dosenIds as $dosenId) {
+            if (
+                $tracker->isDosenBedaKampusDiHari(
+                    $dosenId,
+                    $hari,
+                    $assignedKampusId
+                )
+            ) {
+                return false;
+            }
+        }
+
+        return true;
     }
 }
