@@ -66,27 +66,48 @@ class JadwalGeneratorBatchForm
     {
         return Step::make('Target Penjadwalan')
             ->icon('heroicon-o-map-pin')
-            ->description('Pilih kampus, tahun akademik, dan prodi yang akan digenerate.')
+            ->description('Pilih cakupan kampus, tahun akademik, dan prodi yang akan digenerate.')
             ->schema([
                 Section::make('Target Penjadwalan')
                     ->schema([
 
-                        Select::make('kampus_id')
-                            ->label('Lokasi Kampus')
-                            ->relationship('kampus', 'nama_kampus')
+                        Radio::make('config_snapshot.scope_kampus')
+                            ->label('Target Kampus')
+                            ->options([
+                                'all' => 'Semua Kampus',
+                                'specific' => 'Kampus Tertentu',
+                            ])
+                            ->default('all')
                             ->required()
+                            ->live()
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state === 'all') {
+                                    $set('kampus_id', null);
+                                }
+                            })
+                            ->columnSpanFull(),
+                        Select::make('kampus_id')
+                            ->label('Kampus')
+                            ->relationship('kampus', 'nama_kampus')
+                            ->visible(
+                                fn(Get $get) =>
+                                $get('config_snapshot.scope_kampus') === 'specific'
+                            )
+                            ->required(
+                                fn(Get $get) =>
+                                $get('config_snapshot.scope_kampus') === 'specific'
+                            )
                             ->searchable()
                             ->preload()
                             ->live()
-                            ->helperText('Menentukan ruang mana saja yang boleh dipakai mesin, dan prodi mana yang termasuk kampus ini.'),
-                        Hidden::make('config_snapshot.kampus_utama_id')
-                            ->default(
-                                fn() => \App\Models\RefKampus::query()
-                                    ->where('kode_kampus', 'KMP-01')
-                                    ->where('is_active', true)
-                                    ->value('id')
-                            )
-                            ->dehydrated(true),
+                            ->afterStateUpdated(function ($state, callable $set) {
+                                if ($state === 'all') {
+                                    $set('kampus_id', null);
+                                    $set('prodi_id', null);
+                                }
+                            })
+                            ->helperText('Pilih kampus jika generator hanya ingin menjalankan satu kampus.')
+                            ->columnSpanFull(),
                         Select::make('tahun_akademik_id')
                             ->relationship('tahunAkademik', 'nama_tahun')
                             ->default(fn() => \App\Models\RefTahunAkademik::where('is_active', 1)->value('id'))
@@ -144,138 +165,198 @@ class JadwalGeneratorBatchForm
                     ])
                     ->visible(
                         fn(Get $get) =>
-                        filled($get('kampus_id')) &&
-                            filled($get('config_snapshot.scope_prodi'))
+                        filled($get('config_snapshot.scope_kampus')) &&
+                            filled($get('config_snapshot.scope_prodi')) &&
+                            (
+                                $get('config_snapshot.scope_kampus') === 'all' ||
+                                filled($get('kampus_id'))
+                            )
                     )
             ]);
     }
 
     protected static function ringkasanBebanHtml(Get $get): HtmlString
     {
-        $kampusId = $get('kampus_id');
+        $scopeKampus = $get('config_snapshot.scope_kampus');
         $scopeProdi = $get('config_snapshot.scope_prodi');
+
+        $kampusId = $get('kampus_id');
         $prodiId = $get('prodi_id');
 
-        if (! $kampusId || ! $scopeProdi) {
+        if (! $scopeKampus || ! $scopeProdi) {
             return new HtmlString(
                 '<div style="color:#6b7280;">
-                Silakan pilih kampus dan target prodi terlebih dahulu.
+                Silakan pilih cakupan kampus dan target prodi terlebih dahulu.
             </div>'
             );
         }
 
-        // =========================
-        // PRODI TERTENTU
-        // =========================
-        if ($scopeProdi === 'specific') {
-            if (! $prodiId) {
-                return new HtmlString(
-                    '<div style="color:#6b7280;">
-                    Silakan pilih program studi.
-                </div>'
-                );
-            }
-
-            $totalKelasProdi = Kelas::query()
-                ->where('prodi_id', $prodiId)
-                ->count();
-
-            $kelasSesuaiKampus = Kelas::query()
-                ->where('prodi_id', $prodiId)
-                ->where('kampus_id', $kampusId)
-                ->count();
-
-            $kelasKampusKosong = Kelas::query()
-                ->where('prodi_id', $prodiId)
-                ->whereNull('kampus_id')
-                ->count();
-
-            $warning = '';
-
-            if ($kelasKampusKosong > 0) {
-                $warning = "<div style='margin-top:8px; padding:8px 12px; background:#fef3c7; border-radius:6px; color:#92400e;'>
-                ⚠️ Ada <b>{$kelasKampusKosong} kelas</b> di prodi ini yang belum diisi data kampusnya.
-                Kelas tersebut <b>TIDAK</b> akan ikut digenerate sampai datanya dilengkapi di halaman Kelas.
-            </div>";
-            }
-
+        if ($scopeKampus === 'specific' && ! $kampusId) {
             return new HtmlString(
-                "<div>
-                Kelas di prodi ini yang cocok dengan kampus:
-                <b>{$kelasSesuaiKampus}</b>
-                dari total <b>{$totalKelasProdi}</b> kelas.
-            </div>"
-                    . $warning
+                '<div style="color:#6b7280;">
+                Silakan pilih kampus terlebih dahulu.
+            </div>'
             );
         }
 
-        // =========================
-        // SEMUA PRODI DI KAMPUS
-        // =========================
+        if ($scopeProdi === 'specific' && ! $prodiId) {
+            return new HtmlString(
+                '<div style="color:#6b7280;">
+                Silakan pilih program studi terlebih dahulu.
+            </div>'
+            );
+        }
 
-        $prodiIds = Kelas::query()
-            ->where('kampus_id', $kampusId)
-            ->whereNotNull('prodi_id')
-            ->distinct()
-            ->pluck('prodi_id');
+        /*
+    |--------------------------------------------------------------------------
+    | Tentukan kelas target
+    |--------------------------------------------------------------------------
+    |
+    | Prinsip:
+    | - kampus specific  => hanya kelas pada kampus tersebut
+    | - kampus all       => semua kelas yang kampus_id-nya terisi
+    | - prodi specific   => hanya prodi tersebut
+    | - prodi all        => semua prodi yang ditemukan
+    |
+    */
 
-        $jumlahProdi = $prodiIds->count();
+        $query = Kelas::query()
+            ->whereNotNull('kampus_id')
+            ->whereNotNull('prodi_id');
 
-        $totalKelas = Kelas::query()
-            ->whereIn('prodi_id', $prodiIds)
-            ->count();
+        // Filter kampus
+        if ($scopeKampus === 'specific') {
+            $query->where('kampus_id', $kampusId);
+        }
 
-        $kelasSesuaiKampus = Kelas::query()
-            ->where('kampus_id', $kampusId)
-            ->whereIn('prodi_id', $prodiIds)
-            ->count();
+        // Filter prodi
+        if ($scopeProdi === 'specific') {
+            $query->where('prodi_id', $prodiId);
+        }
 
-        $kelasKampusKosong = Kelas::query()
-            ->whereIn('prodi_id', $prodiIds)
+        $kelasTarget = $query->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Hitung kelas tanpa kampus
+    |--------------------------------------------------------------------------
+    |
+    | Kelas tanpa kampus sengaja TIDAK masuk target generator.
+    | Tetapi tetap kita tampilkan sebagai warning agar operator tahu.
+    |
+    */
+
+        $kelasKosongQuery = Kelas::query()
             ->whereNull('kampus_id')
-            ->count();
+            ->whereNotNull('prodi_id');
 
-        $prodiNama = RefProdi::query()
-            ->whereIn('id', $prodiIds)
+        if ($scopeProdi === 'specific') {
+            $kelasKosongQuery->where('prodi_id', $prodiId);
+        }
+
+        $kelasKampusKosong = $kelasKosongQuery->count();
+
+        /*
+    |--------------------------------------------------------------------------
+    | Nama kampus
+    |--------------------------------------------------------------------------
+    */
+
+        $kampusNama = null;
+
+        if ($scopeKampus === 'specific' && $kampusId) {
+            $kampusNama = \App\Models\RefKampus::query()
+                ->whereKey($kampusId)
+                ->value('nama_kampus');
+        }
+
+        /*
+    |--------------------------------------------------------------------------
+    | Nama prodi
+    |--------------------------------------------------------------------------
+    */
+
+        $prodiQuery = RefProdi::query();
+
+        if ($scopeProdi === 'specific') {
+            $prodiQuery->whereKey($prodiId);
+        } else {
+            $prodiQuery->whereIn(
+                'id',
+                (clone $query)
+                    ->reorder()
+                    ->select('prodi_id')
+                    ->distinct()
+            );
+        }
+
+        $prodiNama = $prodiQuery
             ->orderBy('nama_prodi')
             ->pluck('nama_prodi')
             ->implode(', ');
 
+        /*
+    |--------------------------------------------------------------------------
+    | Warning kelas tanpa kampus
+    |--------------------------------------------------------------------------
+    */
+
         $warning = '';
 
         if ($kelasKampusKosong > 0) {
-            $warning = "<div style='margin-top:8px; padding:8px 12px; background:#fef3c7; border-radius:6px; color:#92400e;'>
-            ⚠️ Ada <b>{$kelasKampusKosong} kelas</b> dari prodi yang dipilih
-            yang belum memiliki data kampus.
-            Kelas tersebut <b>TIDAK</b> akan ikut digenerate.
-        </div>";
+            $warning = "
+            <div style='margin-top:8px; padding:8px 12px;
+                background:#fef3c7; border-radius:6px; color:#92400e;'>
+                ⚠️ Ada <b>{$kelasKampusKosong} kelas</b>
+                yang belum memiliki data kampus.
+                Kelas tersebut <b>TIDAK</b> akan ikut digenerate
+                sampai data kampusnya dilengkapi di halaman Kelas.
+            </div>
+        ";
         }
 
+        /*
+    |--------------------------------------------------------------------------
+    | Label target
+    |--------------------------------------------------------------------------
+    */
+
+        $labelKampus = $scopeKampus === 'all'
+            ? 'Semua Kampus'
+            : e($kampusNama ?? 'Kampus');
+
+        $labelProdi = $scopeProdi === 'all'
+            ? 'Semua Prodi'
+            : e($prodiNama);
+
+        /*
+    |--------------------------------------------------------------------------
+    | Output
+    |--------------------------------------------------------------------------
+    */
+
         return new HtmlString(
-            "<div>
-            <div style='margin-bottom:6px;'>
-                <b>Semua Prodi di Kampus</b>
+            "
+        <div>
+            <div style='margin-bottom:8px;'>
+                <b>Target:</b>
+                {$labelKampus} · {$labelProdi}
             </div>
 
             <div>
-                Prodi yang ditemukan:
-                <b>{$jumlahProdi} prodi</b>
-            </div>
-
-            <div>
-                Total kelas yang cocok:
-                <b>{$kelasSesuaiKampus}</b>
-                dari <b>{$totalKelas}</b> kelas.
+                Total kelas yang akan digenerate:
+                <b>{$kelasTarget} kelas</b>
             </div>
 
             <div style='margin-top:6px; color:#6b7280;'>
-                {$prodiNama}
+                Prodi:
+                {$labelProdi}
             </div>
-        </div>"
+        </div>
+        "
                 . $warning
         );
     }
-
     protected static function stepAturanWaktu(): Step
     {
         return Step::make('Aturan & Waktu')

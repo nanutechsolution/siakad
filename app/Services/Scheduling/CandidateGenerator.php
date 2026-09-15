@@ -18,6 +18,7 @@ class CandidateGenerator
         protected int $menitTransisi,
         protected array $ruangTersedia,
         protected array $limitasiWaktuDosen,
+        protected ?int $kampusUtamaId = null,
     ) {}
 
     public function generate(DemandItem $item, ScheduleTracker $tracker): array
@@ -709,101 +710,178 @@ class CandidateGenerator
             ];
         }
 
-        // ============================================================
-        // TIDAK ADA RUANG PILIHAN ADMIN
-        // ============================================================
-        $kandidatRuang = [];
+        $kampusKelas = (int) $item->assignedKampusId;
 
-        foreach ($this->ruangTersedia as $ruang) {
+        /**
+         * Filter ruang berdasarkan kampus + seluruh constraint ruang.
+         */
+        $filterRuang = function (int $kampusTarget) use (
+            $item,
+            $hari,
+            $jamMulai,
+            $jamSelesaiTransisi,
+            $tracker
+        ): array {
+            $hasil = [];
 
-            // --------------------------------------------------------
-            // JENIS RUANG HARUS SESUAI
-            // --------------------------------------------------------
-            if (
-                $ruang['jenis_ruang']
-                !== $item->jenisRuangDibutuhkan
-            ) {
-                continue;
+            foreach ($this->ruangTersedia as $ruang) {
+
+                // --------------------------------------------------------
+                // JENIS RUANG
+                // --------------------------------------------------------
+                if (
+                    $ruang['jenis_ruang']
+                    !== $item->jenisRuangDibutuhkan
+                ) {
+                    continue;
+                }
+
+                // --------------------------------------------------------
+                // KAMPUS
+                // --------------------------------------------------------
+                if (
+                    is_null($ruang['kampus_id'])
+                    || (int) $ruang['kampus_id'] !== $kampusTarget
+                ) {
+                    continue;
+                }
+
+                // --------------------------------------------------------
+                // KAPASITAS
+                // --------------------------------------------------------
+                if (
+                    (int) $ruang['kapasitas']
+                    < (int) $item->kapasitasDibutuhkan
+                ) {
+                    continue;
+                }
+
+                // --------------------------------------------------------
+                // RUANG KHUSUS PRODI
+                //
+                // NULL = ruang umum
+                // terisi = hanya prodi tersebut
+                // --------------------------------------------------------
+                if (
+                    !is_null($ruang['prodi_id'])
+                    && (int) $ruang['prodi_id']
+                    !== (int) $item->kelasProdiId
+                ) {
+                    continue;
+                }
+
+                // --------------------------------------------------------
+                // BENTROK RUANG
+                // --------------------------------------------------------
+                if (
+                    $tracker->isRuangBentrok(
+                        $ruang['id'],
+                        $hari,
+                        $jamMulai,
+                        $jamSelesaiTransisi
+                    )
+                ) {
+                    continue;
+                }
+
+                $hasil[] = $ruang;
             }
 
-            // --------------------------------------------------------
-            // KAMPUS
-            //
-            // TEORI:
-            //   wajib kampus kelas.
-            //
-            // LAB:
-            //   normal      -> kampus kelas
-            //   fallback    -> kampus utama
-            //
-            // assignedKampusId sudah ditentukan oleh DemandCollector.
-            // --------------------------------------------------------
-            if (
-                (int) ($ruang['kampus_id'] ?? 0)
-                !== (int) $item->assignedKampusId
-            ) {
-                continue;
+            return $hasil;
+        };
+
+
+        /**
+         * ================================================================
+         * TEORI
+         * ================================================================
+         *
+         * TEORI hanya boleh menggunakan kampus asal kelas.
+         */
+        if ($item->jenisRuangDibutuhkan === 'TEORI') {
+
+            $kandidatRuang = $filterRuang($kampusKelas);
+
+            if (empty($kandidatRuang)) {
+                return [
+                    'ruang' => [],
+                    'failure_code' => 'ROOM_UNAVAILABLE',
+                    'reason' =>
+                    'Semua ruang TEORI yang sesuai pada kampus kelas '
+                        . 'terpakai atau tidak memenuhi constraint.',
+                ];
             }
 
-            // Ruang tanpa kampus tidak boleh digunakan otomatis.
-            if (is_null($ruang['kampus_id'])) {
-                continue;
-            }
-
-            // --------------------------------------------------------
-            // KAPASITAS
-            // --------------------------------------------------------
-            if (
-                (int) $ruang['kapasitas']
-                < (int) $item->kapasitasDibutuhkan
-            ) {
-                continue;
-            }
-
-            // --------------------------------------------------------
-            // RUANG KHUSUS PRODI
-            //
-            // NULL = ruang umum
-            // terisi = hanya prodi tersebut
-            // --------------------------------------------------------
-            if (
-                !is_null($ruang['prodi_id'])
-                && (int) $ruang['prodi_id']
-                !== (int) $item->kelasProdiId
-            ) {
-                continue;
-            }
-
-            // --------------------------------------------------------
-            // BENTROK RUANG
-            // --------------------------------------------------------
-            if (
-                $tracker->isRuangBentrok(
-                    $ruang['id'],
-                    $hari,
-                    $jamMulai,
-                    $jamSelesaiTransisi
-                )
-            ) {
-                continue;
-            }
-
-            $kandidatRuang[] = $ruang;
-        }
-
-        if (empty($kandidatRuang)) {
             return [
-                'ruang' => [],
-                'failure_code' => 'ROOM_UNAVAILABLE',
-                'reason' =>
-                'Semua ruang yang sesuai terpakai pada slot ini.',
+                'ruang' => $kandidatRuang,
+                'failure_code' => null,
+                'reason' => null,
+                'room_source' => 'normal',
+                'room_note' => null,
             ];
         }
 
+
+        /**
+         * ================================================================
+         * LABORATORIUM
+         * ================================================================
+         *
+         * 1. Cari LAB kampus asal terlebih dahulu.
+         * 2. Jika tidak ada yang usable → fallback ke kampus utama.
+         * 3. Hanya LAB yang boleh melakukan fallback lintas kampus.
+         */
+
+        // ---------------------------------------------------------------
+        // PRIORITAS 1: LAB KAMPUS ASAL
+        // ---------------------------------------------------------------
+        $kandidatLokal = $filterRuang($kampusKelas);
+
+        if (!empty($kandidatLokal)) {
+            return [
+                'ruang' => $kandidatLokal,
+                'failure_code' => null,
+                'reason' => null,
+                'room_source' => 'normal',
+                'room_note' => null,
+            ];
+        }
+
+
+        // ---------------------------------------------------------------
+        // PRIORITAS 2: LAB KAMPUS UTAMA
+        // ---------------------------------------------------------------
+        if (
+            $this->kampusUtamaId !== null
+            && (int) $this->kampusUtamaId !== $kampusKelas
+        ) {
+            $kandidatFallback = $filterRuang(
+                (int) $this->kampusUtamaId
+            );
+
+            if (!empty($kandidatFallback)) {
+                return [
+                    'ruang' => $kandidatFallback,
+                    'failure_code' => null,
+                    'reason' => null,
+                    'room_source' => 'lab_fallback',
+                    'room_note' =>
+                    'LAB kampus asal tidak tersedia pada slot ini. '
+                        . 'Sistem menggunakan LAB kampus utama.',
+                ];
+            }
+        }
+
+
+        // ---------------------------------------------------------------
+        // TIDAK ADA LAB
+        // ---------------------------------------------------------------
         return [
-            'ruang' => $kandidatRuang,
-            'failure_code' => null,
-            'reason' => null,
+            'ruang' => [],
+            'failure_code' => 'ROOM_UNAVAILABLE',
+            'reason' =>
+            'LAB kampus asal tidak tersedia dan LAB kampus utama '
+                . 'juga tidak memiliki ruang yang usable pada slot ini.',
         ];
     }
 

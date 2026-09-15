@@ -16,7 +16,6 @@ class LocalSearchOptimizer
     /**
      * @param array $assigned list of ['item' => DemandItem, 'candidate' => Candidate]
      * @return array assigned yang sudah diperbaiki
-     *               (array yang sama, beberapa 'candidate' mungkin berubah)
      */
     public function optimize(array $assigned, ScheduleTracker $tracker): array
     {
@@ -47,7 +46,13 @@ class LocalSearchOptimizer
                 $item = $entry['item'];
                 $kandidatLama = $entry['candidate'];
 
-                // Lepas sementara reservasi lama.
+                /*
+                 * Lepas sementara reservasi lama.
+                 *
+                 * Penting:
+                 * gunakan kampus aktual dari ruang lama,
+                 * bukan kampus asal kelas.
+                 */
                 $tracker->unreserve(
                     $item->dosenIds,
                     $item->kelasId,
@@ -55,7 +60,8 @@ class LocalSearchOptimizer
                     $kandidatLama->hari,
                     $kandidatLama->jamMulai,
                     $kandidatLama->jamSelesai,
-                    $item->kelasProdiId
+                    $item->kelasProdiId,
+                    $kandidatLama->assignedKampusId
                 );
 
                 $hasil = $this->generator->generate(
@@ -72,9 +78,14 @@ class LocalSearchOptimizer
                         $tracker
                     );
 
-                    $kandidatBaruTerbaik = $scored[0];
+                    $kandidatBaruTerbaik = $scored[0] ?? null;
                 }
 
+                /*
+                 * Jangan ubah arah perbandingan skor dulu.
+                 * Ini mengikuti kode yang sekarang sampai CandidateScorer
+                 * dikonfirmasi.
+                 */
                 if (
                     $kandidatBaruTerbaik
                     && $kandidatBaruTerbaik->skor < $kandidatLama->skor
@@ -93,6 +104,9 @@ class LocalSearchOptimizer
                     $assigned[$idx]['candidate'] = $kandidatBaruTerbaik;
                     $adaPerbaikan = true;
                 } else {
+                    /*
+                     * Rollback assignment lama.
+                     */
                     $tracker->reserve(
                         $item->dosenIds,
                         $item->kelasId,

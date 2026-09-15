@@ -49,6 +49,48 @@ class DemandCollector
     |
     */
 
+        /*
+|--------------------------------------------------------------------------
+| TENTUKAN SCOPE KAMPUS
+|--------------------------------------------------------------------------
+*/
+
+        $scopeKampus = data_get(
+            $batch->config_snapshot,
+            'scope_kampus',
+            $batch->kampus_id ? 'specific' : 'all'
+        );
+
+        /*
+|--------------------------------------------------------------------------
+| TENTUKAN KAMPUS TARGET
+|--------------------------------------------------------------------------
+|
+| specific:
+|   hanya kampus pada batch
+|
+| all:
+|   semua kampus yang memiliki kelas valid
+|
+*/
+
+        if ($scopeKampus === 'specific') {
+            $kampusIds = collect([
+                $batch->kampus_id,
+            ])->filter()->values();
+        } else {
+            $kampusIds = Kelas::query()
+                ->whereNotNull('kampus_id')
+                ->distinct()
+                ->pluck('kampus_id');
+        }
+
+        /*
+|--------------------------------------------------------------------------
+| TENTUKAN SCOPE PRODI
+|--------------------------------------------------------------------------
+*/
+
         $scopeProdi = data_get(
             $batch->config_snapshot,
             'scope_prodi',
@@ -58,7 +100,7 @@ class DemandCollector
         if ($scopeProdi === 'all') {
 
             $prodiIds = Kelas::query()
-                ->where('kampus_id', $batch->kampus_id)
+                ->whereIn('kampus_id', $kampusIds)
                 ->whereNotNull('prodi_id')
                 ->distinct()
                 ->pluck('prodi_id');
@@ -75,10 +117,21 @@ class DemandCollector
     |--------------------------------------------------------------------------
     */
 
+        if ($kampusIds->isEmpty()) {
+            Log::warning('DemandCollector: tidak ditemukan kampus target.', [
+                'batch_id' => $batch->id,
+                'kampus_id' => $batch->kampus_id,
+                'scope_kampus' => $scopeKampus,
+            ]);
+
+            return [];
+        }
+
         if ($prodiIds->isEmpty()) {
             Log::warning('DemandCollector: tidak ditemukan prodi target.', [
                 'batch_id' => $batch->id,
-                'kampus_id' => $batch->kampus_id,
+                'kampus_ids' => $kampusIds->values()->all(),
+                'scope_kampus' => $scopeKampus,
                 'scope_prodi' => $scopeProdi,
                 'prodi_id' => $batch->prodi_id,
             ]);
@@ -102,10 +155,10 @@ class DemandCollector
 
         $pengampus = DosenPengampu::with(['kelas', 'mataKuliah'])
             ->where('tahun_akademik_id', $batch->tahun_akademik_id)
-            ->whereHas('kelas', function ($query) use ($batch, $prodiIds) {
+            ->whereHas('kelas', function ($query) use ($kampusIds, $prodiIds) {
 
                 $query
-                    ->where('kampus_id', $batch->kampus_id)
+                    ->whereIn('kampus_id', $kampusIds)
                     ->whereIn('prodi_id', $prodiIds);
             })
             ->get()
@@ -146,8 +199,11 @@ class DemandCollector
         Log::info('DemandCollector selesai.', [
             'batch_id' => $batch->id,
             'kampus_id' => $batch->kampus_id,
+            'scope_kampus' => $scopeKampus,
+            'kampus_ids' => $kampusIds->values()->all(),
             'scope_prodi' => $scopeProdi,
             'prodi_ids' => $prodiIds->values()->all(),
+            'jumlah_kampus' => $kampusIds->count(),
             'jumlah_prodi' => $prodiIds->count(),
             'jumlah_demand' => count($items),
             'jumlah_pre_failure' => count($this->preFailures),

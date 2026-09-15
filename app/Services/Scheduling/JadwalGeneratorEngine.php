@@ -18,11 +18,20 @@ class JadwalGeneratorEngine
     protected int $menitTransisi;
     protected array $jamIstirahat;
     protected ?int $kampusUtamaId;
+    protected string $scopeKampus;
+    protected string $scopeProdi;
     public function __construct(JadwalGeneratorBatch $batch)
     {
         $this->batch = $batch;
 
         $config = $batch->config_snapshot;
+        $this->scopeKampus = $config['scope_kampus'] ?? (
+            $batch->kampus_id ? 'specific' : 'all'
+        );
+
+        $this->scopeProdi = $config['scope_prodi'] ?? (
+            $batch->prodi_id ? 'specific' : 'all'
+        );
         if (is_string($config)) {
             $config = json_decode($config, true);
         }
@@ -83,14 +92,13 @@ class JadwalGeneratorEngine
 
             return;
         }
-
-        $lockKey = "jadwal-generator:{$this->batch->tahun_akademik_id}:{$this->batch->kampus_id}";
+        $lockKey = "jadwal-generator:{$this->batch->tahun_akademik_id}";
         $lock = Cache::lock($lockKey, 900);
 
         if (!$lock->get()) {
             $this->batch->update([
                 'status' => 'FAILED',
-                'error_message' => 'Kampus dan tahun akademik ini sedang diproses oleh batch lain. Coba lagi setelah batch tersebut selesai.',
+                'error_message' => 'Tahun akademik ini sedang diproses oleh batch generator lain. Coba lagi setelah batch tersebut selesai.',
             ]);
 
             return;

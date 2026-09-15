@@ -20,10 +20,13 @@ class ConstraintContextLoader
     public function load(JadwalGeneratorBatch $batch): array
     {
         $tracker = new ScheduleTracker();
-        $targetKampusId = $batch->kampus_id;
 
-        $this->loadProduction($tracker, $batch, $targetKampusId);
-        $this->loadPreviewAktifDariBatchLain($tracker, $batch, $targetKampusId);
+        // Production selalu menjadi constraint GLOBAL.
+        // Tidak peduli batch sedang menargetkan satu kampus atau semua kampus.
+        $this->loadProduction($tracker, $batch);
+
+        // Preview/RUNNING batch lain juga menjadi constraint GLOBAL.
+        $this->loadPreviewAktifDariBatchLain($tracker, $batch);
 
         $limitasiWaktuDosen = $this->loadAvailability();
 
@@ -39,24 +42,40 @@ class ConstraintContextLoader
      * karena bentrok dosen/kelas/ruang harus dicek lintas prodi, dan karantina
      * lintas kampus butuh tahu jadwal dosen di kampus lain.
      */
-    protected function loadProduction(ScheduleTracker $tracker, JadwalGeneratorBatch $batch, ?int $targetKampusId): void
-    {
-        $existingJadwal = JadwalKuliah::with(['dosenPengampus', 'ruang', 'kelas'])
+    protected function loadProduction(
+        ScheduleTracker $tracker,
+        JadwalGeneratorBatch $batch
+    ): void {
+        $existingJadwal = JadwalKuliah::with([
+            'dosenPengampus',
+            'ruang',
+            'kelas',
+        ])
             ->where('tahun_akademik_id', $batch->tahun_akademik_id)
             ->get();
 
         foreach ($existingJadwal as $jadwal) {
-            if (!$jadwal->hari || !$jadwal->jam_mulai || !$jadwal->jam_selesai || !$jadwal->ruang_id) {
-                // Data jadwal belum lengkap (mis. hasil intervensi manual yang belum
-                // disimpan penuh) -- lewati daripada mengotori tracker dengan key kosong.
+            if (
+                !$jadwal->hari ||
+                !$jadwal->jam_mulai ||
+                !$jadwal->jam_selesai ||
+                !$jadwal->ruang_id
+            ) {
+                // Jadwal belum lengkap, jangan dimasukkan ke tracker.
                 continue;
             }
 
             $hari = $jadwal->hari;
             $mulai = substr($jadwal->jam_mulai, 0, 5);
             $selesai = substr($jadwal->jam_selesai, 0, 5);
-            $dosenIds = $jadwal->dosenPengampus->pluck('dosen_id')->all();
+
+            $dosenIds = $jadwal->dosenPengampus
+                ->pluck('dosen_id')
+                ->all();
+
             $prodiId = $jadwal->kelas->prodi_id ?? null;
+
+            // KAMPUS AKTUAL = kampus lokasi ruang.
             $jadwalKampusId = $jadwal->ruang->kampus_id ?? null;
 
             $tracker->reserve(
@@ -69,11 +88,6 @@ class ConstraintContextLoader
                 $prodiId,
                 $jadwalKampusId
             );
-            if ($targetKampusId && $jadwalKampusId && $jadwalKampusId != $targetKampusId) {
-                foreach ($dosenIds as $dId) {
-                    $tracker->markKarantina($dId, $hari);
-                }
-            }
         }
     }
 
@@ -88,16 +102,13 @@ class ConstraintContextLoader
      */
     protected function loadPreviewAktifDariBatchLain(
         ScheduleTracker $tracker,
-        JadwalGeneratorBatch $batch,
-        ?int $targetKampusId
+        JadwalGeneratorBatch $batch
     ): void {
-        $batchLain = JadwalGeneratorBatch::where(
-            'tahun_akademik_id',
-            $batch->tahun_akademik_id
-        )
+        $batchLain = JadwalGeneratorBatch::query()
+            ->where('tahun_akademik_id', $batch->tahun_akademik_id)
             ->where('id', '!=', $batch->id)
             ->whereIn('status', ['PREVIEW', 'RUNNING'])
-            ->get(['id', 'kampus_id']);
+            ->get(['id']);
 
         if ($batchLain->isEmpty()) {
             return;
@@ -112,8 +123,20 @@ class ConstraintContextLoader
             return;
         }
 
-        // Kampus aktual ditentukan dari lokasi ruang,
-        // bukan dari kampus target batch.
+        /*
+     * Kampus aktual tidak boleh diambil dari:
+     *
+     *   batch.kampus_id
+     *
+     * karena sebuah hasil bisa saja menggunakan ruang LAB
+     * di kampus lain.
+     *
+     * Kampus aktual selalu:
+     *
+     *   jadwal_generator_results.ruang_id
+     *              ↓
+     *   ref_ruang.kampus_id
+     */
         $ruangIds = $results
             ->pluck('ruang_id')
             ->filter()
@@ -142,16 +165,14 @@ class ConstraintContextLoader
                 ? json_decode($result->dosen_pengampu_ids, true)
                 : $result->dosen_pengampu_ids;
 
-            $dosenIds = DosenPengampu::whereIn(
-                'id',
-                $dosenPengampuIds ?? []
-            )
+            $dosenIds = DosenPengampu::query()
+                ->whereIn('id', $dosenPengampuIds ?? [])
                 ->pluck('dosen_id')
                 ->all();
 
             $prodiId = $result->kelas->prodi_id ?? null;
 
-            // Kampus aktual berdasarkan kampus ruang.
+            // Kampus aktual berdasarkan lokasi ruang.
             $jadwalKampusId = $ruangKampus[$result->ruang_id] ?? null;
 
             $tracker->reserve(
@@ -164,16 +185,6 @@ class ConstraintContextLoader
                 $prodiId,
                 $jadwalKampusId
             );
-
-            if (
-                $targetKampusId &&
-                $jadwalKampusId &&
-                $jadwalKampusId != $targetKampusId
-            ) {
-                foreach ($dosenIds as $dId) {
-                    $tracker->markKarantina($dId, $hari);
-                }
-            }
         }
     }
     protected function loadAvailability(): array

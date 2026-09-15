@@ -54,12 +54,7 @@ class ScheduleTracker
      * ]
      */
     protected array $kampusDosenPerHari = [];
-    /**
-     * Hari-hari yang harus "dikarantina" penuh untuk seorang dosen, karena
-     * dosen tsb sudah mengajar di kampus lain pada hari itu.
-     * @var array<int|string, string[]>
-     */
-    protected array $karantinaHariDosen = [];
+
 
     /**
      * Statistik beban untuk keperluan scoring soft constraint (poin G):
@@ -150,7 +145,8 @@ class ScheduleTracker
         string $hari,
         string $jamMulai,
         string $jamSelesai,
-        ?int $prodiId = null
+        ?int $prodiId = null,
+        ?int $kampusId = null
     ): void {
         $this->byKelas[$kelasId][$hari] = $this->hapusSatuRentang(
             $this->byKelas[$kelasId][$hari] ?? [],
@@ -248,16 +244,7 @@ class ScheduleTracker
         }));
     }
 
-    public function markKarantina(int|string $dosenId, string $hari): void
-    {
-        $this->karantinaHariDosen[$dosenId][] = $hari;
-    }
 
-    public function isDosenKarantinaDiHari(int|string $dosenId, string $hari): bool
-    {
-        return isset($this->karantinaHariDosen[$dosenId])
-            && in_array($hari, $this->karantinaHariDosen[$dosenId], true);
-    }
 
     public function isDosenBentrok(int|string $dosenId, string $hari, string $mulai, string $selesai): bool
     {
