@@ -20,7 +20,7 @@ class CandidateScorer
         'fit_kapasitas' => 2.0,
         'distribusi_ruang' => 1.5,
         'fairness_prodi' => 1.5,
-        'preferensi_pagi' => 50.0,
+        'preferensi_pagi' => 0,
     ];
 
     protected array $slotMulaiList = [];
