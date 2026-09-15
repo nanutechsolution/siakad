@@ -510,34 +510,34 @@ class CandidateGenerator
                 ];
             }
 
-            // --------------------------------------------------------
-            // VALIDASI KAMPUS
-            //
-            // TEORI:
-            //   wajib kampus yang sama dengan kelas.
-            //
-            // LAB:
-            //   boleh lintas kampus sesuai aturan fallback.
-            //
-            // Hanya TEORI yang wajib same-campus di level fixed room.
-            // --------------------------------------------------------
-            if (
-                $ruangPilihan['jenis_ruang'] === 'TEORI'
-                && (
-                    is_null($ruangPilihan['kampus_id'])
-                    || (int) $ruangPilihan['kampus_id']
-                    !== (int) $item->kelasKampusId
-                )
-            ) {
-                return [
-                    'ruang' => [],
-                    'failure_code' => 'FIXED_ROOM_CAMPUS',
-                    'reason' =>
-                    "CRITICAL: Ruang TEORI pilihan admin "
-                        . "'{$ruangPilihan['nama_ruang']}' "
-                        . "berada di kampus berbeda dengan kelas.",
-                ];
-            }
+            // // --------------------------------------------------------
+            // // VALIDASI KAMPUS
+            // //
+            // // TEORI:
+            // //   wajib kampus yang sama dengan kelas.
+            // //
+            // // LAB:
+            // //   boleh lintas kampus sesuai aturan fallback.
+            // //
+            // // Hanya TEORI yang wajib same-campus di level fixed room.
+            // // --------------------------------------------------------
+            // if (
+            //     $ruangPilihan['jenis_ruang'] === 'TEORI'
+            //     && (
+            //         is_null($ruangPilihan['kampus_id'])
+            //         || (int) $ruangPilihan['kampus_id']
+            //         !== (int) $item->kelasKampusId
+            //     )
+            // ) {
+            //     return [
+            //         'ruang' => [],
+            //         'failure_code' => 'FIXED_ROOM_CAMPUS',
+            //         'reason' =>
+            //         "CRITICAL: Ruang TEORI pilihan admin "
+            //             . "'{$ruangPilihan['nama_ruang']}' "
+            //             . "berada di kampus berbeda dengan kelas.",
+            //     ];
+            // }
 
             // ========================================================
             // TEORI = PREFERRED + FALLBACK
