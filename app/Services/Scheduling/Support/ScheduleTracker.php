@@ -29,6 +29,32 @@ class ScheduleTracker
     protected array $byRuang = [];
 
     /**
+     * Kampus aktual kelas per hari.
+     *
+     * Format:
+     * [
+     *     kelas_id => [
+     *         hari => kampus_id
+     *     ]
+     * ]
+     *
+     * Yang disimpan adalah kampus aktual tempat perkuliahan,
+     * yaitu kampus dari ruang yang dipilih, bukan kampus asal kelas.
+     */
+    protected array $kampusKelasPerHari = [];
+
+    /**
+     * Kampus aktual dosen per hari.
+     *
+     * Format:
+     * [
+     *     dosen_id => [
+     *         hari => kampus_id
+     *     ]
+     * ]
+     */
+    protected array $kampusDosenPerHari = [];
+    /**
      * Hari-hari yang harus "dikarantina" penuh untuk seorang dosen, karena
      * dosen tsb sudah mengajar di kampus lain pada hari itu.
      * @var array<int|string, string[]>
@@ -53,9 +79,17 @@ class ScheduleTracker
         string $hari,
         string $jamMulai,
         string $jamSelesai,
-        ?int $prodiId = null
+        ?int $prodiId = null,
+        ?int $kampusId = null
     ): void {
         $rentang = ['mulai' => $jamMulai, 'selesai' => $jamSelesai];
+        if ($kampusId !== null) {
+            $this->kampusKelasPerHari[$kelasId][$hari] ??= $kampusId;
+
+            foreach ($dosenIds as $dosenId) {
+                $this->kampusDosenPerHari[$dosenId][$hari] ??= $kampusId;
+            }
+        }
 
         $this->byKelas[$kelasId][$hari][] = $rentang;
         $this->byRuang[$ruangId][$hari][] = $rentang;
@@ -74,6 +108,36 @@ class ScheduleTracker
         }
     }
 
+    public function isDosenBedaKampusDiHari(
+        int|string $dosenId,
+        string $hari,
+        int $kampusId
+    ): bool {
+        return isset($this->kampusDosenPerHari[$dosenId][$hari])
+            && $this->kampusDosenPerHari[$dosenId][$hari] !== $kampusId;
+    }
+    public function isKelasBedaKampusDiHari(
+        int $kelasId,
+        string $hari,
+        int $kampusId
+    ): bool {
+        return isset($this->kampusKelasPerHari[$kelasId][$hari])
+            && $this->kampusKelasPerHari[$kelasId][$hari] !== $kampusId;
+    }
+    public function kampusKelasHari(
+        int $kelasId,
+        string $hari
+    ): ?int {
+        return $this->kampusKelasPerHari[$kelasId][$hari] ?? null;
+    }
+
+    public function kampusDosenHari(
+        int|string $dosenId,
+        string $hari
+    ): ?int {
+        return $this->kampusDosenPerHari[$dosenId][$hari] ?? null;
+    }
+
     /**
      * Melepas satu reservasi yang sebelumnya dibuat via reserve() dengan
      * parameter identik. Dipakai LocalSearchOptimizer untuk mencoba
@@ -88,28 +152,86 @@ class ScheduleTracker
         string $jamSelesai,
         ?int $prodiId = null
     ): void {
-        $this->byKelas[$kelasId][$hari] = $this->hapusSatuRentang($this->byKelas[$kelasId][$hari] ?? [], $jamMulai, $jamSelesai);
-        $this->byRuang[$ruangId][$hari] = $this->hapusSatuRentang($this->byRuang[$ruangId][$hari] ?? [], $jamMulai, $jamSelesai);
+        $this->byKelas[$kelasId][$hari] = $this->hapusSatuRentang(
+            $this->byKelas[$kelasId][$hari] ?? [],
+            $jamMulai,
+            $jamSelesai
+        );
+
+        $this->byRuang[$ruangId][$hari] = $this->hapusSatuRentang(
+            $this->byRuang[$ruangId][$hari] ?? [],
+            $jamMulai,
+            $jamSelesai
+        );
 
         foreach ($dosenIds as $dId) {
-            $this->byDosen[$dId][$hari] = $this->hapusSatuRentang($this->byDosen[$dId][$hari] ?? [], $jamMulai, $jamSelesai);
+            $this->byDosen[$dId][$hari] = $this->hapusSatuRentang(
+                $this->byDosen[$dId][$hari] ?? [],
+                $jamMulai,
+                $jamSelesai
+            );
+
             if (isset($this->bebanDosenPerHari[$dId][$hari])) {
-                $this->bebanDosenPerHari[$dId][$hari] = max(0, $this->bebanDosenPerHari[$dId][$hari] - 1);
+                $this->bebanDosenPerHari[$dId][$hari] = max(
+                    0,
+                    $this->bebanDosenPerHari[$dId][$hari] - 1
+                );
+            }
+        }
+
+        // Hapus constraint kampus kelas hanya jika
+        // sudah tidak ada jadwal kelas pada hari tersebut.
+        if (empty($this->byKelas[$kelasId][$hari])) {
+            unset($this->kampusKelasPerHari[$kelasId][$hari]);
+
+            if (empty($this->kampusKelasPerHari[$kelasId])) {
+                unset($this->kampusKelasPerHari[$kelasId]);
+            }
+        }
+
+        // Hapus constraint kampus dosen hanya jika
+        // sudah tidak ada jadwal dosen pada hari tersebut.
+        foreach ($dosenIds as $dId) {
+            if (empty($this->byDosen[$dId][$hari])) {
+                unset($this->kampusDosenPerHari[$dId][$hari]);
+
+                if (empty($this->kampusDosenPerHari[$dId])) {
+                    unset($this->kampusDosenPerHari[$dId]);
+                }
             }
         }
 
         if (isset($this->bebanPerHari[$hari])) {
-            $this->bebanPerHari[$hari] = max(0, $this->bebanPerHari[$hari] - 1);
+            $this->bebanPerHari[$hari] = max(
+                0,
+                $this->bebanPerHari[$hari] - 1
+            );
         }
+
         $slotKey = $hari . '|' . $jamMulai;
+
         if (isset($this->bebanPerSlotKey[$slotKey])) {
-            $this->bebanPerSlotKey[$slotKey] = max(0, $this->bebanPerSlotKey[$slotKey] - 1);
+            $this->bebanPerSlotKey[$slotKey] = max(
+                0,
+                $this->bebanPerSlotKey[$slotKey] - 1
+            );
         }
+
         if (isset($this->bebanRuang[$ruangId])) {
-            $this->bebanRuang[$ruangId] = max(0, $this->bebanRuang[$ruangId] - 1);
+            $this->bebanRuang[$ruangId] = max(
+                0,
+                $this->bebanRuang[$ruangId] - 1
+            );
         }
-        if ($prodiId !== null && isset($this->bebanProdiPerHari[$prodiId][$hari])) {
-            $this->bebanProdiPerHari[$prodiId][$hari] = max(0, $this->bebanProdiPerHari[$prodiId][$hari] - 1);
+
+        if (
+            $prodiId !== null
+            && isset($this->bebanProdiPerHari[$prodiId][$hari])
+        ) {
+            $this->bebanProdiPerHari[$prodiId][$hari] = max(
+                0,
+                $this->bebanProdiPerHari[$prodiId][$hari] - 1
+            );
         }
     }
 
@@ -177,7 +299,7 @@ class ScheduleTracker
         if (empty($semuaHari)) {
             return 0.0;
         }
-        $total = array_sum(array_map(fn ($h) => $this->bebanHari($h), $semuaHari));
+        $total = array_sum(array_map(fn($h) => $this->bebanHari($h), $semuaHari));
         return $total / count($semuaHari);
     }
 
@@ -204,7 +326,7 @@ class ScheduleTracker
 
     public function rataRataBebanDosen(int|string $dosenId, array $semuaHari): float
     {
-        $total = array_sum(array_map(fn ($h) => $this->bebanDosenHari($dosenId, $h), $semuaHari));
+        $total = array_sum(array_map(fn($h) => $this->bebanDosenHari($dosenId, $h), $semuaHari));
         return empty($semuaHari) ? 0.0 : $total / count($semuaHari);
     }
 
@@ -218,7 +340,7 @@ class ScheduleTracker
         if (empty($semuaRuangId)) {
             return 0.0;
         }
-        $total = array_sum(array_map(fn ($r) => $this->bebanRuang($r), $semuaRuangId));
+        $total = array_sum(array_map(fn($r) => $this->bebanRuang($r), $semuaRuangId));
         return $total / count($semuaRuangId);
     }
 

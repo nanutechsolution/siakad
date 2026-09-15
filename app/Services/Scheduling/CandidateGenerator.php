@@ -28,16 +28,16 @@ class CandidateGenerator
 
         foreach ($this->hariOperasional as $hari) {
 
-            // ============================================================
-            // 1. CEK KARANTINA DOSEN
-            // ============================================================
-            foreach ($item->dosenIds as $dId) {
-                if ($tracker->isDosenKarantinaDiHari($dId, $hari)) {
-                    $failureCodes[] = 'DOSEN_KARANTINA';
-                    $alasanTerakhir = 'Dosen sedang mengajar di kampus lain pada hari ini.';
-                    continue 2;
-                }
-            }
+            // // ============================================================
+            // // 1. CEK KARANTINA DOSEN
+            // // ============================================================
+            // foreach ($item->dosenIds as $dId) {
+            //     if ($tracker->isDosenKarantinaDiHari($dId, $hari)) {
+            //         $failureCodes[] = 'DOSEN_KARANTINA';
+            //         $alasanTerakhir = 'Dosen sedang mengajar di kampus lain pada hari ini.';
+            //         continue 2;
+            //     }
+            // }
 
             // ============================================================
             // 2. MODE WAKTU
@@ -246,6 +246,60 @@ class CandidateGenerator
 
         foreach ($hasilRuang['ruang'] as $ruang) {
 
+            // Kampus aktual = kampus tempat ruang benar-benar berada.
+            $assignedKampusId = $ruang['kampus_id'] ?? null;
+
+            // Ruang tanpa kampus tidak boleh dipakai.
+            if ($assignedKampusId === null) {
+                $failureCodes[] = 'ROOM_WITHOUT_CAMPUS';
+                $alasanTerakhir =
+                    "Ruang '{$ruang['nama_ruang']}' belum memiliki kampus.";
+                continue;
+            }
+
+            $assignedKampusId = (int) $assignedKampusId;
+
+            // ============================================================
+            // KELAS HANYA BOLEH BERADA DI 1 KAMPUS PER HARI
+            // ============================================================
+            if (
+                $tracker->isKelasBedaKampusDiHari(
+                    $item->kelasId,
+                    $hari,
+                    $assignedKampusId
+                )
+            ) {
+                $failureCodes[] = 'CLASS_CROSS_CAMPUS_SAME_DAY';
+                $alasanTerakhir =
+                    'Kelas sudah memiliki jadwal di kampus lain pada hari yang sama.';
+                continue;
+            }
+
+            // ============================================================
+            // DOSEN HANYA BOLEH BERADA DI 1 KAMPUS PER HARI
+            // ============================================================
+            $dosenBedaKampus = false;
+
+            foreach ($item->dosenIds as $dosenId) {
+                if (
+                    $tracker->isDosenBedaKampusDiHari(
+                        $dosenId,
+                        $hari,
+                        $assignedKampusId
+                    )
+                ) {
+                    $dosenBedaKampus = true;
+                    break;
+                }
+            }
+
+            if ($dosenBedaKampus) {
+                $failureCodes[] = 'DOSEN_CROSS_CAMPUS_SAME_DAY';
+                $alasanTerakhir =
+                    'Salah satu dosen sudah memiliki jadwal di kampus lain pada hari yang sama.';
+                continue;
+            }
+
             $candidates[] = new Candidate(
                 hari: $hari,
                 jamMulai: $jamMulai,
@@ -254,6 +308,7 @@ class CandidateGenerator
                 kapasitasRuang: (int) $ruang['kapasitas'],
                 roomSource: $hasilRuang['room_source'] ?? 'normal',
                 roomNote: $hasilRuang['room_note'] ?? null,
+                assignedKampusId: $assignedKampusId,
             );
         }
 

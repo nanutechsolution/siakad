@@ -12,10 +12,13 @@ class Candidate
         public int $kapasitasRuang,
         public float $skor = 0.0,
 
-        // normal | preferred_fallback
+        // normal | preferred | preferred_fallback | fixed
         public string $roomSource = 'normal',
 
         // Keterangan jika menggunakan ruang alternatif.
         public ?string $roomNote = null,
+
+        // Kampus aktual berdasarkan lokasi ruang yang dipilih.
+        public int $assignedKampusId = 0,
     ) {}
 }

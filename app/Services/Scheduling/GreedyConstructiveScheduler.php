@@ -76,7 +76,8 @@ class GreedyConstructiveScheduler
                 $terbaik->hari,
                 $terbaik->jamMulai,
                 $terbaik->jamSelesai,
-                $item->kelasProdiId
+                $item->kelasProdiId,
+                $terbaik->assignedKampusId
             );
 
             $assigned[] = [

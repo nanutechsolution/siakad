@@ -11,12 +11,12 @@ class LocalSearchOptimizer
         protected CandidateScorer $scorer,
         protected int $maxIterasi = 3,
         protected int $jumlahDicobaPerIterasi = 10,
-    ) {
-    }
+    ) {}
 
     /**
      * @param array $assigned list of ['item' => DemandItem, 'candidate' => Candidate]
-     * @return array assigned yang sudah diperbaiki (array yang sama, beberapa 'candidate' mungkin berubah)
+     * @return array assigned yang sudah diperbaiki
+     *               (array yang sama, beberapa 'candidate' mungkin berubah)
      */
     public function optimize(array $assigned, ScheduleTracker $tracker): array
     {
@@ -25,15 +25,29 @@ class LocalSearchOptimizer
         }
 
         for ($iterasi = 0; $iterasi < $this->maxIterasi; $iterasi++) {
-            usort($assigned, fn ($a, $b) => $b['candidate']->skor <=> $a['candidate']->skor);
+            usort(
+                $assigned,
+                fn($a, $b) => $b['candidate']->skor <=> $a['candidate']->skor
+            );
 
             $adaPerbaikan = false;
 
-            foreach (array_slice($assigned, 0, $this->jumlahDicobaPerIterasi) as $idx => $entry) {
+            foreach (
+                array_keys(
+                    array_slice(
+                        $assigned,
+                        0,
+                        $this->jumlahDicobaPerIterasi,
+                        true
+                    )
+                ) as $idx
+            ) {
+                $entry = $assigned[$idx];
+
                 $item = $entry['item'];
                 $kandidatLama = $entry['candidate'];
 
-                // Lepas sementara reservasi lama supaya slot lamanya ikut jadi opsi lagi
+                // Lepas sementara reservasi lama.
                 $tracker->unreserve(
                     $item->dosenIds,
                     $item->kelasId,
@@ -44,16 +58,27 @@ class LocalSearchOptimizer
                     $item->kelasProdiId
                 );
 
-                $hasil = $this->generator->generate($item, $tracker);
+                $hasil = $this->generator->generate(
+                    $item,
+                    $tracker
+                );
+
                 $kandidatBaruTerbaik = null;
 
                 if (!empty($hasil['candidates'])) {
-                    $scored = $this->scorer->scoreAll($hasil['candidates'], $item, $tracker);
+                    $scored = $this->scorer->scoreAll(
+                        $hasil['candidates'],
+                        $item,
+                        $tracker
+                    );
+
                     $kandidatBaruTerbaik = $scored[0];
                 }
 
-                if ($kandidatBaruTerbaik && $kandidatBaruTerbaik->skor < $kandidatLama->skor) {
-                    // Perbaikan ditemukan -- pasang di slot baru
+                if (
+                    $kandidatBaruTerbaik
+                    && $kandidatBaruTerbaik->skor < $kandidatLama->skor
+                ) {
                     $tracker->reserve(
                         $item->dosenIds,
                         $item->kelasId,
@@ -61,12 +86,13 @@ class LocalSearchOptimizer
                         $kandidatBaruTerbaik->hari,
                         $kandidatBaruTerbaik->jamMulai,
                         $kandidatBaruTerbaik->jamSelesai,
-                        $item->kelasProdiId
+                        $item->kelasProdiId,
+                        $kandidatBaruTerbaik->assignedKampusId
                     );
+
                     $assigned[$idx]['candidate'] = $kandidatBaruTerbaik;
                     $adaPerbaikan = true;
                 } else {
-                    // Tidak ada perbaikan -- kembalikan reservasi lama persis seperti semula
                     $tracker->reserve(
                         $item->dosenIds,
                         $item->kelasId,
@@ -74,13 +100,14 @@ class LocalSearchOptimizer
                         $kandidatLama->hari,
                         $kandidatLama->jamMulai,
                         $kandidatLama->jamSelesai,
-                        $item->kelasProdiId
+                        $item->kelasProdiId,
+                        $kandidatLama->assignedKampusId
                     );
                 }
             }
 
             if (!$adaPerbaikan) {
-                break; // konvergen, tidak perlu iterasi lagi
+                break;
             }
         }
 

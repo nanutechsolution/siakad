@@ -57,10 +57,18 @@ class ConstraintContextLoader
             $selesai = substr($jadwal->jam_selesai, 0, 5);
             $dosenIds = $jadwal->dosenPengampus->pluck('dosen_id')->all();
             $prodiId = $jadwal->kelas->prodi_id ?? null;
-
-            $tracker->reserve($dosenIds, $jadwal->kelas_id, $jadwal->ruang_id, $hari, $mulai, $selesai, $prodiId);
-
             $jadwalKampusId = $jadwal->ruang->kampus_id ?? null;
+
+            $tracker->reserve(
+                $dosenIds,
+                $jadwal->kelas_id,
+                $jadwal->ruang_id,
+                $hari,
+                $mulai,
+                $selesai,
+                $prodiId,
+                $jadwalKampusId
+            );
             if ($targetKampusId && $jadwalKampusId && $jadwalKampusId != $targetKampusId) {
                 foreach ($dosenIds as $dId) {
                     $tracker->markKarantina($dId, $hari);
@@ -78,9 +86,15 @@ class ConstraintContextLoader
      * Inilah yang membuat "TI digenerate dulu, lalu Manajemen" saling melihat
      * satu sama lain walau TI belum dipublish (lihat poin J).
      */
-    protected function loadPreviewAktifDariBatchLain(ScheduleTracker $tracker, JadwalGeneratorBatch $batch, ?int $targetKampusId): void
-    {
-        $batchLain = JadwalGeneratorBatch::where('tahun_akademik_id', $batch->tahun_akademik_id)
+    protected function loadPreviewAktifDariBatchLain(
+        ScheduleTracker $tracker,
+        JadwalGeneratorBatch $batch,
+        ?int $targetKampusId
+    ): void {
+        $batchLain = JadwalGeneratorBatch::where(
+            'tahun_akademik_id',
+            $batch->tahun_akademik_id
+        )
             ->where('id', '!=', $batch->id)
             ->whereIn('status', ['PREVIEW', 'RUNNING'])
             ->get(['id', 'kampus_id']);
@@ -94,10 +108,29 @@ class ConstraintContextLoader
             ->where('is_success', true)
             ->get();
 
-        $kampusPerBatch = $batchLain->pluck('kampus_id', 'id');
+        if ($results->isEmpty()) {
+            return;
+        }
+
+        // Kampus aktual ditentukan dari lokasi ruang,
+        // bukan dari kampus target batch.
+        $ruangIds = $results
+            ->pluck('ruang_id')
+            ->filter()
+            ->unique()
+            ->values();
+
+        $ruangKampus = \App\Models\RefRuang::query()
+            ->whereIn('id', $ruangIds)
+            ->pluck('kampus_id', 'id');
 
         foreach ($results as $result) {
-            if (!$result->hari || !$result->jam_mulai || !$result->jam_selesai || !$result->ruang_id) {
+            if (
+                !$result->hari ||
+                !$result->jam_mulai ||
+                !$result->jam_selesai ||
+                !$result->ruang_id
+            ) {
                 continue;
             }
 
@@ -108,21 +141,41 @@ class ConstraintContextLoader
             $dosenPengampuIds = is_string($result->dosen_pengampu_ids)
                 ? json_decode($result->dosen_pengampu_ids, true)
                 : $result->dosen_pengampu_ids;
-            $dosenIds = DosenPengampu::whereIn('id', $dosenPengampuIds ?? [])->pluck('dosen_id')->all();
+
+            $dosenIds = DosenPengampu::whereIn(
+                'id',
+                $dosenPengampuIds ?? []
+            )
+                ->pluck('dosen_id')
+                ->all();
 
             $prodiId = $result->kelas->prodi_id ?? null;
 
-            $tracker->reserve($dosenIds, $result->kelas_id, $result->ruang_id, $hari, $mulai, $selesai, $prodiId);
+            // Kampus aktual berdasarkan kampus ruang.
+            $jadwalKampusId = $ruangKampus[$result->ruang_id] ?? null;
 
-            $jadwalKampusId = $kampusPerBatch[$result->batch_id] ?? null;
-            if ($targetKampusId && $jadwalKampusId && $jadwalKampusId != $targetKampusId) {
+            $tracker->reserve(
+                $dosenIds,
+                $result->kelas_id,
+                $result->ruang_id,
+                $hari,
+                $mulai,
+                $selesai,
+                $prodiId,
+                $jadwalKampusId
+            );
+
+            if (
+                $targetKampusId &&
+                $jadwalKampusId &&
+                $jadwalKampusId != $targetKampusId
+            ) {
                 foreach ($dosenIds as $dId) {
                     $tracker->markKarantina($dId, $hari);
                 }
             }
         }
     }
-
     protected function loadAvailability(): array
     {
         $limitasiWaktuDosen = [];
