@@ -17,7 +17,7 @@ class JadwalGeneratorEngine
     protected int $menitPerSks;
     protected int $menitTransisi;
     protected array $jamIstirahat;
-    protected int $kampusUtamaId;
+    protected ?int $kampusUtamaId;
     public function __construct(JadwalGeneratorBatch $batch)
     {
         $this->batch = $batch;
@@ -26,7 +26,9 @@ class JadwalGeneratorEngine
         if (is_string($config)) {
             $config = json_decode($config, true);
         }
-        $this->kampusUtamaId = (int) ($config['kampus_utama_id'] ?? 0);
+        $this->kampusUtamaId = !empty($config['kampus_utama_id'])
+            ? (int) $config['kampus_utama_id']
+            : null;
         $this->modeWaktu = $config['mode_waktu'] ?? 'dinamis';
         $this->menitPerSks = (int) ($config['menit_per_sks'] ?? 45);
 
@@ -96,12 +98,6 @@ class JadwalGeneratorEngine
 
         try {
 
-            if ($this->kampusUtamaId <= 0) {
-                throw new \RuntimeException(
-                    'Kampus utama belum dikonfigurasi pada config_snapshot. '
-                        . 'Fallback LAB tidak dapat dilakukan.'
-                );
-            }
             $loader = new ConstraintContextLoader();
             $context = $loader->load($this->batch);
             $tracker = $context['tracker'];

@@ -156,6 +156,19 @@ class DemandCollector
                 return null;
             }
 
+            if (!$ruangTetap) {
+                $this->preFailures[] = [
+                    'mata_kuliah_id' => $mkId,
+                    'kelas_id' => $kelasId,
+                    'reason' => "Ruang ID {$reqRuangId} tidak tersedia atau tidak aktif.",
+                    'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
+                    'sks_real' => $sksTotal,
+                    'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
+                ];
+
+                return null;
+            }
+
             /*
      * ADMIN SUDAH MEMILIH RUANG
      *
@@ -182,29 +195,49 @@ class DemandCollector
                     $jenisRuangDibutuhkan,
                     $kelasKampusId
                 ) {
-                    return
-                        (int) ($ruang['kampus_id'] ?? 0) === $kelasKampusId
-                        && $ruang['jenis_ruang'] === $jenisRuangDibutuhkan;
+                    $ruangKampusId = (int) ($ruang['kampus_id'] ?? 0);
+
+                    // Ruang tanpa kampus tidak boleh digunakan otomatis.
+                    if ($ruangKampusId <= 0) {
+                        return false;
+                    }
+
+                    // Jenis ruang harus sesuai.
+                    if ($ruang['jenis_ruang'] !== $jenisRuangDibutuhkan) {
+                        return false;
+                    }
+
+                    // Normal:
+                    // ruang harus berada di kampus kelas.
+                    return $ruangKampusId === $kelasKampusId;
                 });
         }
 
         /*
 |--------------------------------------------------------------------------
-| FALLBACK LAB KE KAMPUS UTAMA
+| FALLBACK LAB KAMPUS 2 → KAMPUS UTAMA
 |--------------------------------------------------------------------------
 |
-| Jika kelas berada di kampus yang tidak memiliki LAB aktif,
-| maka LAB dicari di Kampus Utama.
+| Aturan bisnis:
 |
-| Ini bukan failure.
-| Ini adalah SUCCESS_WITH_ADJUSTMENT.
+| - Kampus utama tetap menggunakan LAB sendiri.
+| - Kampus lain yang tidak memiliki LAB boleh menggunakan
+|   LAB kampus utama.
+| - Hanya untuk mata kuliah yang memang membutuhkan LAB.
+| - Tidak berlaku untuk ruang TEORI.
+| - Tidak berlaku untuk fixed room.
 |
 */
 
+        $bolehFallbackLab =
+            !$reqRuangId
+            && $jenisRuangDibutuhkan === 'LABORATORIUM'
+            && $this->kampusUtamaId !== null
+            && $kelasKampusId !== $this->kampusUtamaId;
+
         if (
             $ruangSesuaiJenis->isEmpty()
-            && $jenisRuangDibutuhkan === 'LABORATORIUM'
-            && !$reqRuangId
+            && $bolehFallbackLab
         ) {
             $ruangMainCampus = collect($this->ruangTersedia)
                 ->filter(function ($ruang) {
@@ -214,7 +247,6 @@ class DemandCollector
                 });
 
             if ($ruangMainCampus->isNotEmpty()) {
-
                 $ruangSesuaiJenis = $ruangMainCampus;
 
                 $assignedKampusId = $this->kampusUtamaId;
@@ -231,7 +263,7 @@ class DemandCollector
                     "Mata kuliah membutuhkan Laboratorium, tetapi Kampus "
                     . $namaKampusAsal
                     . " tidak memiliki LAB aktif. "
-                    . "Jadwal dialokasikan ke LAB Kampus A/Main Campus.";
+                    . "Jadwal dialokasikan ke LAB Kampus Utama.";
             }
         }
 
