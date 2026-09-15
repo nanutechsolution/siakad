@@ -225,14 +225,32 @@ class DemandCollector
         $dosenIds = $dosenList->pluck('dosen_id')->all();
         $kelasProdiId = $firstItem->kelas->prodi_id ?? 0;
         $reqRuangId = $firstItem->ruang_id ?? null;
+
         $kelasKampusId = (int) ($firstItem->kelas->kampus_id ?? 0);
 
+        /*
+|--------------------------------------------------------------------------
+| KAMPUS AKTUAL
+|--------------------------------------------------------------------------
+|
+| kelas.kampus_id = kampus asal/default kelas.
+|
+| Jika admin/dosen memilih ruang tertentu, maka kampus aktual
+| mengikuti kampus ruang tersebut.
+|
+| Contoh:
+|   Kelas WKB (kampus 2)
+|   Request ruang TEORI Kampus 1
+|
+| Maka:
+|   kelasKampusId    = 2
+|   assignedKampusId = 1
+|
+*/
         $assignedKampusId = $kelasKampusId;
 
         $hasLocationAdjustment = false;
-
         $adjustmentReasonCode = null;
-
         $adjustmentReasonText = null;
 
         $kapasitasDibutuhkan = MahasiswaKelas::query()
@@ -250,7 +268,6 @@ class DemandCollector
         $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0
             ? $kapasitasDibutuhkan
             : ($firstItem->kelas->kapasitas ?? 40);
-        $kapasitasDibutuhkan = $kapasitasDibutuhkan > 0 ? $kapasitasDibutuhkan : ($firstItem->kelas->kapasitas ?? 40);
 
         $kurikulumMK = $this->getKurikulumMataKuliahForKelas($mkId, $firstItem->kelas);
 
@@ -286,22 +303,6 @@ class DemandCollector
             // Cari ruang yang dipilih admin dari ruang yang tersedia di batch
             $ruangTetap = collect($this->ruangTersedia)
                 ->firstWhere('id', $reqRuangId);
-            if (
-                $ruangTetap &&
-                !is_null($ruangTetap['prodi_id']) &&
-                (int) $ruangTetap['prodi_id'] !== (int) $kelasProdiId
-            ) {
-                $this->preFailures[] = [
-                    'mata_kuliah_id' => $mkId,
-                    'kelas_id' => $kelasId,
-                    'reason' => "CRITICAL: Ruang '{$ruangTetap['nama_ruang']}' merupakan ruang eksklusif prodi lain dan tidak boleh digunakan oleh prodi ini.",
-                    'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
-                    'sks_real' => $sksTotal,
-                    'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
-                ];
-
-                return null;
-            }
 
             if (!$ruangTetap) {
                 $this->preFailures[] = [
@@ -316,6 +317,44 @@ class DemandCollector
                 return null;
             }
 
+            // Ruang harus memiliki kampus yang valid.
+            if (is_null($ruangTetap['kampus_id'])) {
+                $this->preFailures[] = [
+                    'mata_kuliah_id' => $mkId,
+                    'kelas_id' => $kelasId,
+                    'reason' =>
+                    "CRITICAL: Ruang '{$ruangTetap['nama_ruang']}' "
+                        . "belum memiliki kampus.",
+                    'dosen_pengampu_ids' => $dosenList->pluck('id')->all(),
+                    'sks_real' => $sksTotal,
+                    'estimasi_kapasitas_dibutuhkan' => $kapasitasDibutuhkan,
+                ];
+
+                return null;
+            }
+            /*
+     * KAMPUS AKTUAL MENGIKUTI RUANG
+     *
+     * Kelas WKB + ruang Kampus 1
+     * → assignedKampusId = Kampus 1
+     *
+     * Ini adalah request lokasi yang sah,
+     * bukan fallback/error.
+     */
+            $ruangKampusId = (int) $ruangTetap['kampus_id'];
+
+            if ($ruangKampusId !== $kelasKampusId) {
+                $assignedKampusId = $ruangKampusId;
+
+                $hasLocationAdjustment = true;
+
+                $adjustmentReasonCode = 'REQUESTED_ROOM_CROSS_CAMPUS';
+
+                $adjustmentReasonText =
+                    "Ruang '{$ruangTetap['nama_ruang']}' berada di kampus berbeda "
+                    . "dari kampus asal kelas. Jadwal ditempatkan di kampus sesuai "
+                    . "lokasi ruang yang diminta.";
+            }
             /*
      * ADMIN SUDAH MEMILIH RUANG
      *
