@@ -211,18 +211,6 @@ class CandidateGenerator
             $windowMulai = $window['mulai'];
             $windowSelesai = $window['selesai'];
 
-            // Hanya gunakan window yang benar-benar
-            // berada di luar jam operasional kampus.
-            if (
-                !$this->windowBeradaDiLuarOperasional(
-                    $hari,
-                    $windowMulai,
-                    $windowSelesai
-                )
-            ) {
-                continue;
-            }
-
             $this->generateKandidatDariWindowKhusus(
                 $hari,
                 $item,
@@ -278,20 +266,6 @@ class CandidateGenerator
                 }
 
                 /*
-         * Special hanya boleh berada
-         * sepenuhnya di luar jam operasional.
-         */
-                if (
-                    !$this->slotBeradaDiLuarOperasional(
-                        $hari,
-                        $jamMulai,
-                        $jamSelesai
-                    )
-                ) {
-                    continue;
-                }
-
-                /*
          * MODE STATIS:
          * tidak ada tambahan transition.
          */
@@ -342,26 +316,19 @@ class CandidateGenerator
          * Special candidate harus sepenuhnya berada
          * di luar jam operasional normal.
          */
-            if (
-                $this->slotBeradaDiLuarOperasional(
-                    $hari,
-                    $jamMulai,
-                    $jamSelesai
-                )
-            ) {
-                $this->evaluasiKandidat(
-                    $hari,
-                    $jamMulai,
-                    $jamSelesai,
-                    $jamSelesaiTransisi,
-                    $item,
-                    $tracker,
-                    $candidates,
-                    $failureCodes,
-                    $alasanTerakhir,
-                    true
-                );
-            }
+
+            $this->evaluasiKandidat(
+                $hari,
+                $jamMulai,
+                $jamSelesai,
+                $jamSelesaiTransisi,
+                $item,
+                $tracker,
+                $candidates,
+                $failureCodes,
+                $alasanTerakhir,
+                true
+            );
 
             $waktuSekarang->addMinutes(15);
         }
@@ -390,54 +357,7 @@ class CandidateGenerator
             $selesaiTransisi->format('H:i') <= $jamTutupWindow,
         ];
     }
-    protected function slotBeradaDiLuarOperasional(
-        string $hari,
-        string $mulai,
-        string $selesai
-    ): bool {
 
-        $operasionalMulai =
-            $this->jamOperasional[$hari]['mulai']
-            ?? '08:00';
-
-        $operasionalSelesai =
-            $this->jamOperasional[$hari]['selesai']
-            ?? '16:00';
-
-        /*
-     * Slot yang seluruhnya berada di jam operasional
-     * tidak dianggap special.
-     */
-        if (
-            $mulai >= $operasionalMulai
-            && $selesai <= $operasionalSelesai
-        ) {
-            return false;
-        }
-
-        /*
-     * Kita hanya ingin slot yang benar-benar berada
-     * di luar jam normal.
-     *
-     * Contoh:
-     * 15:30-17:00
-     *
-     * Jangan dianggap sebagai special slot.
-     * Ini masih melewati jam normal dan harus diperlakukan
-     * hati-hati.
-     *
-     * Untuk sementara kita hanya izinkan slot yang mulai
-     * pada/ setelah jam tutup, atau selesai pada/sebelum
-     * jam buka.
-     */
-        $diLuarSetelahTutup =
-            $mulai >= $operasionalSelesai;
-
-        $diLuarSebelumBuka =
-            $selesai <= $operasionalMulai;
-
-        return $diLuarSetelahTutup || $diLuarSebelumBuka;
-    }
     protected function getIrisanAvailabilityKhusus(
         array $dosenIds,
         string $hari
@@ -491,33 +411,6 @@ class CandidateGenerator
         }
 
         return $intersection ?? [];
-    }
-    protected function windowBeradaDiLuarOperasional(
-        string $hari,
-        string $mulai,
-        string $selesai
-    ): bool {
-
-        $operasionalMulai =
-            $this->jamOperasional[$hari]['mulai']
-            ?? '08:00';
-
-        $operasionalSelesai =
-            $this->jamOperasional[$hari]['selesai']
-            ?? '16:00';
-
-        // Sepenuhnya sebelum jam buka.
-        if ($selesai <= $operasionalMulai) {
-            return true;
-        }
-
-        // Sepenuhnya setelah jam tutup.
-        if ($mulai >= $operasionalSelesai) {
-            return true;
-        }
-
-        // Berarti berada di dalam atau memotong jam operasional.
-        return false;
     }
     /**
      * Evaluasi kombinasi hari + waktu + ruang.
