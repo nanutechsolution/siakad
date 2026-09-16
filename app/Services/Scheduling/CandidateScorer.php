@@ -28,12 +28,35 @@ class CandidateScorer
     public function __construct(
         protected array $hariOperasional,
         protected array $jamOperasional,
+        protected string $modeWaktu = 'dinamis',
     ) {
         $slots = [];
 
         foreach ($this->jamOperasional as $ops) {
-            $start = Carbon::parse($ops['mulai'] ?? '08:00');
-            $end = Carbon::parse($ops['selesai'] ?? '16:00');
+
+            if ($this->modeWaktu === 'statis') {
+
+                foreach ($ops['slots'] ?? [] as $slot) {
+                    if (
+                        empty($slot['mulai'])
+                        || empty($slot['selesai'])
+                    ) {
+                        continue;
+                    }
+
+                    $slots[] = substr($slot['mulai'], 0, 5);
+                }
+
+                continue;
+            }
+
+            $start = Carbon::parse(
+                $ops['mulai'] ?? '08:00'
+            );
+
+            $end = Carbon::parse(
+                $ops['selesai'] ?? '16:00'
+            );
 
             while ($start->lessThan($end)) {
                 $slots[] = $start->format('H:i');
@@ -41,7 +64,10 @@ class CandidateScorer
             }
         }
 
-        $this->slotMulaiList = array_values(array_unique($slots));
+        $this->slotMulaiList = array_values(
+            array_unique($slots)
+        );
+
         sort($this->slotMulaiList);
     }
 
@@ -86,7 +112,7 @@ class CandidateScorer
         // Fairness antar prodi
         $skor += $this->bobot['fairness_prodi'] * $tracker->bebanProdiHari($item->kelasProdiId, $c->hari) * 0.5;
 
-        
+
         // ----------------------------------------------------------------------
         // 1. Konversi jam kandidat saat ini menjadi total menit
         $waktuArray = explode(':', $c->jamMulai);
