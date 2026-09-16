@@ -686,12 +686,15 @@ class CandidateGenerator
         $jamSelesai = Carbon::parse($jamMulai)
             ->addMinutes($durasiMenit)
             ->format('H:i');
-        $jamSelesaiTransisi = $jamSelesai;
+
+        $jamSelesaiTransisi = Carbon::parse($jamSelesai)
+            ->addMinutes($this->menitTransisi)
+            ->format('H:i');
 
         return [
             $jamSelesai,
             $jamSelesaiTransisi,
-            $jamSelesai <= $jamTutupKampus,
+            $jamSelesaiTransisi <= $jamTutupKampus,
         ];
     }
 
