@@ -39,12 +39,25 @@ class CandidateGenerator
 
                 foreach ($slotsHariIni as $slot) {
 
-                    $jamMulai = $slot['mulai'];
-                    $jamSelesai = $slot['selesai'];
+                    if (
+                        empty($slot['mulai'])
+                        || empty($slot['selesai'])
+                    ) {
+                        continue;
+                    }
 
-                    $jamSelesaiTransisi = Carbon::parse($jamSelesai)
-                        ->addMinutes($this->menitTransisi)
-                        ->format('H:i');
+                    $jamMulai = substr($slot['mulai'], 0, 5);
+                    $jamSelesai = substr($slot['selesai'], 0, 5);
+
+                    /*
+         * MODE STATIS:
+         *
+         * Slot Wizard adalah waktu kuliah sebenarnya.
+         *
+         * Tidak ada perhitungan durasi berdasarkan SKS.
+         * Tidak ada menit_transisi.
+         */
+                    $jamSelesaiTransisi = $jamSelesai;
 
                     $this->evaluasiKandidat(
                         $hari,
@@ -238,71 +251,64 @@ class CandidateGenerator
         // ================================================================
         if ($this->modeWaktu === 'statis') {
 
-            $durasiSlot = $this->durasiSlotStatis($hari);
+            $slotsHariIni =
+                $this->jamOperasional[$hari]['slots'] ?? [];
 
-            if ($durasiSlot <= 0) {
-                $failureCodes[] = 'SPECIAL_SLOT_DURATION_UNKNOWN';
+            foreach ($slotsHariIni as $slot) {
 
-                $alasanTerakhir =
-                    'Durasi slot statis tidak dapat ditentukan '
-                    . 'untuk availability dosen khusus.';
-
-                return;
-            }
-
-            $mulai = Carbon::parse($windowMulai);
-            $batas = Carbon::parse($windowSelesai);
-
-            while ($mulai->lessThan($batas)) {
-
-                $selesai = $mulai->copy()->addMinutes($durasiSlot);
-
-                /*
-             * Slot harus sepenuhnya berada di dalam
-             * window availability dosen.
-             */
-                if ($selesai->greaterThan($batas)) {
-                    break;
+                if (
+                    empty($slot['mulai'])
+                    || empty($slot['selesai'])
+                ) {
+                    continue;
                 }
 
-                $jamMulai = $mulai->format('H:i');
-                $jamSelesai = $selesai->format('H:i');
-
-                $jamSelesaiTransisi = $selesai
-                    ->copy()
-                    ->addMinutes($this->menitTransisi)
-                    ->format('H:i');
+                $jamMulai = substr($slot['mulai'], 0, 5);
+                $jamSelesai = substr($slot['selesai'], 0, 5);
 
                 /*
-             * Jangan izinkan slot yang melewati batas
-             * operasional normal.
-             */
+         * Special availability harus memuat
+         * seluruh blok statis.
+         */
                 if (
-                    $this->slotBeradaDiLuarOperasional(
+                    $jamMulai < $windowMulai
+                    || $jamSelesai > $windowSelesai
+                ) {
+                    continue;
+                }
+
+                /*
+         * Special hanya boleh berada
+         * sepenuhnya di luar jam operasional.
+         */
+                if (
+                    !$this->slotBeradaDiLuarOperasional(
                         $hari,
                         $jamMulai,
                         $jamSelesai
                     )
                 ) {
-                    $this->evaluasiKandidat(
-                        $hari,
-                        $jamMulai,
-                        $jamSelesai,
-                        $jamSelesaiTransisi,
-                        $item,
-                        $tracker,
-                        $candidates,
-                        $failureCodes,
-                        $alasanTerakhir,
-                        true
-                    );
+                    continue;
                 }
 
                 /*
-             * Tetap menggunakan granularitas 15 menit
-             * untuk availability khusus.
-             */
-                $mulai->addMinutes(15);
+         * MODE STATIS:
+         * tidak ada tambahan transition.
+         */
+                $jamSelesaiTransisi = $jamSelesai;
+
+                $this->evaluasiKandidat(
+                    $hari,
+                    $jamMulai,
+                    $jamSelesai,
+                    $jamSelesaiTransisi,
+                    $item,
+                    $tracker,
+                    $candidates,
+                    $failureCodes,
+                    $alasanTerakhir,
+                    true
+                );
             }
 
             return;
@@ -359,28 +365,6 @@ class CandidateGenerator
 
             $waktuSekarang->addMinutes(15);
         }
-    }
-    protected function durasiSlotStatis(string $hari): int
-    {
-        $slots = $this->jamOperasional[$hari]['slots'] ?? [];
-
-        if (empty($slots)) {
-            return 0;
-        }
-
-        $slotPertama = $slots[0];
-
-        if (
-            empty($slotPertama['mulai'])
-            || empty($slotPertama['selesai'])
-        ) {
-            return 0;
-        }
-
-        return Carbon::parse($slotPertama['mulai'])
-            ->diffInMinutes(
-                Carbon::parse($slotPertama['selesai'])
-            );
     }
     protected function hitungJamSelesaiDalamWindow(
         string $jamMulai,
@@ -702,10 +686,7 @@ class CandidateGenerator
         $jamSelesai = Carbon::parse($jamMulai)
             ->addMinutes($durasiMenit)
             ->format('H:i');
-
-        $jamSelesaiTransisi = Carbon::parse($jamSelesai)
-            ->addMinutes($this->menitTransisi)
-            ->format('H:i');
+        $jamSelesaiTransisi = $jamSelesai;
 
         return [
             $jamSelesai,
