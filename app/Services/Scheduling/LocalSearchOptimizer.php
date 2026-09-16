@@ -26,7 +26,7 @@ class LocalSearchOptimizer
         for ($iterasi = 0; $iterasi < $this->maxIterasi; $iterasi++) {
             usort(
                 $assigned,
-                fn($a, $b) => $b['candidate']->skor <=> $a['candidate']->skor
+                fn($a, $b) => $a['candidate']->skor <=> $b['candidate']->skor
             );
 
             $adaPerbaikan = false;

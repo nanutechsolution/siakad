@@ -122,10 +122,7 @@ class JadwalGeneratorEngine
             $context = $loader->load($this->batch);
             $tracker = $context['tracker'];
 
-            $collector = new DemandCollector(
-                $this->ruangTersedia,
-                $this->kampusUtamaId,
-            );
+         
             $collector = new DemandCollector(
                 $this->ruangTersedia,
                 $this->kampusUtamaId,

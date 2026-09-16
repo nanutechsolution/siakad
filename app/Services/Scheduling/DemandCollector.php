@@ -24,7 +24,6 @@ class DemandCollector
     ) {}
 
     /** @return DemandItem[] */
-    /** @return DemandItem[] */
     public function collect(JadwalGeneratorBatch $batch): array
     {
         $this->preFailures = [];

@@ -133,11 +133,6 @@ class ScheduleTracker
         return $this->kampusDosenPerHari[$dosenId][$hari] ?? null;
     }
 
-    /**
-     * Melepas satu reservasi yang sebelumnya dibuat via reserve() dengan
-     * parameter identik. Dipakai LocalSearchOptimizer untuk mencoba
-     * merelokasi sebuah assignment ke slot lain secara sementara.
-     */
     public function unreserve(
         array $dosenIds,
         int $kelasId,
@@ -148,36 +143,66 @@ class ScheduleTracker
         ?int $prodiId = null,
         ?int $kampusId = null
     ): void {
-        $this->byKelas[$kelasId][$hari] = $this->hapusSatuRentang(
-            $this->byKelas[$kelasId][$hari] ?? [],
-            $jamMulai,
-            $jamSelesai
-        );
-
-        $this->byRuang[$ruangId][$hari] = $this->hapusSatuRentang(
-            $this->byRuang[$ruangId][$hari] ?? [],
-            $jamMulai,
-            $jamSelesai
-        );
-
-        foreach ($dosenIds as $dId) {
-            $this->byDosen[$dId][$hari] = $this->hapusSatuRentang(
-                $this->byDosen[$dId][$hari] ?? [],
+        /*
+     * ============================================================
+     * 1. KELAS
+     * ============================================================
+     */
+        [$this->byKelas[$kelasId][$hari], $kelasRemoved] =
+            $this->hapusSatuRentang(
+                $this->byKelas[$kelasId][$hari] ?? [],
                 $jamMulai,
                 $jamSelesai
             );
 
-            if (isset($this->bebanDosenPerHari[$dId][$hari])) {
-                $this->bebanDosenPerHari[$dId][$hari] = max(
-                    0,
-                    $this->bebanDosenPerHari[$dId][$hari] - 1
+        /*
+     * ============================================================
+     * 2. RUANG
+     * ============================================================
+     */
+        [$this->byRuang[$ruangId][$hari], $ruangRemoved] =
+            $this->hapusSatuRentang(
+                $this->byRuang[$ruangId][$hari] ?? [],
+                $jamMulai,
+                $jamSelesai
+            );
+
+        /*
+     * ============================================================
+     * 3. DOSEN
+     * ============================================================
+     */
+        $dosenRemovedCount = 0;
+
+        foreach ($dosenIds as $dId) {
+            [$this->byDosen[$dId][$hari], $removed] =
+                $this->hapusSatuRentang(
+                    $this->byDosen[$dId][$hari] ?? [],
+                    $jamMulai,
+                    $jamSelesai
                 );
+
+            if ($removed) {
+                $dosenRemovedCount++;
+
+                if (isset($this->bebanDosenPerHari[$dId][$hari])) {
+                    $this->bebanDosenPerHari[$dId][$hari] = max(
+                        0,
+                        $this->bebanDosenPerHari[$dId][$hari] - 1
+                    );
+                }
             }
         }
 
-        // Hapus constraint kampus kelas hanya jika
-        // sudah tidak ada jadwal kelas pada hari tersebut.
-        if (empty($this->byKelas[$kelasId][$hari])) {
+        /*
+     * ============================================================
+     * 4. KAMPUS KELAS
+     * ============================================================
+     */
+        if (
+            $kelasRemoved
+            && empty($this->byKelas[$kelasId][$hari])
+        ) {
             unset($this->kampusKelasPerHari[$kelasId][$hari]);
 
             if (empty($this->kampusKelasPerHari[$kelasId])) {
@@ -185,10 +210,15 @@ class ScheduleTracker
             }
         }
 
-        // Hapus constraint kampus dosen hanya jika
-        // sudah tidak ada jadwal dosen pada hari tersebut.
+        /*
+     * ============================================================
+     * 5. KAMPUS DOSEN
+     * ============================================================
+     */
         foreach ($dosenIds as $dId) {
-            if (empty($this->byDosen[$dId][$hari])) {
+            if (
+                empty($this->byDosen[$dId][$hari])
+            ) {
                 unset($this->kampusDosenPerHari[$dId][$hari]);
 
                 if (empty($this->kampusDosenPerHari[$dId])) {
@@ -197,53 +227,83 @@ class ScheduleTracker
             }
         }
 
-        if (isset($this->bebanPerHari[$hari])) {
-            $this->bebanPerHari[$hari] = max(
-                0,
-                $this->bebanPerHari[$hari] - 1
-            );
-        }
-
-        $slotKey = $hari . '|' . $jamMulai;
-
-        if (isset($this->bebanPerSlotKey[$slotKey])) {
-            $this->bebanPerSlotKey[$slotKey] = max(
-                0,
-                $this->bebanPerSlotKey[$slotKey] - 1
-            );
-        }
-
-        if (isset($this->bebanRuang[$ruangId])) {
-            $this->bebanRuang[$ruangId] = max(
-                0,
-                $this->bebanRuang[$ruangId] - 1
-            );
-        }
-
-        if (
-            $prodiId !== null
-            && isset($this->bebanProdiPerHari[$prodiId][$hari])
-        ) {
-            $this->bebanProdiPerHari[$prodiId][$hari] = max(
-                0,
-                $this->bebanProdiPerHari[$prodiId][$hari] - 1
-            );
-        }
-    }
-
-    /** Hapus satu entri rentang waktu (mulai+selesai persis sama) dari daftar, hanya kemunculan pertama. */
-    protected function hapusSatuRentang(array $list, string $mulai, string $selesai): array
-    {
-        $sudahDihapus = false;
-        return array_values(array_filter($list, function ($rentang) use ($mulai, $selesai, &$sudahDihapus) {
-            if (!$sudahDihapus && $rentang['mulai'] === $mulai && $rentang['selesai'] === $selesai) {
-                $sudahDihapus = true;
-                return false;
+        /*
+     * ============================================================
+     * 6. STATISTIK GLOBAL
+     *
+     * Hanya kurangi jika memang reservasi berhasil dihapus.
+     * ============================================================
+     */
+        if ($kelasRemoved) {
+            if (isset($this->bebanPerHari[$hari])) {
+                $this->bebanPerHari[$hari] = max(
+                    0,
+                    $this->bebanPerHari[$hari] - 1
+                );
             }
-            return true;
-        }));
+
+            $slotKey = $hari . '|' . $jamMulai;
+
+            if (isset($this->bebanPerSlotKey[$slotKey])) {
+                $this->bebanPerSlotKey[$slotKey] = max(
+                    0,
+                    $this->bebanPerSlotKey[$slotKey] - 1
+                );
+            }
+
+            if (isset($this->bebanRuang[$ruangId])) {
+                $this->bebanRuang[$ruangId] = max(
+                    0,
+                    $this->bebanRuang[$ruangId] - 1
+                );
+            }
+
+            if (
+                $prodiId !== null
+                && isset($this->bebanProdiPerHari[$prodiId][$hari])
+            ) {
+                $this->bebanProdiPerHari[$prodiId][$hari] = max(
+                    0,
+                    $this->bebanProdiPerHari[$prodiId][$hari] - 1
+                );
+            }
+        }
     }
 
+    /**
+     * Hapus SATU reservasi yang waktunya persis sama.
+     *
+     * Return:
+     * [
+     *     array $listBaru,
+     *     bool $berhasilDihapus
+     * ]
+     */
+    protected function hapusSatuRentang(
+        array $list,
+        string $mulai,
+        string $selesai
+    ): array {
+        foreach ($list as $index => $rentang) {
+
+            if (
+                $rentang['mulai'] === $mulai
+                && $rentang['selesai'] === $selesai
+            ) {
+                unset($list[$index]);
+
+                return [
+                    array_values($list),
+                    true,
+                ];
+            }
+        }
+
+        return [
+            array_values($list),
+            false,
+        ];
+    }
 
 
     public function isDosenBentrok(int|string $dosenId, string $hari, string $mulai, string $selesai): bool
