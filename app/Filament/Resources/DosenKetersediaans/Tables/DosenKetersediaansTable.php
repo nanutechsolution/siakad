@@ -63,7 +63,15 @@ class DosenKetersediaansTable
                     ->label('Jam Selesai')
                     ->time('H:i')
                     ->sortable(),
-
+                TextColumn::make('allow_outside_operational_hours')
+                    ->label('Di Luar Jam Operasional')
+                    ->badge()
+                    ->formatStateUsing(
+                        fn(bool $state): string => $state ? 'Ya' : 'Tidak'
+                    )
+                    ->color(
+                        fn(bool $state): string => $state ? 'warning' : 'gray'
+                    ),
                 TextColumn::make('durasi')
                     ->label('Durasi')
                     ->state(function (DosenKetersediaan $record): string {

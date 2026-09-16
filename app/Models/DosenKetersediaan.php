@@ -29,6 +29,7 @@ class DosenKetersediaan extends Model implements HasScopeStrategy
         'hari',
         'jam_mulai',
         'jam_selesai',
+        'allow_outside_operational_hours'
     ];
 
     /**
@@ -45,10 +46,7 @@ class DosenKetersediaan extends Model implements HasScopeStrategy
     ];
 
     protected $casts = [
-        // Disimpan sebagai string format H:i:s (kolom TIME di MySQL).
-        // Tidak di-cast ke Carbon/date agar perbandingan string "HH:MM:SS"
-        // pada query overlap tetap valid secara leksikografis dan konsisten
-        // dengan cara JadwalGeneratorEngine membaca data ini saat ini.
+        'allow_outside_operational_hours' => 'boolean',
     ];
 
     /**

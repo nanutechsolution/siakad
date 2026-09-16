@@ -201,30 +201,48 @@ class ConstraintContextLoader
             foreach ($avails as $avail) {
                 $hari = $avail->hari;
 
-                $mulai = substr($avail->jam_mulai, 0, 5);
-                $selesai = substr($avail->jam_selesai, 0, 5);
-
                 $data = [
-                    'mulai' => $mulai,
-                    'selesai' => $selesai,
+                    'mulai' => substr($avail->jam_mulai, 0, 5),
+                    'selesai' => substr($avail->jam_selesai, 0, 5),
                 ];
 
                 /*
-             * Tetap menjadi limitasi waktu dosen.
+             * allow_outside_operational_hours = TRUE
              *
-             * Artinya jika dosen memiliki data ketersediaan,
-             * CandidateGenerator akan memastikan jadwal masuk
-             * ke salah satu window yang diperbolehkan.
-             */
-                $limitasiWaktuDosen[$dosenId][$hari][] = $data;
-
-                /*
-             * Khusus untuk ketersediaan yang boleh berada
-             * DI LUAR jam operasional global.
+             * Ini adalah JAM TAMBAHAN.
+             *
+             * Jangan masukkan ke limitasiWaktuDosen,
+             * karena jam normal tetap mengikuti Wizard.
+             *
+             * Contoh:
+             *
+             * Wizard       : 08:00-16:00
+             * Special      : 18:00-20:00
+             *
+             * Maka dosen boleh:
+             *   08:00-16:00
+             *   18:00-20:00
              */
                 if ((bool) $avail->allow_outside_operational_hours) {
                     $ketersediaanDosenKhusus[$dosenId][$hari][] = $data;
+
+                    continue;
                 }
+
+                /*
+             * allow_outside_operational_hours = FALSE
+             *
+             * Record ini tetap dianggap sebagai availability
+             * pembatas normal.
+             *
+             * Jadi jika dosen mempunyai:
+             *
+             * Senin 10:00-14:00
+             *
+             * maka pada Senin dia hanya boleh ditempatkan
+             * dalam window tersebut.
+             */
+                $limitasiWaktuDosen[$dosenId][$hari][] = $data;
             }
         }
 

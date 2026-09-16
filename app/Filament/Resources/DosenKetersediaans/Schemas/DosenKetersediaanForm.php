@@ -7,6 +7,7 @@ use App\Models\TrxDosen;
 use Closure;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TimePicker;
+use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Illuminate\Database\Eloquent\Model;
@@ -107,6 +108,14 @@ class DosenKetersediaanForm
                             }
                         };
                     }),
+                Toggle::make('allow_outside_operational_hours')
+                    ->label('Boleh di luar jam operasional kampus')
+                    ->default(false)
+                    ->helperText(
+                        'Aktifkan hanya jika dosen memang meminta jadwal di luar jam operasional yang ditentukan pada Generator Jadwal.'
+                    )
+                    ->columnSpanFull(),
+
             ]);
     }
 }

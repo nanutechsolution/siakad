@@ -123,7 +123,6 @@ class CandidateGenerator
                 $alasanTerakhir
             );
         }
-
         // ================================================================
         // RETURN HASIL
         // ================================================================
@@ -180,87 +179,87 @@ class CandidateGenerator
         array &$failureCodes,
         ?string &$alasanTerakhir
     ): void {
-
-        /*
-     * Tidak ada dosen khusus → jangan membuka jam di luar
-     * operasional sama sekali.
-     */
         if (empty($item->dosenIds)) {
             return;
         }
 
-        /*
-     * Ambil availability khusus dari SEMUA dosen pengampu.
-     *
-     * Ini penting:
-     *
-     * Dosen A = 18:00-20:00
-     * Dosen B = 18:30-20:30
-     *
-     * Maka kandidat hanya boleh berada di irisan:
-     *
-     * 18:30-20:00
-     */
-        $window = $this->getIrisanAvailabilityKhusus(
+        // Cari irisan waktu khusus dari seluruh dosen pengampu
+        $windows = $this->getIrisanAvailabilityKhusus(
             $item->dosenIds,
             $hari
         );
 
-        if ($window === null) {
+        if (empty($windows)) {
             return;
         }
 
-        $windowMulai = $window['mulai'];
-        $windowSelesai = $window['selesai'];
+        foreach ($windows as $window) {
+            $windowMulai = $window['mulai'];
+            $windowSelesai = $window['selesai'];
 
-        /*
-     * Pastikan window memang berada di luar jam operasional
-     * global.
-     *
-     * Kalau hanya overlap dengan jam normal, jangan membuat
-     * kandidat duplikat.
-     */
-        if (
-            !$this->windowBeradaDiLuarOperasional(
+            // Hanya gunakan window yang benar-benar
+            // berada di luar jam operasional kampus.
+            if (
+                !$this->windowBeradaDiLuarOperasional(
+                    $hari,
+                    $windowMulai,
+                    $windowSelesai
+                )
+            ) {
+                continue;
+            }
+
+            $this->generateKandidatDariWindowKhusus(
                 $hari,
+                $item,
+                $tracker,
                 $windowMulai,
-                $windowSelesai
-            )
-        ) {
-            return;
+                $windowSelesai,
+                $candidates,
+                $failureCodes,
+                $alasanTerakhir
+            );
         }
+    }
+    protected function generateKandidatDariWindowKhusus(
+        string $hari,
+        DemandItem $item,
+        ScheduleTracker $tracker,
+        string $windowMulai,
+        string $windowSelesai,
+        array &$candidates,
+        array &$failureCodes,
+        ?string &$alasanTerakhir
+    ): void {
 
         // ================================================================
         // MODE STATIS
         // ================================================================
         if ($this->modeWaktu === 'statis') {
 
-            /*
-         * Gunakan durasi blok statis yang lazim pada hari tersebut.
-         *
-         * Contoh:
-         * Wizard:
-         * 08:00-09:30
-         *
-         * Maka special:
-         * 18:00-19:30
-         */
             $durasiSlot = $this->durasiSlotStatis($hari);
 
             if ($durasiSlot <= 0) {
                 $failureCodes[] = 'SPECIAL_SLOT_DURATION_UNKNOWN';
+
                 $alasanTerakhir =
-                    'Durasi slot statis tidak dapat ditentukan untuk availability dosen khusus.';
+                    'Durasi slot statis tidak dapat ditentukan '
+                    . 'untuk availability dosen khusus.';
+
                 return;
             }
 
             $mulai = Carbon::parse($windowMulai);
             $batas = Carbon::parse($windowSelesai);
 
-            while (true) {
+            while ($mulai->lessThan($batas)) {
 
                 $selesai = $mulai->copy()->addMinutes($durasiSlot);
 
+                /*
+             * Slot harus sepenuhnya berada di dalam
+             * window availability dosen.
+             */
                 if ($selesai->greaterThan($batas)) {
                     break;
                 }
@@ -274,7 +273,8 @@ class CandidateGenerator
                     ->format('H:i');
 
                 /*
-             * Pastikan tetap benar-benar di luar jam global.
+             * Jangan izinkan slot yang melewati batas
+             * operasional normal.
              */
                 if (
                     $this->slotBeradaDiLuarOperasional(
@@ -297,8 +297,8 @@ class CandidateGenerator
                 }
 
                 /*
-             * Static slot cukup maju 15 menit agar availability
-             * khusus tetap fleksibel.
+             * Tetap menggunakan granularitas 15 menit
+             * untuk availability khusus.
              */
                 $mulai->addMinutes(15);
             }
@@ -330,6 +330,10 @@ class CandidateGenerator
                 break;
             }
 
+            /*
+         * Special candidate harus sepenuhnya berada
+         * di luar jam operasional normal.
+         */
             if (
                 $this->slotBeradaDiLuarOperasional(
                     $hari,
@@ -448,24 +452,18 @@ class CandidateGenerator
     protected function getIrisanAvailabilityKhusus(
         array $dosenIds,
         string $hari
-    ): ?array {
-
+    ): array {
         $intersection = null;
 
         foreach ($dosenIds as $dosenId) {
-
-            $windows =
-                $this->ketersediaanDosenKhusus[$dosenId][$hari]
-                ?? [];
+            $windows = $this->ketersediaanDosenKhusus[$dosenId][$hari] ?? [];
 
             if (empty($windows)) {
                 /*
-             * Dosen ini tidak memiliki special availability.
-             *
-             * Artinya mata kuliah tidak boleh dibuatkan
-             * kandidat di luar jam operasional.
+             * Semua dosen pengampu harus memiliki
+             * special availability pada hari ini.
              */
-                return null;
+                return [];
             }
 
             if ($intersection === null) {
@@ -477,7 +475,6 @@ class CandidateGenerator
 
             foreach ($intersection as $a) {
                 foreach ($windows as $b) {
-
                     $mulai = max(
                         $a['mulai'],
                         $b['mulai']
@@ -500,25 +497,11 @@ class CandidateGenerator
             $intersection = $newIntersection;
 
             if (empty($intersection)) {
-                return null;
+                return [];
             }
         }
 
-        if (empty($intersection)) {
-            return null;
-        }
-
-        /*
-     * Untuk sekarang ambil window pertama.
-     *
-     * Kalau seorang dosen memiliki beberapa window:
-     * 18-20
-     * 20-22
-     *
-     * keduanya tetap diproses apabila nanti kita ingin
-     * mendukung multi-window secara penuh.
-     */
-        return $intersection[0];
+        return $intersection ?? [];
     }
     protected function windowBeradaDiLuarOperasional(
         string $hari,
@@ -534,17 +517,18 @@ class CandidateGenerator
             $this->jamOperasional[$hari]['selesai']
             ?? '16:00';
 
-        /*
-     * Seluruh window masih berada di dalam jam operasional.
-     */
-        if (
-            $mulai >= $operasionalMulai
-            && $selesai <= $operasionalSelesai
-        ) {
-            return false;
+        // Sepenuhnya sebelum jam buka.
+        if ($selesai <= $operasionalMulai) {
+            return true;
         }
 
-        return true;
+        // Sepenuhnya setelah jam tutup.
+        if ($mulai >= $operasionalSelesai) {
+            return true;
+        }
+
+        // Berarti berada di dalam atau memotong jam operasional.
+        return false;
     }
     /**
      * Evaluasi kombinasi hari + waktu + ruang.
