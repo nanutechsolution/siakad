@@ -19,6 +19,8 @@ class DemandCollector
     public function __construct(
         protected array $ruangTersedia,
         protected ?int $kampusUtamaId = null,
+        protected array $limitasiWaktuDosen = [],
+        protected array $ketersediaanDosenKhusus = [],
     ) {}
 
     /** @return DemandItem[] */
@@ -597,21 +599,153 @@ class DemandCollector
         });
     }
 
-    protected function skorKesulitan(DemandItem $item, int $totalRuang, $jumlahRuangPerJenis): float
-    {
+    protected function skorKesulitan(
+        DemandItem $item,
+        int $totalRuang,
+        $jumlahRuangPerJenis
+    ): float {
+        /*
+     * ============================================================
+     * 1. FIXED ROOM
+     * ============================================================
+     *
+     * Ruang pilihan admin adalah constraint paling keras.
+     */
         if ($item->reqRuangId) {
-            return 1000.0; // fixed room selalu paling ketat, proses paling awal
+            $skor = 1000.0;
+        } else {
+            $rasioRuangJenis =
+                ($jumlahRuangPerJenis[$item->jenisRuangDibutuhkan] ?? 1)
+                / $totalRuang;
+
+            /*
+         * Semakin sedikit ruang dengan jenis tersebut,
+         * semakin sulit.
+         */
+            $skor = (1 - $rasioRuangJenis) * 10;
+
+            /*
+         * Kapasitas besar = pilihan ruang semakin sedikit.
+         */
+            $skor += min($item->kapasitasDibutuhkan / 100, 5);
+
+            /*
+         * Team teaching = semakin banyak dosen,
+         * semakin sulit mencari slot yang sama.
+         */
+            $skor += count($item->dosenIds) * 1.5;
         }
 
-        $rasioRuangJenis = ($jumlahRuangPerJenis[$item->jenisRuangDibutuhkan] ?? 1) / $totalRuang;
-        $skor = (1 - $rasioRuangJenis) * 10;                    // makin langka jenis ruangnya, makin sulit
-        $skor += min($item->kapasitasDibutuhkan / 100, 5);       // kapasitas besar = lebih sulit
-        $skor += count($item->dosenIds) * 1.5;                  // team teaching lebih rawan bentrok
+        /*
+     * ============================================================
+     * 2. KETERSEDIAAN DOSEN
+     * ============================================================
+     *
+     * Dosen dengan availability terbatas harus diproses lebih awal.
+     */
+        $skorAvailability = $this->hitungSkorKeterbatasanDosen(
+            $item->dosenIds
+        );
+
+        $skor += $skorAvailability;
 
         $item->skorKesulitan = $skor;
+
         return $skor;
     }
+    protected function hitungSkorKeterbatasanDosen(array $dosenIds): float
+    {
+        if (empty($dosenIds)) {
+            return 0.0;
+        }
 
+        $skor = 0.0;
+
+        foreach ($dosenIds as $dosenId) {
+
+            $normal = $this->limitasiWaktuDosen[$dosenId] ?? [];
+            $special = $this->ketersediaanDosenKhusus[$dosenId] ?? [];
+
+            /*
+         * Tidak punya konfigurasi availability sama sekali.
+         *
+         * Artinya dosen bebas mengikuti jam operasional Wizard.
+         * Jadi tidak perlu tambahan skor kesulitan.
+         */
+            if (empty($normal) && empty($special)) {
+                continue;
+            }
+
+            /*
+         * Hitung jumlah hari/window yang tersedia.
+         */
+            $jumlahHariNormal = count($normal);
+            $jumlahWindowNormal = array_sum(
+                array_map(
+                    fn($windows) => count($windows),
+                    $normal
+                )
+            );
+
+            $jumlahHariSpecial = count($special);
+            $jumlahWindowSpecial = array_sum(
+                array_map(
+                    fn($windows) => count($windows),
+                    $special
+                )
+            );
+
+            $jumlahHari = $jumlahHariNormal + $jumlahHariSpecial;
+            $jumlahWindow = $jumlahWindowNormal + $jumlahWindowSpecial;
+
+            /*
+         * Semakin sedikit hari → semakin sulit.
+         */
+            if ($jumlahHari <= 1) {
+                $skor += 15;
+            } elseif ($jumlahHari === 2) {
+                $skor += 10;
+            } elseif ($jumlahHari === 3) {
+                $skor += 6;
+            } else {
+                $skor += 2;
+            }
+
+            /*
+         * Semakin sedikit window → semakin sulit.
+         */
+            if ($jumlahWindow <= 1) {
+                $skor += 15;
+            } elseif ($jumlahWindow <= 2) {
+                $skor += 10;
+            } elseif ($jumlahWindow <= 4) {
+                $skor += 6;
+            } else {
+                $skor += 2;
+            }
+
+            /*
+         * Special availability merupakan ruang gerak yang sangat
+         * spesifik. Berikan tambahan prioritas agar demand yang
+         * hanya bisa masuk pada window khusus diproses lebih awal.
+         */
+            if ($jumlahWindowSpecial > 0) {
+                $skor += 5;
+            }
+        }
+
+        /*
+     * Team teaching:
+     *
+     * Semua dosen harus tersedia pada waktu yang sama.
+     * Jadi semakin banyak dosen, constraint semakin ketat.
+     */
+        if (count($dosenIds) > 1) {
+            $skor += (count($dosenIds) - 1) * 3;
+        }
+
+        return $skor;
+    }
     protected function getKurikulumMataKuliahForKelas(int $mataKuliahId, $kelas): ?KurikulumMataKuliah
     {
         $kurikulumIds = MahasiswaKelas::query()

@@ -126,10 +126,17 @@ class JadwalGeneratorEngine
                 $this->ruangTersedia,
                 $this->kampusUtamaId,
             );
+            $collector = new DemandCollector(
+                $this->ruangTersedia,
+                $this->kampusUtamaId,
+                $context['limitasiWaktuDosen'],
+                $context['ketersediaanDosenKhusus'] ?? [],
+            );
 
             $demandItems = $collector->collect($this->batch);
             $preFailures = $collector->getPreFailures();
 
+            $demandItems = $this->sortDemandItems($demandItems);
             $generator = new CandidateGenerator(
                 $this->hariOperasional,
                 $this->jamOperasional,
@@ -211,6 +218,18 @@ class JadwalGeneratorEngine
         } finally {
             $lock->release();
         }
+    }
+
+    protected function sortDemandItems(array $items): array
+    {
+        usort($items, function ($a, $b) {
+            $skorA = $a->skorKesulitan ?? PHP_FLOAT_MAX;
+            $skorB = $b->skorKesulitan ?? PHP_FLOAT_MAX;
+
+            return $skorB <=> $skorA;
+        });
+
+        return $items;
     }
 
     protected function simpanHasil(array $assigned, array $failed, array $preFailures): void
