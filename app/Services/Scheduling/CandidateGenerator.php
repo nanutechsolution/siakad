@@ -390,18 +390,20 @@ class CandidateGenerator
 
         $durasiMenit = $sks * $this->menitPerSks;
 
-        $jamSelesai = Carbon::parse($jamMulai)
-            ->addMinutes($durasiMenit)
-            ->format('H:i');
+        $mulai = Carbon::parse($jamMulai);
 
-        $jamSelesaiTransisi = Carbon::parse($jamSelesai)
-            ->addMinutes($this->menitTransisi)
-            ->format('H:i');
+        $selesai = $mulai
+            ->copy()
+            ->addMinutes($durasiMenit);
+
+        $selesaiTransisi = $selesai
+            ->copy()
+            ->addMinutes($this->menitTransisi);
 
         return [
-            $jamSelesai,
-            $jamSelesaiTransisi,
-            $jamSelesai <= $jamTutupWindow,
+            $selesai->format('H:i'),
+            $selesaiTransisi->format('H:i'),
+            $selesaiTransisi->format('H:i') <= $jamTutupWindow,
         ];
     }
     protected function slotBeradaDiLuarOperasional(
