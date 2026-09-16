@@ -146,7 +146,7 @@ class CandidateGenerator
             'FIXED_ROOM_CAPACITY',
             'FIXED_ROOM_TYPE',
             'FIXED_ROOM_PRODI',
-             'FIXED_LAB_UNAVAILABLE',
+            'FIXED_LAB_UNAVAILABLE',
         ];
 
         if (!empty(array_intersect($failureCodes, $criticalCodes))) {
@@ -293,7 +293,8 @@ class CandidateGenerator
                         $tracker,
                         $candidates,
                         $failureCodes,
-                        $alasanTerakhir
+                        $alasanTerakhir,
+                        true
                     );
                 }
 
@@ -351,7 +352,8 @@ class CandidateGenerator
                     $tracker,
                     $candidates,
                     $failureCodes,
-                    $alasanTerakhir
+                    $alasanTerakhir,
+                    true
                 );
             }
 
@@ -543,7 +545,8 @@ class CandidateGenerator
         ScheduleTracker $tracker,
         array &$candidates,
         array &$failureCodes,
-        ?string &$alasanTerakhir
+        ?string &$alasanTerakhir,
+        bool $isSpecial = false,
     ): void {
 
         // ============================================================
@@ -584,7 +587,8 @@ class CandidateGenerator
                 $hari,
                 $jamMulai,
                 $jamSelesaiTransisi,
-                $tracker
+                $tracker,
+                $isSpecial
             );
 
         if ($dosenBentrok) {
@@ -738,11 +742,15 @@ class CandidateGenerator
         string $hari,
         string $jamMulai,
         string $jamSelesaiTransisi,
-        ScheduleTracker $tracker
+        ScheduleTracker $tracker,
+        bool $isSpecial = false,
     ): ?string {
 
         foreach ($dosenIds as $dId) {
 
+            /*
+         * 1. Cek bentrok jadwal dosen
+         */
             if (
                 $tracker->isDosenBentrok(
                     $dId,
@@ -754,18 +762,63 @@ class CandidateGenerator
                 return 'Salah satu dosen pengampu bentrok jadwal (termasuk jeda kelas).';
             }
 
-            if (isset($this->limitasiWaktuDosen[$dId])) {
+
+            /*
+         * 2. Kandidat khusus / di luar jam operasional
+         *
+         * Hanya boleh menggunakan availability khusus.
+         */
+            if ($isSpecial) {
+
+                $windowsKhusus =
+                    $this->ketersediaanDosenKhusus[$dId][$hari] ?? [];
+
+                if (empty($windowsKhusus)) {
+                    return 'Salah satu dosen tidak memiliki availability khusus pada hari tersebut.';
+                }
 
                 $isAvailable = false;
 
-                foreach (
-                    $this->limitasiWaktuDosen[$dId][$hari] ?? []
-                    as $whitelist
-                ) {
+                foreach ($windowsKhusus as $window) {
 
                     if (
-                        $jamMulai >= $whitelist['mulai']
-                        && $jamSelesaiTransisi <= $whitelist['selesai']
+                        $jamMulai >= $window['mulai']
+                        && $jamSelesaiTransisi <= $window['selesai']
+                    ) {
+                        $isAvailable = true;
+                        break;
+                    }
+                }
+
+                if (!$isAvailable) {
+                    return 'Slot khusus berada di luar availability khusus dosen.';
+                }
+
+                continue;
+            }
+
+
+            /*
+         * 3. Kandidat normal
+         *
+         * Availability normal hanya membatasi jika pada hari
+         * tersebut memang ada konfigurasi availability.
+         *
+         * Kalau dosen tidak mengisi availability pada hari itu,
+         * maka tetap mengikuti jam operasional Wizard.
+         */
+            $windowsNormal =
+                $this->limitasiWaktuDosen[$dId][$hari] ?? [];
+
+            if (!empty($windowsNormal)) {
+
+                $isAvailable = false;
+
+                foreach ($windowsNormal as $window) {
+
+                    if (
+                        $jamMulai >= $window['mulai']
+                        && $jamSelesaiTransisi <= $window['selesai']
                     ) {
                         $isAvailable = true;
                         break;
