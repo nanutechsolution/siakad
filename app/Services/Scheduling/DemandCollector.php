@@ -8,8 +8,6 @@ use App\Models\JadwalKuliah;
 use App\Models\Kelas;
 use App\Models\KurikulumMataKuliah;
 use App\Models\MahasiswaKelas;
-use App\Models\MasterKurikulum;
-use App\Models\RefRuang;
 use App\Services\Scheduling\Support\DemandItem;
 use Illuminate\Support\Facades\Log;
 

@@ -25,6 +25,13 @@ class JadwalGeneratorEngine
         $this->batch = $batch;
 
         $config = $batch->config_snapshot;
+
+        if (is_string($config)) {
+            $config = json_decode($config, true);
+        }
+
+        $config = is_array($config) ? $config : [];
+
         $this->scopeKampus = $config['scope_kampus'] ?? (
             $batch->kampus_id ? 'specific' : 'all'
         );
@@ -32,12 +39,11 @@ class JadwalGeneratorEngine
         $this->scopeProdi = $config['scope_prodi'] ?? (
             $batch->prodi_id ? 'specific' : 'all'
         );
-        if (is_string($config)) {
-            $config = json_decode($config, true);
-        }
+
         $this->kampusUtamaId = !empty($config['kampus_utama_id'])
             ? (int) $config['kampus_utama_id']
             : null;
+
         if ($this->kampusUtamaId === null) {
             throw new \RuntimeException(
                 'Kampus utama belum dikonfigurasi. '
@@ -132,7 +138,9 @@ class JadwalGeneratorEngine
                 $this->menitPerSks,
                 $this->menitTransisi,
                 $this->ruangTersedia,
-                $context['limitasiWaktuDosen']
+                $context['limitasiWaktuDosen'],
+                $context['ketersediaanDosenKhusus'] ?? [],
+                $this->kampusUtamaId,
             );
 
             $scorer = new CandidateScorer(

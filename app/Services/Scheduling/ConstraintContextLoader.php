@@ -14,7 +14,8 @@ class ConstraintContextLoader
     /**
      * @return array{
      *     tracker: ScheduleTracker,
-     *     limitasiWaktuDosen: array
+     *     limitasiWaktuDosen: array,
+     *     ketersediaanDosenKhusus: array
      * }
      */
     public function load(JadwalGeneratorBatch $batch): array
@@ -22,17 +23,17 @@ class ConstraintContextLoader
         $tracker = new ScheduleTracker();
 
         // Production selalu menjadi constraint GLOBAL.
-        // Tidak peduli batch sedang menargetkan satu kampus atau semua kampus.
         $this->loadProduction($tracker, $batch);
 
         // Preview/RUNNING batch lain juga menjadi constraint GLOBAL.
         $this->loadPreviewAktifDariBatchLain($tracker, $batch);
 
-        $limitasiWaktuDosen = $this->loadAvailability();
+        $availability = $this->loadAvailability();
 
         return [
             'tracker' => $tracker,
-            'limitasiWaktuDosen' => $limitasiWaktuDosen,
+            'limitasiWaktuDosen' => $availability['limitasiWaktuDosen'],
+            'ketersediaanDosenKhusus' => $availability['ketersediaanDosenKhusus'],
         ];
     }
 
@@ -190,15 +191,46 @@ class ConstraintContextLoader
     protected function loadAvailability(): array
     {
         $limitasiWaktuDosen = [];
-        $availabilities = DosenKetersediaan::all()->groupBy('dosen_id');
+        $ketersediaanDosenKhusus = [];
+
+        $availabilities = DosenKetersediaan::query()
+            ->get()
+            ->groupBy('dosen_id');
+
         foreach ($availabilities as $dosenId => $avails) {
             foreach ($avails as $avail) {
-                $limitasiWaktuDosen[$dosenId][$avail->hari][] = [
-                    'mulai' => substr($avail->jam_mulai, 0, 5),
-                    'selesai' => substr($avail->jam_selesai, 0, 5),
+                $hari = $avail->hari;
+
+                $mulai = substr($avail->jam_mulai, 0, 5);
+                $selesai = substr($avail->jam_selesai, 0, 5);
+
+                $data = [
+                    'mulai' => $mulai,
+                    'selesai' => $selesai,
                 ];
+
+                /*
+             * Tetap menjadi limitasi waktu dosen.
+             *
+             * Artinya jika dosen memiliki data ketersediaan,
+             * CandidateGenerator akan memastikan jadwal masuk
+             * ke salah satu window yang diperbolehkan.
+             */
+                $limitasiWaktuDosen[$dosenId][$hari][] = $data;
+
+                /*
+             * Khusus untuk ketersediaan yang boleh berada
+             * DI LUAR jam operasional global.
+             */
+                if ((bool) $avail->allow_outside_operational_hours) {
+                    $ketersediaanDosenKhusus[$dosenId][$hari][] = $data;
+                }
             }
         }
-        return $limitasiWaktuDosen;
+
+        return [
+            'limitasiWaktuDosen' => $limitasiWaktuDosen,
+            'ketersediaanDosenKhusus' => $ketersediaanDosenKhusus,
+        ];
     }
 }
