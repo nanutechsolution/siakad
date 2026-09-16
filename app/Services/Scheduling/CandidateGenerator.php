@@ -146,6 +146,7 @@ class CandidateGenerator
             'FIXED_ROOM_CAPACITY',
             'FIXED_ROOM_TYPE',
             'FIXED_ROOM_PRODI',
+             'FIXED_LAB_UNAVAILABLE',
         ];
 
         if (!empty(array_intersect($failureCodes, $criticalCodes))) {
@@ -587,10 +588,15 @@ class CandidateGenerator
             );
 
         if ($dosenBentrok) {
-            $failureCodes[] =
-                $this->deteksiKodeDosenFailure($dosenBentrok);
+
+            $kodeDosen = $this->deteksiKodeDosenFailure(
+                $dosenBentrok
+            );
+
+            $failureCodes[] = $kodeDosen;
 
             $alasanTerakhir = $dosenBentrok;
+
             return;
         }
 
