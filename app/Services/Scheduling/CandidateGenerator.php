@@ -748,9 +748,6 @@ class CandidateGenerator
 
         foreach ($dosenIds as $dId) {
 
-            /*
-         * 1. Cek bentrok jadwal dosen
-         */
             if (
                 $tracker->isDosenBentrok(
                     $dId,
@@ -762,11 +759,10 @@ class CandidateGenerator
                 return 'Salah satu dosen pengampu bentrok jadwal (termasuk jeda kelas).';
             }
 
-
             /*
-         * 2. Kandidat khusus / di luar jam operasional
-         *
-         * Hanya boleh menggunakan availability khusus.
+         * ==========================================================
+         * SPECIAL / DI LUAR JAM OPERASIONAL
+         * ==========================================================
          */
             if ($isSpecial) {
 
@@ -780,7 +776,6 @@ class CandidateGenerator
                 $isAvailable = false;
 
                 foreach ($windowsKhusus as $window) {
-
                     if (
                         $jamMulai >= $window['mulai']
                         && $jamSelesaiTransisi <= $window['selesai']
@@ -790,44 +785,88 @@ class CandidateGenerator
                     }
                 }
 
-                if (!$isAvailable) {
+                if (! $isAvailable) {
                     return 'Slot khusus berada di luar availability khusus dosen.';
                 }
 
                 continue;
             }
 
-
             /*
-         * 3. Kandidat normal
+         * ==========================================================
+         * NORMAL
+         * ==========================================================
          *
-         * Availability normal hanya membatasi jika pada hari
-         * tersebut memang ada konfigurasi availability.
-         *
-         * Kalau dosen tidak mengisi availability pada hari itu,
-         * maka tetap mengikuti jam operasional Wizard.
+         * Jika dosen memiliki konfigurasi availability mingguan,
+         * maka hari yang tidak dikonfigurasi = TIDAK TERSEDIA.
          */
+
             $windowsNormal =
                 $this->limitasiWaktuDosen[$dId][$hari] ?? [];
 
-            if (!empty($windowsNormal)) {
+            $windowsKhususHari =
+                $this->ketersediaanDosenKhusus[$dId][$hari] ?? [];
 
-                $isAvailable = false;
+            /*
+         * Cek apakah hari ini memang dikonfigurasi
+         * untuk dosen tersebut.
+         */
+            $hariDikonfigurasi =
+                ! empty($windowsNormal)
+                || ! empty($windowsKhususHari);
 
-                foreach ($windowsNormal as $window) {
+            /*
+         * Kalau dosen punya availability, tetapi hari ini
+         * tidak ada konfigurasi sama sekali, berarti tidak tersedia.
+         */
+            if ($hariDikonfigurasi === false) {
 
-                    if (
-                        $jamMulai >= $window['mulai']
-                        && $jamSelesaiTransisi <= $window['selesai']
-                    ) {
-                        $isAvailable = true;
-                        break;
-                    }
+                /*
+             * Cek apakah dosen memang memiliki konfigurasi
+             * availability pada hari lain.
+             */
+                $punyaAvailability = isset(
+                    $this->limitasiWaktuDosen[$dId]
+                ) || isset(
+                    $this->ketersediaanDosenKhusus[$dId]
+                );
+
+                if ($punyaAvailability) {
+                    return 'Dosen tidak tersedia pada hari tersebut.';
                 }
 
-                if (!$isAvailable) {
-                    return 'Salah satu dosen di luar jam ketersediaan yang didefinisikan.';
+                /*
+             * Tidak punya konfigurasi availability sama sekali.
+             * Maka tetap mengikuti jam operasional Wizard.
+             */
+                continue;
+            }
+
+            /*
+         * Hari dikonfigurasi, tetapi yang ada hanya special.
+         *
+         * Untuk jadwal NORMAL, special 16:00–17:30 tidak boleh
+         * dianggap sebagai availability normal.
+         */
+            if (empty($windowsNormal)) {
+                return 'Dosen tidak memiliki availability normal pada hari tersebut.';
+            }
+
+            $isAvailable = false;
+
+            foreach ($windowsNormal as $window) {
+
+                if (
+                    $jamMulai >= $window['mulai']
+                    && $jamSelesaiTransisi <= $window['selesai']
+                ) {
+                    $isAvailable = true;
+                    break;
                 }
+            }
+
+            if (! $isAvailable) {
+                return 'Salah satu dosen di luar jam ketersediaan yang didefinisikan.';
             }
         }
 
@@ -1326,7 +1365,13 @@ class CandidateGenerator
             return 'DOSEN_BENTROK';
         }
 
-        if (str_contains($reason, 'di luar jam ketersediaan')) {
+        if (
+            str_contains($reason, 'di luar jam ketersediaan')
+            || str_contains($reason, 'Dosen tidak tersedia pada hari tersebut')
+            || str_contains($reason, 'tidak memiliki availability normal')
+            || str_contains($reason, 'tidak memiliki availability khusus')
+            || str_contains($reason, 'di luar availability khusus')
+        ) {
             return 'DOSEN_AVAILABILITY';
         }
 
