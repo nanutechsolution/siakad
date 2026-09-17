@@ -23,7 +23,6 @@ class TahunAkademikService
             ->firstOrFail();
     }
 
-
     public function getActiveCached(): RefTahunAkademik
     {
         $id = Cache::remember(
@@ -41,15 +40,15 @@ class TahunAkademikService
             ->where('is_active', true)
             ->first();
     }
+
     public function getActiveId(): int
     {
-        return Cache::remember(
+        return (int) Cache::remember(
             self::CACHE_KEY,
             self::CACHE_TTL,
             fn() => $this->getActive()->id
         );
     }
-
 
     public function clearCache(): void
     {
