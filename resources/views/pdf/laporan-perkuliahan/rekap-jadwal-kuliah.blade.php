@@ -112,7 +112,7 @@
                 </td>
 
                 <td class="text-center font-semibold">
-                    {{ $row['prodi_kode'] }}/{{ $row['semester'] }}/{{ $row['kelas'] }}
+                    {{ $row['prodi_semester_kelas'] }}
                 </td>
 
                 <td class="text-center text-muted">

@@ -5,9 +5,7 @@ declare(strict_types=1);
 namespace App\Services\LaporanPerkuliahan;
 
 use App\Models\JadwalKuliah;
-use App\Models\KurikulumMataKuliah;
 use Illuminate\Database\Eloquent\Builder;
-use Illuminate\Support\Collection;
 
 class JadwalKuliahReportService
 {
@@ -16,7 +14,7 @@ class JadwalKuliahReportService
      *     tahun_akademik_id?: int,
      *     fakultas_id?: int,
      *     prodi_id?: int,
-     *     dosen_id?: string|int,
+     *     dosen_id?: string,
      *     mata_kuliah_id?: int,
      *     ruang_id?: int
      * } $filters
@@ -73,8 +71,8 @@ class JadwalKuliahReportService
                 fn(Builder $query, $value) =>
                 $query->where('ruang_id', $value)
             )
-            ->orderByRaw(
-                "FIELD(
+            ->orderByRaw("
+                FIELD(
                     hari,
                     'Senin',
                     'Selasa',
@@ -83,98 +81,86 @@ class JadwalKuliahReportService
                     'Jumat',
                     'Sabtu',
                     'Minggu'
-                )"
-            )
+                )
+            ")
             ->orderBy('jam_mulai');
     }
 
     /**
-     * Data khusus untuk kebutuhan export.
+     * Hitung semester kelas berdasarkan:
      *
-     * Semester diambil dari:
-     * kurikulum_mata_kuliah.semester_paket
+     * angkatan 2026
+     * 20261 = semester 1
+     * 20262 = semester 2
+     * 20271 = semester 3
+     * 20272 = semester 4
      *
-     * berdasarkan pasangan:
-     * jadwal_kuliah.kurikulum_id
-     * + jadwal_kuliah.mata_kuliah_id
+     * @param int $angkatan
+     * @param string|null $kodeTahun
      */
-    public function exportRows(array $filters = []): Collection
-    {
-        $jadwals = $this->query($filters)->get();
-
-        /*
-         * Ambil semua pasangan kurikulum + mata kuliah
-         * yang diperlukan oleh jadwal.
-         *
-         * Ini menghindari query satu per satu (N+1).
-         */
-        $pairs = $jadwals
-            ->filter(
-                fn(JadwalKuliah $jadwal) =>
-                filled($jadwal->kurikulum_id)
-                    && filled($jadwal->mata_kuliah_id)
-            )
-            ->map(
-                fn(JadwalKuliah $jadwal) => [
-                    'kurikulum_id' => $jadwal->kurikulum_id,
-                    'mata_kuliah_id' => $jadwal->mata_kuliah_id,
-                ]
-            )
-            ->unique(
-                fn(array $pair) =>
-                $pair['kurikulum_id'] . ':' . $pair['mata_kuliah_id']
-            )
-            ->values();
-
-        /*
-         * Ambil semester_paket secara batch.
-         */
-        $semesterMap = collect();
-
-        if ($pairs->isNotEmpty()) {
-            $semesterMap = KurikulumMataKuliah::query()
-                ->where(function (Builder $query) use ($pairs) {
-                    foreach ($pairs as $pair) {
-                        $query->orWhere(function (Builder $q) use ($pair) {
-                            $q->where(
-                                'kurikulum_id',
-                                $pair['kurikulum_id']
-                            )->where(
-                                'mata_kuliah_id',
-                                $pair['mata_kuliah_id']
-                            );
-                        });
-                    }
-                })
-                ->get([
-                    'kurikulum_id',
-                    'mata_kuliah_id',
-                    'semester_paket',
-                ])
-                ->mapWithKeys(
-                    fn(KurikulumMataKuliah $item) => [
-                        $item->kurikulum_id . ':' . $item->mata_kuliah_id
-                        => $item->semester_paket,
-                    ]
-                );
+    private function hitungSemester(
+        int $angkatan,
+        ?string $kodeTahun
+    ): ?int {
+        if (!$angkatan || !$kodeTahun) {
+            return null;
         }
 
-        return $jadwals->map(
-            function (JadwalKuliah $jadwal) use ($semesterMap): array {
-                $semesterKey = filled($jadwal->kurikulum_id)
-                    && filled($jadwal->mata_kuliah_id)
-                    ? $jadwal->kurikulum_id . ':' . $jadwal->mata_kuliah_id
-                    : null;
+        /*
+         * Format kode tahun akademik:
+         *
+         * 20261 = 2026/2027 Ganjil
+         * 20262 = 2026/2027 Genap
+         * 20271 = 2027/2028 Ganjil
+         * 20272 = 2027/2028 Genap
+         */
+
+        if (!preg_match('/^(\d{4})([123])$/', $kodeTahun, $matches)) {
+            return null;
+        }
+
+        $tahunMulai = (int) $matches[1];
+        $periode = (int) $matches[2];
+
+        // Semester 3 = semester Pendek tidak dihitung sebagai
+        // semester reguler baru.
+        if ($periode === 3) {
+            return null;
+        }
+
+        $selisihTahun = $tahunMulai - $angkatan;
+
+        if ($selisihTahun < 0) {
+            return null;
+        }
+
+        return ($selisihTahun * 2) + $periode;
+    }
+
+    public function exportRows(array $filters = []): \Illuminate\Support\Collection
+    {
+        return $this->query($filters)
+            ->get()
+            ->map(function (JadwalKuliah $jadwal) {
+
+                $angkatan = $jadwal->kelas?->angkatan_id;
+
+                $kodeTahun = $jadwal->tahunAkademik?->kode_tahun;
+
+                $semester = $this->hitungSemester(
+                    (int) $angkatan,
+                    $kodeTahun
+                );
 
                 return [
                     'hari' => $jadwal->hari,
 
                     'jam_mulai' => $jadwal->jam_mulai
-                        ? substr((string) $jadwal->jam_mulai, 0, 5)
+                        ? substr($jadwal->jam_mulai, 0, 5)
                         : '-',
 
                     'jam_selesai' => $jadwal->jam_selesai
-                        ? substr((string) $jadwal->jam_selesai, 0, 5)
+                        ? substr($jadwal->jam_selesai, 0, 5)
                         : '-',
 
                     'kode_mk' => $jadwal->mataKuliah?->kode_mk ?? '-',
@@ -183,31 +169,49 @@ class JadwalKuliahReportService
 
                     'dosen' => $jadwal->dosenPengajars
                         ->map(
-                            fn($d) =>
-                            $d->dosen?->person?->nama_lengkap
+                            fn($dosenPengajar) =>
+                            $dosenPengajar->dosen?->person?->nama_lengkap
                         )
                         ->filter()
                         ->implode(', '),
 
                     /*
-                     * Gunakan kode internal prodi,
-                     * bukan nama prodi yang panjang.
+                     * Gunakan kode internal prodi:
+                     *
+                     * TI
+                     * ARS
+                     * SI
+                     * dst.
                      */
                     'prodi_kode' =>
                     $jadwal->kelas?->prodi?->kode_prodi_internal ?? '-',
 
                     /*
-                     * Semester mata kuliah dari kurikulum.
+                     * Semester kelas berdasarkan angkatan +
+                     * tahun akademik jadwal.
                      */
-                    'semester' => $semesterKey !== null
-                        ? ($semesterMap->get($semesterKey) ?? '-')
-                        : '-',
+                    'semester' => $semester ?? '-',
 
-                    'ruang' => $jadwal->ruang?->nama_ruang ?? '-',
+                    'ruang' =>
+                    $jadwal->ruang?->nama_ruang ?? '-',
 
-                    'kelas' => $jadwal->kelas?->nama_kelas ?? '-',
+                    'kelas' =>
+                    $jadwal->kelas?->nama_kelas ?? '-',
+
+                    'angkatan' =>
+                    $angkatan ?? '-',
+
+                    /*
+                     * Siap dipakai langsung untuk tampilan:
+                     * TI/1/C
+                     */
+                    'prodi_semester_kelas' => sprintf(
+                        '%s/%s/%s',
+                        $jadwal->kelas?->prodi?->kode_prodi_internal ?? '-',
+                        $semester ?? '-',
+                        $jadwal->kelas?->nama_kelas ?? '-',
+                    ),
                 ];
-            }
-        );
+            });
     }
 }
