@@ -148,6 +148,91 @@ class KrsValidationService
 
         return KrsValidationResult::pass('GATE_KEUANGAN');
     }
+    public function checkKelengkapanPenawaranPaket(
+        Mahasiswa $mahasiswa,
+        RefTahunAkademik $ta,
+        int $kelasId
+    ): KrsValidationResult {
+        $modeKrs = $mahasiswa->kurikulum?->mode_krs ?? 'PAKET';
+
+        if ($modeKrs !== 'PAKET') {
+            return KrsValidationResult::pass(
+                'GATE_PENAWARAN_MK',
+                'Mode KRS Bebas: validasi kelengkapan paket tidak diberlakukan.'
+            );
+        }
+
+        $semester = $mahasiswa->semesterPada($ta);
+
+        if (!$semester) {
+            return KrsValidationResult::fail(
+                'GATE_PENAWARAN_MK',
+                'Semester mahasiswa tidak dapat ditentukan.'
+            );
+        }
+
+        // SEMUA MK dalam kurikulum semester tersebut wajib tersedia.
+        $mkKurikulum = DB::table('kurikulum_mata_kuliah as kmk')
+            ->join(
+                'master_mata_kuliahs as mk',
+                'mk.id',
+                '=',
+                'kmk.mata_kuliah_id'
+            )
+            ->where('kmk.kurikulum_id', $mahasiswa->kurikulum_id)
+            ->where('kmk.semester_paket', $semester)
+            ->select([
+                'kmk.id as kurikulum_mk_id',
+                'kmk.mata_kuliah_id',
+                'mk.kode_mk',
+                'mk.nama_mk',
+            ])
+            ->get();
+
+        if ($mkKurikulum->isEmpty()) {
+            return KrsValidationResult::fail(
+                'GATE_PENAWARAN_MK',
+                "Belum ada mata kuliah yang dikonfigurasi pada kurikulum semester {$semester}."
+            );
+        }
+
+        // MK yang sudah ditawarkan untuk kelas mahasiswa.
+        $mkDitawarkan = DB::table('jadwal_kuliah')
+            ->where('tahun_akademik_id', $ta->id)
+            ->where('kelas_id', $kelasId)
+            ->whereNotNull('mata_kuliah_id')
+            ->pluck('mata_kuliah_id')
+            ->unique()
+            ->flip();
+
+        // Cari MK kurikulum yang belum memiliki jadwal.
+        $belumDitawarkan = $mkKurikulum
+            ->filter(
+                fn($mk) =>
+                !isset($mkDitawarkan[$mk->mata_kuliah_id])
+            )
+            ->values();
+
+        if ($belumDitawarkan->isEmpty()) {
+            return KrsValidationResult::pass(
+                'GATE_PENAWARAN_MK',
+                "Seluruh {$mkKurikulum->count()} mata kuliah semester {$semester} "
+                    . 'sudah ditawarkan untuk kelas mahasiswa.'
+            );
+        }
+
+        $daftarMk = $belumDitawarkan
+            ->map(fn($mk) => "{$mk->kode_mk} - {$mk->nama_mk}")
+            ->implode(', ');
+
+        return KrsValidationResult::fail(
+            'GATE_PENAWARAN_MK',
+            "Penawaran mata kuliah belum lengkap. "
+                . "{$belumDitawarkan->count()} dari {$mkKurikulum->count()} "
+                . "mata kuliah semester {$semester} belum memiliki jadwal untuk kelas Anda: "
+                . "{$daftarMk}. KRS belum dapat diajukan. Silakan hubungi Admin Prodi."
+        );
+    }
     /**
      * Gate 4: SKS Maksimal (mode-aware: PAKET vs BEBAS)
      */
@@ -367,6 +452,11 @@ class KrsValidationService
         $jadwalIds = $krs->details->pluck('jadwal_kuliah_id')->filter()->toArray();
         $requestedSks = (int) $krs->details->sum('sks_snapshot');
         $sksMengulang = (int) $krs->details->where('status_ambil', 'U')->sum('sks_snapshot');
+        $penawaran = $this->checkKelengkapanPenawaranPaket(
+            $mahasiswa,
+            $ta,
+            $krs->kelas_id
+        );
         $hasDispensasiSks = DB::table('dispensasi_akademiks')
             ->where('mahasiswa_id', $mahasiswa->id)
             ->where('jenis', 'KRS')
@@ -378,6 +468,7 @@ class KrsValidationService
             $this->checkPeriode($ta),
             $this->checkStatusMahasiswa($mahasiswa, $ta),
             $this->checkKeuangan($mahasiswa, $ta),
+            $penawaran,
             $this->checkSksMaksimal($mahasiswa, $requestedSks, $hasDispensasiSks, $sksMengulang),
             $this->checkPrasyarat($mahasiswa, $jadwalIds),
             $this->checkDuplikasiDanBentrok($jadwalIds),

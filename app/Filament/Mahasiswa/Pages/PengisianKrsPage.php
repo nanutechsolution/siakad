@@ -70,7 +70,16 @@ class PengisianKrsPage extends Page implements HasForms
             $this->setIneligible('Anda belum terdaftar di kelas manapun. Silakan hubungi bagian Akademik/Admin Prodi.');
             return;
         }
+        $valPenawaran = $service->checkKelengkapanPenawaranPaket(
+            $this->mahasiswa,
+            $this->activeTa,
+            $this->activeKelasId
+        );
 
+        if (!$valPenawaran->passed) {
+            $this->setIneligible($valPenawaran->message);
+            return;
+        }
         // Cek apakah sudah pernah buat KRS di semester ini
         $this->hasExistingKrs = Krs::where('mahasiswa_id', $this->mahasiswa->id)
             ->where('tahun_akademik_id', $this->activeTa->id)
@@ -269,7 +278,21 @@ class PengisianKrsPage extends Page implements HasForms
         }
 
         $service = app(KrsValidationService::class);
+        $valPenawaran = $service->checkKelengkapanPenawaranPaket(
+            $this->mahasiswa,
+            $this->activeTa,
+            $this->activeKelasId
+        );
 
+        if (!$valPenawaran->passed) {
+            Notification::make()
+                ->danger()
+                ->title('KRS Belum Dapat Diajukan')
+                ->body($valPenawaran->message)
+                ->send();
+
+            return;
+        }
         // Kalkulasi Total SKS
         $totalSksDiambil = (int) DB::table('jadwal_kuliah')
             ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
