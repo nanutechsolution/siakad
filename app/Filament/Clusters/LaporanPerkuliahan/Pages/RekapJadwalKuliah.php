@@ -2,7 +2,6 @@
 
 namespace App\Filament\Clusters\LaporanPerkuliahan\Pages;
 
-use App\Enums\Pdf\PdfDocumentType;
 use App\Exports\LaporanPerkuliahan\JadwalKuliahExport;
 use App\Filament\Clusters\LaporanPerkuliahan\LaporanPerkuliahanCluster;
 use App\Models\MasterMataKuliah;
@@ -12,7 +11,6 @@ use App\Models\RefRuang;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\LaporanPerkuliahan\JadwalKuliahReportService;
-use App\Services\Pdf\PdfService;
 use App\Services\TahunAkademikService;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -243,13 +241,128 @@ class RekapJadwalKuliah extends Page implements HasTable
                 ->action(fn() => $this->downloadPdf()),
         ];
     }
+
     protected function downloadPdf()
     {
-        return app(PdfService::class)->download(
-            PdfDocumentType::REKAP_JADWAL_KULIAH,
-            $this->getActiveFilters(),
-            'rekap-jadwal-kuliah-' . now()->format('Ymd-His') . '.pdf',
+        $filters = $this->getActiveFilters();
+
+        $service = app(JadwalKuliahReportService::class);
+
+        $rows = $service->exportRows($filters);
+
+        $infoBaris = $this->getPdfInfoBaris($filters);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'pdf.laporan-perkuliahan.rekap-jadwal-kuliah',
+            [
+                'rows' => $rows,
+                'judulDokumen' => 'Rekap Jadwal Kuliah',
+                'infoBaris' => $infoBaris,
+            ]
+        )->setPaper('a4', 'landscape');
+
+        return response()->streamDownload(
+            fn() => print($pdf->output()),
+            'rekap-jadwal-kuliah-' . now()->format('Ymd-His') . '.pdf'
         );
+    }
+    protected function getPdfInfoBaris(array $filters): array
+    {
+        $info = [];
+
+        /*
+     * Tahun Akademik
+     */
+        if (!empty($filters['tahun_akademik_id'])) {
+            $tahun = RefTahunAkademik::find(
+                $filters['tahun_akademik_id']
+            );
+
+            if ($tahun) {
+                $info[] = $tahun->nama_tahun;
+            }
+        }
+
+        /*
+     * Fakultas
+     */
+        if (!empty($filters['fakultas_id'])) {
+            $fakultas = RefFakultas::find(
+                $filters['fakultas_id']
+            );
+
+            if ($fakultas) {
+                $info[] = 'Fakultas: ' . $fakultas->nama_fakultas;
+            }
+        }
+
+        /*
+     * Program Studi
+     */
+        if (!empty($filters['prodi_id'])) {
+            $prodi = RefProdi::find(
+                $filters['prodi_id']
+            );
+
+            if ($prodi) {
+                $info[] = 'Prodi: ' . (
+                    $prodi->kode_prodi_internal
+                    ?? $prodi->nama_prodi
+                );
+            }
+        }
+
+        /*
+     * Dosen
+     */
+        if (!empty($filters['dosen_id'])) {
+            $dosen = TrxDosen::query()
+                ->with('person')
+                ->find($filters['dosen_id']);
+
+            if ($dosen) {
+                $info[] = 'Dosen: ' . (
+                    $dosen->person?->nama_lengkap
+                    ?? $dosen->nidn
+                );
+            }
+        }
+
+        /*
+     * Mata Kuliah
+     */
+        if (!empty($filters['mata_kuliah_id'])) {
+            $mataKuliah = MasterMataKuliah::find(
+                $filters['mata_kuliah_id']
+            );
+
+            if ($mataKuliah) {
+                $info[] = 'Mata Kuliah: '
+                    . ($mataKuliah->kode_mk
+                        ? $mataKuliah->kode_mk . ' - '
+                        : '')
+                    . $mataKuliah->nama_mk;
+            }
+        }
+
+        /*
+     * Ruangan
+     */
+        if (!empty($filters['ruang_id'])) {
+            $ruang = RefRuang::find(
+                $filters['ruang_id']
+            );
+
+            if ($ruang) {
+                $info[] = 'Ruang: ' . $ruang->nama_ruang;
+            }
+        }
+
+        /*
+     * Jika tidak ada filter sama sekali selain tahun akademik,
+     * tetap tampilkan tahun akademik.
+     */
+        return $info;
     }
     protected function getActiveFilters(): array
     {
