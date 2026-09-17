@@ -76,7 +76,7 @@
 <body>
 
     @include('pdf.partials.header', [
-    'judulDokumen' => 'Rekap Jadwal Kuliah'
+    'judulDokumen' => $judulDokumen
     ])
 
     <table class="table-data">
