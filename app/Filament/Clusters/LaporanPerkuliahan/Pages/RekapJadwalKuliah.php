@@ -4,7 +4,9 @@ namespace App\Filament\Clusters\LaporanPerkuliahan\Pages;
 
 use App\Exports\LaporanPerkuliahan\JadwalKuliahExport;
 use App\Filament\Clusters\LaporanPerkuliahan\LaporanPerkuliahanCluster;
+use App\Models\Kelas;
 use App\Models\MasterMataKuliah;
+use App\Models\RefAngkatan;
 use App\Models\RefFakultas;
 use App\Models\RefProdi;
 use App\Models\RefRuang;
@@ -86,6 +88,46 @@ class RekapJadwalKuliah extends Page implements HasTable
                             ? $query->whereHas(
                                 'kelas',
                                 fn($q) => $q->where('prodi_id', $state['value'])
+                            )
+                            : $query
+                    ),
+                SelectFilter::make('kelas_id')
+                    ->label('Kelas')
+                    ->options(function () {
+                        return Kelas::query()
+                            ->with('prodi')
+                            ->orderBy('nama_kelas')
+                            ->orderBy('angkatan_id')
+                            ->get()
+                            ->mapWithKeys(function (Kelas $kelas) {
+                                $prodi = $kelas->prodi;
+
+                                $angkatan = RefAngkatan::find($kelas->angkatan_id);
+
+                                $label = collect([
+                                    $prodi?->kode_prodi_internal,
+                                    $kelas->nama_kelas,
+                                    $angkatan?->tahun
+                                        ?? $angkatan?->nama
+                                        ?? $kelas->angkatan_id,
+                                ])
+                                    ->filter(fn($value) => filled($value))
+                                    ->implode(' - ');
+
+                                return [
+                                    $kelas->id => $label,
+                                ];
+                            })
+                            ->all();
+                    })
+                    ->searchable()
+                    ->preload()
+                    ->query(
+                        fn($query, $state) =>
+                        filled($state['value'] ?? null)
+                            ? $query->where(
+                                'kelas_id',
+                                $state['value']
                             )
                             : $query
                     ),
