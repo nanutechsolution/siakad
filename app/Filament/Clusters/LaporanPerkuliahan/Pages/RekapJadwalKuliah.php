@@ -182,9 +182,18 @@ class RekapJadwalKuliah extends Page implements HasTable
 
                 // Menggabungkan Kelas dan Prodi
                 TextColumn::make('kelas.nama_kelas')
-                    ->label('Kelas & Prodi')
+                    ->label('Prodi / Kelas')
                     ->weight('medium')
-                    ->description(fn($record) => $record->kelas?->prodi?->nama_prodi),
+                    ->state(function ($record) {
+                        $prodi = $record->kelas?->prodi;
+
+                        if (! $prodi) {
+                            return $record->kelas?->nama_kelas ?? '-';
+                        }
+
+                        return ($prodi->kode_prodi_internal ?? '-') . '/' . ($record->kelas?->nama_kelas ?? '-');
+                    })
+                    ->description(fn($record) => $record->kelas?->prodi?->nama_prodi ?? '-'),
 
                 TextColumn::make('ruang.nama_ruang')
                     ->label('Ruangan')
@@ -234,7 +243,6 @@ class RekapJadwalKuliah extends Page implements HasTable
 
         return [
             'tahun_akademik_id' => $state['tahun_akademik_id']['value'] ?? null,
-            'semester'          => $state['semester']['value'] ?? null,
             'fakultas_id'       => $state['fakultas_id']['value'] ?? null,
             'prodi_id'          => $state['prodi_id']['value'] ?? null,
             'dosen_id'          => $state['dosen_id']['value'] ?? null,

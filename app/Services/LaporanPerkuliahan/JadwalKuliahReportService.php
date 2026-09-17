@@ -5,22 +5,21 @@ declare(strict_types=1);
 namespace App\Services\LaporanPerkuliahan;
 
 use App\Models\JadwalKuliah;
+use App\Models\KurikulumMataKuliah;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 
-/**
- * NOTE: Service ini mengasumsikan model-model berikut sudah ada dan memetakan
- * ke tabel schema yang diberikan (silakan sesuaikan namespace jika berbeda):
- * JadwalKuliah (jadwal_kuliah), JadwalKuliahDosen (jadwal_kuliah_dosen),
- * Kelas (kelas), MasterMataKuliah (master_mata_kuliahs), Ruang (ref_ruang),
- * Prodi (ref_prodi), Fakultas (ref_fakultas), TahunAkademik (ref_tahun_akademik),
- * TrxDosen (trx_dosen), Person (ref_person), Mahasiswa (mahasiswas),
- * Krs (krs), KrsDetail (krs_detail), PerkuliahanSesi (perkuliahan_sesi),
- * PerkuliahanAbsensi (perkuliahan_absensi).
- */
 class JadwalKuliahReportService
 {
     /**
-     * @param  array{tahun_akademik_id?: int, semester?: int, fakultas_id?: int, prodi_id?: int, dosen_id?: string, mata_kuliah_id?: int, ruang_id?: int}  $filters
+     * @param array{
+     *     tahun_akademik_id?: int,
+     *     fakultas_id?: int,
+     *     prodi_id?: int,
+     *     dosen_id?: string|int,
+     *     mata_kuliah_id?: int,
+     *     ruang_id?: int
+     * } $filters
      */
     public function query(array $filters = []): Builder
     {
@@ -30,84 +29,185 @@ class JadwalKuliahReportService
                 'mataKuliah',
                 'ruang',
                 'kelas.prodi.fakultas',
-                'dosenPengajars.dosen.person', // Perbaikan rantai Eager Loading
+                'dosenPengajars.dosen.person',
             ])
             ->when(
                 $filters['tahun_akademik_id'] ?? null,
-                fn(Builder $query, $value) => $query->where('tahun_akademik_id', $value)
-            )
-            ->when(
-                $filters['semester'] ?? null,
-                fn(Builder $query, $value) => $query->whereHas(
-                    'tahunAkademik',
-                    fn(Builder $q) => $q->where('semester', $value)
-                )
+                fn(Builder $query, $value) =>
+                $query->where('tahun_akademik_id', $value)
             )
             ->when(
                 $filters['fakultas_id'] ?? null,
-                fn(Builder $query, $value) => $query->whereHas(
+                fn(Builder $query, $value) =>
+                $query->whereHas(
                     'kelas.prodi',
-                    fn(Builder $q) => $q->where('fakultas_id', $value)
+                    fn(Builder $q) =>
+                    $q->where('fakultas_id', $value)
                 )
             )
             ->when(
                 $filters['prodi_id'] ?? null,
-                fn(Builder $query, $value) => $query->whereHas(
+                fn(Builder $query, $value) =>
+                $query->whereHas(
                     'kelas',
-                    fn(Builder $q) => $q->where('prodi_id', $value)
+                    fn(Builder $q) =>
+                    $q->where('prodi_id', $value)
                 )
             )
             ->when(
                 $filters['dosen_id'] ?? null,
-                fn(Builder $query, $value) => $query->whereHas(
-                    'dosenPengajars', // Perbaikan nama relasi
-                    fn(Builder $q) => $q->where('dosen_id', $value)
+                fn(Builder $query, $value) =>
+                $query->whereHas(
+                    'dosenPengajars',
+                    fn(Builder $q) =>
+                    $q->where('dosen_id', $value)
                 )
             )
             ->when(
                 $filters['mata_kuliah_id'] ?? null,
-                fn(Builder $query, $value) => $query->where('mata_kuliah_id', $value)
+                fn(Builder $query, $value) =>
+                $query->where('mata_kuliah_id', $value)
             )
             ->when(
                 $filters['ruang_id'] ?? null,
-                fn(Builder $query, $value) => $query->where('ruang_id', $value)
+                fn(Builder $query, $value) =>
+                $query->where('ruang_id', $value)
             )
-            ->orderByRaw("FIELD(hari, 'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu')")
+            ->orderByRaw(
+                "FIELD(
+                    hari,
+                    'Senin',
+                    'Selasa',
+                    'Rabu',
+                    'Kamis',
+                    'Jumat',
+                    'Sabtu',
+                    'Minggu'
+                )"
+            )
             ->orderBy('jam_mulai');
     }
 
-    public function exportRows(array $filters = []): \Illuminate\Support\Collection
+    /**
+     * Data khusus untuk kebutuhan export.
+     *
+     * Semester diambil dari:
+     * kurikulum_mata_kuliah.semester_paket
+     *
+     * berdasarkan pasangan:
+     * jadwal_kuliah.kurikulum_id
+     * + jadwal_kuliah.mata_kuliah_id
+     */
+    public function exportRows(array $filters = []): Collection
     {
-        return $this->query($filters)
-            ->get()
-            ->map(fn(JadwalKuliah $jadwal) => [
-                'hari' => $jadwal->hari,
+        $jadwals = $this->query($filters)->get();
 
-                'jam_mulai' => $jadwal->jam_mulai
-                    ? substr($jadwal->jam_mulai, 0, 5)
-                    : '-',
+        /*
+         * Ambil semua pasangan kurikulum + mata kuliah
+         * yang diperlukan oleh jadwal.
+         *
+         * Ini menghindari query satu per satu (N+1).
+         */
+        $pairs = $jadwals
+            ->filter(
+                fn(JadwalKuliah $jadwal) =>
+                filled($jadwal->kurikulum_id)
+                    && filled($jadwal->mata_kuliah_id)
+            )
+            ->map(
+                fn(JadwalKuliah $jadwal) => [
+                    'kurikulum_id' => $jadwal->kurikulum_id,
+                    'mata_kuliah_id' => $jadwal->mata_kuliah_id,
+                ]
+            )
+            ->unique(
+                fn(array $pair) =>
+                $pair['kurikulum_id'] . ':' . $pair['mata_kuliah_id']
+            )
+            ->values();
 
-                'jam_selesai' => $jadwal->jam_selesai
-                    ? substr($jadwal->jam_selesai, 0, 5)
-                    : '-',
+        /*
+         * Ambil semester_paket secara batch.
+         */
+        $semesterMap = collect();
 
-                'kode_mk' => $jadwal->mataKuliah?->kode_mk ?? '-',
+        if ($pairs->isNotEmpty()) {
+            $semesterMap = KurikulumMataKuliah::query()
+                ->where(function (Builder $query) use ($pairs) {
+                    foreach ($pairs as $pair) {
+                        $query->orWhere(function (Builder $q) use ($pair) {
+                            $q->where(
+                                'kurikulum_id',
+                                $pair['kurikulum_id']
+                            )->where(
+                                'mata_kuliah_id',
+                                $pair['mata_kuliah_id']
+                            );
+                        });
+                    }
+                })
+                ->get([
+                    'kurikulum_id',
+                    'mata_kuliah_id',
+                    'semester_paket',
+                ])
+                ->mapWithKeys(
+                    fn(KurikulumMataKuliah $item) => [
+                        $item->kurikulum_id . ':' . $item->mata_kuliah_id
+                        => $item->semester_paket,
+                    ]
+                );
+        }
 
-                'nama_mk' => $jadwal->mataKuliah?->nama_mk ?? '-',
+        return $jadwals->map(
+            function (JadwalKuliah $jadwal) use ($semesterMap): array {
+                $semesterKey = filled($jadwal->kurikulum_id)
+                    && filled($jadwal->mata_kuliah_id)
+                    ? $jadwal->kurikulum_id . ':' . $jadwal->mata_kuliah_id
+                    : null;
 
-                'sks' => $jadwal->mataKuliah?->sks_default ?? 0,
+                return [
+                    'hari' => $jadwal->hari,
 
-                'dosen' => $jadwal->dosenPengajars
-                    ->map(fn($d) => $d->dosen?->person?->nama_lengkap)
-                    ->filter()
-                    ->implode(', '),
+                    'jam_mulai' => $jadwal->jam_mulai
+                        ? substr((string) $jadwal->jam_mulai, 0, 5)
+                        : '-',
 
-                'prodi' => $jadwal->kelas?->prodi?->nama_prodi ?? '-',
+                    'jam_selesai' => $jadwal->jam_selesai
+                        ? substr((string) $jadwal->jam_selesai, 0, 5)
+                        : '-',
 
-                'ruang' => $jadwal->ruang?->nama_ruang ?? '-',
+                    'kode_mk' => $jadwal->mataKuliah?->kode_mk ?? '-',
 
-                'kelas' => $jadwal->kelas?->nama_kelas ?? '-',
-                'angkatan' => $jadwal->kelas?->angkatan_id ?? '-',
-            ]);
+                    'nama_mk' => $jadwal->mataKuliah?->nama_mk ?? '-',
+
+                    'dosen' => $jadwal->dosenPengajars
+                        ->map(
+                            fn($d) =>
+                            $d->dosen?->person?->nama_lengkap
+                        )
+                        ->filter()
+                        ->implode(', '),
+
+                    /*
+                     * Gunakan kode internal prodi,
+                     * bukan nama prodi yang panjang.
+                     */
+                    'prodi_kode' =>
+                    $jadwal->kelas?->prodi?->kode_prodi_internal ?? '-',
+
+                    /*
+                     * Semester mata kuliah dari kurikulum.
+                     */
+                    'semester' => $semesterKey !== null
+                        ? ($semesterMap->get($semesterKey) ?? '-')
+                        : '-',
+
+                    'ruang' => $jadwal->ruang?->nama_ruang ?? '-',
+
+                    'kelas' => $jadwal->kelas?->nama_kelas ?? '-',
+                ];
+            }
+        );
     }
 }

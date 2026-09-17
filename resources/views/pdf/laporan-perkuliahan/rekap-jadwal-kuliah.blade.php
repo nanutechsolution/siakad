@@ -80,78 +80,57 @@
     ])
 
     <table class="table-data">
-
         <thead>
             <tr>
-                <th style="width: 9%;">Hari</th>
+                <th style="width: 8%;">Hari</th>
                 <th style="width: 13%;">Jam</th>
                 <th style="width: 10%;">Kode MK</th>
-                <th style="width: 25%;">Nama Mata Kuliah</th>
+                <th style="width: 24%;">Nama Mata Kuliah</th>
                 <th style="width: 15%;">Prodi/Sem/Kelas</th>
                 <th style="width: 10%;">Ruangan</th>
-                <th style="width: 18%;">Dosen Pengampu</th>
+                <th style="width: 20%;">Dosen Pengampu</th>
             </tr>
         </thead>
 
         <tbody>
-
             @forelse ($rows as $row)
-
             <tr>
-
-                {{-- Hari --}}
                 <td class="font-semibold">
                     {{ $row['hari'] }}
                 </td>
 
-                {{-- Jam --}}
                 <td class="text-center">
                     {{ $row['jam_mulai'] }} - {{ $row['jam_selesai'] }}
                 </td>
 
-                {{-- Kode MK --}}
                 <td class="text-muted">
                     {{ $row['kode_mk'] }}
                 </td>
 
-                {{-- Nama Mata Kuliah --}}
                 <td class="font-semibold">
                     {{ $row['nama_mk'] }}
                 </td>
 
-                {{-- Prodi / Semester / Kelas --}}
                 <td class="text-center font-semibold">
-                    {{ $row['prodi_singkat'] ?? $row['prodi'] }}
-                    /
-                    {{ $row['semester'] ?? '-' }}
-                    /
-                    {{ $row['kelas'] ?? '-' }}
+                    {{ $row['prodi_kode'] }}/{{ $row['semester'] }}/{{ $row['kelas'] }}
                 </td>
 
-                {{-- Ruangan --}}
                 <td class="text-center text-muted">
                     {{ $row['ruang'] ?: '-' }}
                 </td>
 
-                {{-- Dosen Pengampu --}}
                 <td>
                     {{ $row['dosen'] ?: '-' }}
                 </td>
-
             </tr>
-
             @empty
-
             <tr>
                 <td colspan="7" class="empty-row">
                     Tidak ada data jadwal kuliah yang tersedia untuk filter ini.
                 </td>
             </tr>
-
             @endforelse
-
         </tbody>
-
     </table>
 
     @include('pdf.partials.footer')
