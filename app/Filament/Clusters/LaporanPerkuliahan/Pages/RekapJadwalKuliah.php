@@ -244,11 +244,21 @@ class RekapJadwalKuliah extends Page implements HasTable
 
     protected function downloadPdf()
     {
-        $rows = app(JadwalKuliahReportService::class)->exportRows($this->getActiveFilters());
+        $filters = $this->getActiveFilters();
 
-        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView('pdf.laporan-perkuliahan.rekap-jadwal-kuliah', [
-            'rows' => $rows,
-        ])->setPaper('a4', 'landscape');
+        $rows = app(JadwalKuliahReportService::class)
+            ->exportRows($filters);
+
+        $judulDokumen = $this->getPdfTitle($filters);
+
+        $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
+            'pdf.laporan-perkuliahan.rekap-jadwal-kuliah',
+            [
+                'rows' => $rows,
+                'judulDokumen' => $judulDokumen,
+            ]
+        )->setPaper('a4', 'landscape');
+
         return response()->streamDownload(
             fn() => print($pdf->output()),
             'rekap-jadwal-kuliah-' . now()->format('Ymd-His') . '.pdf'
@@ -296,5 +306,106 @@ class RekapJadwalKuliah extends Page implements HasTable
         }
 
         return ($selisihTahun * 2) + $periode;
+    }
+
+    protected function getPdfTitle(array $filters): string
+    {
+        $judul = 'Rekap Jadwal Kuliah';
+
+        $konteks = [];
+
+        /*
+     * Tahun Akademik
+     */
+        if (!empty($filters['tahun_akademik_id'])) {
+            $tahun = RefTahunAkademik::find(
+                $filters['tahun_akademik_id']
+            );
+
+            if ($tahun) {
+                $konteks[] = $tahun->nama_tahun;
+            }
+        }
+
+        /*
+     * Fakultas
+     */
+        if (!empty($filters['fakultas_id'])) {
+            $fakultas = RefFakultas::find(
+                $filters['fakultas_id']
+            );
+
+            if ($fakultas) {
+                $konteks[] = 'Fakultas ' . $fakultas->nama_fakultas;
+            }
+        }
+
+        /*
+     * Program Studi
+     */
+        if (!empty($filters['prodi_id'])) {
+            $prodi = RefProdi::find(
+                $filters['prodi_id']
+            );
+
+            if ($prodi) {
+                $konteks[] = 'Prodi ' . (
+                    $prodi->kode_prodi_internal
+                    ?? $prodi->nama_prodi
+                );
+            }
+        }
+
+        /*
+     * Dosen
+     */
+        if (!empty($filters['dosen_id'])) {
+            $dosen = TrxDosen::query()
+                ->with('person')
+                ->find($filters['dosen_id']);
+
+            if ($dosen) {
+                $konteks[] = 'Dosen ' . (
+                    $dosen->person?->nama_lengkap
+                    ?? $dosen->nidn
+                );
+            }
+        }
+
+        /*
+     * Mata Kuliah
+     */
+        if (!empty($filters['mata_kuliah_id'])) {
+            $mataKuliah = MasterMataKuliah::find(
+                $filters['mata_kuliah_id']
+            );
+
+            if ($mataKuliah) {
+                $konteks[] = 'MK ' . (
+                    $mataKuliah->kode_mk
+                    ? $mataKuliah->kode_mk . ' - '
+                    : ''
+                ) . $mataKuliah->nama_mk;
+            }
+        }
+
+        /*
+     * Ruangan
+     */
+        if (!empty($filters['ruang_id'])) {
+            $ruang = RefRuang::find(
+                $filters['ruang_id']
+            );
+
+            if ($ruang) {
+                $konteks[] = 'Ruang ' . $ruang->nama_ruang;
+            }
+        }
+
+        if ($konteks) {
+            $judul .= ' - ' . implode(' - ', $konteks);
+        }
+
+        return $judul;
     }
 }

@@ -209,28 +209,6 @@ class JadwalKuliahsTable
                     ])
                     ->native(false),
             ])
-            ->headerActions([
-                Action::make('exportPdf')
-                    ->label('Export PDF')
-                    ->icon('heroicon-o-document-arrow-down')
-                    ->color('info')
-                    ->action(function ($livewire) {
-                        $jadwals = $livewire->getFilteredTableQuery()
-                            ->with(['mataKuliah', 'kelas.prodi', 'ruang', 'dosenPengajars.dosen.person', 'tahunAkademik'])
-                            ->get();
-                        $activeTaLabel = RefTahunAkademik::where('is_active', true)->value('nama_tahun') ?? '-';
-                        $pdf = Pdf::loadView('filament.resources.jadwal-kuliahs.exports.jadwal-pdf', [
-                            'jadwals' => $jadwals,
-                            'activeTaLabel' => $activeTaLabel,
-                            'generatedAt' => now(),
-                        ])->setPaper('a4', 'landscape');
-
-                        return response()->streamDownload(
-                            fn() => print($pdf->output()),
-                            'jadwal-kuliah-' . now()->format('Y-m-d-His') . '.pdf'
-                        );
-                    }),
-            ])
             ->recordActions([
                 Action::make('toggleLock')
                     ->label(fn($record) => $record->is_locked ? 'Buka Kunci' : 'Kunci Jadwal')
