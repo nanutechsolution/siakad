@@ -11,6 +11,7 @@ use App\Models\RefRuang;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\LaporanPerkuliahan\JadwalKuliahReportService;
+use App\Services\TahunAkademikService;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Actions\Action;
@@ -50,7 +51,10 @@ class RekapJadwalKuliah extends Page implements HasTable
             ->filters([
                 SelectFilter::make('tahun_akademik_id')
                     ->label('Tahun Akademik')
-                    ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
+                    ->options(fn() => RefTahunAkademik::query()
+                        ->orderByDesc('id')
+                        ->pluck('nama_tahun', 'id'))
+                    ->default(fn() => app(TahunAkademikService::class)->getActiveId())
                     ->preload(),
                 SelectFilter::make('semester')
                     ->label('Semester')
