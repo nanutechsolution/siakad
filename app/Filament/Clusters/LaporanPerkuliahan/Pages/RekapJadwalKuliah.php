@@ -45,53 +45,87 @@ class RekapJadwalKuliah extends Page implements HasTable
             ->emptyStateIcon('heroicon-o-calendar')
             ->emptyStateHeading('Tidak ada jadwal kuliah ditemukan')
             ->emptyStateDescription('Silakan sesuaikan kombinasi filter di bawah ini.')
-            // Mengubah layout filter menjadi dashboard grid di atas konten
-            ->filtersLayout(FiltersLayout::AboveContentCollapsible)
-            ->filtersFormColumns(4)
             ->filters([
                 SelectFilter::make('tahun_akademik_id')
                     ->label('Tahun Akademik')
                     ->options(fn() => RefTahunAkademik::query()
-                        ->orderByDesc('id')
+                        ->orderByDesc('kode_tahun')
+                        ->orderByDesc('semester')
                         ->pluck('nama_tahun', 'id'))
                     ->default(fn() => app(TahunAkademikService::class)->getActiveId())
+                    ->searchable()
                     ->preload(),
-                SelectFilter::make('semester')
-                    ->label('Semester')
-                    ->options([1 => 'Ganjil', 2 => 'Genap', 3 => 'Pendek'])
-                    ->query(fn(SelectFilter $filter, $query, $state) => filled($state['value'] ?? null)
-                        ? $query->whereHas('tahunAkademik', fn($q) => $q->where('semester', $state['value']))
-                        : $query),
+
                 SelectFilter::make('fakultas_id')
                     ->label('Fakultas')
-                    ->options(fn() => RefFakultas::query()->pluck('nama_fakultas', 'id'))
+                    ->options(fn() => RefFakultas::query()
+                        ->orderBy('nama_fakultas')
+                        ->pluck('nama_fakultas', 'id'))
                     ->searchable()
-                    ->query(fn($query, $state) => filled($state['value'] ?? null)
-                        ? $query->whereHas('kelas.prodi', fn($q) => $q->where('fakultas_id', $state['value']))
-                        : $query),
+                    ->preload()
+                    ->query(
+                        fn($query, $state) =>
+                        filled($state['value'] ?? null)
+                            ? $query->whereHas(
+                                'kelas.prodi',
+                                fn($q) => $q->where('fakultas_id', $state['value'])
+                            )
+                            : $query
+                    ),
+
                 SelectFilter::make('prodi_id')
                     ->label('Program Studi')
-                    ->options(fn() => RefProdi::query()->pluck('nama_prodi', 'id'))
+                    ->options(fn() => RefProdi::query()
+                        ->orderBy('nama_prodi')
+                        ->pluck('nama_prodi', 'id'))
                     ->searchable()
-                    ->query(fn($query, $state) => filled($state['value'] ?? null)
-                        ? $query->whereHas('kelas', fn($q) => $q->where('prodi_id', $state['value']))
-                        : $query),
+                    ->preload()
+                    ->query(
+                        fn($query, $state) =>
+                        filled($state['value'] ?? null)
+                            ? $query->whereHas(
+                                'kelas',
+                                fn($q) => $q->where('prodi_id', $state['value'])
+                            )
+                            : $query
+                    ),
+
                 SelectFilter::make('dosen_id')
                     ->label('Dosen Pengampu')
-                    ->options(fn() => TrxDosen::query()->with('person')->get()->mapWithKeys(
-                        fn(TrxDosen $dosen) => [$dosen->id => $dosen->person?->nama_lengkap ?? $dosen->nidn]
-                    ))
-                    ->searchable() // Mencegah dropdown nge-lag jika data dosen banyak
-                    ->query(fn($query, $state) => filled($state['value'] ?? null)
-                        ? $query->whereHas('dosenPengajars', fn($q) => $q->where('dosen_id', $state['value']))
-                        : $query),
+                    ->options(fn() => TrxDosen::query()
+                        ->with('person')
+                        ->get()
+                        ->mapWithKeys(
+                            fn(TrxDosen $dosen) => [
+                                $dosen->id => $dosen->person?->nama_lengkap ?? $dosen->nidn
+                            ]
+                        ))
+                    ->searchable()
+                    ->preload()
+                    ->query(
+                        fn($query, $state) =>
+                        filled($state['value'] ?? null)
+                            ? $query->whereHas(
+                                'dosenPengajars',
+                                fn($q) => $q->where('dosen_id', $state['value'])
+                            )
+                            : $query
+                    ),
+
                 SelectFilter::make('mata_kuliah_id')
                     ->label('Mata Kuliah')
-                    ->options(fn() => MasterMataKuliah::query()->pluck('nama_mk', 'id'))
-                    ->searchable(),
+                    ->options(fn() => MasterMataKuliah::query()
+                        ->orderBy('nama_mk')
+                        ->pluck('nama_mk', 'id'))
+                    ->searchable()
+                    ->preload(),
+
                 SelectFilter::make('ruang_id')
                     ->label('Ruang Kelas')
-                    ->options(fn() => RefRuang::query()->pluck('nama_ruang', 'id'))
+                    ->options(fn() => RefRuang::query()
+                        ->orderBy('nama_ruang')
+                        ->pluck('nama_ruang', 'id'))
+                    ->searchable()
                     ->preload(),
             ])
             ->columns([
