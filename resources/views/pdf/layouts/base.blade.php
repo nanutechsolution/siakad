@@ -4,51 +4,72 @@
 <head>
     <meta charset="utf-8">
     <title>@yield('title', 'Dokumen Resmi')</title>
+
     <style>
+        /*
+         * ============================================================
+         * HALAMAN PDF
+         * ============================================================
+         *
+         * Margin atas harus cukup untuk menampung kop/header.
+         * Jangan mengandalkan padding-top pada <main>, karena
+         * padding tersebut tidak otomatis diulang setiap halaman.
+         */
         @page {
-            /* Margin standar dokumen resmi A4 */
-            margin: 100px 40px 60px 40px;
+            margin: 105px 40px 60px 40px;
         }
 
         body {
-            /* Menggunakan font serif untuk kesan formal/akademik */
             font-family: 'Times New Roman', Times, serif;
             font-size: 11pt;
             color: #000;
             line-height: 1.3;
         }
 
-        /* HEADER FIXED */
+        /*
+         * ============================================================
+         * HEADER
+         * ============================================================
+         */
         header {
             position: fixed;
-            top: -70px;
+            top: -75px;
             left: 0;
             right: 0;
         }
 
-        /* FOOTER FIXED */
+        /*
+         * ============================================================
+         * FOOTER
+         * ============================================================
+         */
         footer {
             position: fixed;
             bottom: -40px;
             left: 0;
             right: 0;
             height: 30px;
+
             font-size: 8pt;
             color: #555;
+
             border-top: 1px solid #999;
             padding-top: 5px;
+
             font-family: 'Helvetica', 'Arial', sans-serif;
-            /* Font berbeda untuk footer sistem */
             text-align: center;
         }
 
-        /* --- STRUKTUR KOP SURAT --- */
+        /*
+         * ============================================================
+         * KOP SURAT
+         * ============================================================
+         */
         .kop-table {
             width: 100%;
             border-collapse: collapse;
         }
 
-        /* Kolom 1: Logo */
         .kop-table .logo-col {
             width: 15%;
             text-align: center;
@@ -60,19 +81,21 @@
             height: auto;
         }
 
-        /* Kolom 2: Teks Utama */
         .kop-table .text-col {
             width: 70%;
             text-align: center;
             vertical-align: middle;
         }
 
-        /* Kolom 3: Penyeimbang (Kosong agar kolom teks benar-benar di tengah) */
         .kop-table .dummy-col {
             width: 15%;
         }
 
-        /* --- TIPOGRAFI KOP --- */
+        /*
+         * ============================================================
+         * TIPOGRAFI KOP
+         * ============================================================
+         */
         .institusi {
             font-size: 16pt;
             font-weight: bold;
@@ -92,7 +115,6 @@
             margin: 0;
         }
 
-        /* Garis ganda (Tebal atas, tipis bawah) lebih stabil di render PDF */
         .garis-ganda {
             border-top: 3px solid #000;
             border-bottom: 1px solid #000;
@@ -101,7 +123,11 @@
             margin-bottom: 15px;
         }
 
-        /* --- STYLING TAMBAHAN --- */
+        /*
+         * ============================================================
+         * TABEL DATA
+         * ============================================================
+         */
         table.data {
             width: 100%;
             border-collapse: collapse;
@@ -120,6 +146,29 @@
             font-weight: bold;
         }
 
+        /*
+         * Supaya baris tidak dipotong sembarangan ketika pindah halaman.
+         */
+        table.data tr {
+            page-break-inside: avoid;
+        }
+
+        /*
+         * Header tabel tetap muncul pada halaman berikutnya.
+         */
+        table.data thead {
+            display: table-header-group;
+        }
+
+        table.data tfoot {
+            display: table-row-group;
+        }
+
+        /*
+         * ============================================================
+         * UTILITIES
+         * ============================================================
+         */
         .text-center {
             text-align: center;
         }
@@ -139,6 +188,7 @@
 </head>
 
 <body>
+
     @php
     $kopSurat = app(\App\Services\Pdf\KopSuratResolver::class)->resolve();
     @endphp
@@ -148,16 +198,21 @@
             <tr>
                 <td class="logo-col">
                     @if(!empty($kopSurat['logoAbsolutePath']) && file_exists($kopSurat['logoAbsolutePath']))
-                    <img src="data:image/png;base64,{{ base64_encode(file_get_contents($kopSurat['logoAbsolutePath'])) }}" alt="Logo">
+                    <img
+                        src="data:image/png;base64,{{ base64_encode(file_get_contents($kopSurat['logoAbsolutePath'])) }}"
+                        alt="Logo">
                     @endif
                 </td>
 
                 <td class="text-col">
-                    <div class="institusi">{{ $kopSurat['nama'] ?? 'NAMA INSTITUSI' }}</div>
+                    <div class="institusi">
+                        {{ $kopSurat['nama'] ?? 'NAMA INSTITUSI' }}
+                    </div>
 
                     @if(!empty($kopSurat['akreditasi']))
                     <div class="akreditasi">
                         "{{ $kopSurat['akreditasi'] }}"
+
                         @if(!empty($kopSurat['nomorAkreditasi']))
                         | SK: {{ $kopSurat['nomorAkreditasi'] }}
                         @endif
@@ -167,8 +222,13 @@
                     <div class="kontak">
                         {{ $kopSurat['alamat'] ?? '' }}
                     </div>
+
                     <div class="kontak">
-                        Telp: {{ $kopSurat['telepon'] ?? '-' }} | Surel: {{ $kopSurat['email'] ?? '-' }} | Laman: {{ $kopSurat['website'] ?? '-' }}
+                        Telp: {{ $kopSurat['telepon'] ?? '-' }}
+                        |
+                        Surel: {{ $kopSurat['email'] ?? '-' }}
+                        |
+                        Laman: {{ $kopSurat['website'] ?? '-' }}
                     </div>
                 </td>
 
@@ -176,18 +236,20 @@
             </tr>
         </table>
 
-        <!-- Garis pembatas dipisah dari tabel agar merentang penuh -->
         <div class="garis-ganda"></div>
     </header>
 
     <footer>
-        Dicetak melalui SIAKAD pada {{ now()->translatedFormat('d F Y H:i') }} WITA<br>
+        Dicetak melalui SIAKAD pada
+        {{ now()->translatedFormat('d F Y H:i') }}
+        WITA
     </footer>
 
-    <!-- Gunakan tag main dengan margin-top agar konten tidak tertutup header fixed -->
-    <main style="padding-top: 25px;">
+    {{-- Tidak perlu padding-top di sini --}}
+    <main>
         @yield('content')
     </main>
+
 </body>
 
 </html>
