@@ -182,7 +182,7 @@ class RekapJadwalKuliah extends Page implements HasTable
 
                 // Menggabungkan Kelas dan Prodi
                 TextColumn::make('kelas.nama_kelas')
-                    ->label('Prodi / Kelas')
+                    ->label('Prodi / Sem / Kelas')
                     ->weight('medium')
                     ->state(function ($record) {
                         $prodi = $record->kelas?->prodi;
@@ -191,10 +191,28 @@ class RekapJadwalKuliah extends Page implements HasTable
                             return $record->kelas?->nama_kelas ?? '-';
                         }
 
-                        return ($prodi->kode_prodi_internal ?? '-') . '/' . ($record->kelas?->nama_kelas ?? '-');
-                    })
-                    ->description(fn($record) => $record->kelas?->prodi?->nama_prodi ?? '-'),
+                        $angkatan = $record->kelas?->angkatan_id;
+                        $kodeTahun = $record->tahunAkademik?->kode_tahun;
 
+                        $semester = null;
+
+                        if ($angkatan && $kodeTahun) {
+                            $semester = $this->hitungSemesterKelas(
+                                (int) $angkatan,
+                                $kodeTahun
+                            );
+                        }
+
+                        return ($prodi->kode_prodi_internal ?? '-')
+                            . '/'
+                            . ($semester ?? '-')
+                            . '/'
+                            . ($record->kelas?->nama_kelas ?? '-');
+                    })
+                    ->description(
+                        fn($record) =>
+                        $record->kelas?->prodi?->nama_prodi ?? '-'
+                    ),
                 TextColumn::make('ruang.nama_ruang')
                     ->label('Ruangan')
                     ->icon('heroicon-m-map-pin')
@@ -249,5 +267,34 @@ class RekapJadwalKuliah extends Page implements HasTable
             'mata_kuliah_id'    => $state['mata_kuliah_id']['value'] ?? null,
             'ruang_id'          => $state['ruang_id']['value'] ?? null,
         ];
+    }
+
+    private function hitungSemesterKelas(
+        int $angkatan,
+        ?string $kodeTahun
+    ): ?int {
+        if (!$angkatan || !$kodeTahun) {
+            return null;
+        }
+
+        if (!preg_match('/^(\d{4})([123])$/', $kodeTahun, $matches)) {
+            return null;
+        }
+
+        $tahunMulai = (int) $matches[1];
+        $periode = (int) $matches[2];
+
+        // Pendek tidak dianggap sebagai semester reguler baru.
+        if ($periode === 3) {
+            return null;
+        }
+
+        $selisihTahun = $tahunMulai - $angkatan;
+
+        if ($selisihTahun < 0) {
+            return null;
+        }
+
+        return ($selisihTahun * 2) + $periode;
     }
 }
