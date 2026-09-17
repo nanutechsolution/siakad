@@ -29,15 +29,34 @@ class MahasiswaKelasExport implements FromQuery, WithHeadings, WithMapping, With
     {
         $this->rowNumber++;
 
+        $mahasiswa = $row->mahasiswa;
+
         return [
+            // No
             $this->rowNumber,
-            "'" . $row->mahasiswa->nim, // Prefix ' untuk mencegah otomatis berubah ke Scientific Notation
-            $row->mahasiswa->person->nama_lengkap ?? '-',
+
+            // NIM
+            // Prefix apostrophe agar Excel memperlakukan NIM sebagai teks.
+            $mahasiswa?->nim
+                ? "'" . $mahasiswa->nim
+                : '-',
+
+            // Nama
+            $mahasiswa?->person?->nama_lengkap ?? '-',
+
+            // Tanggal Masuk
             $row->tanggal_masuk?->format('Y-m-d') ?? '-',
+
+            // Tanggal Keluar
             $row->tanggal_keluar?->format('Y-m-d') ?? '-',
-            $row->tanggal_keluar === null ? 'AKTIF' : 'NONAKTIF',
+
+            // Status
+            $row->tanggal_keluar === null
+                ? 'AKTIF'
+                : 'NONAKTIF',
         ];
     }
+
 
     public function headings(): array
     {
