@@ -35,6 +35,7 @@ class RefTahunAkademik extends Model
     ];
 
     protected $casts = [
+        'id'=> 'integer',
         'status' => TahunAkademikStatus::class,
         'semester' => 'integer',
         'tanggal_mulai' => 'date',
