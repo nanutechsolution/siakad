@@ -4,34 +4,60 @@
 
 @section('content')
 
+{{-- ================================================================
+     JUDUL
+     ================================================================ --}}
+
 <h3
     class="text-center"
-    style="margin-bottom: 2px;">
+    style="
+        margin: 0 0 2px 0;
+        padding: 0;
+        font-size: 14pt;
+    ">
     {{ strtoupper($judulDokumen ?? 'REKAP JADWAL KULIAH') }}
 </h3>
 
+
+{{-- ================================================================
+     FILTER / INFO
+     ================================================================ --}}
+
 @if (!empty($infoBaris))
+
 <p
     class="text-center"
-    style="margin-top: 0; font-size: 10px;">
+    style="
+            margin: 0;
+            padding: 0;
+            font-size: 10px;
+        ">
     @foreach ($infoBaris as $index => $info)
-    {{ $info }}@if (!$loop->last) &nbsp; | &nbsp; @endif
+
+    {{ $info }}
+
+    @if (!$loop->last)
+    &nbsp; | &nbsp;
+    @endif
+
     @endforeach
 </p>
+
 @endif
 
 
-{{-- =========================
+{{-- ================================================================
      RINGKASAN
-     ========================= --}}
+     ================================================================ --}}
 
 <table
     style="
         width: 100%;
         border-collapse: collapse;
-        margin-top: 12px;
-        margin-bottom: 12px;
+        margin-top: 10px;
+        margin-bottom: 10px;
         font-size: 9px;
+        page-break-inside: avoid;
     ">
     <tr>
 
@@ -47,6 +73,7 @@
             {{ $totalJadwal ?? 0 }}
         </td>
 
+
         <td
             style="
                 width: 20%;
@@ -58,6 +85,7 @@
             <br>
             {{ $totalKelas ?? 0 }}
         </td>
+
 
         <td
             style="
@@ -71,6 +99,7 @@
             {{ $totalDosen ?? 0 }}
         </td>
 
+
         <td
             style="
                 width: 20%;
@@ -82,6 +111,7 @@
             <br>
             {{ $totalRuang ?? 0 }}
         </td>
+
 
         <td
             style="
@@ -99,11 +129,12 @@
 </table>
 
 
-{{-- =========================
-     URUTAN HARI
-     ========================= --}}
+{{-- ================================================================
+     DATA
+     ================================================================ --}}
 
 @php
+
 $hariUrutan = [
 'Senin',
 'Selasa',
@@ -116,20 +147,29 @@ $hariUrutan = [
 
 $groupedRows = collect($rows ?? [])
 ->groupBy('hari');
+
 @endphp
 
 
-{{-- =========================
+{{-- ================================================================
      TABEL JADWAL
-     ========================= --}}
+     ================================================================ --}}
 
 <table
+    class="jadwal-table"
     style="
         width: 100%;
         border-collapse: collapse;
         font-size: 8.5px;
+        page-break-inside: auto;
     ">
-    <thead>
+
+    {{-- ============================================================
+         HEADER TABEL
+         ============================================================ --}}
+
+    <thead style="display: table-header-group;">
+
         <tr>
 
             <th
@@ -139,9 +179,11 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 JAM
             </th>
+
 
             <th
                 style="
@@ -150,9 +192,11 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 KODE
             </th>
+
 
             <th
                 style="
@@ -161,9 +205,11 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 MATA KULIAH
             </th>
+
 
             <th
                 style="
@@ -172,9 +218,11 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 PRODI / SEM / KELAS
             </th>
+
 
             <th
                 style="
@@ -183,9 +231,11 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 RUANG
             </th>
+
 
             <th
                 style="
@@ -194,9 +244,11 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 DOSEN PENGAMPU
             </th>
+
 
             <th
                 style="
@@ -205,18 +257,26 @@ $groupedRows = collect($rows ?? [])
                     color: #fff;
                     border: 1px solid #1e3a8a;
                     padding: 6px;
+                    text-align: center;
                 ">
                 SKS
             </th>
 
         </tr>
+
     </thead>
+
+
+    {{-- ============================================================
+         BODY
+         ============================================================ --}}
 
     <tbody>
 
         @php
         $adaData = false;
         @endphp
+
 
         @foreach ($hariUrutan as $hari)
 
@@ -226,11 +286,16 @@ $groupedRows = collect($rows ?? [])
         $adaData = true;
         @endphp
 
-        {{-- =========================
-                     HEADER HARI
-                     ========================= --}}
 
-        <tr>
+        {{-- ====================================================
+                     HEADER HARI
+                     ==================================================== --}}
+
+        <tr
+            style="
+                        page-break-inside: avoid;
+                        page-break-after: avoid;
+                    ">
 
             <td
                 colspan="7"
@@ -249,13 +314,16 @@ $groupedRows = collect($rows ?? [])
         </tr>
 
 
-        {{-- =========================
+        {{-- ====================================================
                      JADWAL
-                     ========================= --}}
+                     ==================================================== --}}
 
         @foreach ($groupedRows->get($hari) as $row)
 
-        <tr>
+        <tr
+            style="
+                            page-break-inside: avoid;
+                        ">
 
             <td
                 style="
@@ -265,11 +333,14 @@ $groupedRows = collect($rows ?? [])
                                 white-space: nowrap;
                             ">
                 {{ $row['jam_mulai'] ?? '-' }}
+
                 <br>
+
                 <span style="color: #64748b;">
                     {{ $row['jam_selesai'] ?? '-' }}
                 </span>
             </td>
+
 
             <td
                 style="
@@ -280,6 +351,7 @@ $groupedRows = collect($rows ?? [])
                 {{ $row['kode_mk'] ?? '-' }}
             </td>
 
+
             <td
                 style="
                                 border: 1px solid #cbd5e1;
@@ -288,6 +360,7 @@ $groupedRows = collect($rows ?? [])
                             ">
                 {{ $row['nama_mk'] ?? '-' }}
             </td>
+
 
             <td
                 style="
@@ -300,6 +373,7 @@ $groupedRows = collect($rows ?? [])
                 {{ $row['prodi_semester_kelas'] ?? '-' }}
             </td>
 
+
             <td
                 style="
                                 border: 1px solid #cbd5e1;
@@ -309,6 +383,7 @@ $groupedRows = collect($rows ?? [])
                 {{ $row['ruang'] ?? '-' }}
             </td>
 
+
             <td
                 style="
                                 border: 1px solid #cbd5e1;
@@ -316,6 +391,7 @@ $groupedRows = collect($rows ?? [])
                             ">
                 {{ $row['dosen'] ?? '-' }}
             </td>
+
 
             <td
                 style="
@@ -335,9 +411,9 @@ $groupedRows = collect($rows ?? [])
         @endforeach
 
 
-        {{-- =========================
+        {{-- ============================================================
              DATA KOSONG
-             ========================= --}}
+             ============================================================ --}}
 
         @if (! $adaData)
 
@@ -360,12 +436,13 @@ $groupedRows = collect($rows ?? [])
         @endif
 
     </tbody>
+
 </table>
 
 
-{{-- =========================
+{{-- ================================================================
      CATATAN
-     ========================= --}}
+     ================================================================ --}}
 
 @if (($totalJadwal ?? 0) > 0)
 
@@ -376,6 +453,7 @@ $groupedRows = collect($rows ?? [])
             border-top: 1px solid #cbd5e1;
             color: #64748b;
             font-size: 8px;
+            page-break-inside: avoid;
         ">
     Dokumen ini merupakan rekap jadwal perkuliahan
     yang dihasilkan dari Sistem Informasi Akademik (SIAKAD).
