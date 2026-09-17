@@ -259,6 +259,168 @@ class RekapJadwalKuliahPdfResolver implements PdfDataResolverInterface
 
     protected function buildInfoBaris(array $context): array
     {
-        return [];
+        $info = [];
+
+        /*
+     * ============================================================
+     * TAHUN AKADEMIK
+     * ============================================================
+     */
+
+        if (! empty($context['tahun_akademik_id'])) {
+            $jadwal = JadwalKuliah::query()
+                ->with('tahunAkademik')
+                ->where('tahun_akademik_id', $context['tahun_akademik_id'])
+                ->first();
+
+            if ($jadwal?->tahunAkademik) {
+                $tahun = $jadwal->tahunAkademik;
+
+                $label = $tahun->nama
+                    ?? $tahun->nama_tahun
+                    ?? $tahun->kode_tahun
+                    ?? (string) $context['tahun_akademik_id'];
+
+                $info[] = 'Tahun Akademik: ' . $label;
+            } else {
+                $info[] = 'Tahun Akademik: ' . $context['tahun_akademik_id'];
+            }
+        }
+
+
+        /*
+     * ============================================================
+     * FAKULTAS
+     * ============================================================
+     *
+     * Kita ambil dari jadwal yang sudah memiliki relasi:
+     * kelas -> prodi -> fakultas
+     */
+
+        if (! empty($context['fakultas_id'])) {
+
+            $jadwal = $this->query([
+                'tahun_akademik_id' => $context['tahun_akademik_id'],
+                'fakultas_id' => $context['fakultas_id'],
+            ])
+                ->with('kelas.prodi.fakultas')
+                ->first();
+
+            $fakultas = $jadwal?->kelas?->prodi?->fakultas;
+
+            if ($fakultas) {
+                $label = $fakultas->nama_fakultas
+                    ?? $fakultas->nama
+                    ?? ('ID ' . $context['fakultas_id']);
+
+                $info[] = 'Fakultas: ' . $label;
+            } else {
+                $info[] = 'Fakultas ID: ' . $context['fakultas_id'];
+            }
+        }
+
+
+        /*
+     * ============================================================
+     * PRODI
+     * ============================================================
+     */
+
+        if (! empty($context['prodi_id'])) {
+
+            $jadwal = $this->query([
+                'tahun_akademik_id' => $context['tahun_akademik_id'],
+                'prodi_id' => $context['prodi_id'],
+            ])
+                ->with('kelas.prodi')
+                ->first();
+
+            $prodi = $jadwal?->kelas?->prodi;
+
+            if ($prodi) {
+
+                $kode = $prodi->kode_prodi_internal
+                    ?? $prodi->kode_prodi
+                    ?? null;
+
+                $nama = $prodi->nama_prodi
+                    ?? $prodi->nama
+                    ?? null;
+
+                $label = collect([$kode, $nama])
+                    ->filter()
+                    ->implode(' - ');
+
+                $info[] = 'Prodi: ' . ($label ?: 'ID ' . $context['prodi_id']);
+            } else {
+                $info[] = 'Prodi ID: ' . $context['prodi_id'];
+            }
+        }
+
+
+        /*
+     * ============================================================
+     * MATA KULIAH
+     * ============================================================
+     */
+
+        if (! empty($context['mata_kuliah_id'])) {
+
+            $jadwal = $this->query([
+                'tahun_akademik_id' => $context['tahun_akademik_id'],
+                'mata_kuliah_id' => $context['mata_kuliah_id'],
+            ])
+                ->with('mataKuliah')
+                ->first();
+
+            $mataKuliah = $jadwal?->mataKuliah;
+
+            if ($mataKuliah) {
+
+                $kode = $mataKuliah->kode_mk ?? null;
+                $nama = $mataKuliah->nama_mk ?? null;
+
+                $label = collect([$kode, $nama])
+                    ->filter()
+                    ->implode(' - ');
+
+                $info[] = 'Mata Kuliah: ' . ($label ?: 'ID ' . $context['mata_kuliah_id']);
+            } else {
+                $info[] = 'Mata Kuliah ID: ' . $context['mata_kuliah_id'];
+            }
+        }
+
+
+        /*
+     * ============================================================
+     * RUANG
+     * ============================================================
+     */
+
+        if (! empty($context['ruang_id'])) {
+
+            $jadwal = $this->query([
+                'tahun_akademik_id' => $context['tahun_akademik_id'],
+                'ruang_id' => $context['ruang_id'],
+            ])
+                ->with('ruang')
+                ->first();
+
+            $ruang = $jadwal?->ruang;
+
+            if ($ruang) {
+
+                $label = $ruang->nama_ruang
+                    ?? $ruang->nama
+                    ?? ('ID ' . $context['ruang_id']);
+
+                $info[] = 'Ruang: ' . $label;
+            } else {
+                $info[] = 'Ruang ID: ' . $context['ruang_id'];
+            }
+        }
+
+
+        return $info;
     }
 }
