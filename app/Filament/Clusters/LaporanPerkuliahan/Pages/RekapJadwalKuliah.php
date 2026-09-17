@@ -246,16 +246,18 @@ class RekapJadwalKuliah extends Page implements HasTable
     {
         $filters = $this->getActiveFilters();
 
-        $rows = app(JadwalKuliahReportService::class)
-            ->exportRows($filters);
+        $service = app(JadwalKuliahReportService::class);
 
-        $judulDokumen = $this->getPdfTitle($filters);
+        $rows = $service->exportRows($filters);
+
+        $infoBaris = $this->getPdfInfoBaris($filters);
 
         $pdf = \Barryvdh\DomPDF\Facade\Pdf::loadView(
             'pdf.laporan-perkuliahan.rekap-jadwal-kuliah',
             [
                 'rows' => $rows,
-                'judulDokumen' => $judulDokumen,
+                'judulDokumen' => 'Rekap Jadwal Kuliah',
+                'infoBaris' => $infoBaris,
             ]
         )->setPaper('a4', 'landscape');
 
@@ -264,7 +266,104 @@ class RekapJadwalKuliah extends Page implements HasTable
             'rekap-jadwal-kuliah-' . now()->format('Ymd-His') . '.pdf'
         );
     }
+    protected function getPdfInfoBaris(array $filters): array
+    {
+        $info = [];
 
+        /*
+     * Tahun Akademik
+     */
+        if (!empty($filters['tahun_akademik_id'])) {
+            $tahun = RefTahunAkademik::find(
+                $filters['tahun_akademik_id']
+            );
+
+            if ($tahun) {
+                $info[] = $tahun->nama_tahun;
+            }
+        }
+
+        /*
+     * Fakultas
+     */
+        if (!empty($filters['fakultas_id'])) {
+            $fakultas = RefFakultas::find(
+                $filters['fakultas_id']
+            );
+
+            if ($fakultas) {
+                $info[] = 'Fakultas: ' . $fakultas->nama_fakultas;
+            }
+        }
+
+        /*
+     * Program Studi
+     */
+        if (!empty($filters['prodi_id'])) {
+            $prodi = RefProdi::find(
+                $filters['prodi_id']
+            );
+
+            if ($prodi) {
+                $info[] = 'Prodi: ' . (
+                    $prodi->kode_prodi_internal
+                    ?? $prodi->nama_prodi
+                );
+            }
+        }
+
+        /*
+     * Dosen
+     */
+        if (!empty($filters['dosen_id'])) {
+            $dosen = TrxDosen::query()
+                ->with('person')
+                ->find($filters['dosen_id']);
+
+            if ($dosen) {
+                $info[] = 'Dosen: ' . (
+                    $dosen->person?->nama_lengkap
+                    ?? $dosen->nidn
+                );
+            }
+        }
+
+        /*
+     * Mata Kuliah
+     */
+        if (!empty($filters['mata_kuliah_id'])) {
+            $mataKuliah = MasterMataKuliah::find(
+                $filters['mata_kuliah_id']
+            );
+
+            if ($mataKuliah) {
+                $info[] = 'Mata Kuliah: '
+                    . ($mataKuliah->kode_mk
+                        ? $mataKuliah->kode_mk . ' - '
+                        : '')
+                    . $mataKuliah->nama_mk;
+            }
+        }
+
+        /*
+     * Ruangan
+     */
+        if (!empty($filters['ruang_id'])) {
+            $ruang = RefRuang::find(
+                $filters['ruang_id']
+            );
+
+            if ($ruang) {
+                $info[] = 'Ruang: ' . $ruang->nama_ruang;
+            }
+        }
+
+        /*
+     * Jika tidak ada filter sama sekali selain tahun akademik,
+     * tetap tampilkan tahun akademik.
+     */
+        return $info;
+    }
     protected function getActiveFilters(): array
     {
         $state = $this->tableFilters ?? [];

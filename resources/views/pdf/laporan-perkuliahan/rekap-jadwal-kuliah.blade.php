@@ -76,7 +76,8 @@
 <body>
 
     @include('pdf.partials.header', [
-    'judulDokumen' => $judulDokumen
+    'judulDokumen' => $judulDokumen,
+    'infoBaris' => $infoBaris,
     ])
 
     <table class="table-data">
