@@ -66,9 +66,15 @@ class MahasiswaBimbingansTable
                         KrsStatusEnum::DISETUJUI->value => 'Sudah Disetujui',
                         KrsStatusEnum::DITOLAK->value => 'Ditolak',
                     ])
+                    ->default(KrsStatusEnum::DIAJUKAN->value)
                     ->query(function (Builder $query, array $data): Builder {
-                        if (empty($data['value'])) return $query;
-                        return $query->whereHas('krs', fn($q) => $q->where('status_krs', $data['value']));
+                        if (empty($data['value'])) {
+                            return $query;
+                        }
+
+                        return $query->whereHas('krs', function ($q) use ($data) {
+                            $q->where('status_krs', $data['value']);
+                        });
                     }),
                 SelectFilter::make('angkatan_id')
                     ->label('Angkatan')
