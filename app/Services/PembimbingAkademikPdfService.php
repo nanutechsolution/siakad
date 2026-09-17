@@ -36,7 +36,7 @@ class PembimbingAkademikPdfService
         $document = $this->pdfService->generateArchived(
             type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK_MASSAL,
             context: ['dosen_id' => $dosenId],
-            documentableType: 'dosen', // Disesuaikan dengan entitas kepemilikan dokumen
+            documentableType: 'dosen',
             documentableId: $dosenId
         );
 

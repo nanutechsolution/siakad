@@ -22,6 +22,8 @@ enum PdfDocumentType: string
     case DAFTAR_PEMBIMBING = 'daftar_pembimbing';
     case DAFTAR_BIMBINGAN_DOSEN = 'daftar_bimbingan_dosen';
     case LAPORAN_MONITORING = 'laporan_monitoring';
+
+    case REKAP_JADWAL_KULIAH = 'rekap_jadwal_kuliah';
     public function label(): string
     {
         return match ($this) {
@@ -42,6 +44,7 @@ enum PdfDocumentType: string
             self::DAFTAR_PEMBIMBING => 'Daftar Rekap Pembimbing Akademik',
             self::DAFTAR_BIMBINGAN_DOSEN => 'Daftar Mahasiswa Bimbingan per Dosen',
             self::LAPORAN_MONITORING => 'Laporan Monitoring Pembimbing Akademik',
+            self::REKAP_JADWAL_KULIAH => 'Rekap Jadwal Kuliah',
         };
     }
 }

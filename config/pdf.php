@@ -8,6 +8,7 @@ use App\Services\Pdf\Resolvers\KartuUjianPdfResolver;
 use App\Services\Pdf\Resolvers\KhsPdfResolver;
 use App\Services\Pdf\Resolvers\KrsPdfResolver;
 use App\Services\Pdf\Resolvers\KwitansiPdfResolver;
+use App\Services\Pdf\Resolvers\RekapJadwalKuliahPdfResolver;
 use App\Services\Pdf\Resolvers\SkPembimbingAkademikPdfResolver;
 use App\Services\Pdf\Resolvers\SuratAktifKuliahPdfResolver;
 use App\Services\Pdf\Resolvers\SuratCutiPdfResolver;
@@ -190,6 +191,17 @@ return [
             'requires_qr' => true,
             'orientation' => 'landscape',
         ],
+
+
+        PdfDocumentType::REKAP_JADWAL_KULIAH->value => [
+            'resolver' => RekapJadwalKuliahPdfResolver::class,
+            'view' => 'pdf.akademik.rekap-jadwal-kuliah',
+            'classification' => PdfClassification::DYNAMIC->value,
+            'paper' => 'a4',
+            'orientation' => 'landscape',
+        ],
     ],
+
+
 
 ];

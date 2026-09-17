@@ -2,6 +2,7 @@
 
 namespace App\Filament\Clusters\LaporanPerkuliahan\Pages;
 
+use App\Enums\Pdf\PdfDocumentType;
 use App\Exports\LaporanPerkuliahan\JadwalKuliahExport;
 use App\Filament\Clusters\LaporanPerkuliahan\LaporanPerkuliahanCluster;
 use App\Models\MasterMataKuliah;
@@ -11,6 +12,7 @@ use App\Models\RefRuang;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use App\Services\LaporanPerkuliahan\JadwalKuliahReportService;
+use App\Services\Pdf\PdfService;
 use App\Services\TahunAkademikService;
 use BackedEnum;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -241,8 +243,15 @@ class RekapJadwalKuliah extends Page implements HasTable
                 ->action(fn() => $this->downloadPdf()),
         ];
     }
-
     protected function downloadPdf()
+    {
+        return app(PdfService::class)->download(
+            PdfDocumentType::REKAP_JADWAL_KULIAH,
+            $this->getActiveFilters(),
+            'rekap-jadwal-kuliah-' . now()->format('Ymd-His') . '.pdf',
+        );
+    }
+    protected function downloadPdfs()
     {
         $filters = $this->getActiveFilters();
 
