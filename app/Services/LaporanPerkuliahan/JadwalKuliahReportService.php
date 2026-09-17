@@ -170,7 +170,7 @@ class JadwalKuliahReportService
                     'dosen' => $jadwal->dosenPengajars
                         ->map(
                             fn($dosenPengajar) =>
-                            $dosenPengajar->dosen?->person?->nama_lengkap
+                            $dosenPengajar->dosen?->person?->nama_dengan_gelar
                         )
                         ->filter()
                         ->implode(', '),
