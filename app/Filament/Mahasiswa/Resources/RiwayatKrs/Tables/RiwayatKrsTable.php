@@ -5,10 +5,10 @@ namespace App\Filament\Mahasiswa\Resources\RiwayatKrs\Tables;
 use App\Enums\KrsStatusEnum;
 use App\Enums\Pdf\PdfDocumentType;
 use App\Filament\Actions\Pdf\PdfDownloadAction;
-use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
+use Illuminate\Support\HtmlString;
 
 class RiwayatKrsTable
 {
@@ -16,37 +16,70 @@ class RiwayatKrsTable
     {
         return $table
             ->columns([
+
+                // Tahun Akademik
                 TextColumn::make('tahunAkademik.nama_tahun')
                     ->label('Tahun Akademik')
+                    ->searchable()
                     ->sortable()
-                    ->searchable(),
+                    ->weight('semibold')
+                    ->description('KRS')
+                    ->wrap(),
 
-                TextColumn::make('tgl_krs')
-                    ->label('Tanggal Pengajuan')
-                    ->dateTime('d M Y, H:i')
-                    ->sortable(),
-
-                TextColumn::make('total_sks_diambil')
-                    ->label('Total SKS')
-                    ->badge()
-                    ->color('info'),
-
-
+                // Status
                 TextColumn::make('status_krs')
                     ->label('Status')
                     ->badge()
-                    ->color(fn(KrsStatusEnum $state): string => $state->getColor())
-                    ->formatStateUsing(fn(KrsStatusEnum $state): string => $state->getLabel()),
+                    ->color(
+                        fn(KrsStatusEnum $state): string => $state->getColor()
+                    )
+                    ->formatStateUsing(
+                        fn(KrsStatusEnum $state): string => $state->getLabel()
+                    )
+                    ->sortable(),
+
+                // Total SKS
+                TextColumn::make('total_sks_diambil')
+                    ->label('Total SKS')
+                    ->formatStateUsing(
+                        fn($state): string => "{$state} SKS"
+                    )
+                    ->weight('semibold')
+                    ->color('info')
+                    ->sortable(),
+
+                // Tanggal
+                TextColumn::make('tgl_krs')
+                    ->label('Diajukan')
+                    ->dateTime('d M Y, H:i')
+                    ->sortable()
+                    ->color('gray')
+                    ->size('sm'),
+
             ])
             ->defaultSort('tgl_krs', 'desc')
+
             ->recordActions([
-                ViewAction::make()->label('Lihat Detail')->authorize(true),
+
+                ViewAction::make()
+                    ->label('Lihat')
+                    ->icon('heroicon-m-eye')
+                    ->authorize(true),
+
                 PdfDownloadAction::make(
                     name: 'cetak-krs',
                     label: 'Cetak KRS',
                     type: PdfDocumentType::KRS,
-                    contextResolver: fn($record) => ['krs_id' => $record->id],
-                ),
-            ]);
+                    contextResolver: fn($record) => [
+                        'krs_id' => $record->id,
+                    ],
+                )
+                    ->icon('heroicon-m-arrow-down-tray'),
+
+            ])
+
+            ->striped(false)
+            ->persistSortInSession()
+            ->persistSearchInSession();
     }
 }
