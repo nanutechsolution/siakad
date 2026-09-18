@@ -8,6 +8,7 @@ use App\Models\Kelas;
 use App\Models\MasterMataKuliah;
 use App\Models\RefAngkatan;
 use App\Models\RefFakultas;
+use App\Models\RefKampus;
 use App\Models\RefProdi;
 use App\Models\RefRuang;
 use App\Models\RefTahunAkademik;
@@ -57,7 +58,22 @@ class RekapJadwalKuliah extends Page implements HasTable
                     ->default(fn() => app(TahunAkademikService::class)->getActiveId())
                     ->searchable()
                     ->preload(),
-
+                SelectFilter::make('kampus_id')
+                    ->label('Kampus')
+                    ->options(fn() => RefKampus::query()
+                        ->orderBy('nama_kampus')
+                        ->pluck('nama_kampus', 'id'))
+                    ->searchable()
+                    ->preload()
+                    ->query(
+                        fn($query, $state) =>
+                        filled($state['value'] ?? null)
+                            ? $query->whereHas(
+                                'kelas',
+                                fn($q) => $q->where('kampus_id', $state['value'])
+                            )
+                            : $query
+                    ),
                 SelectFilter::make('fakultas_id')
                     ->label('Fakultas')
                     ->options(fn() => RefFakultas::query()
