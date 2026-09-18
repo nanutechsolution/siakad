@@ -22,7 +22,7 @@
                         </h2>
 
                         <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
-                            Tahun Akademik: {{ $activeTa?->nama_tahun }}
+                            Tahun Akademik {{ $activeTa?->nama_tahun }}
                         </p>
                     </div>
 
@@ -43,12 +43,12 @@
 
                         <div>
                             <p class="font-semibold text-warning-800 dark:text-warning-300">
-                                Penawaran Mata Kuliah Belum Lengkap
+                                Beberapa Mata Kuliah Belum Memiliki Jadwal
                             </p>
 
                             <p class="mt-1 text-sm text-warning-700 dark:text-warning-400">
-                                Beberapa mata kuliah semester Anda belum memiliki jadwal
-                                untuk kelas yang Anda ikuti.
+                                KRS akan tersedia setelah seluruh mata kuliah wajib semester Anda
+                                memiliki jadwal untuk kelas yang Anda ikuti.
                             </p>
                         </div>
                     </div>
@@ -56,14 +56,14 @@
 
                 {{-- Daftar MK --}}
                 <div>
-                    <div class="mb-3 flex items-center justify-between">
+                    <div class="mb-3">
                         <h3 class="text-sm font-semibold text-gray-950 dark:text-white">
-                            Mata Kuliah Belum Tersedia
+                            Mata Kuliah Belum Memiliki Jadwal
                         </h3>
 
-                        <span class="inline-flex items-center rounded-full bg-danger-100 px-2.5 py-1 text-xs font-semibold text-danger-700 dark:bg-danger-900/40 dark:text-danger-300">
-                            Belum tersedia
-                        </span>
+                        <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                            Mata kuliah berikut belum dapat diambil karena jadwalnya belum tersedia.
+                        </p>
                     </div>
 
                     <div class="divide-y divide-gray-200 overflow-hidden rounded-xl border border-gray-200 dark:divide-white/10 dark:border-white/10">
@@ -121,12 +121,10 @@
                             class="mt-0.5 h-5 w-5 shrink-0 text-gray-500 dark:text-gray-400" />
 
                         <p class="text-sm text-gray-600 dark:text-gray-400">
-                            KRS belum dapat diajukan sampai seluruh mata kuliah
-                            semester Anda tersedia. Silakan hubungi
+                            Jika jadwal belum diperbarui, silakan hubungi
                             <span class="font-semibold text-gray-900 dark:text-white">
                                 Admin Prodi
-                            </span>
-                            jika penawaran mata kuliah belum diperbarui.
+                            </span>.
                         </p>
                     </div>
                 </div>
