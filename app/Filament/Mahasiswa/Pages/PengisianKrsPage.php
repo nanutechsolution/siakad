@@ -129,8 +129,8 @@ class PengisianKrsPage extends Page implements HasForms
                     ->columnSpanFull(),
 
                 // 2. DAFTAR MATA KULIAH PAKET UTAMA
-                Section::make('Mata Kuliah Paket (Kelas Anda)')
-                    ->description('Mata kuliah yang ditawarkan khusus untuk kelas Anda pada semester ini.')
+                Section::make('Mata Kuliah Semester Ini')
+                    ->description('Mata kuliah berikut sudah ditentukan berdasarkan kelas dan kurikulum Anda.')
                     ->schema([
                         CheckboxList::make('jadwal_kuliah_ids')
                             ->label('')
@@ -163,21 +163,23 @@ class PengisianKrsPage extends Page implements HasForms
                             })
                             ->disabled(fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET')
                             ->dehydrated(true) // wajib true agar value tetap terkirim meski disabled
-                            ->helperText(fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
-                                ? 'Mata kuliah paket sudah otomatis dipilih sesuai kurikulum kelas Anda dan tidak dapat diubah sendiri. Hubungi Admin Prodi jika ada kesalahan penawaran.'
-                                : null)
+                            ->helperText(
+                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
+                                    ? '🔒 Mata kuliah paket dipilih otomatis dan tidak dapat diubah. Jika terdapat kesalahan, silakan hubungi Admin Prodi.'
+                                    : null
+                            )
                             ->live() // Memanggil ulang Ringkasan KRS secara reaktif saat ada klik
                             ->columns(1)
-                            ->required()
+                            ->required(fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET')
                             ->validationMessages([
                                 'required' => 'Anda harus memilih minimal satu mata kuliah.',
                             ]),
                     ]),
 
                 // 3. DAFTAR MATA KULIAH MENGULANG / LINTAS KELAS
-                Section::make('Mata Kuliah Mengulang / Lintas Kelas (Opsional)')
+                Section::make('Mata Kuliah Tambahan (Opsional)')
                     ->description(
-                        'Pilih kelas dari angkatan/prodi lain jika Anda ingin mengulang atau mengambil mata kuliah atas.'
+                        'Pilih mata kuliah dari kelas lain jika Anda ingin mengulang atau mengambil mata kuliah tambahan.'
                     )
                     ->visible(function () {
                         if (! $this->mahasiswa || ! $this->activeTa) {
@@ -306,7 +308,11 @@ class PengisianKrsPage extends Page implements HasForms
         $jadwalIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
 
         if (empty($jadwalIds)) {
-            Notification::make()->warning()->title('Peringatan')->body('Pilih minimal satu kelas.')->send();
+            Notification::make()
+                ->warning()
+                ->title('Mata Kuliah Belum Dipilih')
+                ->body('Silakan pilih minimal satu mata kuliah sebelum mengajukan KRS.')
+                ->send();
             return;
         }
 

@@ -174,13 +174,21 @@
     <form wire:submit="simpanKrs" class="space-y-6">
         {{ $this->form }}
 
-        <div class="flex justify-end gap-3">
-            <x-filament::button
-                type="submit"
-                color="primary"
-                icon="heroicon-o-paper-airplane">
-                Ajukan KRS ke Dosen Wali
-            </x-filament::button>
+        <div class="mt-6">
+            <div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-end">
+
+                <x-filament::button
+                    wire:click="simpanKrs"
+                    icon="heroicon-o-paper-airplane"
+                    size="lg">
+                    Ajukan KRS ke Dosen Wali
+                </x-filament::button>
+
+            </div>
+
+            <p class="mt-2 text-center text-xs text-gray-500 sm:text-right dark:text-gray-400">
+                Setelah diajukan, KRS akan diperiksa dan menunggu persetujuan Dosen Wali.
+            </p>
         </div>
     </form>
     @endif
