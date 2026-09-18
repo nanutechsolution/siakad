@@ -176,30 +176,55 @@ class PengisianKrsPage extends Page implements HasForms
 
                 // 3. DAFTAR MATA KULIAH MENGULANG / LINTAS KELAS
                 Section::make('Mata Kuliah Mengulang / Lintas Kelas (Opsional)')
-                    ->description('Pilih kelas dari angkatan/prodi lain jika Anda ingin mengulang atau mengambil mata kuliah atas.')
+                    ->description(
+                        'Pilih kelas dari angkatan/prodi lain jika Anda ingin mengulang atau mengambil mata kuliah atas.'
+                    )
+                    ->visible(function () {
+                        if (! $this->mahasiswa || ! $this->activeTa) {
+                            return false;
+                        }
+
+                        return $this->mahasiswa->semesterPada($this->activeTa) > 2;
+                    })
                     ->schema([
                         CheckboxList::make('jadwal_mengulang_ids')
                             ->label('')
                             ->options(function () {
-                                if (!$this->mahasiswa || !$this->activeTa) return [];
+                                if (! $this->mahasiswa || ! $this->activeTa) {
+                                    return [];
+                                }
 
-                                return JadwalKuliah::with(['mataKuliah', 'dosenPengajars.dosen.person', 'ruang', 'kelas'])
+                                return JadwalKuliah::with([
+                                    'mataKuliah',
+                                    'dosenPengajars.dosen.person',
+                                    'ruang',
+                                    'kelas',
+                                ])
                                     ->where('tahun_akademik_id', $this->activeTa->id)
                                     ->whereHas('kelas', function ($query) {
-                                        $query->where('prodi_id', $this->mahasiswa->prodi_id);
+                                        $query->where(
+                                            'prodi_id',
+                                            $this->mahasiswa->prodi_id
+                                        );
                                     })
                                     ->where('kelas_id', '!=', $this->activeKelasId)
                                     ->get()
                                     ->mapWithKeys(fn($jadwal) => [
-                                        $jadwal->id => new HtmlString(view('filament.mahasiswa.components.krs-card', [
-                                            'jadwal' => $jadwal,
-                                            'isLintasKelas' => true,
-                                            'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
-                                        ])->render())
-                                    ]);
+                                        $jadwal->id => new HtmlString(
+                                            view(
+                                                'filament.mahasiswa.components.krs-card',
+                                                [
+                                                    'jadwal' => $jadwal,
+                                                    'isLintasKelas' => true,
+                                                    'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
+                                                ]
+                                            )->render()
+                                        ),
+                                    ])
+                                    ->toArray();
                             })
-                            ->live() // Memanggil ulang Ringkasan KRS secara reaktif saat ada klik
-                            ->searchable() // Tambahkan fitur search karena datanya akan banyak
+                            ->live()
+                            ->searchable()
                             ->columns(1),
                     ])
                     ->collapsed(), // Ditutup secara default agar fokus pada kelas utama
