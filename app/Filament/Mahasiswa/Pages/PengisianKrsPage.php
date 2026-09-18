@@ -8,6 +8,8 @@ use App\Models\Krs;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
 use App\Services\Akademik\KrsValidationService;
+use Filament\Actions\Action;
+use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\CheckboxList;
 use Filament\Forms\Contracts\HasForms;
 use Filament\Infolists\Components\TextEntry;
@@ -24,13 +26,17 @@ use UnitEnum;
 
 class PengisianKrsPage extends Page implements HasForms
 {
+    use InteractsWithActions;
+
     protected string $view = 'filament.mahasiswa.pages.pengisian-krs-page';
 
-    protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::KRS->value;
+    protected static string|UnitEnum|null $navigationGroup =
+    MahasiswaNavigationGroup::KRS->value;
 
     protected static ?string $navigationLabel = 'Isi KRS';
 
-    protected static ?string $title = 'Pengisian Kartu Rencana Studi (KRS)';
+    protected static ?string $title =
+    'Pengisian Kartu Rencana Studi (KRS)';
 
     protected static ?int $navigationSort = 1;
 
@@ -72,7 +78,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Status Mahasiswa
+        | Status Mahasiswa
         |--------------------------------------------------------------------------
         */
         $valStatus = $service->checkStatusMahasiswa(
@@ -88,7 +94,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Keuangan
+        | Keuangan
         |--------------------------------------------------------------------------
         */
         $valKeuangan = $service->checkKeuangan(
@@ -105,7 +111,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Cari Kelas Aktif Mahasiswa
+        | Kelas Aktif
         |--------------------------------------------------------------------------
         */
         $this->activeKelasId = DB::table('mahasiswa_kelas')
@@ -123,7 +129,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Penawaran Mata Kuliah
+        | Kelengkapan Penawaran
         |--------------------------------------------------------------------------
         */
         $valPenawaran = $service->checkKelengkapanPenawaranPaket(
@@ -140,7 +146,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Cek KRS yang Sudah Ada
+        | Cek KRS Existing
         |--------------------------------------------------------------------------
         */
         $this->hasExistingKrs = Krs::where(
@@ -163,7 +169,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Periode KRS
+        | Periode KRS
         |--------------------------------------------------------------------------
         */
         $now = now();
@@ -196,19 +202,97 @@ class PengisianKrsPage extends Page implements HasForms
     private function setIneligible(string $message): void
     {
         $this->isEligible = false;
-
         $this->eligibilityMessage = $message;
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Filament Action
+    |--------------------------------------------------------------------------
+    |
+    | Tombol "Ajukan KRS" akan membuka modal konfirmasi.
+    |
+    */
+    public function ajukanKrsAction(): Action
+    {
+        return Action::make('ajukanKrs')
+            ->label('Ya, Ajukan KRS')
+            ->icon('heroicon-o-paper-airplane')
+            ->color('primary')
+            ->modalHeading('Konfirmasi Pengajuan KRS')
+            ->modalDescription(function (): string {
+                $summary = $this->getCurrentKrsSummary();
+
+                return "Anda akan mengajukan {$summary['totalMk']} "
+                    . "mata kuliah dengan total {$summary['totalSks']} SKS "
+                    . "untuk Tahun Akademik {$this->activeTa?->nama_tahun}. "
+                    . "Setelah diajukan, KRS akan masuk ke proses persetujuan Dosen Wali.";
+            })
+            ->modalSubmitActionLabel('Ya, Ajukan KRS')
+            ->modalCancelActionLabel('Periksa Kembali')
+            ->modalIcon('heroicon-o-paper-airplane')
+            ->modalIconColor('primary')
+            ->requiresConfirmation()
+            ->action(function (): void {
+                $this->simpanKrs();
+            });
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Ringkasan KRS Untuk Modal Konfirmasi
+    |--------------------------------------------------------------------------
+    */
+    private function getCurrentKrsSummary(): array
+    {
+        $data = $this->form->getState();
+
+        $jadwalUtama = $data['jadwal_kuliah_ids'] ?? [];
+
+        $jadwalMengulang = $data['jadwal_mengulang_ids'] ?? [];
+
+        $selectedIds = array_unique(
+            array_merge(
+                $jadwalUtama,
+                $jadwalMengulang
+            )
+        );
+
+        if (empty($selectedIds)) {
+            return [
+                'totalMk' => 0,
+                'totalSks' => 0,
+            ];
+        }
+
+        $totalSks = (int) DB::table('jadwal_kuliah')
+            ->join(
+                'master_mata_kuliahs',
+                'master_mata_kuliahs.id',
+                '=',
+                'jadwal_kuliah.mata_kuliah_id'
+            )
+            ->whereIn(
+                'jadwal_kuliah.id',
+                $selectedIds
+            )
+            ->sum('master_mata_kuliahs.sks_default');
+
+        return [
+            'totalMk' => count($selectedIds),
+            'totalSks' => $totalSks,
+        ];
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Form
+    |--------------------------------------------------------------------------
+    */
     public function form(Schema $schema): Schema
     {
         return $schema
             ->components([
-                /*
-                |--------------------------------------------------------------------------
-                | Ringkasan KRS
-                |--------------------------------------------------------------------------
-                */
                 TextEntry::make('ringkasan_krs')
                     ->label('')
                     ->state(function (Get $get) {
@@ -219,11 +303,6 @@ class PengisianKrsPage extends Page implements HasForms
                     })
                     ->columnSpanFull(),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Mata Kuliah Utama
-                |--------------------------------------------------------------------------
-                */
                 Section::make('Mata Kuliah Semester Ini')
                     ->description(
                         'Mata kuliah berikut sudah ditentukan berdasarkan kelas dan kurikulum Anda.'
@@ -263,7 +342,8 @@ class PengisianKrsPage extends Page implements HasForms
                                                     [
                                                         'jadwal' => $jadwal,
                                                         'isLintasKelas' => false,
-                                                        'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
+                                                        'mahasiswaKurikulumId' =>
+                                                        $this->mahasiswa->kurikulum_id,
                                                     ]
                                                 )->render()
                                             ),
@@ -320,11 +400,6 @@ class PengisianKrsPage extends Page implements HasForms
                             ]),
                     ]),
 
-                /*
-                |--------------------------------------------------------------------------
-                | Mata Kuliah Tambahan
-                |--------------------------------------------------------------------------
-                */
                 Section::make('Mata Kuliah Tambahan (Opsional)')
                     ->description(
                         'Pilih mata kuliah dari kelas lain jika Anda ingin mengulang atau mengambil mata kuliah tambahan.'
@@ -385,7 +460,8 @@ class PengisianKrsPage extends Page implements HasForms
                                                     [
                                                         'jadwal' => $jadwal,
                                                         'isLintasKelas' => true,
-                                                        'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
+                                                        'mahasiswaKurikulumId' =>
+                                                        $this->mahasiswa->kurikulum_id,
                                                     ]
                                                 )->render()
                                             ),
@@ -402,6 +478,11 @@ class PengisianKrsPage extends Page implements HasForms
             ->statePath('data');
     }
 
+    /*
+    |--------------------------------------------------------------------------
+    | Summary
+    |--------------------------------------------------------------------------
+    */
     public function getSummaryData(Get $get): array
     {
         $jadwalUtama = $get('jadwal_kuliah_ids') ?? [];
@@ -489,12 +570,8 @@ class PengisianKrsPage extends Page implements HasForms
 
     /*
     |--------------------------------------------------------------------------
-    | Simpan / Ajukan KRS
+    | Simpan KRS
     |--------------------------------------------------------------------------
-    |
-    | Method ini hanya dipanggil setelah mahasiswa menyetujui
-    | konfirmasi pada tombol di Blade.
-    |
     */
     public function simpanKrs(): void
     {
@@ -502,11 +579,6 @@ class PengisianKrsPage extends Page implements HasForms
             return;
         }
 
-        /*
-        |--------------------------------------------------------------------------
-        | Ambil State Form
-        |--------------------------------------------------------------------------
-        */
         $data = $this->form->getState();
 
         $jadwalUtama = $data['jadwal_kuliah_ids'] ?? [];
@@ -520,11 +592,6 @@ class PengisianKrsPage extends Page implements HasForms
             )
         );
 
-        /*
-        |--------------------------------------------------------------------------
-        | Validasi Minimal Mata Kuliah
-        |--------------------------------------------------------------------------
-        */
         if (empty($jadwalIds)) {
             Notification::make()
                 ->warning()
@@ -541,7 +608,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Penawaran Paket
+        | Validasi Penawaran
         |--------------------------------------------------------------------------
         */
         $valPenawaran = $service->checkKelengkapanPenawaranPaket(
@@ -562,7 +629,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Hitung Total SKS
+        | Total SKS
         |--------------------------------------------------------------------------
         */
         $totalSksDiambil = (int) DB::table('jadwal_kuliah')
@@ -580,7 +647,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Cek Dispensasi SKS
+        | Dispensasi SKS
         |--------------------------------------------------------------------------
         */
         $hasDispensasiSks = DB::table('dispensasi_akademiks')
@@ -610,7 +677,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Total SKS Mengulang
+        | SKS Mengulang
         |--------------------------------------------------------------------------
         */
         $totalSksMengulang = (int) DB::table('jadwal_kuliah')
@@ -628,7 +695,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Maksimal SKS
+        | Validasi SKS
         |--------------------------------------------------------------------------
         */
         $valSks = $service->checkSksMaksimal(
@@ -650,7 +717,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Bentrok Jadwal
+        | Validasi Bentrok
         |--------------------------------------------------------------------------
         */
         $valJadwal = $service->checkDuplikasiDanBentrok(
@@ -688,7 +755,7 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Simpan KRS
+        | Simpan
         |--------------------------------------------------------------------------
         */
         DB::beginTransaction();
@@ -709,11 +776,6 @@ class PengisianKrsPage extends Page implements HasForms
                 ?? 'PAKET'
             ) === 'PAKET';
 
-            /*
-            |--------------------------------------------------------------------------
-            | Insert Header KRS
-            |--------------------------------------------------------------------------
-            */
             DB::table('krs')->insert([
                 'id' => $krsId,
                 'mahasiswa_id' => $this->mahasiswa->id,
@@ -728,11 +790,6 @@ class PengisianKrsPage extends Page implements HasForms
                 'updated_at' => now(),
             ]);
 
-            /*
-            |--------------------------------------------------------------------------
-            | Insert Detail KRS
-            |--------------------------------------------------------------------------
-            */
             $detailInserts = [];
 
             foreach ($jadwalIds as $jId) {
@@ -778,11 +835,6 @@ class PengisianKrsPage extends Page implements HasForms
                 $detailInserts
             );
 
-            /*
-            |--------------------------------------------------------------------------
-            | Audit Log Status KRS
-            |--------------------------------------------------------------------------
-            */
             DB::table('krs_status_logs')->insert([
                 'krs_id' => $krsId,
                 'aksi' => 'DIAJUKAN',
@@ -794,11 +846,6 @@ class PengisianKrsPage extends Page implements HasForms
 
             DB::commit();
 
-            /*
-            |--------------------------------------------------------------------------
-            | Berhasil
-            |--------------------------------------------------------------------------
-            */
             Notification::make()
                 ->success()
                 ->title('KRS Berhasil Diajukan')

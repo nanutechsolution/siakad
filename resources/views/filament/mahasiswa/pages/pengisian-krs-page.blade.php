@@ -154,7 +154,6 @@
 
                         @endphp
 
-
                         <div class="flex items-center gap-4 bg-white px-4 py-3 dark:bg-gray-900">
 
                             <div class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-gray-100 dark:bg-gray-800">
@@ -164,7 +163,6 @@
                                     class="h-4 w-4 text-gray-500 dark:text-gray-400" />
 
                             </div>
-
 
                             <div class="min-w-0">
 
@@ -187,7 +185,7 @@
                 </div>
 
 
-                {{-- Footer info --}}
+                {{-- Footer --}}
                 <div class="rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50">
 
                     <div class="flex gap-3">
@@ -212,7 +210,6 @@
 
                 @else
 
-                {{-- Pesan gate lainnya --}}
                 <div class="text-center">
 
                     <p class="mx-auto max-w-xl text-gray-600 dark:text-gray-400">
@@ -226,15 +223,9 @@
 
                 {{-- Tombol keuangan --}}
                 @if(
-                str_contains(
-                $eligibilityMessage,
-                'tunggakan'
-                )
+                str_contains($eligibilityMessage, 'tunggakan')
                 ||
-                str_contains(
-                $eligibilityMessage,
-                'Syarat pembayaran'
-                )
+                str_contains($eligibilityMessage, 'Syarat pembayaran')
                 )
 
                 <div class="flex justify-center pt-2">
@@ -260,7 +251,7 @@
     @else
 
     {{-- ============================================================
-             HEADER / INSTRUCTION
+             HEADER
         ============================================================= --}}
 
     <div class="mb-4 rounded-xl bg-primary-50 p-4 ring-1 ring-primary-200 dark:bg-primary-900/30 dark:ring-primary-800">
@@ -278,18 +269,16 @@
 
 
     {{-- ============================================================
-             FORM KRS
+             FORM
         ============================================================= --}}
 
-    <form
-        wire:submit="simpanKrs"
-        class="space-y-6">
+    <div class="space-y-6">
 
         {{ $this->form }}
 
 
         {{-- ========================================================
-                 SUBMIT
+                 TOMBOL AJUKAN
             ========================================================= --}}
 
         <div class="mt-6">
@@ -297,8 +286,7 @@
             <div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-end">
 
                 <x-filament::button
-                    type="submit"
-                    wire:confirm="Pastikan mata kuliah dan jadwal yang Anda pilih sudah benar. Setelah diajukan, KRS akan masuk ke proses persetujuan Dosen Wali. Apakah Anda yakin ingin mengajukan KRS?"
+                    wire:click="mountAction('ajukanKrs')"
                     icon="heroicon-o-paper-airplane"
                     size="lg">
                     Ajukan KRS ke Dosen Wali
@@ -306,17 +294,21 @@
 
             </div>
 
-
             <p class="mt-2 text-center text-xs text-gray-500 sm:text-right dark:text-gray-400">
-
                 Pastikan mata kuliah dan jadwal sudah benar sebelum mengajukan KRS.
-
             </p>
 
         </div>
 
-    </form>
+    </div>
 
     @endif
+
+
+    {{-- ================================================================
+         FILAMENT ACTION MODALS
+    ================================================================= --}}
+
+    <x-filament-actions::modals />
 
 </x-filament-panels::page>
