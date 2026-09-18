@@ -308,6 +308,7 @@ class PengisianKrsPage extends Page implements HasForms
                         ? 'Mata Kuliah KRS Anda'
                         : 'Pilih Mata Kuliah'
                 )
+                    ->columnSpanFull()
                     ->description(
                         fn() => ($this->mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
                             ? 'Mata kuliah berikut sudah disiapkan berdasarkan kurikulum dan kelas Anda. Periksa jadwal sebelum mengajukan KRS.'
@@ -317,11 +318,7 @@ class PengisianKrsPage extends Page implements HasForms
                         CheckboxList::make('jadwal_kuliah_ids')
                             ->label('')
                             ->options(function () {
-                                if (
-                                    !$this->mahasiswa ||
-                                    !$this->activeTa ||
-                                    !$this->activeKelasId
-                                ) {
+                                if (!$this->mahasiswa || !$this->activeTa || !$this->activeKelasId) {
                                     return [];
                                 }
 
@@ -334,48 +331,35 @@ class PengisianKrsPage extends Page implements HasForms
                                     ->where('tahun_akademik_id', $this->activeTa->id)
                                     ->where('kelas_id', $this->activeKelasId)
                                     ->get()
-                                    ->mapWithKeys(
-                                        fn($jadwal) => [
-                                            $jadwal->id => new HtmlString(
-                                                view(
-                                                    'filament.mahasiswa.components.krs-card',
-                                                    [
-                                                        'jadwal' => $jadwal,
-                                                        'isLintasKelas' => false,
-                                                        'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
-                                                    ]
-                                                )->render()
-                                            ),
-                                        ]
-                                    )
+                                    ->mapWithKeys(fn($jadwal) => [
+                                        $jadwal->id => new HtmlString(
+                                            view(
+                                                'filament.mahasiswa.components.krs-card',
+                                                [
+                                                    'jadwal' => $jadwal,
+                                                    'isLintasKelas' => false,
+                                                    'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
+                                                ]
+                                            )->render()
+                                        ),
+                                    ])
                                     ->toArray();
                             })
                             ->default(function () {
-                                if (
-                                    !$this->mahasiswa ||
-                                    !$this->activeTa ||
-                                    !$this->activeKelasId
-                                ) {
+                                if (!$this->mahasiswa || !$this->activeTa || !$this->activeKelasId) {
                                     return [];
                                 }
 
-                                if (
-                                    ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET'
-                                ) {
+                                if (($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET') {
                                     return [];
                                 }
 
-                                return JadwalKuliah::where(
-                                    'tahun_akademik_id',
-                                    $this->activeTa->id
-                                )
+                                return JadwalKuliah::where('tahun_akademik_id', $this->activeTa->id)
                                     ->where('kelas_id', $this->activeKelasId)
                                     ->pluck('id')
                                     ->toArray();
                             })
-                            ->disabled(
-                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
-                            )
+                            ->disabled(fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET')
                             ->dehydrated(true)
                             ->helperText(
                                 fn() => ($this->mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
@@ -385,7 +369,7 @@ class PengisianKrsPage extends Page implements HasForms
                             ->live()
                             ->columns(1)
                             ->extraAttributes([
-                                'class' => 'w-full',
+                                'class' => 'w-full min-w-0',
                             ])
                             ->required(
                                 fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET'

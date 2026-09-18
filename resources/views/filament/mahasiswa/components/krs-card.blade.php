@@ -57,7 +57,7 @@ $isPenuh = $sisaKuota <= 0;
     @endphp
 
     <div
-        class="group mb-3 block w-full min-w-0 overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200
+        class="group mb-3 block w-full min-w-0 max-w-full overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200
         dark:bg-gray-900
         {{ $isPenuh
             ? 'border-danger-200 dark:border-danger-800'
