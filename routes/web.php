@@ -183,3 +183,6 @@ Route::middleware(['auth'])
         [PembimbingAkademikPdfController::class, 'downloadSk']
     )
     ->name('pembimbing-akademik.sk');
+Route::get('/panduan-krs', function () {
+    return view('panduan-krs');
+})->name('panduan.krs');
