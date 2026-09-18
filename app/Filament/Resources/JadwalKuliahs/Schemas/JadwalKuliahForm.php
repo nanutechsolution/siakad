@@ -282,6 +282,7 @@ class JadwalKuliahForm
                                 ->label('Ruang Kelas')
                                 ->relationship('ruang', 'nama_ruang')
                                 ->searchable()
+                                ->required()
                                 ->preload(),
                         ])->columns(2),
                 ]),
