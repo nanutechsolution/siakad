@@ -265,21 +265,12 @@
 
     <!-- FOOTER (Help & Copyright) -->
     <footer class="w-full p-4 sm:p-6 shrink-0 flex flex-col items-center justify-center gap-2 text-center z-10">
-        <div class="flex flex-wrap items-center justify-center gap-2">
-            <button type="button" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1.5 bg-indigo-50 px-4 py-2 rounded-lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
-                </svg>
-                Panduan Pemilihan Akun
-            </button>
-
-            <a href="{{ route('panduan.krs') }}" class="text-sm font-semibold text-yellow-700 hover:text-yellow-800 transition-colors flex items-center gap-1.5 bg-yellow-50 px-4 py-2 rounded-lg">
-                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"></path>
-                </svg>
-                Panduan Pengisian KRS
-            </a>
-        </div>
+        <button type="button" class="text-sm font-semibold text-indigo-600 hover:text-indigo-800 transition-colors flex items-center gap-1.5 bg-indigo-50 px-4 py-2 rounded-lg">
+            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8.228 9c.549-1.165 2.03-2 3.772-2 2.21 0 4 1.343 4 3 0 1.4-1.278 2.575-3.006 2.907-.542.104-.994.54-.994 1.093m0 3h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path>
+            </svg>
+            Panduan Pemilihan Akun
+        </button>
         <p class="text-xs text-slate-400 mt-2">
             &copy; 2026 Universitas Stella Maris Sumba.
         </p>
