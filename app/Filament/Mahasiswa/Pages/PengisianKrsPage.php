@@ -276,15 +276,23 @@ class PengisianKrsPage extends Page implements HasForms
                 ->value('max_sks') ?? 24; // Fallback 24 jika belum ada aturan
         }
 
+        // return [
+        //     'activeTa' => $this->activeTa,
+        //     'semesterMhs' => $semesterMhs,
+        //     'modeKrs' => $modeKrs,
+        //     'ips' => $ips,
+        //     'maxSks' => $maxSks,
+        //     'totalSks' => $totalSks,
+        //     'totalMk' => $totalMk,
+        //     'statusKrs' => 'DRAFT',
+        // ];
         return [
-            'activeTa' => $this->activeTa,
             'semesterMhs' => $semesterMhs,
             'modeKrs' => $modeKrs,
             'ips' => $ips,
             'maxSks' => $maxSks,
             'totalSks' => $totalSks,
             'totalMk' => $totalMk,
-            'statusKrs' => 'DRAFT',
         ];
     }
     public function simpanKrs(): void
