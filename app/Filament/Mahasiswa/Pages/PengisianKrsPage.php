@@ -318,9 +318,9 @@ class PengisianKrsPage extends Page implements HasForms
                             ->label('')
                             ->options(function () {
                                 if (
-                                    !$this->mahasiswa
-                                    || !$this->activeTa
-                                    || !$this->activeKelasId
+                                    !$this->mahasiswa ||
+                                    !$this->activeTa ||
+                                    !$this->activeKelasId
                                 ) {
                                     return [];
                                 }
@@ -331,14 +331,8 @@ class PengisianKrsPage extends Page implements HasForms
                                     'ruang',
                                     'kelas',
                                 ])
-                                    ->where(
-                                        'tahun_akademik_id',
-                                        $this->activeTa->id
-                                    )
-                                    ->where(
-                                        'kelas_id',
-                                        $this->activeKelasId
-                                    )
+                                    ->where('tahun_akademik_id', $this->activeTa->id)
+                                    ->where('kelas_id', $this->activeKelasId)
                                     ->get()
                                     ->mapWithKeys(
                                         fn($jadwal) => [
@@ -348,26 +342,25 @@ class PengisianKrsPage extends Page implements HasForms
                                                     [
                                                         'jadwal' => $jadwal,
                                                         'isLintasKelas' => false,
-                                                        'mahasiswaKurikulumId' =>
-                                                        $this->mahasiswa->kurikulum_id,
+                                                        'mahasiswaKurikulumId' => $this->mahasiswa->kurikulum_id,
                                                     ]
                                                 )->render()
                                             ),
                                         ]
-                                    );
+                                    )
+                                    ->toArray();
                             })
                             ->default(function () {
                                 if (
-                                    !$this->mahasiswa
-                                    || !$this->activeTa
-                                    || !$this->activeKelasId
+                                    !$this->mahasiswa ||
+                                    !$this->activeTa ||
+                                    !$this->activeKelasId
                                 ) {
                                     return [];
                                 }
 
                                 if (
-                                    ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET')
-                                    !== 'PAKET'
+                                    ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET'
                                 ) {
                                     return [];
                                 }
@@ -376,16 +369,12 @@ class PengisianKrsPage extends Page implements HasForms
                                     'tahun_akademik_id',
                                     $this->activeTa->id
                                 )
-                                    ->where(
-                                        'kelas_id',
-                                        $this->activeKelasId
-                                    )
+                                    ->where('kelas_id', $this->activeKelasId)
                                     ->pluck('id')
                                     ->toArray();
                             })
                             ->disabled(
-                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET')
-                                    === 'PAKET'
+                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
                             )
                             ->dehydrated(true)
                             ->helperText(
@@ -395,13 +384,14 @@ class PengisianKrsPage extends Page implements HasForms
                             )
                             ->live()
                             ->columns(1)
+                            ->extraAttributes([
+                                'class' => 'w-full',
+                            ])
                             ->required(
-                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET')
-                                    !== 'PAKET'
+                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET') !== 'PAKET'
                             )
                             ->validationMessages([
-                                'required' =>
-                                'Anda harus memilih minimal satu mata kuliah.',
+                                'required' => 'Anda harus memilih minimal satu mata kuliah.',
                             ]),
                     ]),
 
