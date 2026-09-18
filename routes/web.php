@@ -177,9 +177,13 @@ Route::get('/pembayaran/midtrans/status/{orderId}', [
 ])->name('midtrans.status');
 
 use App\Http\Controllers\PembimbingAkademikPdfController;
+
 Route::middleware(['auth'])
     ->get(
         '/akademik/pembimbing/{pembimbingAkademik}/sk',
         [PembimbingAkademikPdfController::class, 'downloadSk']
     )
     ->name('pembimbing-akademik.sk');
+Route::get('/panduan-krs', function () {
+    return view('panduan-krs');
+})->name('panduan.krs');
