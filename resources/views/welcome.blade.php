@@ -63,45 +63,41 @@
          STRUCTURED DATA - WEBSITE
     ========================================================== -->
     <script type="application/ld+json">
-        {
-            !!json_encode([
-                '@context' => 'https://schema.org',
-                '@type' => 'WebSite',
-                'name' => 'SIAKAD UNMARIS',
-                'alternateName' => [
-                    'SIAKAD Universitas Stella Maris Sumba',
-                    'Sistem Informasi Akademik Universitas Stella Maris Sumba',
-                ],
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'WebSite',
+            'name' => 'SIAKAD UNMARIS',
+            'alternateName' => [
+                'SIAKAD Universitas Stella Maris Sumba',
+                'Sistem Informasi Akademik Universitas Stella Maris Sumba',
+            ],
+            'url' => url('/'),
+            'description' => 'Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.',
+            'inLanguage' => 'id-ID',
+            'publisher' => [
+                '@type' => 'EducationalOrganization',
+                'name' => 'Universitas Stella Maris Sumba',
                 'url' => url('/'),
-                'description' => 'Portal Sistem Informasi Akademik Universitas Stella Maris Sumba untuk mahasiswa, dosen, dan administrator.',
-                'inLanguage' => 'id-ID',
-                'publisher' => [
-                    '@type' => 'EducationalOrganization',
-                    'name' => 'Universitas Stella Maris Sumba',
-                    'url' => url('/'),
-                    'logo' => [
-                        '@type' => 'ImageObject',
-                        'url' => asset('images/logo-unmaris.png'),
-                    ],
+                'logo' => [
+                    '@type' => 'ImageObject',
+                    'url' => asset('images/logo-unmaris.png'),
                 ],
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!
-        }
+            ],
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 
     <!-- =========================================================
          STRUCTURED DATA - ORGANIZATION
     ========================================================== -->
     <script type="application/ld+json">
-        {
-            !!json_encode([
-                '@context' => 'https://schema.org',
-                '@type' => 'EducationalOrganization',
-                'name' => 'Universitas Stella Maris Sumba',
-                'alternateName' => 'UNMARIS',
-                'url' => url('/'),
-                'logo' => asset('images/logo-unmaris.png'),
-            ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!
-        }
+        {!! json_encode([
+            '@context' => 'https://schema.org',
+            '@type' => 'EducationalOrganization',
+            'name' => 'Universitas Stella Maris Sumba',
+            'alternateName' => 'UNMARIS',
+            'url' => url('/'),
+            'logo' => asset('images/logo-unmaris.png'),
+        ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) !!}
     </script>
 
     <!-- =========================================================
