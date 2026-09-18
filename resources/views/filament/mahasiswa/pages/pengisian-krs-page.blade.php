@@ -160,14 +160,14 @@
         </div>
     </div>
     @else
-    <div class="mb-4 p-4 bg-primary-50 rounded-lg ring-1 ring-primary-200 dark:bg-primary-900/30 dark:ring-primary-800">
+    <div class="mb-4 rounded-xl bg-primary-50 p-4 ring-1 ring-primary-200 dark:bg-primary-900/30 dark:ring-primary-800">
         <h3 class="text-lg font-bold text-primary-800 dark:text-primary-300">
-            Tahun Akademik Aktif: {{ $activeTa?->nama_tahun }}
+            Pengisian KRS — {{ $activeTa?->nama_tahun }}
         </h3>
 
-        <p class="text-sm text-primary-700 dark:text-primary-400 mt-1">
-            Batas maksimal SKS Anda akan dievaluasi secara otomatis saat menyimpan KRS.
-            Pastikan Anda telah berkonsultasi dengan Dosen Wali.
+        <p class="mt-1 text-sm text-primary-700 dark:text-primary-400">
+            Pilih mata kuliah yang akan Anda ambil. Sistem akan memeriksa
+            batas SKS, bentrok jadwal, dan kapasitas kelas saat diajukan.
         </p>
     </div>
 
