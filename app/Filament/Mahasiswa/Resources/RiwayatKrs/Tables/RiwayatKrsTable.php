@@ -89,6 +89,8 @@ class RiwayatKrsTable
                 ViewAction::make()
                     ->label('Lihat Detail')
                     ->icon('heroicon-m-eye')
+                    ->button()
+                    ->color('gray')
                     ->authorize(true),
 
                 PdfDownloadAction::make(
@@ -99,7 +101,9 @@ class RiwayatKrsTable
                         'krs_id' => $record->id,
                     ],
                 )
-                    ->icon('heroicon-m-arrow-down-tray'),
+                    ->icon('heroicon-m-arrow-down-tray')
+                    ->button()
+                    ->color('primary'),
             ])
 
             ->striped(false);
