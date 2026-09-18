@@ -303,9 +303,15 @@ class PengisianKrsPage extends Page implements HasForms
                     })
                     ->columnSpanFull(),
 
-                Section::make('Mata Kuliah Semester Ini')
+                Section::make(
+                    fn() => ($this->mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
+                        ? 'Mata Kuliah KRS Anda'
+                        : 'Pilih Mata Kuliah'
+                )
                     ->description(
-                        'Mata kuliah berikut sudah ditentukan berdasarkan kelas dan kurikulum Anda.'
+                        fn() => ($this->mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
+                            ? 'Mata kuliah berikut sudah disiapkan berdasarkan kurikulum dan kelas Anda. Periksa jadwal sebelum mengajukan KRS.'
+                            : 'Pilih mata kuliah yang ingin Anda ambil untuk semester ini.'
                     )
                     ->schema([
                         CheckboxList::make('jadwal_kuliah_ids')
@@ -383,9 +389,8 @@ class PengisianKrsPage extends Page implements HasForms
                             )
                             ->dehydrated(true)
                             ->helperText(
-                                fn() => ($this->mahasiswa->kurikulum?->mode_krs ?? 'PAKET')
-                                    === 'PAKET'
-                                    ? '🔒 Mata kuliah paket dipilih otomatis dan tidak dapat diubah. Jika terdapat kesalahan, silakan hubungi Admin Prodi.'
+                                fn() => ($this->mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET'
+                                    ? '🔒 KRS paket sudah dipilih otomatis. Anda hanya perlu memeriksa daftar mata kuliah dan jadwal.'
                                     : null
                             )
                             ->live()

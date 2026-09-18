@@ -254,17 +254,47 @@
              HEADER
         ============================================================= --}}
 
-    <div class="mb-4 rounded-xl bg-primary-50 p-4 ring-1 ring-primary-200 dark:bg-primary-900/30 dark:ring-primary-800">
+    <div class="mb-6 overflow-hidden rounded-2xl border border-primary-200 bg-primary-50 dark:border-primary-800 dark:bg-primary-950/30">
+        <div class="p-5 sm:p-6">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-primary-100 text-primary-600 dark:bg-primary-900/60 dark:text-primary-300">
+                    <x-heroicon-o-clipboard-document-check class="h-6 w-6" />
+                </div>
 
-        <h3 class="text-lg font-bold text-primary-800 dark:text-primary-300">
-            Pengisian KRS — {{ $activeTa?->nama_tahun }}
-        </h3>
+                <div class="min-w-0">
+                    <h2 class="text-lg font-bold text-primary-950 dark:text-primary-100 sm:text-xl">
+                        KRS {{ $activeTa?->nama_tahun }}
+                    </h2>
 
-        <p class="mt-1 text-sm text-primary-700 dark:text-primary-400">
-            Periksa mata kuliah dan jadwal yang ditawarkan untuk semester ini.
-            Sistem akan memeriksa batas SKS, bentrok jadwal, dan kapasitas kelas saat diajukan.
-        </p>
+                    @if(($mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET')
+                    <p class="mt-1 text-sm leading-6 text-primary-800 dark:text-primary-200">
+                        KRS Anda sudah disiapkan otomatis berdasarkan
+                        <strong>kurikulum dan kelas</strong> yang Anda ikuti.
+                        Anda <strong>tidak perlu memilih mata kuliah</strong>.
+                    </p>
+                    @else
+                    <p class="mt-1 text-sm leading-6 text-primary-800 dark:text-primary-200">
+                        Silakan pilih mata kuliah yang ingin Anda ambil.
+                        Sistem akan memeriksa batas SKS, bentrok jadwal,
+                        dan kapasitas kelas.
+                    </p>
+                    @endif
+                </div>
+            </div>
 
+            @if(($mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET')
+            <div class="mt-4 flex items-start gap-3 rounded-xl bg-white/70 px-4 py-3 ring-1 ring-primary-200 dark:bg-gray-900/40 dark:ring-primary-800">
+                <x-heroicon-o-information-circle class="mt-0.5 h-5 w-5 shrink-0 text-primary-600 dark:text-primary-400" />
+
+                <p class="text-sm leading-5 text-primary-800 dark:text-primary-200">
+                    <span class="font-semibold">Yang perlu Anda lakukan:</span>
+                    periksa mata kuliah, jadwal, dosen, dan ruang.
+                    Jika sudah benar, lanjutkan dengan
+                    <strong>Ajukan KRS ke Dosen Wali</strong>.
+                </p>
+            </div>
+            @endif
+        </div>
     </div>
 
 
@@ -276,13 +306,7 @@
 
         {{ $this->form }}
 
-
-        {{-- ========================================================
-                 TOMBOL AJUKAN
-            ========================================================= --}}
-
         <div class="mt-6">
-
             <div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-end">
 
                 <x-filament::button
@@ -295,7 +319,8 @@
             </div>
 
             <p class="mt-2 text-center text-xs text-gray-500 sm:text-right dark:text-gray-400">
-                Pastikan mata kuliah dan jadwal sudah benar sebelum mengajukan KRS.
+                Periksa mata kuliah dan jadwal terlebih dahulu. Setelah diajukan,
+                KRS akan diperiksa oleh Dosen Wali.
             </p>
 
         </div>
