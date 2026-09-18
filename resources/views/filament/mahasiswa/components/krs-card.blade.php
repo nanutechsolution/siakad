@@ -1,139 +1,281 @@
 @php
-$sisaKuota = $jadwal->kuota_kelas - $jadwal->isi_kelas;
-$namaRuang = $jadwal->ruang->nama_ruang ?? 'Belum ditentukan';
-$namaKelas = $jadwal->kelas->nama_kelas ?? '-';
-$kodeMk = $jadwal->mataKuliah->kode_mk ?? '-';
-$sks = $jadwal->mataKuliah->sks_default ?? 0;
+$sisaKuota = max(0, ($jadwal->kuota_kelas ?? 0) - ($jadwal->isi_kelas ?? 0));
 
-$jamMulai = substr($jadwal->jam_mulai, 0, 5);
-$jamSelesai = substr($jadwal->jam_selesai, 0, 5);
+$namaRuang = $jadwal->ruang?->nama_ruang ?? 'Belum ditentukan';
+$namaKelas = $jadwal->kelas?->nama_kelas ?? '-';
+$kodeMk = $jadwal->mataKuliah?->kode_mk ?? '-';
+$namaMk = $jadwal->mataKuliah?->nama_mk ?? 'Mata Kuliah';
+$sks = $jadwal->mataKuliah?->sks_default ?? 0;
 
-// Format nama dosen
+$jamMulai = $jadwal->jam_mulai
+? substr($jadwal->jam_mulai, 0, 5)
+: '-';
+
+$jamSelesai = $jadwal->jam_selesai
+? substr($jadwal->jam_selesai, 0, 5)
+: '-';
+
 $namaDosens = $jadwal->dosenPengajars
 ->map(function ($dp) {
 $person = $dp->dosen?->person;
-return $person?->nama_dengan_gelar ?? $person?->nama_lengkap;
+
+return $person?->nama_dengan_gelar
+?? $person?->nama_lengkap;
 })
-->filter();
+->filter()
+->values();
 
 $isPenuh = $sisaKuota <= 0;
 
-    // AMBIL SEMESTER PAKET & SIFAT MK
+    // Ambil sifat MK dari kurikulum jadwal.
+    // Jika jadwal tidak memiliki kurikulum_id,
+    // gunakan kurikulum mahasiswa sebagai fallback.
     $semesterPaket='-' ;
-    $sifatMk='W' ; // Default Wajib
+    $sifatMk='W' ;
 
-    // Gunakan kurikulum dari jadwal (jika ada), jika tidak ada gunakan kurikulum mahasiswa
-    $kurikulumIdAktif=$jadwal->kurikulum_id ?? $mahasiswaKurikulumId ?? null;
+    $kurikulumIdAktif=$jadwal->kurikulum_id
+    ?? $mahasiswaKurikulumId
+    ?? null;
 
     if ($kurikulumIdAktif && $jadwal->mata_kuliah_id) {
     $kurikulumMk = \Illuminate\Support\Facades\DB::table('kurikulum_mata_kuliah')
     ->where('kurikulum_id', $kurikulumIdAktif)
     ->where('mata_kuliah_id', $jadwal->mata_kuliah_id)
     ->first();
+
     if ($kurikulumMk) {
     $semesterPaket = $kurikulumMk->semester_paket;
     $sifatMk = $kurikulumMk->sifat_mk;
-         }
+    }
     }
 
-    // Konversi Kode Sifat ke Teks
-    $teksSifatMk = $sifatMk === 'W' ? 'Wajib' : ($sifatMk === 'P' ? 'Pilihan' : 'MK Lainnya');
+    $teksSifatMk = match ($sifatMk) {
+    'W' => 'Wajib',
+    'P' => 'Pilihan',
+    default => 'MK Lainnya',
+    };
     @endphp
 
-    <!-- Card Wrapper (Flex col on mobile, row on desktop) -->
-    <div class="w-full flex flex-col sm:flex-row gap-4 p-4 mb-2 transition-all duration-300 bg-white border rounded-2xl shadow-sm cursor-pointer group 
-    {{ $isPenuh ? 'border-danger-200 bg-danger-50/20 opacity-75 grayscale-[20%]' : 'border-gray-200 hover:border-primary-400 hover:shadow-md hover:bg-primary-50/30 dark:bg-gray-900 dark:border-gray-800 dark:hover:border-primary-500' }}">
+    <div
+        class="group mb-3 w-full overflow-hidden rounded-2xl border bg-white shadow-sm transition-all duration-200
+        dark:bg-gray-900
+        {{ $isPenuh
+            ? 'border-danger-200 dark:border-danger-800'
+            : 'border-gray-200 hover:border-primary-300 hover:shadow-md dark:border-gray-800 dark:hover:border-primary-700'
+        }}">
+        <div class="flex flex-col sm:flex-row">
 
-        <!-- Bagian Kiri / Atas: Informasi Mata Kuliah -->
-        <div class="flex-1 w-full">
-            <!-- Baris Badges -->
-            <div class="flex flex-wrap items-center gap-2 mb-3">
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-extrabold bg-gray-100 text-gray-700 dark:bg-gray-800 dark:text-gray-300 tracking-wider border border-gray-200 dark:border-gray-700">
-                    {{ $kodeMk }}
-                </span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-primary-100 text-primary-700 dark:bg-primary-900/50 dark:text-primary-400 border border-primary-200 dark:border-primary-800">
-                    {{ $sks }} SKS
-                </span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-info-100 text-info-700 dark:bg-info-900/50 dark:text-info-400 border border-info-200 dark:border-info-800">
-                    Semester {{ $semesterPaket }}
-                </span>
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold border 
-    {{ $sifatMk === 'W' ? 'bg-success-50 text-success-700 border-success-200 dark:bg-success-900/30 dark:text-success-400 dark:border-success-800' : 'bg-purple-50 text-purple-700 border-purple-200 dark:bg-purple-900/30 dark:text-purple-400 dark:border-purple-800' }}">
-                    {{ $teksSifatMk }}
-                </span>
+            {{-- =========================================================
+             INFORMASI UTAMA
+        ========================================================== --}}
+            <div class="min-w-0 flex-1 p-4 sm:p-5">
 
-                @if($isLintasKelas)
-                <span class="inline-flex items-center px-2 py-0.5 rounded-md text-xs font-bold bg-warning-100 text-warning-700 dark:bg-warning-900/50 dark:text-warning-400 border border-warning-200 dark:border-warning-800">
-                    <x-heroicon-s-arrow-path class="w-3 h-3 mr-1" /> Lintas Kelas
-                </span>
-                @endif
-            </div>
+                {{-- Badge --}}
+                <div class="mb-3 flex flex-wrap items-center gap-2">
 
-            <!-- Judul Mata Kuliah -->
-            <h4 class="text-base sm:text-lg font-bold text-gray-900 dark:text-white leading-tight mb-4 group-hover:text-primary-600 transition-colors">
-                {{ $jadwal->mataKuliah->nama_mk }}
-            </h4>
+                    {{-- Kode MK --}}
+                    <span
+                        class="inline-flex items-center rounded-md bg-gray-100 px-2.5 py-1
+                           text-[11px] font-bold tracking-wide text-gray-700
+                           ring-1 ring-inset ring-gray-200
+                           dark:bg-gray-800 dark:text-gray-300 dark:ring-gray-700">
+                        {{ $kodeMk }}
+                    </span>
 
-            <!-- Grid Detail (Mobile: 1 kolom, Sm: 2 kolom) -->
-            <div class="grid grid-cols-1 sm:grid-cols-2 gap-y-3 gap-x-4 text-xs sm:text-sm text-gray-600 dark:text-gray-400">
-                <!-- Item Detail dengan Ikon membulat -->
-                <div class="flex items-center gap-2.5">
-                    <div class="flex flex-shrink-0 items-center justify-center w-7 h-7 rounded-full bg-gray-50 border border-gray-100 dark:bg-gray-800 dark:border-gray-700 text-gray-500">
-                        <x-heroicon-s-academic-cap class="w-4 h-4" />
-                    </div>
-                    <span class="truncate">Kelas <strong class="text-gray-900 dark:text-gray-200">{{ $namaKelas }}</strong></span>
-                </div>
+                    {{-- SKS --}}
+                    <span
+                        class="inline-flex items-center rounded-md bg-primary-50 px-2.5 py-1
+                           text-[11px] font-bold text-primary-700
+                           ring-1 ring-inset ring-primary-200
+                           dark:bg-primary-950/40 dark:text-primary-300 dark:ring-primary-800">
+                        {{ $sks }} SKS
+                    </span>
 
-                <div class="flex items-center gap-2.5">
-                    <div class="flex flex-shrink-0 items-center justify-center w-7 h-7 rounded-full bg-gray-50 border border-gray-100 dark:bg-gray-800 dark:border-gray-700 text-gray-500">
-                        <x-heroicon-s-clock class="w-4 h-4" />
-                    </div>
-                    <span class="truncate">{{ $jadwal->hari }}, <span class="font-bold text-gray-800 dark:text-gray-300">{{ $jamMulai }} - {{ $jamSelesai }}</span></span>
-                </div>
+                    {{-- Sifat MK --}}
+                    <span
+                        class="inline-flex items-center rounded-md px-2.5 py-1
+                           text-[11px] font-bold ring-1 ring-inset
+                           {{ $sifatMk === 'W'
+                                ? 'bg-success-50 text-success-700 ring-success-200 dark:bg-success-950/30 dark:text-success-300 dark:ring-success-800'
+                                : 'bg-purple-50 text-purple-700 ring-purple-200 dark:bg-purple-950/30 dark:text-purple-300 dark:ring-purple-800'
+                           }}">
+                        {{ $teksSifatMk }}
+                    </span>
 
-                <div class="flex items-center gap-2.5">
-                    <div class="flex flex-shrink-0 items-center justify-center w-7 h-7 rounded-full bg-gray-50 border border-gray-100 dark:bg-gray-800 dark:border-gray-700 text-gray-500">
-                        <x-heroicon-s-map-pin class="w-4 h-4" />
-                    </div>
-                    <span class="truncate">Ruang <span class="font-medium text-gray-800 dark:text-gray-300">{{ $namaRuang }}</span></span>
-                </div>
-
-                <div class="flex items-start gap-2.5">
-                    <div class="flex flex-shrink-0 items-center justify-center w-7 h-7 rounded-full bg-gray-50 border border-gray-100 dark:bg-gray-800 dark:border-gray-700 text-gray-500">
-                        <x-heroicon-s-users class="w-4 h-4" />
-                    </div>
-
-                    <div class="flex flex-col">
-                        @foreach ($namaDosens as $dosen)
-                        <span class="text-sm text-gray-800 dark:text-gray-300">
-                            {{ $dosen }}
-                        </span>
-                        @endforeach
-                    </div>
-                </div>
-            </div>
-        </div>
-
-        <!-- Divider Khusus Mobile -->
-        <hr class="block sm:hidden border-gray-100 dark:border-gray-800 my-2">
-
-        <!-- Bagian Kanan / Bawah: Sisa Kuota -->
-        <div class="flex flex-row sm:flex-col items-center sm:items-end justify-between sm:justify-center min-w-[130px] pt-1 sm:pt-0 sm:pl-5 sm:border-l border-gray-100 dark:border-gray-800">
-            <div class="text-left sm:text-right">
-                <p class="text-[10px] sm:text-xs font-bold text-gray-400 uppercase tracking-widest mb-1">Kapasitas</p>
-                <p class="text-sm sm:text-lg font-black {{ $isPenuh ? 'text-danger-600' : 'text-gray-900 dark:text-white' }} leading-none">
-                    {{ $jadwal->isi_kelas }} <span class="text-gray-400 font-medium text-xs sm:text-sm">/ {{ $jadwal->kuota_kelas }}</span>
-                </p>
-
-                <div class="mt-2 inline-flex items-center gap-1">
-                    @if($isPenuh)
-                    <span class="w-2 h-2 rounded-full bg-danger-500 animate-pulse"></span>
-                    <p class="text-[10px] sm:text-xs font-bold text-danger-600 dark:text-danger-400 uppercase">Penuh</p>
-                    @else
-                    <span class="w-2 h-2 rounded-full bg-success-500"></span>
-                    <p class="text-[10px] sm:text-xs font-bold text-success-600 dark:text-success-400 uppercase">Sisa {{ $sisaKuota }} kursi</p>
+                    {{-- Lintas Kelas --}}
+                    @if($isLintasKelas)
+                    <span
+                        class="inline-flex items-center gap-1 rounded-md bg-warning-50 px-2.5 py-1
+                               text-[11px] font-bold text-warning-700
+                               ring-1 ring-inset ring-warning-200
+                               dark:bg-warning-950/30 dark:text-warning-300 dark:ring-warning-800">
+                        <x-heroicon-s-arrow-path class="h-3.5 w-3.5" />
+                        Lintas Kelas
+                    </span>
                     @endif
+
+                </div>
+
+                {{-- Nama Mata Kuliah --}}
+                <h4
+                    class="mb-4 text-base font-bold leading-snug text-gray-950
+                       transition-colors group-hover:text-primary-600
+                       sm:text-lg dark:text-white dark:group-hover:text-primary-400">
+                    {{ $namaMk }}
+                </h4>
+
+                {{-- Detail Akademik --}}
+                <div class="grid grid-cols-1 gap-3 text-sm sm:grid-cols-2">
+
+                    {{-- Kelas --}}
+                    <div class="flex min-w-0 items-center gap-2.5">
+                        <div
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                               bg-gray-50 text-gray-500 ring-1 ring-gray-200
+                               dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700">
+                            <x-heroicon-s-academic-cap class="h-4 w-4" />
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                Kelas
+                            </div>
+
+                            <div class="truncate font-semibold text-gray-800 dark:text-gray-200">
+                                {{ $namaKelas }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Jadwal --}}
+                    <div class="flex min-w-0 items-center gap-2.5">
+                        <div
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                               bg-gray-50 text-gray-500 ring-1 ring-gray-200
+                               dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700">
+                            <x-heroicon-s-clock class="h-4 w-4" />
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                Jadwal
+                            </div>
+
+                            <div class="truncate font-semibold text-gray-800 dark:text-gray-200">
+                                {{ $jadwal->hari ?? '-' }},
+                                {{ $jamMulai }}–{{ $jamSelesai }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Ruang --}}
+                    <div class="flex min-w-0 items-center gap-2.5">
+                        <div
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                               bg-gray-50 text-gray-500 ring-1 ring-gray-200
+                               dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700">
+                            <x-heroicon-s-map-pin class="h-4 w-4" />
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                Ruang
+                            </div>
+
+                            <div class="truncate font-semibold text-gray-800 dark:text-gray-200">
+                                {{ $namaRuang }}
+                            </div>
+                        </div>
+                    </div>
+
+                    {{-- Dosen --}}
+                    <div class="flex min-w-0 items-start gap-2.5">
+                        <div
+                            class="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg
+                               bg-gray-50 text-gray-500 ring-1 ring-gray-200
+                               dark:bg-gray-800 dark:text-gray-400 dark:ring-gray-700">
+                            <x-heroicon-s-user class="h-4 w-4" />
+                        </div>
+
+                        <div class="min-w-0">
+                            <div class="text-[10px] font-semibold uppercase tracking-wide text-gray-400">
+                                Dosen
+                            </div>
+
+                            @if($namaDosens->isNotEmpty())
+                            <div class="space-y-0.5">
+                                @foreach($namaDosens as $dosen)
+                                <div class="truncate font-semibold text-gray-800 dark:text-gray-200">
+                                    {{ $dosen }}
+                                </div>
+                                @endforeach
+                            </div>
+                            @else
+                            <div class="font-medium text-gray-400">
+                                Belum ditentukan
+                            </div>
+                            @endif
+                        </div>
+                    </div>
+
                 </div>
             </div>
+
+            {{-- =========================================================
+             KAPASITAS
+        ========================================================== --}}
+            <div
+                class="border-t px-4 py-3 sm:flex sm:w-36 sm:shrink-0 sm:flex-col
+                   sm:items-end sm:justify-center sm:border-l sm:border-t-0 sm:px-5
+                   {{ $isPenuh
+                        ? 'border-danger-100 bg-danger-50/50 dark:border-danger-900 dark:bg-danger-950/20'
+                        : 'border-gray-100 bg-gray-50/50 dark:border-gray-800 dark:bg-gray-950/30'
+                   }}">
+
+                <div class="flex items-center justify-between sm:block sm:text-right">
+
+                    <div>
+                        <div class="text-[10px] font-bold uppercase tracking-widest text-gray-400">
+                            Kapasitas
+                        </div>
+
+                        <div class="mt-0.5 text-base font-black text-gray-900 dark:text-white sm:text-lg">
+                            {{ $jadwal->isi_kelas ?? 0 }}
+                            <span class="text-xs font-medium text-gray-400">
+                                / {{ $jadwal->kuota_kelas ?? 0 }}
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="sm:mt-2">
+
+                        @if($isPenuh)
+
+                        <span
+                            class="inline-flex items-center gap-1.5 rounded-full bg-danger-100 px-2.5 py-1
+                                   text-[10px] font-bold uppercase tracking-wide text-danger-700
+                                   dark:bg-danger-900/40 dark:text-danger-300">
+                            <span class="h-1.5 w-1.5 rounded-full bg-danger-500"></span>
+                            Penuh
+                        </span>
+
+                        @else
+
+                        <span
+                            class="inline-flex items-center gap-1.5 rounded-full bg-success-50 px-2.5 py-1
+                                   text-[10px] font-bold text-success-700
+                                   dark:bg-success-950/30 dark:text-success-300">
+                            <span class="h-1.5 w-1.5 rounded-full bg-success-500"></span>
+                            Sisa {{ $sisaKuota }} kursi
+                        </span>
+
+                        @endif
+
+                    </div>
+
+                </div>
+
+            </div>
+
         </div>
     </div>
