@@ -37,7 +37,6 @@ class JadwalKuliahsTable
                     ->orderByRaw("FIELD(hari, 'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu')")
                     ->orderBy('jam_mulai');
             })
-            // --- UI/UX UPGRADE: KELOMPOKKAN OTOMATIS BERDASARKAN HARI ---
             ->groups([
                 Group::make('hari')
                     ->label('Jadwal Hari')
@@ -181,7 +180,6 @@ class JadwalKuliahsTable
             ->filtersTriggerAction(
                 fn(Action $action) => $action
                     ->button()
-                    ->label('Saring Jadwal')
                     ->icon('heroicon-m-funnel')
                     ->slideOver()
             )
