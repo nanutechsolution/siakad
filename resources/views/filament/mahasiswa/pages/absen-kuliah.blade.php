@@ -1,57 +1,29 @@
 <x-filament-panels::page>
-    <div class="mx-auto w-full max-w-md px-4 py-6 sm:px-6">
-
-        {{-- Header --}}
-        <div class="mb-6 text-center">
-            <div
-                class="mx-auto mb-4 flex h-16 w-16 items-center justify-center rounded-2xl
-                       bg-primary-50 text-primary-600
-                       dark:bg-primary-500/10 dark:text-primary-400">
-                <x-heroicon-o-key class="h-8 w-8" />
-            </div>
-
-            <h1 class="text-xl font-bold tracking-tight text-gray-950 dark:text-white">
-                Presensi Kuliah
-            </h1>
-
-            <p class="mx-auto mt-2 max-w-xs text-sm leading-5 text-gray-500 dark:text-gray-400">
-                Masukkan token presensi yang diberikan oleh dosen untuk mencatat kehadiran Anda.
-            </p>
-        </div>
-
+    <div class="mx-auto w-full max-w-md px-4 py-4 sm:px-6 sm:py-6">
 
         {{-- Main Card --}}
         <div
-            class="overflow-hidden rounded-2xl bg-white shadow-sm
-                   ring-1 ring-gray-950/5
+            class="overflow-hidden rounded-2xl bg-white
+                   shadow-sm ring-1 ring-gray-950/5
                    dark:bg-gray-900 dark:ring-white/10">
-
-            {{-- Token Form --}}
             <div class="p-5 sm:p-6">
 
-                <div class="mb-5">
-                    <div class="mb-1 flex items-center gap-2">
-                        <x-heroicon-o-key class="h-4 w-4 text-primary-600 dark:text-primary-400" />
+                {{-- Section Label --}}
+                <div class="mb-4">
+                    <label
+                        for="tokenInput"
+                        class="block text-sm font-semibold text-gray-950 dark:text-white">
+                        Token Presensi
+                    </label>
 
-                        <h2 class="text-sm font-semibold text-gray-950 dark:text-white">
-                            Token Presensi
-                        </h2>
-                    </div>
-
-                    <p class="text-xs leading-5 text-gray-500 dark:text-gray-400">
-                        Masukkan kode yang sedang ditampilkan oleh dosen.
+                    <p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+                        Masukkan token yang ditampilkan dosen.
                     </p>
                 </div>
 
 
                 {{-- Token Input --}}
                 <div>
-                    <label
-                        for="tokenInput"
-                        class="sr-only">
-                        Token Presensi
-                    </label>
-
                     <input
                         id="tokenInput"
                         type="text"
@@ -65,7 +37,7 @@
                         oninput="this.value = this.value.toUpperCase()"
                         class="block w-full rounded-xl border-gray-300 bg-gray-50
                                px-4 py-4 text-center font-mono text-xl font-bold
-                               uppercase tracking-[0.3em] text-gray-950
+                               uppercase tracking-[0.25em] text-gray-950
                                shadow-sm transition
                                placeholder:font-sans placeholder:text-sm
                                placeholder:font-medium placeholder:tracking-normal
@@ -84,7 +56,7 @@
                 </div>
 
 
-                {{-- Submit Button --}}
+                {{-- Submit --}}
                 <div class="mt-4">
                     <x-filament::button
                         wire:click="submitToken"
@@ -108,15 +80,17 @@
                 </div>
 
 
-                {{-- Helper --}}
-                <div class="mt-4 flex items-start gap-2 rounded-xl bg-primary-50 p-3.5
-                            dark:bg-primary-500/10">
+                {{-- Security Hint --}}
+                <div
+                    class="mt-4 flex items-start gap-2.5 rounded-xl
+                           bg-primary-50 px-3.5 py-3
+                           dark:bg-primary-500/10">
                     <x-heroicon-o-information-circle
-                        class="mt-0.5 h-4 w-4 shrink-0 text-primary-600 dark:text-primary-400" />
+                        class="mt-0.5 h-4 w-4 shrink-0
+                               text-primary-600 dark:text-primary-400" />
 
                     <p class="text-xs leading-5 text-primary-700 dark:text-primary-300">
-                        Pastikan token sesuai dengan yang diberikan dosen sebelum menekan
-                        <strong>Absen Sekarang</strong>.
+                        Token bersifat rahasia. Jangan membagikannya kepada mahasiswa lain.
                     </p>
                 </div>
 
@@ -124,14 +98,15 @@
         </div>
 
 
-        {{-- Security Info --}}
+        {{-- Device Security --}}
         <div
-            class="mt-4 flex items-start gap-3 rounded-2xl bg-gray-50 p-4
+            class="mt-4 flex items-center gap-3 rounded-2xl
+                   bg-gray-50 px-4 py-3.5
                    ring-1 ring-gray-950/5
                    dark:bg-gray-800/50 dark:ring-white/5">
             <div
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl
-                       bg-emerald-100 text-emerald-600
+                class="flex h-9 w-9 shrink-0 items-center justify-center
+                       rounded-xl bg-emerald-100 text-emerald-600
                        dark:bg-emerald-500/10 dark:text-emerald-400">
                 <x-heroicon-o-shield-check class="h-5 w-5" />
             </div>
@@ -141,19 +116,10 @@
                     Presensi aman
                 </p>
 
-                <p class="mt-1 text-xs leading-5 text-gray-500 dark:text-gray-400">
-                    Gunakan perangkat Anda sendiri dan lakukan presensi sesuai
-                    instruksi dosen.
+                <p class="mt-0.5 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                    Gunakan perangkat Anda sendiri.
                 </p>
             </div>
-        </div>
-
-
-        {{-- Instruction --}}
-        <div class="mt-5 text-center">
-            <p class="text-[11px] leading-4 text-gray-400 dark:text-gray-500">
-                Jangan membagikan token presensi kepada mahasiswa lain.
-            </p>
         </div>
 
     </div>
