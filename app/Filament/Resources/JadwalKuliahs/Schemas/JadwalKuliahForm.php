@@ -349,29 +349,35 @@ class JadwalKuliahForm
                     Section::make('Dosen Pengampu')
                         ->description('Daftar dosen ditarik otomatis dari pengaturan Dosen Pengampu dan tidak dapat diubah di sini.')
                         ->schema([
+
+                            // 1. UI ALERT YANG CANTIK (Hanya muncul jika MK sudah dipilih tapi dosen kosong)
+                            TextEntry::make('peringatan_dosen_kosong')
+                                ->hiddenLabel()
+                                ->visible(fn(Get $get) => $get('mata_kuliah_id') !== null && empty($get('dosenPengajars')))
+                                ->state(new \Illuminate\Support\HtmlString('
+                <div class="rounded-xl border border-dashed border-danger-400 bg-danger-50 p-6 text-center dark:border-danger-500/30 dark:bg-danger-500/10">
+                    <div class="mx-auto flex h-12 w-12 items-center justify-center rounded-full bg-danger-100 dark:bg-danger-500/20">
+                        <svg class="h-6 w-6 text-danger-600 dark:text-danger-400" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
+                        </svg>
+                    </div>
+                    <h4 class="mt-4 text-base font-semibold leading-6 text-danger-600 dark:text-danger-400">
+                        Dosen Pengampu Belum Diatur!
+                    </h4>
+                    <p class="mt-1 text-sm text-danger-600/80 dark:text-danger-400/80">
+                        Silakan atur penugasan dosen untuk kelas dan mata kuliah ini di menu <b>Dosen Pengampu</b> terlebih dahulu agar jadwal dapat dibuat.
+                    </p>
+                </div>
+            ')),
+
+                            // 2. REPEATER (Akan otomatis sembunyi jika dosennya kosong)
                             Repeater::make('dosenPengajars')
                                 ->relationship('dosenPengajars')
                                 ->label('')
-                                ->addable(false) // 1. MENGHILANGKAN TOMBOL "TAMBAH DOSEN"
-                                ->deletable(false) // 2. MENGHILANGKAN ICON TRASH (HAPUS DOSEN)
-                                ->reorderable(false) // 3. MENGHILANGKAN ICON GESER BARIS
-                                ->hint(function (Get $get) {
-                                    $taId = $get('tahun_akademik_id');
-                                    $kelasId = $get('kelas_id');
-                                    $mkId = $get('mata_kuliah_id');
-
-                                    if ($taId && $kelasId && $mkId) {
-                                        $pengampuExist = \App\Models\DosenPengampu::where('tahun_akademik_id', $taId)
-                                            ->where('kelas_id', $kelasId)
-                                            ->where('mata_kuliah_id', $mkId)
-                                            ->exists();
-
-                                        if (!$pengampuExist) {
-                                            return new \Illuminate\Support\HtmlString('<span class="text-danger-600 font-bold">⚠️ Dosen Pengampu belum diatur! Silahkan atur di menu Dosen Pengampu terlebih dahulu.</span>');
-                                        }
-                                    }
-                                    return null;
-                                })
+                                ->visible(fn(Get $get) => !empty($get('dosenPengajars')))
+                                ->addable(false)
+                                ->deletable(false)
+                                ->reorderable(false)
                                 ->schema([
                                     Select::make('dosen_id')
                                         ->label('Nama Dosen')
@@ -383,21 +389,21 @@ class JadwalKuliahForm
                                                 ])
                                         )
                                         ->required()
-                                        ->disabled() // 4. KUNCI INPUTAN
-                                        ->dehydrated(), // 5. PASTIKAN DATA TETAP TER-SUBMIT KE DATABASE
+                                        ->disabled()
+                                        ->dehydrated(),
 
                                     Grid::make(2)
                                         ->schema([
                                             Toggle::make('is_koordinator')
                                                 ->label('Koordinator')
                                                 ->default(true)
-                                                ->disabled() // KUNCI INPUTAN
+                                                ->disabled()
                                                 ->dehydrated(),
 
                                             Toggle::make('is_penilai')
                                                 ->label('Penilai Nilai')
                                                 ->default(true)
-                                                ->disabled() // KUNCI INPUTAN
+                                                ->disabled()
                                                 ->dehydrated(),
                                         ]),
 
@@ -406,7 +412,7 @@ class JadwalKuliahForm
                                         ->required()
                                         ->numeric()
                                         ->default(16)
-                                        ->disabled() // KUNCI INPUTAN
+                                        ->disabled()
                                         ->dehydrated(),
                                 ])
                                 ->itemLabel(fn(array $state): ?string => 'Dosen Pengajar')
