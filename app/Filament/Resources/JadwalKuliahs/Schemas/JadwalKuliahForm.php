@@ -35,21 +35,10 @@ class JadwalKuliahForm
                 Group::make([
                     Section::make('Informasi Perkuliahan')
                         ->schema([
-                            Select::make('tahun_akademik_id')
-                                ->label('Tahun Akademik')
-                                ->relationship('tahunAkademik', 'nama_tahun')
-                                ->required()
-                                ->searchable()
-                                ->preload()
-                                ->live()
+                            \Filament\Forms\Components\Hidden::make('tahun_akademik_id')
                                 ->default(function () {
                                     return RefTahunAkademik::where('is_active', true)->first()?->id;
-                                })
-                                ->afterStateUpdated(function (Set $set) {
-                                    $set('mata_kuliah_id', null);
-                                    $set('dosenPengajars', []);
                                 }),
-
                             Select::make('kurikulum_id')
                                 ->label('Kurikulum')
                                 ->relationship('kurikulum', 'nama_kurikulum')
