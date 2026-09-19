@@ -84,9 +84,11 @@ class TagihanMahasiswasTable
             ->emptyStateIcon('heroicon-o-banknotes')
             ->recordActions([
                 ViewAction::make()
+                    ->button()
                     ->label('Rincian Biaya'),
 
                 Action::make('cetak-invoice')
+                    ->button()
                     ->label('Cetak Invoice')
                     ->icon('heroicon-o-printer')
                     ->color('success')
@@ -101,6 +103,7 @@ class TagihanMahasiswasTable
                     }),
 
                 Action::make('status_pending')
+                    ->button()
                     ->label('Sedang Diverifikasi')
                     ->icon('heroicon-o-clock')
                     ->color('gray')
@@ -117,6 +120,7 @@ class TagihanMahasiswasTable
                     ->closeModalByClickingAway(false),
 
                 Action::make('upload_bukti')
+                    ->button()
                     ->label('Konfirmasi Bayar')
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('primary')
