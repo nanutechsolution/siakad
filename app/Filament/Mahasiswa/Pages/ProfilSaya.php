@@ -6,6 +6,7 @@ use App\Enums\MahasiswaNavigationGroup;
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaBiodata;
 use App\Models\ProfileChangeRequest;
+use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Select;
@@ -25,20 +26,23 @@ use UnitEnum;
 
 class ProfilSaya extends Page implements HasForms
 {
-
     use InteractsWithForms;
+
     protected static string|UnitEnum|null $navigationGroup = MahasiswaNavigationGroup::PROFIL->value;
+
     protected static ?string $navigationLabel = 'Profil Saya';
+
     protected static ?string $title = 'Profil Saya';
+
     protected string $view = 'filament.mahasiswa.pages.profil-saya';
+
     public ?array $data = [];
 
     public Mahasiswa $mahasiswa;
 
     /**
-     * Field identitas resmi (bersumber dari ref_person) yang butuh
-     * verifikasi admin akademik sebelum benar-benar berubah,
-     * karena field ini dipakai untuk sinkron PDDikti Feeder.
+     * Field identitas resmi yang tidak langsung diubah.
+     * Perubahannya harus diperiksa Admin Akademik terlebih dahulu.
      */
     protected array $lockedIdentityFields = [
         'nama_lengkap',
@@ -50,13 +54,12 @@ class ProfilSaya extends Page implements HasForms
 
     public function mount(): void
     {
-        $user = Auth::user();
+        $this->loadMahasiswa();
 
-        $this->mahasiswa = Mahasiswa::with(['person', 'biodata', 'prodi'])
-            ->where('person_id', $user->person_id)
-            ->firstOrFail();
         $biodata = $this->mahasiswa->biodata
-            ?? MahasiswaBiodata::create(['mahasiswa_id' => $this->mahasiswa->id]);
+            ?? MahasiswaBiodata::create([
+                'mahasiswa_id' => $this->mahasiswa->id,
+            ]);
 
         $this->form->fill([
             'nim' => $this->mahasiswa->nim,
@@ -101,139 +104,469 @@ class ProfilSaya extends Page implements HasForms
         ]);
     }
 
-    public function form(Schema $form): Schema
+    protected function loadMahasiswa(): void
     {
-        $pendingFields = ProfileChangeRequest::query()
+        $user = Auth::user();
+
+        $this->mahasiswa = Mahasiswa::with([
+            'person',
+            'biodata',
+            'prodi',
+        ])
+            ->where('person_id', $user->person_id)
+            ->firstOrFail();
+    }
+
+    /**
+     * Field identitas yang sedang menunggu pemeriksaan.
+     */
+    protected function pendingIdentityFields(): array
+    {
+        return ProfileChangeRequest::query()
             ->where('mahasiswa_id', $this->mahasiswa->id)
             ->where('status', 'pending')
             ->pluck('field_name')
             ->toArray();
+    }
 
-        return $form->components([
-            Tabs::make('Profil')->tabs([
+    /**
+     * Apakah field tertentu sedang menunggu pemeriksaan?
+     */
+    protected function isPending(string $field): bool
+    {
+        return in_array($field, $this->pendingIdentityFields(), true);
+    }
 
-                Tab::make('Akademik')
-                    ->icon('heroicon-o-academic-cap')
-                    ->schema([
-                        TextEntry::make('nim')
-                            ->label('NIM')
-                            ->state(fn() => $this->mahasiswa->nim),
-                        TextEntry::make('prodi')
-                            ->label('Program Studi')
-                            ->state(fn() => $this->mahasiswa->prodi->nama_prodi ?? '-'),
-                        TextEntry::make('angkatan')
-                            ->label('Angkatan')
-                            ->state(fn() => (string) $this->mahasiswa->angkatan_id),
-                    ]),
-                Tab::make('Identitas')
-                    ->icon('heroicon-o-identification')
-                    ->schema([
-                        TextEntry::make('info_identitas')
-                            ->label('')
-                            ->state('Perubahan pada field di bawah ini akan diajukan sebagai permintaan dan baru aktif setelah diverifikasi oleh admin akademik.'),
+    /**
+     * Jumlah field identitas yang sedang diperiksa.
+     */
+    public function getPendingIdentityCountProperty(): int
+    {
+        return count($this->pendingIdentityFields());
+    }
 
-                        TextInput::make('nama_lengkap')
-                            ->label('Nama Lengkap')
-                            ->disabled(in_array('nama_lengkap', $pendingFields))
-                            ->helperText(in_array('nama_lengkap', $pendingFields) ? '⏳ Menunggu verifikasi admin' : null),
+    /**
+     * Persentase kelengkapan profil.
+     *
+     * Ini hanya indikator UX, bukan validasi akademik.
+     */
+    public function getProfileCompletionProperty(): int
+    {
+        $person = $this->mahasiswa->person;
+        $biodata = $this->mahasiswa->biodata;
 
-                        TextInput::make('nik')
-                            ->label('NIK')
-                            ->disabled(in_array('nik', $pendingFields))
-                            ->helperText(in_array('nik', $pendingFields) ? '⏳ Menunggu verifikasi admin' : null),
+        $fields = [
+            $person?->nama_lengkap,
+            $person?->nik,
+            $person?->tanggal_lahir,
+            $person?->tempat_lahir,
+            $person?->jenis_kelamin,
+            $person?->email,
+            $person?->no_hp,
+            $person?->photo_path,
 
-                        DatePicker::make('tanggal_lahir')
-                            ->label('Tanggal Lahir')
-                            ->disabled(in_array('tanggal_lahir', $pendingFields)),
+            $biodata?->alamat_ktp,
+            $biodata?->alamat_domisili,
+            $biodata?->kode_pos,
+            $biodata?->agama,
+            $biodata?->status_pernikahan,
 
-                        TextInput::make('tempat_lahir')
-                            ->label('Tempat Lahir')
-                            ->disabled(in_array('tempat_lahir', $pendingFields)),
+            $biodata?->nama_ayah,
+            $biodata?->pendidikan_ayah,
+            $biodata?->pekerjaan_ayah,
 
-                        Select::make('jenis_kelamin')
-                            ->label('Jenis Kelamin')
-                            ->options(['L' => 'Laki-laki', 'P' => 'Perempuan'])
-                            ->disabled(in_array('jenis_kelamin', $pendingFields)),
-                    ]),
+            $biodata?->nama_ibu,
+            $biodata?->pendidikan_ibu,
+            $biodata?->pekerjaan_ibu,
+        ];
 
-                Tab::make('Kontak')
-                    ->icon('heroicon-o-phone')
-                    ->schema([
-                        TextInput::make('email')->email()->required(),
-                        TextInput::make('no_hp')->tel()->required(),
-                        FileUpload::make('photo_path')
-                            ->image()
-                            ->disk('public')
-                            ->directory('mahasiswa/foto')
-                            ->label('Foto Profil'),
-                    ]),
+        $total = count($fields);
 
-                Tab::make('Alamat')
-                    ->icon('heroicon-o-map-pin')
-                    ->schema([
-                        Textarea::make('alamat_ktp')->label('Alamat Sesuai KTP')->rows(2),
-                        Textarea::make('alamat_domisili')->label('Alamat Domisili Saat Ini')->rows(2),
-                        TextInput::make('kode_pos')->label('Kode Pos'),
-                    ]),
+        if ($total === 0) {
+            return 0;
+        }
 
-                Tab::make('Orang Tua / Wali')
-                    ->icon('heroicon-o-users')
-                    ->schema([
-                        Section::make('Data Ayah')->columns(2)->schema([
-                            TextInput::make('nama_ayah')->label('Nama Ayah'),
-                            TextInput::make('nik_ayah')->label('NIK Ayah'),
-                            Select::make('pendidikan_ayah')->label('Pendidikan Ayah')->options($this->opsiPendidikan()),
-                            TextInput::make('pekerjaan_ayah')->label('Pekerjaan Ayah'),
-                            Select::make('penghasilan_ayah')->label('Penghasilan Ayah')->options($this->opsiPenghasilan()),
-                        ]),
+        $filled = collect($fields)
+            ->filter(fn($value) => filled($value))
+            ->count();
 
-                        Section::make('Data Ibu')->columns(2)->schema([
-                            TextInput::make('nama_ibu')->label('Nama Ibu'),
-                            TextInput::make('nik_ibu')->label('NIK Ibu'),
-                            Select::make('pendidikan_ibu')->label('Pendidikan Ibu')->options($this->opsiPendidikan()),
-                            TextInput::make('pekerjaan_ibu')->label('Pekerjaan Ibu'),
-                            Select::make('penghasilan_ibu')->label('Penghasilan Ibu')->options($this->opsiPenghasilan()),
-                        ]),
+        return (int) round(($filled / $total) * 100);
+    }
 
-                        Section::make('Data Wali (jika ada)')->columns(2)->schema([
-                            TextInput::make('nama_wali')->label('Nama Wali'),
-                            TextInput::make('hubungan_wali')->label('Hubungan dengan Mahasiswa'),
-                            TextInput::make('pekerjaan_wali')->label('Pekerjaan Wali'),
-                            TextInput::make('no_hp_wali')->label('No. HP Wali'),
-                        ]),
+    public function form(Schema $form): Schema
+    {
+        $pendingFields = $this->pendingIdentityFields();
 
-                        Section::make('Data Tambahan')->columns(2)->schema([
-                            Select::make('agama')->options([
-                                'ISLAM' => 'Islam',
-                                'KRISTEN' => 'Kristen',
-                                'KATOLIK' => 'Katolik',
-                                'HINDU' => 'Hindu',
-                                'BUDDHA' => 'Buddha',
-                                'KHONGHUCU' => 'Khonghucu',
+        return $form
+            ->components([
+
+                Tabs::make('Profil')
+                    ->contained(false)
+                    ->persistTab()
+                    ->tabs([
+
+                        /*
+                         * =====================================================
+                         * AKADEMIK
+                         * =====================================================
+                         */
+                        Tab::make('Akademik')
+                            ->icon('heroicon-o-academic-cap')
+                            ->schema([
+                                Section::make('Informasi Akademik')
+                                    ->description('Data akademik utama Anda.')
+                                    ->icon('heroicon-o-academic-cap')
+                                    ->schema([
+                                        TextEntry::make('nim')
+                                            ->label('NIM')
+                                            ->state(fn() => $this->mahasiswa->nim)
+                                            ->copyable(),
+
+                                        TextEntry::make('prodi')
+                                            ->label('Program Studi')
+                                            ->state(fn() => $this->mahasiswa->prodi->nama_prodi ?? '-'),
+
+                                        TextEntry::make('angkatan')
+                                            ->label('Angkatan')
+                                            ->state(fn() => (string) $this->mahasiswa->angkatan_id),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'sm' => 2,
+                                    ]),
                             ]),
-                            Select::make('status_pernikahan')->options([
-                                'BELUM_KAWIN' => 'Belum Kawin',
-                                'KAWIN' => 'Kawin',
+
+                        /*
+                         * =====================================================
+                         * IDENTITAS
+                         * =====================================================
+                         */
+                        Tab::make('Identitas')
+                            ->icon('heroicon-o-identification')
+                            ->schema([
+                                Section::make('Identitas Diri')
+                                    ->description('Data identitas resmi perlu diperiksa sebelum perubahan diterapkan.')
+                                    ->icon('heroicon-o-identification')
+                                    ->schema([
+                                        TextEntry::make('info_identitas')
+                                            ->hiddenLabel()
+                                            ->state(
+                                                $this->pendingIdentityCount > 0
+                                                    ? 'Ada perubahan identitas yang sedang diperiksa Admin Akademik.'
+                                                    : 'Jika ada data identitas yang salah, Anda dapat mengajukan perubahan. Perubahan akan diperiksa Admin Akademik terlebih dahulu.'
+                                            )
+                                            ->color(
+                                                $this->pendingIdentityCount > 0
+                                                    ? 'warning'
+                                                    : 'gray'
+                                            ),
+
+                                        TextInput::make('nama_lengkap')
+                                            ->label('Nama Lengkap')
+                                            ->disabled(in_array('nama_lengkap', $pendingFields, true))
+                                            ->helperText(
+                                                in_array('nama_lengkap', $pendingFields, true)
+                                                    ? 'Menunggu pemeriksaan Admin Akademik.'
+                                                    : 'Perubahan akan diperiksa terlebih dahulu.'
+                                            ),
+
+                                        TextInput::make('nik')
+                                            ->label('NIK')
+                                            ->disabled(in_array('nik', $pendingFields, true))
+                                            ->helperText(
+                                                in_array('nik', $pendingFields, true)
+                                                    ? 'Menunggu pemeriksaan Admin Akademik.'
+                                                    : 'Perubahan akan diperiksa terlebih dahulu.'
+                                            )
+                                            ->maxLength(16),
+
+                                        DatePicker::make('tanggal_lahir')
+                                            ->label('Tanggal Lahir')
+                                            ->native(false)
+                                            ->displayFormat('d F Y')
+                                            ->disabled(in_array('tanggal_lahir', $pendingFields, true))
+                                            ->helperText(
+                                                in_array('tanggal_lahir', $pendingFields, true)
+                                                    ? 'Menunggu pemeriksaan Admin Akademik.'
+                                                    : 'Perubahan akan diperiksa terlebih dahulu.'
+                                            ),
+
+                                        TextInput::make('tempat_lahir')
+                                            ->label('Tempat Lahir')
+                                            ->disabled(in_array('tempat_lahir', $pendingFields, true))
+                                            ->helperText(
+                                                in_array('tempat_lahir', $pendingFields, true)
+                                                    ? 'Menunggu pemeriksaan Admin Akademik.'
+                                                    : 'Perubahan akan diperiksa terlebih dahulu.'
+                                            ),
+
+                                        Select::make('jenis_kelamin')
+                                            ->label('Jenis Kelamin')
+                                            ->options([
+                                                'L' => 'Laki-laki',
+                                                'P' => 'Perempuan',
+                                            ])
+                                            ->native(false)
+                                            ->disabled(in_array('jenis_kelamin', $pendingFields, true))
+                                            ->helperText(
+                                                in_array('jenis_kelamin', $pendingFields, true)
+                                                    ? 'Menunggu pemeriksaan Admin Akademik.'
+                                                    : 'Perubahan akan diperiksa terlebih dahulu.'
+                                            ),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]),
                             ]),
-                            TextInput::make('anak_ke')->numeric()->label('Anak Ke-'),
-                            TextInput::make('jumlah_saudara')->numeric(),
-                            TextInput::make('no_kip')->label('No. KIP (jika ada)'),
-                        ]),
+
+                        /*
+                         * =====================================================
+                         * KONTAK
+                         * =====================================================
+                         */
+                        Tab::make('Kontak')
+                            ->icon('heroicon-o-phone')
+                            ->schema([
+                                Section::make('Kontak & Foto')
+                                    ->description('Pastikan nomor HP dan email masih aktif.')
+                                    ->icon('heroicon-o-phone')
+                                    ->schema([
+                                        TextInput::make('email')
+                                            ->label('Email')
+                                            ->email()
+                                            ->required()
+                                            ->autocomplete('email'),
+
+                                        TextInput::make('no_hp')
+                                            ->label('Nomor HP')
+                                            ->tel()
+                                            ->required()
+                                            ->autocomplete('tel')
+                                            ->placeholder('Contoh: 081234567890'),
+
+                                        FileUpload::make('photo_path')
+                                            ->image()
+                                            ->imageEditor()
+                                            ->disk('public')
+                                            ->directory('mahasiswa/foto')
+                                            ->visibility('public')
+                                            ->label('Foto Profil')
+                                            ->helperText('Gunakan foto yang jelas. JPG/PNG disarankan.')
+                                            ->maxSize(2048),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]),
+                            ]),
+
+                        /*
+                         * =====================================================
+                         * ALAMAT
+                         * =====================================================
+                         */
+                        Tab::make('Alamat')
+                            ->icon('heroicon-o-map-pin')
+                            ->schema([
+                                Section::make('Alamat')
+                                    ->description('Lengkapi alamat sesuai kondisi Anda saat ini.')
+                                    ->icon('heroicon-o-map-pin')
+                                    ->schema([
+                                        Textarea::make('alamat_ktp')
+                                            ->label('Alamat Sesuai KTP')
+                                            ->rows(3)
+                                            ->autosize()
+                                            ->placeholder('Masukkan alamat lengkap sesuai KTP.'),
+
+                                        Textarea::make('alamat_domisili')
+                                            ->label('Alamat Domisili Saat Ini')
+                                            ->rows(3)
+                                            ->autosize()
+                                            ->placeholder('Masukkan tempat tinggal Anda saat ini.'),
+
+                                        TextInput::make('kode_pos')
+                                            ->label('Kode Pos')
+                                            ->numeric()
+                                            ->maxLength(5)
+                                            ->placeholder('Contoh: 87211'),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]),
+                            ]),
+
+                        /*
+                         * =====================================================
+                         * KELUARGA
+                         * =====================================================
+                         */
+                        Tab::make('Keluarga')
+                            ->icon('heroicon-o-users')
+                            ->schema([
+                                Section::make('Data Ayah')
+                                    ->icon('heroicon-o-user')
+                                    ->collapsible()
+                                    ->collapsed(false)
+                                    ->schema([
+                                        TextInput::make('nama_ayah')
+                                            ->label('Nama Ayah'),
+
+                                        TextInput::make('nik_ayah')
+                                            ->label('NIK Ayah')
+                                            ->maxLength(16),
+
+                                        Select::make('pendidikan_ayah')
+                                            ->label('Pendidikan Ayah')
+                                            ->options($this->opsiPendidikan())
+                                            ->native(false),
+
+                                        TextInput::make('pekerjaan_ayah')
+                                            ->label('Pekerjaan Ayah'),
+
+                                        Select::make('penghasilan_ayah')
+                                            ->label('Penghasilan Ayah')
+                                            ->options($this->opsiPenghasilan())
+                                            ->native(false),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]),
+
+                                Section::make('Data Ibu')
+                                    ->icon('heroicon-o-user')
+                                    ->collapsible()
+                                    ->collapsed(false)
+                                    ->schema([
+                                        TextInput::make('nama_ibu')
+                                            ->label('Nama Ibu'),
+
+                                        TextInput::make('nik_ibu')
+                                            ->label('NIK Ibu')
+                                            ->maxLength(16),
+
+                                        Select::make('pendidikan_ibu')
+                                            ->label('Pendidikan Ibu')
+                                            ->options($this->opsiPendidikan())
+                                            ->native(false),
+
+                                        TextInput::make('pekerjaan_ibu')
+                                            ->label('Pekerjaan Ibu'),
+
+                                        Select::make('penghasilan_ibu')
+                                            ->label('Penghasilan Ibu')
+                                            ->options($this->opsiPenghasilan())
+                                            ->native(false),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]),
+
+                                Section::make('Data Wali')
+                                    ->description('Isi jika Anda memiliki wali.')
+                                    ->icon('heroicon-o-user-group')
+                                    ->collapsible()
+                                    ->collapsed(true)
+                                    ->schema([
+                                        TextInput::make('nama_wali')
+                                            ->label('Nama Wali'),
+
+                                        TextInput::make('hubungan_wali')
+                                            ->label('Hubungan dengan Mahasiswa')
+                                            ->placeholder('Contoh: Paman, Bibi, Kakak'),
+
+                                        TextInput::make('pekerjaan_wali')
+                                            ->label('Pekerjaan Wali'),
+
+                                        TextInput::make('no_hp_wali')
+                                            ->label('Nomor HP Wali')
+                                            ->tel(),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'md' => 2,
+                                    ]),
+
+                                Section::make('Data Tambahan')
+                                    ->icon('heroicon-o-information-circle')
+                                    ->collapsible()
+                                    ->collapsed(true)
+                                    ->schema([
+                                        Select::make('agama')
+                                            ->label('Agama')
+                                            ->options([
+                                                'ISLAM' => 'Islam',
+                                                'KRISTEN' => 'Kristen',
+                                                'KATOLIK' => 'Katolik',
+                                                'HINDU' => 'Hindu',
+                                                'BUDDHA' => 'Buddha',
+                                                'KHONGHUCU' => 'Khonghucu',
+                                            ])
+                                            ->native(false),
+
+                                        Select::make('status_pernikahan')
+                                            ->label('Status Pernikahan')
+                                            ->options([
+                                                'BELUM_KAWIN' => 'Belum Kawin',
+                                                'KAWIN' => 'Kawin',
+                                            ])
+                                            ->native(false),
+
+                                        TextInput::make('anak_ke')
+                                            ->label('Anak Ke-')
+                                            ->numeric()
+                                            ->minValue(1),
+
+                                        TextInput::make('jumlah_saudara')
+                                            ->label('Jumlah Saudara')
+                                            ->numeric()
+                                            ->minValue(0),
+
+                                        TextInput::make('no_kip')
+                                            ->label('Nomor KIP')
+                                            ->helperText('Kosongkan jika tidak memiliki KIP.'),
+                                    ])
+                                    ->columns([
+                                        'default' => 1,
+                                        'sm' => 2,
+                                    ]),
+                            ]),
                     ]),
-            ]),
-        ])->statePath('data');
+            ])
+            ->statePath('data');
     }
 
     public function save(): void
     {
         $state = $this->form->getState();
+
         $person = $this->mahasiswa->person;
         $biodata = $this->mahasiswa->biodata;
 
-        // 1. Field identitas resmi -> ajukan sebagai change request, TIDAK langsung update
+        /*
+         * ============================================================
+         * 1. IDENTITAS RESMI
+         * ============================================================
+         *
+         * Tidak langsung diubah.
+         * Dibuat sebagai ProfileChangeRequest.
+         */
         foreach ($this->lockedIdentityFields as $field) {
             $newValue = $state[$field] ?? null;
             $oldValue = $person->{$field};
+
+            if ($field === 'tanggal_lahir') {
+                $newValue = filled($newValue)
+                    ? Carbon::parse($newValue)->format('Y-m-d')
+                    : null;
+
+                $oldValue = filled($oldValue)
+                    ? Carbon::parse($oldValue)->format('Y-m-d')
+                    : null;
+            }
 
             if ((string) $newValue !== (string) $oldValue) {
                 $alreadyPending = ProfileChangeRequest::query()
@@ -254,44 +587,67 @@ class ProfilSaya extends Page implements HasForms
             }
         }
 
-        // 2. Field kontak & foto -> boleh langsung update
+        /*
+         * ============================================================
+         * 2. DATA KONTAK
+         * ============================================================
+         */
         $person->update([
-            'email' => $state['email'],
-            'no_hp' => $state['no_hp'],
+            'email' => $state['email'] ?? null,
+            'no_hp' => $state['no_hp'] ?? null,
             'photo_path' => $state['photo_path'] ?? $person->photo_path,
         ]);
 
-        // 3. Data ortu/wali/alamat -> boleh langsung update
-        $biodata->update(collect($state)->only([
-            'alamat_ktp',
-            'alamat_domisili',
-            'kode_pos',
-            'agama',
-            'status_pernikahan',
-            'anak_ke',
-            'jumlah_saudara',
-            'no_kip',
-            'nama_ayah',
-            'nik_ayah',
-            'pendidikan_ayah',
-            'pekerjaan_ayah',
-            'penghasilan_ayah',
-            'nama_ibu',
-            'nik_ibu',
-            'pendidikan_ibu',
-            'pekerjaan_ibu',
-            'penghasilan_ibu',
-            'nama_wali',
-            'hubungan_wali',
-            'pekerjaan_wali',
-            'no_hp_wali',
-        ])->toArray());
+        /*
+         * ============================================================
+         * 3. DATA BIODATA
+         * ============================================================
+         */
+        $biodata->update(
+            collect($state)
+                ->only([
+                    'alamat_ktp',
+                    'alamat_domisili',
+                    'kode_pos',
+                    'agama',
+                    'status_pernikahan',
+                    'anak_ke',
+                    'jumlah_saudara',
+                    'no_kip',
+
+                    'nama_ayah',
+                    'nik_ayah',
+                    'pendidikan_ayah',
+                    'pekerjaan_ayah',
+                    'penghasilan_ayah',
+
+                    'nama_ibu',
+                    'nik_ibu',
+                    'pendidikan_ibu',
+                    'pekerjaan_ibu',
+                    'penghasilan_ibu',
+
+                    'nama_wali',
+                    'hubungan_wali',
+                    'pekerjaan_wali',
+                    'no_hp_wali',
+                ])
+                ->toArray()
+        );
+
+        $pendingCount = $this->pendingIdentityCount;
 
         Notification::make()
-            ->title('Profil berhasil diperbarui')
-            ->body('Data kontak, alamat, dan keluarga langsung tersimpan. Perubahan identitas (jika ada) menunggu verifikasi admin akademik.')
+            ->title('Profil berhasil disimpan')
+            ->body(
+                $pendingCount > 0
+                    ? "Data profil Anda sudah disimpan. {$pendingCount} perubahan identitas sedang menunggu pemeriksaan Admin Akademik."
+                    : 'Data profil Anda sudah berhasil diperbarui.'
+            )
             ->success()
             ->send();
+
+        $this->loadMahasiswa();
 
         $this->mount();
     }
