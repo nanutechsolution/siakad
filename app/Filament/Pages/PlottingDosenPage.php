@@ -36,8 +36,6 @@ class PlottingDosenPage extends Page implements HasTable
     protected static ?string $cluster = MatakuliahCluster::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Plotting Dosen';
-    protected static string|\UnitEnum|null $navigationGroup = NavigationGroup::PERKULIAHAN->value;
-
     protected static ?string $title = 'Plotting Dosen Pengampu';
     protected string $view = 'filament.pages.plotting-dosen-page';
 
