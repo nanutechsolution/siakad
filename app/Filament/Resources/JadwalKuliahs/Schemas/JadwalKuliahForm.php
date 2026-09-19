@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\JadwalKuliahs\Schemas;
 
+use App\Models\DosenPengampu;
 use App\Models\JadwalKuliah;
 use App\Models\Kelas;
 use App\Models\RefTahunAkademik;
@@ -22,6 +23,7 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Utilities\Set;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\HtmlString;
+use Illuminate\Support\Str;
 
 class JadwalKuliahForm
 {
@@ -44,6 +46,7 @@ class JadwalKuliahForm
                                 })
                                 ->afterStateUpdated(function (Set $set) {
                                     $set('mata_kuliah_id', null);
+                                    $set('dosenPengajars', []);
                                 }),
 
                             Select::make('kurikulum_id')
@@ -52,11 +55,11 @@ class JadwalKuliahForm
                                 ->required()
                                 ->searchable()
                                 ->preload()
-                                ->live() // Menjadikan kolom ini reaktif saat nilainya berubah
+                                ->live()
                                 ->afterStateUpdated(function (Set $set) {
-                                    // Ketika kurikulum diganti, kosongkan pilihan mata kuliah & kelas sebelumnya
                                     $set('mata_kuliah_id', null);
                                     $set('kelas_id', null);
+                                    $set('dosenPengajars', []);
                                 }),
 
                             Select::make('kelas_id')
@@ -177,7 +180,38 @@ class JadwalKuliahForm
                                     }
 
                                     return "Menampilkan mata kuliah Semester {$semester} sesuai paket kurikulum kelas ini.";
-                                }),
+                                })
+                                ->afterStateUpdated(function (Set $set, Get $get, $state) {
+                                    $taId = $get('tahun_akademik_id');
+                                    $kelasId = $get('kelas_id');
+                                    $mkId = $state;
+
+                                    if ($taId && $kelasId && $mkId) {
+                                        $pengampu = DosenPengampu::where('tahun_akademik_id', $taId)
+                                            ->where('kelas_id', $kelasId)
+                                            ->where('mata_kuliah_id', $mkId)
+                                            ->get();
+
+                                        if ($pengampu->isNotEmpty()) {
+                                            $repeaterData = [];
+                                            foreach ($pengampu as $dp) {
+                                                // Gunakan UUID string agar UI Repeater tidak bentrok datanya
+                                                $repeaterData[(string) Str::uuid()] = [
+                                                    'dosen_id' => $dp->dosen_id,
+                                                    'is_koordinator' => (bool) $dp->is_koordinator,
+                                                    'is_penilai' => true,
+                                                    'rencana_tatap_muka' => 16,
+                                                ];
+                                            }
+                                            $set('dosenPengajars', $repeaterData);
+                                        } else {
+                                            $set('dosenPengajars', []);
+                                        }
+                                    } else {
+                                        $set('dosenPengajars', []);
+                                    }
+                                })
+
                         ])->columnSpanFull(),
 
                     Section::make('Waktu & Tempat')
@@ -311,6 +345,23 @@ class JadwalKuliahForm
                             Repeater::make('dosenPengajars')
                                 ->relationship('dosenPengajars')
                                 ->label('')
+                                ->hint(function (Get $get) {
+                                    $taId = $get('tahun_akademik_id');
+                                    $kelasId = $get('kelas_id');
+                                    $mkId = $get('mata_kuliah_id');
+
+                                    if ($taId && $kelasId && $mkId) {
+                                        $pengampuExist = DosenPengampu::where('tahun_akademik_id', $taId)
+                                            ->where('kelas_id', $kelasId)
+                                            ->where('mata_kuliah_id', $mkId)
+                                            ->exists();
+
+                                        if (!$pengampuExist) {
+                                            return new HtmlString('<span class="text-danger-600 font-bold">⚠️ Dosen Pengampu belum ada! Silahkan atur di menu Dosen Pengampu terlebih dahulu, atau isi manual di bawah.</span>');
+                                        }
+                                    }
+                                    return null;
+                                })
                                 ->schema([
                                     Select::make('dosen_id')
                                         ->label('Nama Dosen')
