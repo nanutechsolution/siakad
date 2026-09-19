@@ -25,10 +25,6 @@ class MasterKurikulumResource extends Resource
     protected static ?string $recordTitleAttribute = 'nama_kurikulum';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
     protected static ?int $navigationSort = 3;
-    public static function getNavigationGroup(): ?string
-    {
-        return NavigationGroup::MASTER->value;
-    }
     public static function getPluralLabel(): ?string
     {
         return 'Data Kurikulum';
