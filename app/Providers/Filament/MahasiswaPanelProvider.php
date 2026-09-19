@@ -48,12 +48,12 @@ class MahasiswaPanelProvider extends PanelProvider
             )
             ->topNavigation()
             ->profile()
-            ->userMenuItems([
-                Action::make("Profil-Saya")
-                    ->label('Biodata')
-                    ->url('/mahasiswa/profil-saya')
-                    ->icon('heroicon-o-user-circle'),
-            ])
+            // ->userMenuItems([
+            //     Action::make("Profil-Saya")
+            //         ->label('Biodata')
+            //         ->url('/mahasiswa/profil-saya')
+            //         ->icon('heroicon-o-user-circle'),
+            // ])
 
             ->font('Instrument Sans')
             ->viteTheme('resources/css/filament/mahasiswa/theme.css')
