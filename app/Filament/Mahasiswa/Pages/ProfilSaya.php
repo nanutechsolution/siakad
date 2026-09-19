@@ -30,7 +30,7 @@ class ProfilSaya extends Page implements HasForms
 
     protected static ?string $title = 'Profil Saya';
 
-    protected static string $view = 'filament.mahasiswa.pages.profil-saya';
+    protected  string $view = 'filament.mahasiswa.pages.profil-saya';
 
     protected static ?string $slug = 'profil-saya';
 
