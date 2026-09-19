@@ -3,12 +3,12 @@
 namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Clusters\Matakuliah\MatakuliahCluster;
 use App\Models\Kelas;
 use App\Models\DosenPengampu;
 use App\Models\KurikulumMataKuliah;
 use App\Models\Mahasiswa;
 use App\Models\MasterKurikulum;
-use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
@@ -18,7 +18,6 @@ use Filament\Forms\Components\Select;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Utilities\Get;
-use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Concerns\InteractsWithTable;
 use Filament\Tables\Contracts\HasTable;
@@ -34,6 +33,7 @@ class PlottingDosenPage extends Page implements HasTable
     use InteractsWithTable;
     use HasPageShield;
 
+    protected static ?string $cluster = MatakuliahCluster::class;
     protected static string|\BackedEnum|null $navigationIcon = 'heroicon-o-users';
     protected static ?string $navigationLabel = 'Plotting Dosen';
     protected static string|\UnitEnum|null $navigationGroup = NavigationGroup::PERKULIAHAN->value;
