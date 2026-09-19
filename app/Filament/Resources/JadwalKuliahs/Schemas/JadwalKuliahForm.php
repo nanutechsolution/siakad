@@ -373,7 +373,7 @@ class JadwalKuliahForm
                             // 2. REPEATER (Akan otomatis sembunyi jika dosennya kosong)
                             Repeater::make('dosenPengajars')
                                 ->relationship('dosenPengajars')
-                                ->label('')
+                                ->hiddenLabel()
                                 ->visible(fn(Get $get) => !empty($get('dosenPengajars')))
                                 ->addable(false)
                                 ->deletable(false)
