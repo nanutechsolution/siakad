@@ -24,8 +24,8 @@ final readonly class PembayaranIntakeData
         public string $idempotencyKey,
         public ?string $buktiBayarPath = null,
         public ?string $keteranganPengirim = null,
-        // Tambahan: Properti untuk menampung ID Bank Kampus
         public ?int $bankKampusId = null,
+        public ?string $fileHash = null,
     ) {}
 
     public static function make(
@@ -38,29 +38,37 @@ final readonly class PembayaranIntakeData
         ?string $buktiBayarPath = null,
         ?string $keteranganPengirim = null,
         ?int $bankKampusId = null,
+        ?string $fileHash = null,
     ): self {
         return new self(
             tagihanId: $tagihanId,
             tagihanType: $tagihanType,
-            // Format aman untuk database tipe DECIMAL(19,2)
             nominalBayar: number_format((float) $nominalBayar, 2, '.', ''),
             tanggalBayar: $tanggalBayar,
             metodePembayaran: $metodePembayaran,
-            idempotencyKey: $idempotencyKey ?? self::generateIdempotencyKey($metodePembayaran),
+            idempotencyKey: $idempotencyKey
+                ?? self::generateIdempotencyKey($metodePembayaran),
             buktiBayarPath: $buktiBayarPath,
             keteranganPengirim: $keteranganPengirim,
             bankKampusId: $bankKampusId,
+            fileHash: $fileHash,
         );
     }
 
     /**
      * Dipakai untuk channel yang tidak punya transaction_id eksternal
-     * (Admin manual, Mahasiswa upload manual). Channel webhook (VA, QRIS,
-     * Midtrans, Xendit) WAJIB mengirim idempotencyKey dari transaction_id
-     * gateway masing-masing, jangan pakai default ini.
+     * (Admin manual, Mahasiswa upload manual).
+     *
+     * Channel webhook (VA, QRIS, Midtrans, Xendit) WAJIB mengirim
+     * idempotencyKey dari transaction_id gateway masing-masing.
      */
-    private static function generateIdempotencyKey(MetodePembayaran $metodePembayaran): string
-    {
-        return sprintf('%s-%s', $metodePembayaran->value, (string) Str::ulid());
+    private static function generateIdempotencyKey(
+        MetodePembayaran $metodePembayaran
+    ): string {
+        return sprintf(
+            '%s-%s',
+            $metodePembayaran->value,
+            (string) Str::ulid()
+        );
     }
 }

@@ -125,7 +125,6 @@ class TagihanMahasiswasTable
                     ->icon('heroicon-o-arrow-up-tray')
                     ->color('primary')
                     ->modalWidth('2xl')
-                    // MENCEGAH MODAL TERTUTUP SAAT KLIK DI LUAR MODAL (BACKDROP)
                     ->closeModalByClickingAway(false)
                     ->visible(function ($record) {
                         $isLunas = $record->status_bayar === 'LUNAS';

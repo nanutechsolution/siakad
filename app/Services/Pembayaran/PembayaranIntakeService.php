@@ -47,6 +47,7 @@ class PembayaranIntakeService
             'tanggal_bayar'        => $data->tanggalBayar,
             'metode_pembayaran'    => $data->metodePembayaran,
             'bukti_bayar_path'     => $data->buktiBayarPath,
+            'file_hash'            => $data->fileHash,
             'keterangan_pengirim'  => $data->keteranganPengirim,
             'bank_kampus_id'       => $data->bankKampusId,
             'status_verifikasi_id' => StatusVerifikasiPembayaran::PENDING,
