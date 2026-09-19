@@ -27,6 +27,7 @@ class DosenPengampuResource extends Resource
     protected static ?string $pluralModelLabel = 'Dosen Pengampu';
     protected static string|\UnitEnum|null $navigationGroup =  NavigationGroup::PERKULIAHAN->value;
     protected static ?int $navigationSort = 30;
+    protected static bool $shouldRegisterNavigation = false;
     public static function form(Schema $schema): Schema
     {
         return DosenPengampuForm::configure($schema);
