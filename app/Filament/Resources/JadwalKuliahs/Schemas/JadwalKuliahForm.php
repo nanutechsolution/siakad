@@ -18,6 +18,7 @@ use Filament\Schemas\Components\Section;
 use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
 use Closure;
+use Filament\Forms\Components\Hidden;
 use Filament\Infolists\Components\TextEntry;
 
 use Filament\Schemas\Components\Utilities\Set;
@@ -201,6 +202,7 @@ class JadwalKuliahForm
                                                     'is_koordinator' => (bool) $dp->is_koordinator,
                                                     'is_penilai' => true,
                                                     'rencana_tatap_muka' => 16,
+                                                    'is_readonly' => true,
                                                 ];
                                             }
                                             $set('dosenPengajars', $repeaterData);
@@ -342,6 +344,8 @@ class JadwalKuliahForm
                     Section::make('Dosen Pengampu')
                         ->description('Daftar dosen yang mengajar di kelas ini.')
                         ->schema([
+                            Hidden::make('is_readonly')
+                                ->default(false),
                             Repeater::make('dosenPengajars')
                                 ->relationship('dosenPengajars')
                                 ->label('')
@@ -375,7 +379,9 @@ class JadwalKuliahForm
                                         ->required()
                                         ->searchable()
                                         ->preload()
-                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems(),
+                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
+                                        ->disabled(fn(Get $get) => $get('is_readonly') === true)
+                                        ->dehydrated(),
 
                                     Grid::make(2)
                                         ->schema([
