@@ -41,8 +41,11 @@ class JadwalKuliahsTable
                 Group::make('hari')
                     ->label('Jadwal Hari')
                     ->collapsible()
-                    ->titlePrefixedWithLabel(false), // Menghilangkan tulisan kaku "Jadwal Hari:" di header
+                    ->orderQueryUsing(fn(Builder $query, string $direction) => $query->orderByRaw(
+                        "FIELD(hari, 'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu') $direction"
+                    ))
             ])
+            ->groupingSettingsHidden()
             ->defaultGroup('hari') // Otomatis aktif saat halaman dibuka
             ->columns([
                 // 1. INFO MATA KULIAH & KELAS (Digabung agar layar tidak penuh)
