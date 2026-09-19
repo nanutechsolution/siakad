@@ -35,11 +35,11 @@ class MahasiswaPanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->login(LoginMahasiswa::class)
             ->colors([
-                'primary' => Color::hex('#D9A441'),
+                'primary' => Color::hex('#243B7A'),
                 'info'    => Color::hex('#2C3F8C'),
-                'success' => Color::hex('#22B573'),
-                'danger'  => Color::hex('#E5484D'),
-                'warning' => Color::hex('#F5A524'),
+                'success' => Color::hex('#16A34A'),
+                'danger'  => Color::hex('#DC2626'),
+                'warning' => Color::hex('#D9A441'),
                 'gray'    => Color::Slate,
             ])
             ->renderHook(
