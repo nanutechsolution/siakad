@@ -342,26 +342,27 @@ class JadwalKuliahForm
                         ]),
 
                     Section::make('Dosen Pengampu')
-                        ->description('Daftar dosen yang mengajar di kelas ini.')
+                        ->description('Daftar dosen ditarik otomatis dari pengaturan Dosen Pengampu dan tidak dapat diubah di sini.')
                         ->schema([
-                            Hidden::make('is_readonly')
-                                ->default(false),
                             Repeater::make('dosenPengajars')
                                 ->relationship('dosenPengajars')
                                 ->label('')
+                                ->addable(false) // 1. MENGHILANGKAN TOMBOL "TAMBAH DOSEN"
+                                ->deletable(false) // 2. MENGHILANGKAN ICON TRASH (HAPUS DOSEN)
+                                ->reorderable(false) // 3. MENGHILANGKAN ICON GESER BARIS
                                 ->hint(function (Get $get) {
                                     $taId = $get('tahun_akademik_id');
                                     $kelasId = $get('kelas_id');
                                     $mkId = $get('mata_kuliah_id');
 
                                     if ($taId && $kelasId && $mkId) {
-                                        $pengampuExist = DosenPengampu::where('tahun_akademik_id', $taId)
+                                        $pengampuExist = \App\Models\DosenPengampu::where('tahun_akademik_id', $taId)
                                             ->where('kelas_id', $kelasId)
                                             ->where('mata_kuliah_id', $mkId)
                                             ->exists();
 
                                         if (!$pengampuExist) {
-                                            return new HtmlString('<span class="text-danger-600 font-bold">⚠️ Dosen Pengampu belum ada! Silahkan atur di menu Dosen Pengampu terlebih dahulu, atau isi manual di bawah.</span>');
+                                            return new \Illuminate\Support\HtmlString('<span class="text-danger-600 font-bold">⚠️ Dosen Pengampu belum diatur! Silahkan atur di menu Dosen Pengampu terlebih dahulu.</span>');
                                         }
                                     }
                                     return null;
@@ -377,32 +378,33 @@ class JadwalKuliahForm
                                                 ])
                                         )
                                         ->required()
-                                        ->searchable()
-                                        ->preload()
-                                        ->disableOptionsWhenSelectedInSiblingRepeaterItems()
-                                        ->disabled(fn(Get $get) => $get('is_readonly') === true)
-                                        ->dehydrated(),
+                                        ->disabled() // 4. KUNCI INPUTAN
+                                        ->dehydrated(), // 5. PASTIKAN DATA TETAP TER-SUBMIT KE DATABASE
 
                                     Grid::make(2)
                                         ->schema([
                                             Toggle::make('is_koordinator')
                                                 ->label('Koordinator')
-                                                ->default(true),
+                                                ->default(true)
+                                                ->disabled() // KUNCI INPUTAN
+                                                ->dehydrated(),
 
                                             Toggle::make('is_penilai')
                                                 ->label('Penilai Nilai')
-                                                ->default(true),
+                                                ->default(true)
+                                                ->disabled() // KUNCI INPUTAN
+                                                ->dehydrated(),
                                         ]),
 
                                     TextInput::make('rencana_tatap_muka')
                                         ->label('Rencana Tatap Muka')
                                         ->required()
                                         ->numeric()
-                                        ->default(16),
+                                        ->default(16)
+                                        ->disabled() // KUNCI INPUTAN
+                                        ->dehydrated(),
                                 ])
                                 ->itemLabel(fn(array $state): ?string => 'Dosen Pengajar')
-                                ->addActionLabel('Tambah Dosen')
-                                ->defaultItems(1)
                                 ->collapsible(),
                         ]),
                 ]),
