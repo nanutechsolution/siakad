@@ -11,10 +11,12 @@ use Filament\Actions\DeleteBulkAction;
 use Filament\Actions\EditAction;
 use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
+use Filament\Actions\ViewAction as ActionsViewAction;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
 use Filament\Tables\Filters\TrashedFilter;
+use Filament\Tables\Grouping\Group;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -25,7 +27,6 @@ class JadwalKuliahsTable
         return $table
             ->modifyQueryUsing(function (Builder $query) {
                 return $query
-                    // 1. EAGER LOADING: Mencegah N+1 query agar loading tabel sangat cepat
                     ->with([
                         'mataKuliah',
                         'kelas.prodi',
@@ -36,49 +37,43 @@ class JadwalKuliahsTable
                     ->orderByRaw("FIELD(hari, 'Senin','Selasa','Rabu','Kamis','Jumat','Sabtu','Minggu')")
                     ->orderBy('jam_mulai');
             })
+            // --- UI/UX UPGRADE: KELOMPOKKAN OTOMATIS BERDASARKAN HARI ---
+            ->groups([
+                Group::make('hari')
+                    ->label('Jadwal Hari')
+                    ->collapsible()
+                    ->titlePrefixedWithLabel(false), // Menghilangkan tulisan kaku "Jadwal Hari:" di header
+            ])
+            ->defaultGroup('hari') // Otomatis aktif saat halaman dibuka
             ->columns([
-                // 1. MATA KULIAH
+                // 1. INFO MATA KULIAH & KELAS (Digabung agar layar tidak penuh)
                 TextColumn::make('mataKuliah.nama_mk')
-                    ->label('Mata Kuliah')
+                    ->label('Informasi Perkuliahan')
                     ->sortable()
                     ->searchable(['nama_mk', 'kode_mk'])
                     ->wrap()
                     ->weight('bold')
-                    ->description(
-                        fn(JadwalKuliah $record): string => ($record->mataKuliah->kode_mk ?? '-') . ' • ' .
-                            ($record->mataKuliah->sks_default ?? 0) . ' SKS'
-                    ),
-
-                // 2. KELAS, ANGKATAN, & PRODI
-                TextColumn::make('kelas.nama_kelas')
-                    ->label('Kelas & Angkatan')
-                    ->sortable()
-                    ->searchable()
-                    ->weight('bold')
                     ->color('primary')
-                    ->formatStateUsing(fn(string $state, JadwalKuliah $record): string => "Kelas {$state}")
+                    ->formatStateUsing(fn(string $state, JadwalKuliah $record): string => "{$state} ({$record->mataKuliah->sks_default} SKS)")
                     ->description(
-                        fn(JadwalKuliah $record): string => ($record->kelas->prodi->kode_prodi_internal ?? 'UMUM') .
-                            ' (Angkatan ' . ($record->kelas->angkatan->id_tahun ?? '-') . ')'
+                        fn(JadwalKuliah $record): string =>
+                        'Kelas ' . ($record->kelas->nama_kelas ?? '-') .
+                            ' • Prodi ' . ($record->kelas->prodi->kode_prodi_internal ?? 'UMUM')
                     ),
 
-                // 3. JADWAL (HARI & JAM DIGABUNG AGAR LEBIH RAPI)
-                TextColumn::make('hari')
-                    ->label('Waktu Kuliah')
-                    ->sortable()
+                // 2. WAKTU KULIAH (Hari sudah ada di Group, jadi tampilkan Jam saja)
+                TextColumn::make('jam_mulai')
+                    ->label('Waktu')
                     ->badge()
+                    ->color('success')
                     ->icon('heroicon-o-clock')
-                    ->color(fn(string $state): string => match ($state) {
-                        'Sabtu', 'Minggu' => 'warning',
-                        default => 'success',
-                    })
                     ->formatStateUsing(function (JadwalKuliah $record): string {
                         $mulai = $record->jam_mulai ? date('H:i', strtotime($record->jam_mulai)) : '--:--';
                         $selesai = $record->jam_selesai ? date('H:i', strtotime($record->jam_selesai)) : '--:--';
-                        return "{$record->hari}, {$mulai} - {$selesai}";
+                        return "{$mulai} - {$selesai} WIB";
                     }),
 
-                // 4. RUANGAN
+                // 3. RUANG KELAS
                 TextColumn::make('ruang.nama_ruang')
                     ->label('Ruangan')
                     ->sortable()
@@ -88,21 +83,21 @@ class JadwalKuliahsTable
                     ->iconColor('gray')
                     ->description(fn(JadwalKuliah $record) => $record->ruang->jenis_ruang ?? 'TEORI'),
 
-                // 5. DOSEN PENGAJAR
+                // 4. DOSEN PENGAJAR (Bulleted list agar rapi dibaca awam)
                 TextColumn::make('dosenPengajars.dosen.person.nama_lengkap')
-                    ->label('Dosen Pengajar')
-                    ->listWithLineBreaks()
+                    ->label('Dosen Pengampu')
+                    ->bulleted()
                     ->limitList(2)
                     ->expandableLimitedList()
                     ->searchable()
-                    ->placeholder('Belum ditugaskan')
+                    ->placeholder('⚠️ Belum ada dosen')
                     ->color('gray'),
 
-                // 6. KAPASITAS KELAS
+                // 5. KAPASITAS (Warna dinamis, bahasa manusiawi)
                 TextColumn::make('isi_kelas')
                     ->label('Kapasitas')
                     ->alignCenter()
-                    ->formatStateUsing(fn(int $state, JadwalKuliah $record): string => "{$state} / {$record->kuota_kelas}")
+                    ->formatStateUsing(fn(int $state, JadwalKuliah $record): string => "{$state} / {$record->kuota_kelas} Kursi")
                     ->badge()
                     ->color(function (int $state, JadwalKuliah $record): string {
                         if ($record->kuota_kelas <= 0) return 'gray';
@@ -111,21 +106,20 @@ class JadwalKuliahsTable
                         return match (true) {
                             $state >= $record->kuota_kelas => 'danger',
                             $persen >= 80 => 'warning',
-                            default => 'info',
+                            default => 'info', // Biru muda untuk aman
                         };
-                    })
-                    ->tooltip('Terisi / Kuota Maksimal'),
+                    }),
 
-                // 7. STATUS KUNCI
+                // 6. STATUS KUNCI
                 IconColumn::make('is_locked')
-                    ->label('Terkunci')
+                    ->label('Status')
                     ->boolean()
-                    ->trueIcon('heroicon-s-lock-closed')
-                    ->falseIcon('heroicon-o-lock-open')
-                    ->trueColor('danger')
+                    ->trueIcon('heroicon-s-shield-check') // Ganti gembok dengan shield (pelindung)
+                    ->falseIcon('heroicon-o-shield-exclamation')
+                    ->trueColor('success') // Diubah: Kunci itu aman, jadi hijau. Tidak dikunci = rawan, jadi kuning/abu
                     ->falseColor('gray')
                     ->alignCenter()
-                    ->tooltip('Jika dikunci (merah), jadwal ini aman dari timpaan sistem/generate otomatis.'),
+                    ->tooltip('Hijau = Jadwal dikunci & aman. Abu-abu = Jadwal bisa tertimpa jika reset.'),
             ])
             ->filters([
                 TrashedFilter::make()->native(false),
@@ -138,7 +132,7 @@ class JadwalKuliahsTable
                     ->default(fn() => RefTahunAkademik::where('is_active', true)->first()?->id),
 
                 SelectFilter::make('kelas_id')
-                    ->label('Kelas')
+                    ->label('Kelas Mahasiswa')
                     ->options(function () {
                         return \App\Models\Kelas::query()
                             ->with(['prodi', 'angkatan'])
@@ -159,7 +153,7 @@ class JadwalKuliahsTable
                     ->native(false),
 
                 SelectFilter::make('dosen_id')
-                    ->label('Dosen Pengajar')
+                    ->label('Cari Jadwal Dosen')
                     ->options(function () {
                         return TrxDosen::query()
                             ->with('person')
@@ -182,29 +176,33 @@ class JadwalKuliahsTable
                             )
                         );
                     }),
-
-                SelectFilter::make('hari')
-                    ->options([
-                        'Senin' => 'Senin',
-                        'Selasa' => 'Selasa',
-                        'Rabu' => 'Rabu',
-                        'Kamis' => 'Kamis',
-                        'Jumat' => 'Jumat',
-                        'Sabtu' => 'Sabtu',
-                        'Minggu' => 'Minggu',
-                    ])
-                    ->native(false),
             ])
-            ->filtersFormColumns(2)
+            ->filtersFormColumns(1)
+            ->filtersTriggerAction(
+                fn(Action $action) => $action
+                    ->button()
+                    ->label('Saring Jadwal')
+                    ->icon('heroicon-m-funnel')
+                    ->slideOver()
+            )
             ->recordActions([
+                ActionsViewAction::make()
+                    ->label('Detail')
+                    ->icon('heroicon-m-eye')
+                    ->color('gray')
+                    ->slideOver(),
+
                 Action::make('toggleLock')
-                    ->label(fn($record) => $record->is_locked ? 'Buka Kunci' : 'Kunci Jadwal')
-                    ->icon(fn($record) => $record->is_locked ? 'heroicon-o-lock-open' : 'heroicon-o-lock-closed')
-                    ->color(fn($record) => $record->is_locked ? 'gray' : 'danger')
+                    ->label(fn($record) => $record->is_locked ? 'Buka Proteksi' : 'Proteksi Jadwal')
+                    ->icon(fn($record) => $record->is_locked ? 'heroicon-m-lock-open' : 'heroicon-m-shield-check')
+                    ->color(fn($record) => $record->is_locked ? 'warning' : 'success')
                     ->action(function ($record) {
                         $record->update(['is_locked' => !$record->is_locked]);
                     }),
-                EditAction::make(),
+
+                EditAction::make()
+                    ->label('Ubah')
+                    ->color('primary'),
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
@@ -213,8 +211,8 @@ class JadwalKuliahsTable
                     RestoreBulkAction::make(),
                 ]),
             ])
-            ->emptyStateHeading('Belum Ada Jadwal Kuliah')
-            ->emptyStateDescription('Buat jadwal kuliah baru atau generate otomatis melalui menu yang tersedia.')
+            ->emptyStateHeading('Jadwal Masih Kosong')
+            ->emptyStateDescription('Tarik nafas dulu... lalu klik tombol "Buat" di atas untuk menyusun jadwal baru.')
             ->emptyStateIcon('heroicon-o-calendar-days')
             ->striped();
     }
