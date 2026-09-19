@@ -24,7 +24,7 @@ class MasterKurikulumResource extends Resource
     protected static ?string $slug = 'master-akademik/kurikulum';
     protected static ?string $recordTitleAttribute = 'nama_kurikulum';
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 2;
     public static function getPluralLabel(): ?string
     {
         return 'Data Kurikulum';
