@@ -55,9 +55,9 @@ class JadwalKuliahsTable
                     ->color('primary')
                     ->formatStateUsing(fn(string $state, JadwalKuliah $record): string => "{$state} ({$record->mataKuliah->sks_default} SKS)")
                     ->description(
-                        fn(JadwalKuliah $record): string =>
-                        'Kelas ' . ($record->kelas->nama_kelas ?? '-') .
-                            ' • Prodi ' . ($record->kelas->prodi->kode_prodi_internal ?? 'UMUM')
+                        fn(JadwalKuliah $record): string => ($record->kelas->nama_kelas ?? '-') . '/' .
+                            ($record->kelas->prodi->kode_prodi_internal ?? '-') . '/' .
+                            ($record->kelas->angkatan->id_tahun ?? '-')
                     ),
 
                 // 2. WAKTU KULIAH (Hari sudah ada di Group, jadi tampilkan Jam saja)
