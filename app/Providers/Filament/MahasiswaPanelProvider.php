@@ -35,8 +35,8 @@ class MahasiswaPanelProvider extends PanelProvider
             ->defaultThemeMode(ThemeMode::Light)
             ->login(LoginMahasiswa::class)
             ->colors([
-                'primary' => Color::hex('#243B7A'),
-                'info'    => Color::hex('#2C3F8C'),
+                'primary' => Color::hex('#2C3F8C'),
+                'info'    => Color::hex('#3B82F6'),
                 'success' => Color::hex('#16A34A'),
                 'danger'  => Color::hex('#DC2626'),
                 'warning' => Color::hex('#D9A441'),
@@ -48,13 +48,6 @@ class MahasiswaPanelProvider extends PanelProvider
             )
             ->topNavigation()
             ->profile()
-            // ->userMenuItems([
-            //     Action::make("Profil-Saya")
-            //         ->label('Biodata')
-            //         ->url('/mahasiswa/profil-saya')
-            //         ->icon('heroicon-o-user-circle'),
-            // ])
-
             ->font('Instrument Sans')
             ->viteTheme('resources/css/filament/mahasiswa/theme.css')
             ->brandName('Portal Mahasiswa — UNMARIS')
