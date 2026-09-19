@@ -16,7 +16,7 @@ enum MahasiswaNavigationGroup: string
     case LAYANAN = 'Layanan Akademik';
     case EVALUASI = 'Evaluasi';
     case NOTIFIKASI = 'Notifikasi';
-    case PROFIL = 'Profil';
+    case AKUN = 'Akun';
     public function icon(): string
     {
         return match ($this) {
@@ -44,7 +44,7 @@ enum MahasiswaNavigationGroup: string
             'heroicon-o-clipboard-document-check',
             self::NOTIFIKASI =>
             'heroicon-o-bell',
-            self::PROFIL =>
+            self::AKUN =>
             'heroicon-o-user-circle',
         };
     }

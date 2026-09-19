@@ -1,77 +1,57 @@
 <x-filament-panels::page>
 
-    {{-- ================================================================
-         HERO PROFILE
-         ================================================================ --}}
-    <div
-        class="relative overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
+    {{-- =========================================================
+        PROFILE HUB
+    ========================================================== --}}
+    @if ($section === 'hub')
 
-        {{-- Background decoration --}}
-        <div
-            class="pointer-events-none absolute -right-20 -top-20 h-48 w-48 rounded-full bg-primary-500/10 blur-3xl"></div>
+    <div class="space-y-5">
 
-        <div class="relative p-5 sm:p-7">
+        {{-- HERO --}}
+        <div class="relative overflow-hidden rounded-3xl bg-gradient-to-br from-crest-700 via-crest-600 to-crest-500 p-5 text-white shadow-sm sm:p-6">
 
-            <div class="flex items-center gap-4 sm:gap-5">
+            <div class="absolute -right-16 -top-16 h-40 w-40 rounded-full bg-horizon-500/20 blur-2xl"></div>
 
-                {{-- FOTO --}}
+            <div class="relative flex items-center gap-4">
+
+                {{-- PHOTO --}}
                 <div class="shrink-0">
 
-                    <div
-                        class="flex h-20 w-20 items-center justify-center overflow-hidden rounded-full border-4 border-white bg-gradient-to-br from-crest-600 to-horizon-500 shadow-lg dark:border-gray-800 sm:h-24 sm:w-24">
-
-                        @if ($this->mahasiswa->person->photo_path)
-
-                        <img
-                            src="{{ asset('storage/' . $this->mahasiswa->person->photo_path) }}"
-                            alt="Foto {{ $this->mahasiswa->person->nama_lengkap }}"
-                            class="h-full w-full object-cover" />
-
-                        @else
-
-                        <span class="text-2xl font-bold text-white sm:text-3xl">
-                            {{ strtoupper(substr($this->mahasiswa->person->nama_lengkap, 0, 1)) }}
-                        </span>
-
-                        @endif
-
+                    @if ($this->photoUrl())
+                    <img
+                        src="{{ $this->photoUrl() }}"
+                        alt="{{ $mahasiswa->person?->nama_lengkap }}"
+                        class="h-20 w-20 rounded-2xl border-2 border-white/30 object-cover shadow-lg sm:h-24 sm:w-24">
+                    @else
+                    <div class="flex h-20 w-20 items-center justify-center rounded-2xl bg-white/10 text-2xl font-semibold ring-1 ring-white/20 sm:h-24 sm:w-24">
+                        {{ Str::upper(Str::substr($mahasiswa->person?->nama_lengkap ?? 'M', 0, 1)) }}
                     </div>
+                    @endif
 
                 </div>
 
-
-                {{-- INFORMASI UTAMA --}}
+                {{-- INFO --}}
                 <div class="min-w-0 flex-1">
 
-                    <h1
-                        class="truncate text-xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-2xl">
-                        {{ $this->mahasiswa->person->nama_lengkap }}
-                    </h1>
-
-                    <p
-                        class="mt-1 truncate text-sm text-gray-500 dark:text-gray-400">
-                        {{ $this->mahasiswa->prodi->nama_prodi ?? '-' }}
+                    <p class="text-sm font-medium text-white/70">
+                        Profil Mahasiswa
                     </p>
 
-                    <div class="mt-3 flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-gray-500 dark:text-gray-400">
+                    <h1 class="mt-1 truncate text-xl font-semibold sm:text-2xl">
+                        {{ $mahasiswa->person?->nama_lengkap ?? '-' }}
+                    </h1>
 
-                        <span class="font-mono font-medium text-gray-700 dark:text-gray-300">
-                            {{ $this->mahasiswa->nim }}
+                    <p class="mt-1 truncate text-sm text-white/75">
+                        {{ $mahasiswa->prodi?->nama_prodi ?? '-' }}
+                    </p>
+
+                    <div class="mt-3 flex flex-wrap gap-2">
+
+                        <span class="rounded-full bg-white/10 px-2.5 py-1 font-mono text-xs text-white/90">
+                            {{ $mahasiswa->nim }}
                         </span>
 
-                        <span class="text-gray-300 dark:text-gray-700">•</span>
-
-                        <span>
-                            Angkatan {{ $this->mahasiswa->angkatan_id }}
-                        </span>
-
-                    </div>
-
-                    <div class="mt-3">
-
-                        <span
-                            class="inline-flex items-center gap-1.5 rounded-full bg-emerald-50 px-2.5 py-1 text-xs font-semibold text-emerald-700 dark:bg-emerald-950/40 dark:text-emerald-400">
-                            <span class="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
+                        <span class="rounded-full bg-horizon-500 px-2.5 py-1 text-xs font-semibold text-white">
                             Mahasiswa Aktif
                         </span>
 
@@ -83,96 +63,218 @@
 
         </div>
 
-    </div>
 
+        {{-- PROFILE COMPLETION --}}
+        <div class="rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-white/10 dark:bg-[#131B2E] sm:p-5">
 
-    {{-- ================================================================
-         STATUS PROFIL
-         ================================================================ --}}
-    <div
-        class="mt-4 rounded-2xl border border-gray-200 bg-white p-4 shadow-sm dark:border-gray-800 dark:bg-gray-900 sm:p-5">
+            <div class="flex items-start justify-between gap-4">
 
-        <div class="flex items-start gap-3">
+                <div>
+                    <h2 class="font-semibold text-gray-900 dark:text-white">
+                        Profil Anda
+                    </h2>
 
-            <div
-                class="flex h-10 w-10 shrink-0 items-center justify-center rounded-xl
-                {{ $this->profileCompletion >= 100
-                    ? 'bg-emerald-50 text-emerald-600 dark:bg-emerald-950/40 dark:text-emerald-400'
-                    : 'bg-primary-50 text-primary-600 dark:bg-primary-950/40 dark:text-primary-400' }}">
+                    <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                        {{ $this->profileCompletion() }}% data profil sudah lengkap.
+                    </p>
+                </div>
 
-                @if ($this->profileCompletion >= 100)
-
-                <svg
-                    class="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                    stroke="currentColor">
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M5 13l4 4L19 7" />
-                </svg>
-
-                @else
-
-                <svg
-                    class="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                    stroke="currentColor">
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 8v4l3 2" />
-                    <circle
-                        cx="12"
-                        cy="12"
-                        r="9" />
-                </svg>
-
-                @endif
+                <div class="shrink-0 text-right">
+                    <span class="text-lg font-bold text-crest-600 dark:text-horizon-400">
+                        {{ $this->profileCompletion() }}%
+                    </span>
+                </div>
 
             </div>
 
+            <div class="mt-4 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-white/10">
+                <div
+                    class="h-full rounded-full bg-gradient-to-r from-crest-600 to-horizon-500 transition-all"
+                    style="width: {{ $this->profileCompletion() }}%"></div>
+            </div>
 
-            <div class="min-w-0 flex-1">
+            <p class="mt-3 text-xs leading-5 text-gray-500 dark:text-gray-400">
+                Lengkapi data Anda agar informasi yang digunakan untuk administrasi kampus tetap akurat.
+            </p>
 
-                <div class="flex items-center justify-between gap-3">
+        </div>
 
-                    <div>
-                        <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                            Kelengkapan Profil
-                        </p>
 
-                        <p class="mt-0.5 text-xs text-gray-500 dark:text-gray-400">
-                            {{ $this->profileCompletion >= 100
-                                ? 'Semua data utama sudah lengkap.'
-                                : 'Lengkapi data profil Anda agar informasi tetap akurat.' }}
-                        </p>
+        {{-- PENDING IDENTITY --}}
+        @if ($this->pendingIdentityCount() > 0)
+
+        <div class="rounded-2xl border border-warning-200 bg-warning-50 p-4 dark:border-warning-500/20 dark:bg-warning-500/10">
+
+            <div class="flex gap-3">
+
+                <div class="mt-0.5 shrink-0 text-warning-600 dark:text-warning-400">
+                    <x-heroicon-o-clock class="h-5 w-5" />
+                </div>
+
+                <div>
+                    <h3 class="text-sm font-semibold text-warning-900 dark:text-warning-300">
+                        Perubahan identitas sedang diperiksa
+                    </h3>
+
+                    <p class="mt-1 text-sm leading-5 text-warning-800 dark:text-warning-200">
+                        Ada {{ $this->pendingIdentityCount() }} perubahan data identitas yang sedang menunggu pemeriksaan Admin Akademik.
+                    </p>
+                </div>
+
+            </div>
+
+        </div>
+
+        @endif
+
+
+        {{-- SECTION LIST --}}
+        <div>
+
+            <div class="mb-3 px-1">
+                <h2 class="text-base font-semibold text-gray-900 dark:text-white">
+                    Data Saya
+                </h2>
+
+                <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                    Pilih bagian yang ingin Anda lihat atau perbarui.
+                </p>
+            </div>
+
+
+            <div class="space-y-3">
+
+                @php
+                $sections = [
+                [
+                'key' => 'akademik',
+                'title' => 'Data Akademik',
+                'description' => 'NIM, program studi, angkatan, dan status',
+                'icon' => 'academic-cap',
+                ],
+                [
+                'key' => 'identitas',
+                'title' => 'Identitas',
+                'description' => 'Nama, NIK, tanggal dan tempat lahir',
+                'icon' => 'identification',
+                ],
+                [
+                'key' => 'kontak',
+                'title' => 'Kontak',
+                'description' => 'Email, nomor HP, dan foto profil',
+                'icon' => 'device-phone-mobile',
+                ],
+                [
+                'key' => 'alamat',
+                'title' => 'Alamat',
+                'description' => 'Alamat KTP dan tempat tinggal',
+                'icon' => 'home',
+                ],
+                [
+                'key' => 'keluarga',
+                'title' => 'Data Keluarga',
+                'description' => 'Orang tua, wali, dan informasi keluarga',
+                'icon' => 'user-group',
+                ],
+                ];
+                @endphp
+
+
+                @foreach ($sections as $item)
+
+                @php
+                $status = $this->sectionStatus($item['key']);
+                @endphp
+
+                <button
+                    type="button"
+                    wire:click="openSection('{{ $item['key'] }}')"
+                    class="group flex w-full items-center gap-4 rounded-2xl border border-gray-200 bg-white p-4 text-left shadow-sm transition hover:border-crest-200 hover:shadow-md active:scale-[.99] dark:border-white/10 dark:bg-[#131B2E] dark:hover:border-white/20">
+
+                    {{-- ICON --}}
+                    <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-crest-50 text-crest-600 dark:bg-crest-500/10 dark:text-crest-300">
+                        <x-dynamic-component
+                            :component="'heroicon-o-' . $item['icon']"
+                            class="h-5 w-5" />
                     </div>
 
-                    <span
-                        class="shrink-0 text-sm font-bold
-                        {{ $this->profileCompletion >= 100
-                            ? 'text-emerald-600 dark:text-emerald-400'
-                            : 'text-primary-600 dark:text-primary-400' }}">
-                        {{ $this->profileCompletion }}%
-                    </span>
 
+                    {{-- TEXT --}}
+                    <div class="min-w-0 flex-1">
+
+                        <div class="flex flex-wrap items-center gap-2">
+
+                            <h3 class="font-semibold text-gray-900 dark:text-white">
+                                {{ $item['title'] }}
+                            </h3>
+
+                            @if ($status['tone'] === 'success')
+
+                            <span class="inline-flex items-center gap-1 rounded-full bg-success-50 px-2 py-0.5 text-[11px] font-medium text-success-700 dark:bg-success-500/10 dark:text-success-400">
+                                <x-heroicon-m-check class="h-3 w-3" />
+                                {{ $status['label'] }}
+                            </span>
+
+                            @elseif ($status['tone'] === 'warning')
+
+                            <span class="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2 py-0.5 text-[11px] font-medium text-warning-700 dark:bg-warning-500/10 dark:text-warning-400">
+                                <x-heroicon-m-clock class="h-3 w-3" />
+                                {{ $status['label'] }}
+                            </span>
+
+                            @else
+
+                            <span class="inline-flex rounded-full bg-gray-100 px-2 py-0.5 text-[11px] font-medium text-gray-600 dark:bg-white/10 dark:text-gray-400">
+                                {{ $status['label'] }}
+                            </span>
+
+                            @endif
+
+                        </div>
+
+                        <p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+                            {{ $item['description'] }}
+                        </p>
+
+                    </div>
+
+
+                    {{-- ARROW --}}
+                    <div class="shrink-0 text-gray-400 transition group-hover:translate-x-0.5 group-hover:text-crest-600 dark:group-hover:text-horizon-400">
+
+                        <x-heroicon-m-chevron-right class="h-5 w-5" />
+
+                    </div>
+
+                </button>
+
+                @endforeach
+
+            </div>
+
+        </div>
+
+
+        {{-- INFORMATION --}}
+        <div class="rounded-2xl border border-crest-100 bg-crest-50 p-4 dark:border-crest-500/20 dark:bg-crest-500/10">
+
+            <div class="flex gap-3">
+
+                <div class="mt-0.5 shrink-0 text-crest-600 dark:text-crest-300">
+                    <x-heroicon-o-information-circle class="h-5 w-5" />
                 </div>
 
+                <div>
 
-                {{-- PROGRESS --}}
-                <div class="mt-3 h-2 overflow-hidden rounded-full bg-gray-100 dark:bg-gray-800">
+                    <h3 class="text-sm font-semibold text-crest-900 dark:text-crest-200">
+                        Tentang perubahan data
+                    </h3>
 
-                    <div
-                        class="h-full rounded-full transition-all duration-500
-                        {{ $this->profileCompletion >= 100
-                            ? 'bg-emerald-500'
-                            : 'bg-primary-500' }}"
-                        style="width: {{ $this->profileCompletion }}%"></div>
+                    <p class="mt-1 text-sm leading-6 text-crest-800 dark:text-crest-100">
+                        Nomor HP, email, alamat, dan data keluarga dapat diperbarui langsung.
+                        Perubahan nama, NIK, tanggal lahir, tempat lahir, dan jenis kelamin
+                        akan diperiksa terlebih dahulu oleh Admin Akademik.
+                    </p>
 
                 </div>
 
@@ -183,184 +285,115 @@
     </div>
 
 
-    {{-- ================================================================
-         STATUS PERUBAHAN IDENTITAS
-         ================================================================ --}}
-    @if ($this->pendingIdentityCount > 0)
+    {{-- =========================================================
+        DETAIL SECTION
+    ========================================================== --}}
+    @else
 
-    <div
-        class="mt-4 rounded-2xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-900/60 dark:bg-amber-950/30">
+    <div class="space-y-5">
 
-        <div class="flex items-start gap-3">
+        {{-- BACK --}}
+        <div>
 
-            <div
-                class="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-amber-100 text-amber-700 dark:bg-amber-900/50 dark:text-amber-400">
+            <button
+                type="button"
+                wire:click="backToHub"
+                class="inline-flex items-center gap-2 text-sm font-medium text-gray-600 transition hover:text-crest-600 dark:text-gray-400 dark:hover:text-horizon-400">
 
-                <svg
-                    class="h-5 w-5"
-                    fill="none"
-                    viewBox="0 0 24 24"
-                    stroke-width="2"
-                    stroke="currentColor">
-                    <path
-                        stroke-linecap="round"
-                        stroke-linejoin="round"
-                        d="M12 8v4l3 2" />
-                    <circle
-                        cx="12"
-                        cy="12"
-                        r="9" />
-                </svg>
+                <x-heroicon-m-arrow-left class="h-4 w-4" />
 
-            </div>
+                Kembali ke Profil
+
+            </button>
+
+        </div>
 
 
-            <div>
+        {{-- DETAIL HEADER --}}
+        <div>
 
-                <p class="text-sm font-semibold text-amber-900 dark:text-amber-300">
-                    Perubahan sedang diperiksa
-                </p>
+            <h1 class="font-display text-2xl font-semibold tracking-tight text-gray-900 dark:text-white">
+                {{ $this->sectionTitle() }}
+            </h1>
 
-                <p class="mt-1 text-xs leading-5 text-amber-800 dark:text-amber-400">
-                    Ada {{ $this->pendingIdentityCount }}
-                    perubahan identitas yang sedang diperiksa oleh Admin Akademik.
-                    Data akan diperbarui setelah disetujui.
-                </p>
+            <p class="mt-1 max-w-2xl text-sm leading-6 text-gray-500 dark:text-gray-400">
+                {{ $this->sectionDescription() }}
+            </p>
+
+        </div>
+
+
+        {{-- IDENTITY WARNING --}}
+        @if ($section === 'identitas' && $this->pendingIdentityCount() > 0)
+
+        <div class="rounded-2xl border border-warning-200 bg-warning-50 p-4 dark:border-warning-500/20 dark:bg-warning-500/10">
+
+            <div class="flex gap-3">
+
+                <x-heroicon-o-clock class="mt-0.5 h-5 w-5 shrink-0 text-warning-600 dark:text-warning-400" />
+
+                <div>
+
+                    <p class="text-sm font-semibold text-warning-900 dark:text-warning-300">
+                        Menunggu pemeriksaan Admin Akademik
+                    </p>
+
+                    <p class="mt-1 text-sm leading-5 text-warning-800 dark:text-warning-200">
+                        Perubahan identitas yang sudah diajukan belum dapat diajukan kembali
+                        sampai pemeriksaan selesai.
+                    </p>
+
+                </div>
 
             </div>
 
         </div>
+
+        @endif
+
+
+        {{-- FORM --}}
+        <form
+            wire:submit="save"
+            class="space-y-5">
+
+            {{ $this->form }}
+
+
+            {{-- SAVE --}}
+            @if ($section !== 'akademik')
+
+            <div class="sticky bottom-3 z-20">
+
+                <div class="rounded-2xl border border-gray-200 bg-white/95 p-3 shadow-lg backdrop-blur dark:border-white/10 dark:bg-[#131B2E]/95 sm:static sm:border-0 sm:bg-transparent sm:p-0 sm:shadow-none">
+
+                    <button
+                        type="submit"
+                        wire:loading.attr="disabled"
+                        wire:target="save"
+                        class="flex w-full items-center justify-center gap-2 rounded-xl bg-crest-600 px-5 py-3 text-sm font-semibold text-white shadow-sm transition hover:bg-crest-700 disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto">
+
+                        <span wire:loading.remove wire:target="save">
+                            Simpan Perubahan
+                        </span>
+
+                        <span wire:loading wire:target="save" class="inline-flex items-center gap-2">
+                            <x-filament::loading-indicator class="h-4 w-4" />
+                            Menyimpan...
+                        </span>
+
+                    </button>
+
+                </div>
+
+            </div>
+
+            @endif
+
+        </form>
 
     </div>
 
     @endif
-
-
-    {{-- ================================================================
-         PETUNJUK SINGKAT
-         ================================================================ --}}
-    <div
-        class="mt-4 rounded-2xl border border-primary-100 bg-primary-50/70 p-4 dark:border-primary-900/50 dark:bg-primary-950/20">
-
-        <div class="flex items-start gap-3">
-
-            <svg
-                class="mt-0.5 h-5 w-5 shrink-0 text-primary-600 dark:text-primary-400"
-                fill="none"
-                viewBox="0 0 24 24"
-                stroke-width="2"
-                stroke="currentColor">
-                <path
-                    stroke-linecap="round"
-                    stroke-linejoin="round"
-                    d="M13 16h-1v-4h-1m1-4h.01M12 22a10 10 0 100-20 10 10 0 000 20z" />
-            </svg>
-
-            <div>
-
-                <p class="text-sm font-semibold text-gray-900 dark:text-white">
-                    Tentang perubahan data
-                </p>
-
-                <p class="mt-1 text-xs leading-5 text-gray-600 dark:text-gray-400">
-                    Data kontak, alamat, dan keluarga dapat diperbarui langsung.
-                    Perubahan nama, NIK, tanggal lahir, tempat lahir, dan jenis kelamin
-                    perlu diperiksa Admin Akademik terlebih dahulu.
-                </p>
-
-            </div>
-
-        </div>
-
-    </div>
-
-
-    {{-- ================================================================
-         FORM
-         ================================================================ --}}
-    <form
-        wire:submit="save"
-        class="mt-5 pb-24 sm:mt-6 sm:pb-8">
-
-        <div
-            class="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-gray-800 dark:bg-gray-900">
-
-            {{ $this->form }}
-
-        </div>
-
-
-        {{-- ============================================================
-             SAVE BUTTON
-             ============================================================ --}}
-        <div
-            class="fixed inset-x-0 bottom-0 z-30 border-t border-gray-200/80 bg-white/95 p-3 backdrop-blur-md dark:border-gray-800 dark:bg-gray-950/95 sm:static sm:mt-6 sm:border-0 sm:bg-transparent sm:p-0 sm:backdrop-blur-none">
-
-            <div class="mx-auto max-w-screen-xl sm:flex sm:justify-end">
-
-                <button
-                    type="submit"
-                    wire:loading.attr="disabled"
-                    wire:target="save"
-                    class="flex w-full items-center justify-center gap-2 rounded-xl bg-gradient-to-r from-crest-600 to-crest-500 px-5 py-3.5 text-sm font-semibold text-white shadow-lg shadow-crest-500/20 transition hover:from-crest-700 hover:to-crest-600 active:scale-[0.98] disabled:cursor-not-allowed disabled:opacity-70 sm:w-auto sm:px-7">
-
-                    {{-- NORMAL --}}
-                    <span
-                        wire:loading.remove
-                        wire:target="save"
-                        class="flex items-center gap-2">
-
-                        <svg
-                            class="h-5 w-5"
-                            fill="none"
-                            viewBox="0 0 24 24"
-                            stroke-width="2"
-                            stroke="currentColor">
-                            <path
-                                stroke-linecap="round"
-                                stroke-linejoin="round"
-                                d="M5 13l4 4L19 7" />
-                        </svg>
-
-                        Simpan Perubahan
-
-                    </span>
-
-
-                    {{-- LOADING --}}
-                    <span
-                        wire:loading
-                        wire:target="save"
-                        class="flex items-center gap-2">
-
-                        <svg
-                            class="h-5 w-5 animate-spin"
-                            fill="none"
-                            viewBox="0 0 24 24">
-                            <circle
-                                class="opacity-25"
-                                cx="12"
-                                cy="12"
-                                r="10"
-                                stroke="currentColor"
-                                stroke-width="4" />
-
-                            <path
-                                class="opacity-75"
-                                fill="currentColor"
-                                d="M4 12a8 8 0 018-8v4a4 4 0 00-4 4H4z" />
-                        </svg>
-
-                        Menyimpan...
-
-                    </span>
-
-                </button>
-
-            </div>
-
-        </div>
-
-    </form>
 
 </x-filament-panels::page>
