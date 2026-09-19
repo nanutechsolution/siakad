@@ -605,6 +605,7 @@ class PlottingDosenPage extends Page implements HasTable
                                                 ])
                                                 ->toArray();
                                         })
+                                        ->required()
                                         ->helperText(
                                             'Opsional. Pilih salah satu dosen pengampu sebagai koordinator.'
                                         ),
