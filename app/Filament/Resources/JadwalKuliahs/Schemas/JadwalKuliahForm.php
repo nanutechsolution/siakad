@@ -41,11 +41,27 @@ class JadwalKuliahForm
                                 }),
                             Select::make('kurikulum_id')
                                 ->label('Kurikulum')
-                                ->relationship('kurikulum', 'nama_kurikulum')
+                                ->options(\App\Models\MasterKurikulum::pluck('nama_kurikulum', 'id'))
                                 ->required()
                                 ->searchable()
                                 ->preload()
                                 ->live()
+                                ->dehydrated(false)
+                                ->afterStateHydrated(function (Set $set, ?JadwalKuliah $record) {
+                                    if ($record && $record->kelas_id) {
+                                        // Cari Kelas yang sudah tersimpan
+                                        $kelas = \App\Models\Kelas::find($record->kelas_id);
+                                        if ($kelas) {
+                                            $kurikulum = \App\Models\MasterKurikulum::where('prodi_id', $kelas->prodi_id)
+                                                ->where('is_active', 1)
+                                                ->first();
+
+                                            if ($kurikulum) {
+                                                $set('kurikulum_id', $kurikulum->id);
+                                            }
+                                        }
+                                    }
+                                })
                                 ->afterStateUpdated(function (Set $set) {
                                     $set('mata_kuliah_id', null);
                                     $set('kelas_id', null);
