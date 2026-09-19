@@ -35,4 +35,15 @@ return [
         ],
     ],
 
+    'neo_feeder' => [
+        'url' => env('NEO_FEEDER_URL'),
+        'username' => env('NEO_FEEDER_USERNAME'),
+        'password' => env('NEO_FEEDER_PASSWORD'),
+        'token' => env('NEO_FEEDER_TOKEN'),
+        'timeout' => (int) env('NEO_FEEDER_TIMEOUT', 60),
+        'connect_timeout' => (int) env('NEO_FEEDER_CONNECT_TIMEOUT', 10),
+        'verify_ssl' => (bool) env('NEO_FEEDER_VERIFY_SSL', true),
+    ],
+
+
 ];

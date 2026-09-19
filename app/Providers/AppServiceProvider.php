@@ -14,6 +14,10 @@ use Illuminate\Support\Facades\Gate;
 use App\Policies\DosenJadwalKuliahPolicy;
 use App\Policies\DosenNilaiPolicy;
 use App\Policies\JadwalKuliahPolicy;
+use App\Services\NeoFeeder\Contracts\NeoFeederClientInterface;
+use App\Services\NeoFeeder\NeoFeederClient;
+use App\Services\NeoFeeder\NeoFeederConfig;
+use App\Services\NeoFeeder\NeoFeederSettingsService;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
@@ -24,6 +28,14 @@ class AppServiceProvider extends ServiceProvider
     public function register(): void
     {
         $this->app->singleton(\App\Services\Mahasiswa\NilaiAkademikService::class);
+        $this->app->bind(
+            NeoFeederConfig::class,
+            static fn($app): NeoFeederConfig => NeoFeederConfig::fromArray(
+                $app->make(NeoFeederSettingsService::class)->configArray(),
+            ),
+        );
+
+        $this->app->bind(NeoFeederClientInterface::class, NeoFeederClient::class);
     }
 
     /**
@@ -130,8 +142,5 @@ class AppServiceProvider extends ServiceProvider
             'tagihan_mahasiswa_detail' => \App\Models\TagihanMahasiswaDetail::class,
             'ref_gelar' => \App\Models\RefGelar::class,
         ]);
-
-
-        
     }
 }
