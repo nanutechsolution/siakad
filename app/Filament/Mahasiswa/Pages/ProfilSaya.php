@@ -757,15 +757,38 @@ class ProfilSaya extends Page implements HasForms
         ];
     }
 
-    protected function simpleStatus(array $values): array
+    protected function completionStatus(array $values): array
     {
-        $complete = collect($values)->every(
-            fn($value) => filled($value)
-        );
+        $total = count($values);
+
+        if ($total === 0) {
+            return [
+                'label' => 'Belum lengkap',
+                'tone' => 'gray',
+            ];
+        }
+
+        $filled = collect($values)
+            ->filter(fn($value) => filled($value))
+            ->count();
+
+        if ($filled === $total) {
+            return [
+                'label' => 'Lengkap',
+                'tone' => 'success',
+            ];
+        }
+
+        if ($filled === 0) {
+            return [
+                'label' => 'Belum diisi',
+                'tone' => 'gray',
+            ];
+        }
 
         return [
-            'label' => $complete ? 'Lengkap' : 'Belum lengkap',
-            'tone' => $complete ? 'success' : 'gray',
+            'label' => "{$filled}/{$total} terisi",
+            'tone' => 'warning',
         ];
     }
 
