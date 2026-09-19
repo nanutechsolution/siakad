@@ -694,23 +694,41 @@ class ProfilSaya extends Page implements HasForms
 
             'identitas' => $this->identityStatus(),
 
-            'kontak' => $this->simpleStatus([
+            'kontak' => $this->completionStatus([
                 $this->mahasiswa->person?->email,
                 $this->mahasiswa->person?->no_hp,
             ]),
 
-            'alamat' => $this->simpleStatus([
+            'alamat' => $this->completionStatus([
                 $this->mahasiswa->biodata?->alamat_ktp,
                 $this->mahasiswa->biodata?->alamat_domisili,
+                $this->mahasiswa->biodata?->kode_pos,
             ]),
 
-            'keluarga' => $this->simpleStatus([
+            'keluarga' => $this->completionStatus([
+                // Data pribadi
+                $this->mahasiswa->biodata?->agama,
+                $this->mahasiswa->biodata?->status_pernikahan,
+                $this->mahasiswa->biodata?->anak_ke,
+                $this->mahasiswa->biodata?->jumlah_saudara,
+
+                // Ayah
                 $this->mahasiswa->biodata?->nama_ayah,
+                $this->mahasiswa->biodata?->nik_ayah,
+                $this->mahasiswa->biodata?->pendidikan_ayah,
+                $this->mahasiswa->biodata?->pekerjaan_ayah,
+                $this->mahasiswa->biodata?->penghasilan_ayah,
+
+                // Ibu
                 $this->mahasiswa->biodata?->nama_ibu,
+                $this->mahasiswa->biodata?->nik_ibu,
+                $this->mahasiswa->biodata?->pendidikan_ibu,
+                $this->mahasiswa->biodata?->pekerjaan_ibu,
+                $this->mahasiswa->biodata?->penghasilan_ibu,
             ]),
 
             default => [
-                'label' => '',
+                'label' => 'Belum diperiksa',
                 'tone' => 'gray',
             ],
         };
