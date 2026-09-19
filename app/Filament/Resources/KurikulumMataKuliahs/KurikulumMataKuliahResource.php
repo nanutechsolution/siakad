@@ -25,7 +25,7 @@ class KurikulumMataKuliahResource extends Resource
     protected static ?string $slug = 'master-akademik/kurikulum-mata-kuliah';
     protected static ?string $modelLabel = 'Pemetaan MK Kurikulum';
     protected static ?string $pluralModelLabel = 'Pemetaan Mata Kuliah';
-    protected static ?int $navigationSort = 2;
+    protected static ?int $navigationSort = 3;
 
     protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedMap;
     public static function form(Schema $schema): Schema

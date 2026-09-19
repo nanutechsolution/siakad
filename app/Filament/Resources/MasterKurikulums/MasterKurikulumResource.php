@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\MasterKurikulums;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Clusters\Matakuliah\MatakuliahCluster;
 use App\Filament\Resources\MasterKurikulums\Pages\CreateMasterKurikulum;
 use App\Filament\Resources\MasterKurikulums\Pages\EditMasterKurikulum;
 use App\Filament\Resources\MasterKurikulums\Pages\ListMasterKurikulums;
@@ -19,9 +20,11 @@ use Illuminate\Database\Eloquent\Builder;
 class MasterKurikulumResource extends Resource
 {
     protected static ?string $model = MasterKurikulum::class;
-
+    protected static ?string $cluster = MatakuliahCluster::class;
     protected static ?string $slug = 'master-akademik/kurikulum';
     protected static ?string $recordTitleAttribute = 'nama_kurikulum';
+    protected static string|BackedEnum|null $navigationIcon = Heroicon::OutlinedBookOpen;
+    protected static ?int $navigationSort = 3;
     public static function getNavigationGroup(): ?string
     {
         return NavigationGroup::MASTER->value;

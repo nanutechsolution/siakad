@@ -2,10 +2,7 @@
 
 namespace App\Filament\Resources\MasterMataKuliahs;
 
-use App\Enums\NavigationGroup;
 use App\Filament\Clusters\Matakuliah\MatakuliahCluster;
-use App\Filament\Resources\MasterMataKuliahs\Pages\CreateMasterMataKuliah;
-use App\Filament\Resources\MasterMataKuliahs\Pages\EditMasterMataKuliah;
 use App\Filament\Resources\MasterMataKuliahs\Pages\ListMasterMataKuliahs;
 use App\Filament\Resources\MasterMataKuliahs\Schemas\MasterMataKuliahForm;
 use App\Filament\Resources\MasterMataKuliahs\Tables\MasterMataKuliahsTable;
@@ -27,7 +24,7 @@ class MasterMataKuliahResource extends Resource
     protected static ?string $modelLabel = 'Mata Kuliah';
     protected static ?string $pluralModelLabel = 'Mata Kuliah';
     protected static ?string $recordTitleAttribute = 'nama_mk';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 1;
     protected static ?string $cluster = MatakuliahCluster::class;
     public static function form(Schema $schema): Schema
     {

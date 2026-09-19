@@ -38,7 +38,7 @@ class PlottingDosenPage extends Page implements HasTable
     protected static ?string $navigationLabel = 'Plotting Dosen';
     protected static ?string $title = 'Plotting Dosen Pengampu';
     protected string $view = 'filament.pages.plotting-dosen-page';
-    protected static ?int $navigationSort = 3;
+    protected static ?int $navigationSort = 4;
 
     protected function getTahunAkademikAktifId(): ?int
     {
