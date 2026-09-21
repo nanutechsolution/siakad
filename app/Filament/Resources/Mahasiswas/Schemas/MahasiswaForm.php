@@ -6,7 +6,6 @@ use App\Domain\Authorization\Services\FormResolver;
 use App\Models\Mahasiswa;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
-use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Radio;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
@@ -68,7 +67,7 @@ class MahasiswaForm
                                             ]),
 
                                         Section::make('Identitas Akademik')
-                                            ->description('Nomor Induk Mahasiswa untuk institusi ini.')
+                                            ->description('Identitas pendidikan mahasiswa: NIM dan NISN.')
                                             ->icon('heroicon-o-hashtag')
                                             ->schema([
                                                 TextInput::make('nim')
@@ -117,6 +116,18 @@ class MahasiswaForm
                                                         return $exists ? 'danger' : 'success';
                                                     })
                                                     ->columnSpan(2),
+                                                TextInput::make('nisn')
+                                                    ->label('NISN')
+                                                    ->placeholder('Masukkan 10 digit NISN')
+                                                    ->maxLength(10)
+                                                    ->minLength(10)
+                                                    ->regex('/^\d{10}$/')
+                                                    ->nullable()
+                                                    ->live(onBlur: true)
+                                                    ->prefixIcon('heroicon-o-identification')
+                                                    ->helperText('Nomor Induk Siswa Nasional (10 digit). Kosongkan jika belum tersedia.')
+                                                    ->unique(ignoreRecord: true)
+                                                    ->columnSpan(1),
                                             ])
                                             ->columns(3),
 
@@ -314,11 +325,10 @@ class MahasiswaForm
                                         Section::make('Integrasi PDDikti')
                                             ->icon('heroicon-o-arrow-path')
                                             ->schema([
-                                                // Placeholder informatif saat record belum dibuat,
                                                 // menggantikan tab yang hilang tanpa penjelasan.
-                                                Placeholder::make('feeder_locked_notice')
+                                                TextEntry::make('feeder_locked_notice')
                                                     ->label('')
-                                                    ->content('Sinkronisasi PDDikti tersedia setelah data mahasiswa disimpan.')
+                                                    ->state('Sinkronisasi PDDikti tersedia setelah data mahasiswa disimpan.')
                                                     ->visible(fn(?Mahasiswa $record) => $record === null),
 
                                                 Grid::make(2)
