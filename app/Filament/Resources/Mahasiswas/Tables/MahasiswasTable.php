@@ -57,8 +57,7 @@ class MahasiswasTable
                     ->size('lg')
                     ->copyable()
                     ->copyMessage('NIM disalin')
-                    ->badge()
-                    ->color('gray'),
+                    ->color('primary'),
                 TextColumn::make('nisn')
                     ->label('NISN')
                     ->searchable()
