@@ -118,16 +118,12 @@ class MahasiswaForm
                                                     ->columnSpan(2),
                                                 TextInput::make('nisn')
                                                     ->label('NISN')
-                                                    ->placeholder('Masukkan 10 digit NISN')
+                                                    ->inputMode('numeric')
+                                                    ->length(10)
                                                     ->maxLength(10)
-                                                    ->minLength(10)
                                                     ->regex('/^\d{10}$/')
-                                                    ->nullable()
-                                                    ->live(onBlur: true)
-                                                    ->prefixIcon('heroicon-o-identification')
-                                                    ->helperText('Nomor Induk Siswa Nasional (10 digit). Kosongkan jika belum tersedia.')
                                                     ->unique(ignoreRecord: true)
-                                                    ->columnSpan(1),
+                                                    ->nullable(),
                                             ])
                                             ->columns(3),
 
@@ -405,8 +401,10 @@ class MahasiswaForm
                     ->columnSpanFull(),
                 TextInput::make('nik')
                     ->label('NIK')
-                    ->numeric()
+                    ->inputMode('numeric')
                     ->length(16)
+                    ->maxLength(16)
+                    ->regex('/^\d{16}$/')
                     ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true)
                     ->required(),
                 TextInput::make('email')
