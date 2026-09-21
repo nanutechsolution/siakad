@@ -6,7 +6,6 @@ use App\Enums\KrsStatusEnum;
 use App\Services\Akademik\KrsApprovalService;
 use App\Services\Akademik\KrsValidationService;
 use Filament\Actions\Action;
-use Filament\Actions\ViewAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Support\Exceptions\Halt;
@@ -66,7 +65,10 @@ class MahasiswaBimbingansTable
                         KrsStatusEnum::DISETUJUI->value => 'Sudah Disetujui',
                         KrsStatusEnum::DITOLAK->value => 'Ditolak',
                     ])
-                    ->default(KrsStatusEnum::DIAJUKAN->value)
+                    // PENTING: default dihapus supaya mahasiswa yang sudah
+                    // DISETUJUI / DITOLAK tetap muncul saat halaman dibuka.
+                    // Sebelumnya ->default(KrsStatusEnum::DIAJUKAN->value)
+                    // membuat mereka ke-filter keluar dari list secara diam-diam.
                     ->query(function (Builder $query, array $data): Builder {
                         if (empty($data['value'])) {
                             return $query;
@@ -83,24 +85,34 @@ class MahasiswaBimbingansTable
                     ->preload(),
             ])
             ->recordActions([
-                ViewAction::make(),
+                // ViewAction bawaan dihapus — sudah tercover oleh review_krs
+                // yang kini menampilkan detail untuk semua status KRS.
                 self::makeReviewAction(),
             ]);
     }
 
     /**
-     * Custom Action untuk Review KRS (SlideOver dengan Tombol Approve & Reject)
+     * Action untuk melihat detail KRS.
+     * - Status DIAJUKAN  -> mode "Review" (bisa Setujui / Tolak)
+     * - Status lainnya   -> mode "Lihat Detail" (read-only)
      */
     protected static function makeReviewAction(): Action
     {
         return Action::make('review_krs')
-            ->label('Review KRS')
-            ->icon('heroicon-o-document-magnifying-glass')
-            ->color('warning')
-            ->slideOver() // Membuka modal dari samping
-            // Action ini hanya muncul jika statusnya DIAJUKAN
-            ->visible(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN)
-            // Modal Content (Akan kita buat menggunakan Infolist/View terpisah nanti)
+            ->label(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                ? 'Review KRS'
+                : 'Lihat Detail KRS')
+            ->icon(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                ? 'heroicon-o-document-magnifying-glass'
+                : 'heroicon-o-eye')
+            ->color(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                ? 'warning'
+                : 'gray')
+            ->slideOver()
+            // PENTING: sebelumnya hanya visible untuk status DIAJUKAN.
+            // Sekarang tampil selama mahasiswa punya data KRS, apa pun statusnya,
+            // supaya KRS yang sudah disetujui/ditolak tetap bisa dibuka detailnya.
+            ->visible(fn(Model $record) => $record->krs->first()?->status_krs !== null)
             ->modalContent(function (Model $record, KrsValidationService $validationService) {
                 $krs = $record->krs->first();
                 $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
@@ -115,14 +127,15 @@ class MahasiswaBimbingansTable
                     'riwayatIpk' => $record->riwayatStatus,
                 ]);
             })
-
-            // Form untuk catatan (wajib jika ditolak)
-            ->schema([
-                Textarea::make('catatan_dosen')
-                    ->label('Catatan Dosen Wali')
-                    ->placeholder('Isi catatan opsional jika menyetujui, atau alasan wajib jika menolak.')
-                    ->rows(3),
-            ])
+            // Form catatan hanya relevan saat KRS masih bisa diproses (DIAJUKAN)
+            ->schema(fn(Model $record) => $record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                ? [
+                    Textarea::make('catatan_dosen')
+                        ->label('Catatan Dosen Wali')
+                        ->placeholder('Isi catatan opsional jika menyetujui, atau alasan wajib jika menolak.')
+                        ->rows(3),
+                ]
+                : [])
             ->modalSubmitAction(false)
             ->modalCancelAction(false)
             ->extraModalFooterActions(fn(Action $action) => [
@@ -137,8 +150,6 @@ class MahasiswaBimbingansTable
                     ->icon('heroicon-o-check-circle')
                     ->requiresConfirmation()
                     ->action(function (array $data, Model $record, KrsApprovalService $approvalService) use ($action) {
-
-
                         try {
                             $krs = $record->krs->first();
                             $approvalService->approve($krs, $data['catatan_dosen'] ?? null);
@@ -152,19 +163,15 @@ class MahasiswaBimbingansTable
 
                             Notification::make()->title('KRS berhasil disetujui')->success()->send();
                         } catch (\Throwable $e) {
-                            // Abaikan (throw kembali) jika ini adalah exception Halt dari Filament
                             if ($e instanceof \Filament\Support\Exceptions\Halt) {
                                 throw $e;
                             }
 
                             Notification::make()->title('Gagal: ' . $e->getMessage())->danger()->send();
-                            return; // Hentikan proses jika benar-benar gagal
+                            return;
                         }
-                        // Tutup modal dengan aman di luar blok try-catch
                         $action->cancel();
                     }),
-
-
 
                 Action::make('reject')
                     ->label('Tolak KRS')
@@ -199,11 +206,10 @@ class MahasiswaBimbingansTable
 
                             Notification::make()->title('KRS berhasil ditolak')->success()->send();
 
-                            // HENTIKAN ACTION & TUTUP MODAL
                             throw new Halt();
                         } catch (\Throwable $e) {
                             if ($e instanceof Halt) {
-                                throw $e; // Biarkan Halt lewat untuk menutup modal
+                                throw $e;
                             }
 
                             Notification::make()->title('Gagal: ' . $e->getMessage())->danger()->send();
