@@ -405,7 +405,12 @@ class ProfilSaya extends Page implements HasForms
 
                     TextInput::make('nik_ayah')
                         ->label('NIK Ayah')
-                        ->maxLength(16),
+                        ->inputMode('numeric')
+                        ->maxLength(16)
+                        ->minLength(16)
+                        ->regex('/^\d{16}$/')
+                        ->placeholder('16 digit NIK')
+                        ->helperText('NIK ayah sesuai KTP. Kosongkan jika belum tersedia.'),
 
                     Select::make('pendidikan_ayah')
                         ->label('Pendidikan Ayah')
@@ -433,7 +438,12 @@ class ProfilSaya extends Page implements HasForms
 
                     TextInput::make('nik_ibu')
                         ->label('NIK Ibu')
-                        ->maxLength(16),
+                        ->inputMode('numeric')
+                        ->maxLength(16)
+                        ->minLength(16)
+                        ->regex('/^\d{16}$/')
+                        ->placeholder('16 digit NIK')
+                        ->helperText('NIK ibu sesuai KTP. Kosongkan jika belum tersedia.'),
 
                     Select::make('pendidikan_ibu')
                         ->label('Pendidikan Ibu')
@@ -535,16 +545,15 @@ class ProfilSaya extends Page implements HasForms
     {
         $person = $this->mahasiswa->person;
 
-        $fields = [
+        $personFields = [
             'nama_lengkap',
             'nik',
-            'nisn',
             'tanggal_lahir',
             'tempat_lahir',
             'jenis_kelamin',
         ];
 
-        foreach ($fields as $field) {
+        foreach ($personFields as $field) {
             $oldValue = $person->{$field};
             $newValue = $data[$field] ?? null;
 
@@ -574,6 +583,28 @@ class ProfilSaya extends Page implements HasForms
                 'new_value' => $newValue,
                 'status' => 'pending',
             ]);
+        }
+
+        // NISN berada di tabel mahasiswas, bukan ref_person.
+        $oldNisn = $this->mahasiswa->nisn;
+        $newNisn = $data['nisn'] ?? null;
+
+        if ((string) $oldNisn !== (string) $newNisn) {
+            $alreadyPending = ProfileChangeRequest::query()
+                ->where('mahasiswa_id', $this->mahasiswa->id)
+                ->where('field_name', 'nisn')
+                ->where('status', 'pending')
+                ->exists();
+
+            if (! $alreadyPending) {
+                ProfileChangeRequest::create([
+                    'mahasiswa_id' => $this->mahasiswa->id,
+                    'field_name' => 'nisn',
+                    'old_value' => $oldNisn,
+                    'new_value' => $newNisn,
+                    'status' => 'pending',
+                ]);
+            }
         }
     }
 
@@ -759,6 +790,7 @@ class ProfilSaya extends Page implements HasForms
         $complete = collect([
             $this->mahasiswa->person?->nama_lengkap,
             $this->mahasiswa->person?->nik,
+            $this->mahasiswa->nisn,
             $this->mahasiswa->person?->tanggal_lahir,
             $this->mahasiswa->person?->tempat_lahir,
             $this->mahasiswa->person?->jenis_kelamin,
