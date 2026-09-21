@@ -101,13 +101,6 @@ class MahasiswasTable
                         self::biodataStatus($record)['color']
                     )
                     ->alignCenter(),
-                IconColumn::make('biodata_lengkap')
-                    ->label('Biodata')
-                    ->tooltip(fn(Mahasiswa $record) => self::biodataStatus($record)['tooltip'])
-                    ->icon(fn(Mahasiswa $record) => self::biodataStatus($record)['icon'])
-                    ->color(fn(Mahasiswa $record) => self::biodataStatus($record)['color'])
-                    ->alignCenter(),
-
                 IconColumn::make('sync_status')
                     ->label('PDDikti')
                     ->boolean()
