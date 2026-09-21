@@ -57,6 +57,20 @@ class MahasiswasTable
                     ->copyMessage('NIM disalin')
                     ->badge()
                     ->color('gray'),
+                TextColumn::make('nisn')
+                    ->label('NISN')
+                    ->searchable()
+                    ->sortable()
+                    ->fontFamily('mono')
+                    ->copyable()
+                    ->copyMessage('NISN disalin')
+                    ->placeholder('Belum diisi')
+                    ->badge()
+                    ->color(
+                        fn(Mahasiswa $record) => filled($record->nisn)
+                            ? 'info'
+                            : 'gray'
+                    ),
 
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
@@ -71,7 +85,21 @@ class MahasiswasTable
                     ->badge()
                     ->color('info')
                     ->alignCenter(),
-
+                IconColumn::make('biodata_lengkap')
+                    ->label('Biodata')
+                    ->tooltip(
+                        fn(Mahasiswa $record) =>
+                        self::biodataStatus($record)['tooltip']
+                    )
+                    ->icon(
+                        fn(Mahasiswa $record) =>
+                        self::biodataStatus($record)['icon']
+                    )
+                    ->color(
+                        fn(Mahasiswa $record) =>
+                        self::biodataStatus($record)['color']
+                    )
+                    ->alignCenter(),
                 IconColumn::make('biodata_lengkap')
                     ->label('Biodata')
                     ->tooltip(fn(Mahasiswa $record) => self::biodataStatus($record)['tooltip'])
@@ -154,7 +182,13 @@ class MahasiswasTable
     }
 
     /**
-     * @return array{icon: string, color: string, tooltip: string}
+     * Status kelengkapan biodata dasar.
+     *
+     * @return array{
+     *     icon: string,
+     *     color: string,
+     *     tooltip: string
+     * }
      */
     protected static function biodataStatus(Mahasiswa $record): array
     {
@@ -162,28 +196,43 @@ class MahasiswasTable
             return [
                 'icon' => 'heroicon-o-x-circle',
                 'color' => 'danger',
-                'tooltip' => 'Belum diisi sama sekali',
+                'tooltip' => 'Biodata belum diisi',
             ];
         }
 
-        $fields = ['alamat_ktp', 'nama_ayah', 'nama_ibu', 'agama', 'status_pernikahan'];
-        $filled = collect($fields)->filter(fn($f) => filled($record->biodata->{$f}))->count();
+        $fields = [
+            'alamat_ktp',
+            'nama_ayah',
+            'nama_ibu',
+            'agama',
+            'status_pernikahan',
+        ];
+
+        $filled = collect($fields)
+            ->filter(
+                fn($field) => filled($record->biodata->{$field})
+            )
+            ->count();
+
+        $total = count($fields);
 
         return match (true) {
-            $filled === count($fields) => [
+            $filled === $total => [
                 'icon' => 'heroicon-o-check-circle',
                 'color' => 'success',
-                'tooltip' => 'Biodata lengkap',
+                'tooltip' => 'Biodata dasar lengkap',
             ],
+
             $filled > 0 => [
                 'icon' => 'heroicon-o-minus-circle',
                 'color' => 'warning',
-                'tooltip' => "Biodata sebagian ({$filled}/" . count($fields) . ' field terisi)',
+                'tooltip' => "Biodata dasar sebagian ({$filled}/{$total} terisi)",
             ],
+
             default => [
                 'icon' => 'heroicon-o-x-circle',
                 'color' => 'danger',
-                'tooltip' => 'Belum diisi sama sekali',
+                'tooltip' => 'Biodata belum diisi',
             ],
         };
     }
