@@ -105,6 +105,7 @@ class ProfilSaya extends Page implements HasForms
              */
             'nama_lengkap' => $person?->nama_lengkap,
             'nik' => $person?->nik,
+            'nisn' => $this->mahasiswa->nisn,
             'tanggal_lahir' => $person?->tanggal_lahir,
             'tempat_lahir' => $person?->tempat_lahir,
             'jenis_kelamin' => $person?->jenis_kelamin,
@@ -237,7 +238,18 @@ class ProfilSaya extends Page implements HasForms
                                 ? 'Menunggu pemeriksaan Admin Akademik.'
                                 : 'Masukkan sesuai KTP.'
                         ),
-
+                    TextInput::make('nisn')
+                        ->label('NISN')
+                        ->inputMode('numeric')
+                        ->maxLength(10)
+                        ->minLength(10)
+                        ->regex('/^\d{10}$/')
+                        ->disabled($locked)
+                        ->helperText(
+                            $locked
+                                ? 'Menunggu pemeriksaan Admin Akademik.'
+                                : 'Masukkan NISN sesuai dokumen pendidikan. Perubahan akan diperiksa Admin Akademik.'
+                        ),
                     DatePicker::make('tanggal_lahir')
                         ->label('Tanggal Lahir')
                         ->native(false)
@@ -526,6 +538,7 @@ class ProfilSaya extends Page implements HasForms
         $fields = [
             'nama_lengkap',
             'nik',
+            'nisn',
             'tanggal_lahir',
             'tempat_lahir',
             'jenis_kelamin',
