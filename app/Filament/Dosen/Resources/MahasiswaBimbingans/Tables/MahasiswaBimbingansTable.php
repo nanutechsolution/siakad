@@ -113,11 +113,27 @@ class MahasiswaBimbingansTable
             // Sekarang tampil selama mahasiswa punya data KRS, apa pun statusnya,
             // supaya KRS yang sudah disetujui/ditolak tetap bisa dibuka detailnya.
             ->visible(fn(Model $record) => $record->krs->first()?->status_krs !== null)
+            // Judul slide-over menyertakan nama mahasiswa, supaya jelas detail
+            // ini milik siapa saat dosen membuka beberapa berurutan.
+            ->modalHeading(fn(Model $record) => ($record->krs->first()?->status_krs === KrsStatusEnum::DIAJUKAN
+                ? 'Review KRS — '
+                : 'Detail KRS — ') . ($record->person->nama_lengkap ?? $record->nim))
             ->modalContent(function (Model $record, KrsValidationService $validationService) {
                 $krs = $record->krs->first();
                 $activeTa = \App\Models\RefTahunAkademik::where('is_active', 1)->first();
                 $krs->loadMissing(['details.jadwalKuliah.mataKuliah', 'details.jadwalKuliah.dosenPengampu.person']);
                 $hasilValidasi = $validationService->runAllValidations($record, $krs, $activeTa);
+
+                // TODO: sesuaikan nama kolom berikut dengan skema tabel `krs`
+                // yang sebenarnya (mis. bisa jadi catatan_dosen/alasan_penolakan
+                // sudah ada, atau perlu ditambahkan lewat migration baru).
+                // Ini untuk menampilkan riwayat keputusan saat KRS sudah final.
+                $catatanTersimpan = match ($krs->status_krs) {
+                    KrsStatusEnum::DISETUJUI => $krs->catatan_dosen ?? null,
+                    KrsStatusEnum::DITOLAK => $krs->alasan_penolakan ?? null,
+                    default => null,
+                };
+
                 return view('filament.dosen.components.review-krs-modal', [
                     'krs' => $krs,
                     'mahasiswa' => $record,
@@ -125,6 +141,11 @@ class MahasiswaBimbingansTable
                     'statusRisiko' => $record->statusRisiko,
                     'totalTunggakan' => $record->totalTunggakan(),
                     'riwayatIpk' => $record->riwayatStatus,
+                    // Baru: riwayat catatan/alasan dari keputusan sebelumnya.
+                    // Perlu ditambahkan ke blade view review-krs-modal.blade.php,
+                    // misal ditampilkan di atas daftar mata kuliah sebagai alert box.
+                    'catatanTersimpan' => $catatanTersimpan,
+                    'direviewPada' => $krs->reviewed_at ?? $krs->updated_at,
                 ]);
             })
             // Form catatan hanya relevan saat KRS masih bisa diproses (DIAJUKAN)

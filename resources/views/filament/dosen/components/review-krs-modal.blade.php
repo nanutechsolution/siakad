@@ -48,6 +48,35 @@
             </p>
         </div>
     </div>
+
+    {{--
+        BARU: Riwayat catatan dosen / alasan penolakan.
+        Hanya tampil kalau KRS sudah pernah diproses (DISETUJUI/DITOLAK)
+        dan datanya dikirim dari MahasiswaBimbingansTable::makeReviewAction().
+        Ditaruh di sini (sebelum daftar mata kuliah) supaya dosen langsung
+        lihat konteks keputusan sebelumnya, tanpa perlu scroll dulu.
+    --}}
+    @if(!empty($catatanTersimpan))
+    <div class="rounded-lg border p-4 {{ $krs->status_krs === \App\Enums\KrsStatusEnum::DITOLAK ? 'border-danger-300 bg-danger-50 dark:bg-danger-500/10' : 'border-success-300 bg-success-50 dark:bg-success-500/10' }}">
+        <div class="flex items-center gap-2 mb-1">
+            @if($krs->status_krs === \App\Enums\KrsStatusEnum::DITOLAK)
+            <x-heroicon-o-x-circle class="h-4 w-4 text-danger-600" />
+            @else
+            <x-heroicon-o-check-circle class="h-4 w-4 text-success-600" />
+            @endif
+            <p class="text-xs font-semibold uppercase tracking-wider text-gray-600 dark:text-gray-300">
+                {{ $krs->status_krs === \App\Enums\KrsStatusEnum::DITOLAK ? 'Alasan Penolakan' : 'Catatan Dosen Wali' }}
+            </p>
+        </div>
+        <p class="text-sm text-gray-800 dark:text-gray-200">{{ $catatanTersimpan }}</p>
+        @if(!empty($direviewPada))
+        <p class="text-xs text-gray-400 mt-2">
+            Diproses pada {{ \Carbon\Carbon::parse($direviewPada)->translatedFormat('d F Y, H:i') }}
+        </p>
+        @endif
+    </div>
+    @endif
+
     <div class="bg-white dark:bg-gray-900 rounded-xl border border-gray-200 dark:border-white/10 overflow-hidden">
         <div class="bg-gray-50 dark:bg-white/5 px-4 py-3 border-b border-gray-200 dark:border-white/10">
             <h3 class="text-sm font-bold text-gray-900 dark:text-white uppercase tracking-wider">Daftar Mata Kuliah</h3>
