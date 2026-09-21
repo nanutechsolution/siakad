@@ -53,6 +53,8 @@ class MahasiswasTable
                     ->searchable()
                     ->sortable()
                     ->fontFamily('mono')
+                    ->weight(FontWeight::Bold)
+                    ->size('lg')
                     ->copyable()
                     ->copyMessage('NIM disalin')
                     ->badge()
