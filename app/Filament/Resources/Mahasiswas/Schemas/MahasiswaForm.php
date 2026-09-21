@@ -228,7 +228,13 @@ class MahasiswaForm
                                                     ->schema([
                                                         Grid::make(2)->schema([
                                                             TextInput::make('nama_ayah')->label('Nama Ayah'),
-                                                            TextInput::make('nik_ayah')->label('NIK Ayah')->numeric()->length(16),
+                                                            TextInput::make('nik_ayah')
+                                                                ->label('NIK Ayah')
+                                                                ->inputMode('numeric')
+                                                                ->length(16)
+                                                                ->maxLength(16)
+                                                                ->regex('/^\d{16}$/')
+                                                                ->nullable(),
                                                             Select::make('pendidikan_ayah')
                                                                 ->label('Pendidikan Ayah')
                                                                 ->native(false)
@@ -241,7 +247,13 @@ class MahasiswaForm
                                                         ]),
                                                         Grid::make(2)->schema([
                                                             TextInput::make('nama_ibu')->label('Nama Ibu'),
-                                                            TextInput::make('nik_ibu')->label('NIK Ibu')->numeric()->length(16),
+                                                            TextInput::make('nik_ibu')
+                                                                ->label('NIK Ibu')
+                                                                ->inputMode('numeric')
+                                                                ->length(16)
+                                                                ->maxLength(16)
+                                                                ->regex('/^\d{16}$/')
+                                                                ->nullable(),
                                                             Select::make('pendidikan_ibu')
                                                                 ->label('Pendidikan Ibu')
                                                                 ->native(false)
