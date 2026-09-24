@@ -140,6 +140,11 @@ class MahasiswaForm
                                                             ->required()
                                                             ->native(false)
                                                             ->live()
+                                                            ->disabled(fn(?Mahasiswa $record) => $record !== null)
+                                                            ->dehydrated() // Penting: agar nilai tetap dikirim saat form disimpan meski di-disable
+                                                            ->helperText(fn(?Mahasiswa $record) => $record !== null
+                                                                ? 'Program Studi tidak bisa diubah langsung. Gunakan aksi Mutasi Prodi.'
+                                                                : null)
                                                             ->afterStateUpdated(function (callable $set): void {
                                                                 // kurikulum terikat ke prodi (master_kurikulums.prodi_id),
                                                                 // reset pilihan lama agar tidak salah pasang kurikulum

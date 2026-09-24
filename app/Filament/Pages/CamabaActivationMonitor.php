@@ -407,29 +407,9 @@ class CamabaActivationMonitor extends Page implements HasTable
                                     $prodi = RefProdi::whereKey($record->prodi_id)->lockForUpdate()->first();
                                     if (! $prodi) throw new \RuntimeException('Prodi tidak ditemukan');
 
-                                    $kampusSettings = app(\App\Settings\KampusSettings::class);
-                                    $isResetPerTahun = (bool) ($kampusSettings->reset_nim_tahunan ?? false);
-                                    $angkatanTahun = (int) $record->angkatan_id;
-
-                                    if ($isResetPerTahun) {
-                                        $lastMahasiswa = Mahasiswa::where('prodi_id', $prodi->id)
-                                            ->where('angkatan_id', $angkatanTahun)
-                                            ->where('nim', 'NOT LIKE', 'PMB%')
-                                            ->orderBy('nim', 'desc')
-                                            ->lockForUpdate()
-                                            ->first();
-
-                                        $lastSeq = $lastMahasiswa ? (int) substr($lastMahasiswa->nim, -3) : 0;
-                                        $nextSeq = $lastSeq + 1;
-                                    } else {
-                                        $nextSeq = ((int) $prodi->last_nim_seq) + 1;
-                                    }
-
-                                    $format = $prodi->format_nim ?? '{THN}{KODE}{NO:3}';
-                                    $nim = $this->renderFormatNim($format, $angkatanTahun, $prodi->kode_prodi_internal, $nextSeq);
+                                    $nim = app(\App\Services\Akademik\NimService::class)->generate($record, $prodi);
 
                                     $record->update(['nim' => $nim]);
-                                    $prodi->update(['last_nim_seq' => $nextSeq]);
                                 });
 
                                 \Filament\Notifications\Notification::make()
@@ -446,23 +426,5 @@ class CamabaActivationMonitor extends Page implements HasTable
     public function getTableQuery(): Builder
     {
         return Mahasiswa::query()->where('nim', 'like', 'PMB%')->with(['person', 'prodi', 'angkatan']);
-    }
-
-    private function renderFormatNim(string $format, int $tahun, string $kodeProdi, int $nomorUrut): string
-    {
-        $nim = $format;
-        $nim = str_replace('{TAHUN}', (string) $tahun, $nim);
-        $nim = str_replace('{THN}', substr((string) $tahun, -2), $nim);
-        $nim = str_replace('{KODE}', $kodeProdi, $nim);
-
-        if (preg_match('/\{NO:(\d+)\}/', $nim, $matches)) {
-            $digitCount = max(1, (int) $matches[1]);
-            $padded = str_pad((string) $nomorUrut, $digitCount, '0', STR_PAD_LEFT);
-            $nim = str_replace($matches[0], $padded, $nim);
-        } else {
-            $nim = str_replace('{NO}', str_pad((string) $nomorUrut, 3, '0', STR_PAD_LEFT), $nim);
-        }
-
-        return $nim;
     }
 }

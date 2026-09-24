@@ -8,6 +8,8 @@ use App\Exceptions\ManajemenKelasException;
 use App\Models\Kelas;
 use App\Models\Mahasiswa;
 use App\Models\MahasiswaKelas;
+use App\Models\RiwayatProdiMahasiswa;
+use App\Services\Akademik\NimService;
 use App\Services\Akademik\PembimbingAkademikConsistencyService;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Collection;
@@ -17,6 +19,7 @@ class ManajemenKelasService
 {
     public function __construct(
         private readonly PembimbingAkademikConsistencyService $consistencyService,
+        private readonly NimService $nimService,
     ) {}
 
     public function jumlahAnggotaAktif(int $kelasId): int
@@ -316,6 +319,12 @@ class ManajemenKelasService
         ) {
             $tanggal = $tanggalMutasi ?? now()->toDateString();
 
+            if ((int) $mahasiswa->prodi_id === $prodiBaruId) {
+                throw new ManajemenKelasException(
+                    'Program Studi tujuan harus berbeda dari Program Studi mahasiswa saat ini.'
+                );
+            }
+
             $kelasBaru = Kelas::query()
                 ->lockForUpdate()
                 ->findOrFail($kelasBaruId);
@@ -326,6 +335,31 @@ class ManajemenKelasService
             if ((int) $kelasBaru->prodi_id !== $prodiBaruId) {
                 throw new ManajemenKelasException(
                     'Kelas tujuan tidak sesuai dengan Program Studi tujuan.'
+                );
+            }
+
+            /*
+         * Kelas tujuan harus se-angkatan dengan mahasiswa, karena resolusi
+         * wali dan konfigurasi pembimbing terikat pada Prodi + Angkatan.
+         */
+            if ((int) $kelasBaru->angkatan_id !== (int) $mahasiswa->angkatan_id) {
+                throw new ManajemenKelasException(
+                    'Kelas tujuan harus berada pada angkatan yang sama dengan mahasiswa.'
+                );
+            }
+
+            /*
+         * Kurikulum tujuan, jika diisi, harus milik Prodi tujuan.
+         */
+            if (
+                $kurikulumBaruId !== null
+                && ! \App\Models\MasterKurikulum::query()
+                    ->whereKey($kurikulumBaruId)
+                    ->where('prodi_id', $prodiBaruId)
+                    ->exists()
+            ) {
+                throw new ManajemenKelasException(
+                    'Kurikulum tujuan tidak sesuai dengan Program Studi tujuan.'
                 );
             }
 
@@ -369,11 +403,27 @@ class ManajemenKelasService
             }
 
             /*
-         * Update Prodi mahasiswa.
+         * Update Prodi mahasiswa dan alokasikan NIM baru dari format
+         * Prodi tujuan. Semua tetap berada dalam transaksi yang sama.
          */
+            $nimBaru = $this->nimService->generate($mahasiswa, $kelasBaru->prodi);
+
             $mahasiswa->update([
                 'prodi_id' => $prodiBaruId,
                 'kurikulum_id' => $kurikulumBaruId,
+                'nim' => $nimBaru,
+            ]);
+
+            RiwayatProdiMahasiswa::query()
+                ->where('mahasiswa_id', $mahasiswa->id)
+                ->where('is_active', true)
+                ->update(['is_active' => false]);
+
+            RiwayatProdiMahasiswa::create([
+                'mahasiswa_id' => $mahasiswa->id,
+                'prodi_id' => $prodiBaruId,
+                'tanggal_berlaku' => $tanggal,
+                'is_active' => true,
             ]);
 
             /*

@@ -5,8 +5,8 @@ namespace App\Listeners\Pembayaran;
 use App\Events\PembayaranTerverifikasi;
 use App\Models\Mahasiswa;
 use App\Models\RefProdi;
+use App\Services\Akademik\NimService;
 use App\Services\Pembayaran\PaymentPolicyChecker;
-use App\Settings\KampusSettings;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -15,7 +15,7 @@ class GenerateNimListener
 {
     public function __construct(
         private readonly PaymentPolicyChecker $policyChecker,
-        private readonly KampusSettings $kampusSettings
+        private readonly NimService $nimService
     ) {}
 
     public function handle(PembayaranTerverifikasi $event): void
@@ -69,36 +69,28 @@ class GenerateNimListener
     }
 
     /**
-     * Logika Generate NIM yang dipindahkan dari Observer lama
+     * Logika Generate NIM yang dipindahkan dari Observer lama.
+     *
+     * Render/format NIM ada di NimService agar mutasi prodi dan listener ini
+     * tidak memiliki dua implementasi pola NIM yang bisa berbeda.
      */
     private function generateNim(Mahasiswa $mahasiswa): string
     {
         $prodi = $mahasiswa->prodi;
-        $angkatanTahun = (int) $mahasiswa->angkatan_id;
 
         if (! $prodi instanceof RefProdi) {
             throw new \RuntimeException("Mahasiswa ID {$mahasiswa->id} tidak memiliki prodi yang valid.");
         }
 
-        $isResetPerTahun = (bool) $this->kampusSettings->reset_nim_tahunan;
+        $nim = $this->nimService->generate($mahasiswa, $prodi);
 
-        // Tentukan nomor urut berikutnya
-        $nextSeq = $this->tentukanNomorUrut($prodi, $angkatanTahun, $isResetPerTahun);
-
-        // Susun NIM dari format
-        $nim = $this->renderFormatNim(
-            $prodi->format_nim ?? '{THN}{KODE}{NO:3}',
-            $angkatanTahun,
-            $prodi->kode_prodi_internal,
-            $nextSeq
-        );
         $tahunAkademikMulai = \App\Models\RefTahunAkademik::query()
-            ->where('kode_tahun', $angkatanTahun . '1')
+            ->where('kode_tahun', $mahasiswa->angkatan_id . '1')
             ->first();
 
         if (! $tahunAkademikMulai) {
             throw new \RuntimeException(
-                "Tahun Akademik {$angkatanTahun}1 tidak ditemukan."
+                "Tahun Akademik {$mahasiswa->angkatan_id}1 tidak ditemukan."
             );
         }
 
@@ -106,48 +98,6 @@ class GenerateNimListener
             'nim' => $nim,
             'mulai_studi_tahun_akademik_id' => $tahunAkademikMulai->id,
         ]);
-        $prodi->update(['last_nim_seq' => $nextSeq]);
-
-        return $nim;
-    }
-
-    private function tentukanNomorUrut(RefProdi $prodi, int $angkatanTahun, bool $isResetPerTahun): int
-    {
-        // Lock baris prodi agar counter aman dari race condition
-        $prodiLocked = RefProdi::whereKey($prodi->id)->lockForUpdate()->first();
-
-        if ($isResetPerTahun) {
-            $lastMahasiswa = Mahasiswa::where('prodi_id', $prodiLocked->id)
-                ->where('angkatan_id', $angkatanTahun)
-                ->where('nim', 'NOT LIKE', 'PMB%')
-                ->orderBy('nim', 'desc')
-                ->lockForUpdate()
-                ->first();
-
-            $lastSeq = $lastMahasiswa ? (int) substr($lastMahasiswa->nim, -3) : 0;
-
-            return $lastSeq + 1;
-        }
-
-        // Skenario global: cukup pakai counter dari prodi lalu increment
-        return ((int) $prodiLocked->last_nim_seq) + 1;
-    }
-
-    private function renderFormatNim(string $format, int $tahun, string $kodeProdi, int $nomorUrut): string
-    {
-        $nim = str_replace(
-            ['{TAHUN}', '{THN}', '{KODE}'],
-            [(string) $tahun, substr((string) $tahun, -2), $kodeProdi],
-            $format
-        );
-
-        if (preg_match('/\{NO:(\d+)\}/', $nim, $matches)) {
-            $digitCount = max(1, (int) $matches[1]);
-            $padded = str_pad((string) $nomorUrut, $digitCount, '0', STR_PAD_LEFT);
-            $nim = str_replace($matches[0], $padded, $nim);
-        } else {
-            $nim = str_replace('{NO}', str_pad((string) $nomorUrut, 3, '0', STR_PAD_LEFT), $nim);
-        }
 
         return $nim;
     }
