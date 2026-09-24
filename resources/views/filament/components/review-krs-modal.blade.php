@@ -28,40 +28,94 @@
         </div>
     </div>
 
+    @php
+        // Badge ringkasan: ambil dari hasil validasi LIVE, bukan flag kolom
+        // is_financial_verified — keduanya bisa tidak sinkron dan membingungkan.
+        $gateKeuangan = collect($hasilValidasi ?? [])
+            ->firstWhere('gateCode', 'GATE_KEUANGAN');
+        $semuaLolos = collect($hasilValidasi ?? [])->every(fn($h) => $h->passed);
+        $jumlahGagal = collect($hasilValidasi ?? [])->filter(fn($h) => ! $h->passed)->count();
+
+        // Judul ramah untuk tiap gate — kode sistem tetap ditampilkan kecil
+        // hanya untuk staf yang butuh menelusuri log/kode error.
+        $judulGate = [
+            'GATE_PERIODE' => 'Periode KRS masih terbuka',
+            'GATE_KONTINUITAS' => 'Status keberlanjutan kuliah',
+            'GATE_KEUANGAN' => 'Ketentuan pembayaran',
+            'GATE_PENAWARAN_MK' => 'Kelengkapan mata kuliah yang ditawarkan',
+            'GATE_SKS' => 'Jumlah beban SKS semester ini',
+            'GATE_PRASYARAT' => 'Prasyarat mata kuliah',
+            'GATE_JADWAL' => 'Bentrok jadwal kuliah',
+            'GATE_KUOTA' => 'Ketersediaan tempat di kelas',
+        ];
+    @endphp
+
     <div class="rounded-xl border border-gray-200 dark:border-white/10 bg-white dark:bg-gray-900 p-4">
-        <div class="flex items-center justify-between gap-3 mb-3">
+        <div class="flex items-start justify-between gap-3 mb-3">
             <div>
-                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Pemeriksaan sebelum keputusan</h3>
-                <p class="text-xs text-gray-500">Gunakan hasil ini sebagai panduan sebelum menyetujui KRS.</p>
+                <h3 class="text-sm font-bold text-gray-900 dark:text-white">Kesiapan KRS</h3>
+                <p class="text-xs text-gray-500">Ringkasan pemeriksaan otomatis. Blok merah berarti KRS belum boleh disetujui.</p>
             </div>
-            @if($krs->is_financial_verified)
-                <span class="inline-flex items-center gap-1 rounded-full bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-700 dark:bg-success-500/10 dark:text-success-300">
-                    <x-heroicon-o-check-circle class="h-4 w-4" /> Keuangan lolos
+            @if($semuaLolos)
+                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-success-50 px-2.5 py-1 text-xs font-semibold text-success-700 dark:bg-success-500/10 dark:text-success-300">
+                    <x-heroicon-o-check-circle class="h-4 w-4" /> Semua pemeriksaan lolos
                 </span>
             @else
-                <span class="inline-flex items-center gap-1 rounded-full bg-warning-50 px-2.5 py-1 text-xs font-semibold text-warning-700 dark:bg-warning-500/10 dark:text-warning-300">
-                    <x-heroicon-o-exclamation-triangle class="h-4 w-4" /> Keuangan belum lolos
+                <span class="inline-flex shrink-0 items-center gap-1 rounded-full bg-danger-50 px-2.5 py-1 text-xs font-semibold text-danger-700 dark:bg-danger-500/10 dark:text-danger-300">
+                    <x-heroicon-o-x-circle class="h-4 w-4" /> {{ $jumlahGagal }} pemeriksaan terblokir
                 </span>
             @endif
         </div>
+
         @if(empty($hasilValidasi))
-            <p class="text-sm text-gray-500">Validasi belum tersedia karena periode akademik tidak ditemukan.</p>
+            <p class="text-sm text-gray-500">Pemeriksaan belum tersedia karena periode akademik tidak ditemukan.</p>
         @else
-            <div class="space-y-2">
-                @foreach($hasilValidasi as $hasil)
-                    <div class="flex items-start gap-2 rounded-lg px-3 py-2 {{ $hasil->passed ? 'bg-success-50 dark:bg-success-500/10' : 'bg-danger-50 dark:bg-danger-500/10' }}">
-                        @if($hasil->passed)
-                            <x-heroicon-o-check-circle class="mt-0.5 h-4 w-4 shrink-0 text-success-600" />
-                        @else
-                            <x-heroicon-o-x-circle class="mt-0.5 h-4 w-4 shrink-0 text-danger-600" />
-                        @endif
+            {{-- Yang lolos diringkas jadi satu baris hijau — lebih ringkas untuk user awam --}}
+            @php
+                $lolos = collect($hasilValidasi)->filter(fn($h) => $h->passed);
+                // Pesan "OK" tidak informatif, jadi disembunyikan. Yang berisi
+                // informasi nyata (mis. jumlah mata kuliah) tetap ditampilkan.
+                $lolosBernut = $lolos->filter(fn($h) => trim($h->message) !== 'OK');
+            @endphp
+            @if($lolos->isNotEmpty())
+                <div class="mb-2 rounded-lg bg-success-50 px-3 py-2 dark:bg-success-500/10">
+                    <div class="flex flex-wrap items-center gap-1.5">
+                        <x-heroicon-o-check-circle class="h-4 w-4 shrink-0 text-success-600" />
+                        @foreach($lolos as $h)
+                            <span class="text-xs font-medium text-success-800">{{ $judulGate[$h->gateCode] ?? $h->gateCode }}</span>
+                            @unless($loop->last)
+                                <span class="text-success-400">·</span>
+                            @endunless
+                        @endforeach
+                    </div>
+                    @foreach($lolosBernut as $h)
+                        <p class="mt-1.5 pl-6 text-xs text-success-700 dark:text-success-200">{{ $h->message }}</p>
+                    @endforeach
+                </div>
+            @endif
+
+            {{-- Yang gagal ditampilkan penuh, satu per satu, dengan tindakan yang jelas --}}
+            @foreach(collect($hasilValidasi)->filter(fn($h) => ! $h->passed) as $h)
+                <div class="mb-2 rounded-lg bg-danger-50 px-3 py-2 dark:bg-danger-500/10">
+                    <div class="flex items-start gap-2">
+                        <x-heroicon-o-x-circle class="mt-0.5 h-4 w-4 shrink-0 text-danger-600" />
                         <div>
-                            <p class="text-xs font-semibold {{ $hasil->passed ? 'text-success-800' : 'text-danger-800' }}">{{ $hasil->gateCode }}</p>
-                            <p class="text-xs text-gray-600 dark:text-gray-300">{{ $hasil->message }}</p>
+                            <p class="text-xs font-semibold text-danger-800 dark:text-danger-300">
+                                {{ $judulGate[$h->gateCode] ?? $h->gateCode }}
+                            </p>
+                            <p class="text-xs text-danger-700 dark:text-danger-200">{{ $h->message }}</p>
+                            <p class="mt-1 text-[11px] uppercase tracking-wide text-danger-500/80">{{ $h->gateCode }}</p>
                         </div>
                     </div>
-                @endforeach
-            </div>
+                </div>
+            @endforeach
+
+            @if($gateKeuangan && ! $gateKeuangan->passed && $krs->status_krs === \App\Enums\KrsStatusEnum::DIAJUKAN)
+                <p class="mt-1 text-xs text-gray-500">
+                    Jika pembayaran mahasiswa sudah dilakukan di luar sistem, gunakan
+                    <strong>Override Keuangan</strong> pada menu aksi baris KRS ini.
+                </p>
+            @endif
         @endif
     </div>
 
