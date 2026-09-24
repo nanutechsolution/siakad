@@ -36,8 +36,6 @@ class DashboardAkademik extends BaseDashboard
     public function getWidgets(): array
     {
         return [
-            // Tampil hanya jika user juga dosen (lihat PortalSwitcher::canView).
-            \App\Filament\Dosen\Widgets\PortalSwitcher::class,
             AkademikAlerts::class,
             AkademikOverview::class,
             KelasOverview::class,

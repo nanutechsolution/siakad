@@ -9,7 +9,6 @@ use App\Filament\Dosen\Resources\MahasiswaBimbingans\Schemas\MahasiswaBimbinganI
 use App\Filament\Dosen\Resources\MahasiswaBimbingans\Tables\MahasiswaBimbingansTable;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
-use App\Models\TrxDosen;
 use App\Services\Akademik\PembimbingAkademikResolver;
 use BackedEnum;
 use Filament\Resources\Resource;
@@ -19,7 +18,6 @@ use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Facades\Auth;
-use Override;
 
 class MahasiswaBimbinganResource extends Resource
 {

@@ -64,12 +64,6 @@ class AdminPanelProvider extends PanelProvider
             ->globalSearch(false)
             ->breadcrumbs(true)
             ->discoverWidgets(in: app_path('Filament/Widgets'), for: 'App\Filament\Widgets')
-            // PortalSwitcher berada di namespace panel Dosen, jadi tidak ter-
-            // tangkap oleh discoverWidgets() di atas — didaftarkan eksplisit
-            // supaya admin yang juga dosen dapat pindah panel (lihat canView()).
-            ->widgets([
-                \App\Filament\Dosen\Widgets\PortalSwitcher::class,
-            ])
             ->userMenuItems([
                 'portal' => fn() => \App\Support\PortalTarget::menuItem(),
             ])
