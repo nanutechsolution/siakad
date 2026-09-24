@@ -2,36 +2,41 @@
 
 namespace App\Filament\Widgets;
 
+use App\Models\Krs;
 use BezhanSalleh\FilamentShield\Traits\HasWidgetShield;
-use Filament\Widgets\Widget;
-use Illuminate\Support\Facades\DB;
+use Filament\Widgets\TableWidget;
+use Filament\Tables\Table;
+use Filament\Tables\Columns\TextColumn;
+use App\Services\Akademik\DashboardAkademikService;
 
-class AkademikKrsPendingList extends Widget
+class AkademikKrsPendingList extends TableWidget
 {
     use HasWidgetShield;
-    protected string $view = 'filament.widgets.akademik-krs-pending-list';
-
     protected int|string|array $columnSpan = 'full';
+    protected ?string $pollingInterval = '60s';
 
-    protected function getViewData(): array
+    public function table(Table $table): Table
     {
-        $rows = DB::table('krs')
-            ->join('mahasiswas', 'mahasiswas.id', '=', 'krs.mahasiswa_id')
-            ->join('ref_person', 'ref_person.id', '=', 'mahasiswas.person_id')
-            ->join('ref_prodi', 'ref_prodi.id', '=', 'mahasiswas.prodi_id')
-            ->where('krs.status_krs', 'DIAJUKAN')
-            ->orderByDesc('krs.diajukan_at')
-            ->limit(5)
-            ->select([
-                'ref_person.nama_lengkap',
-                'mahasiswas.nim',
-                'ref_prodi.nama_prodi',
-                'krs.diajukan_at',
+        return $table
+            // visibleTo(): Admin Prodi hanya melihat antrean KRS Prodi-nya.
+            ->query(fn() => app(DashboardAkademikService::class)->krsQuery()
+                ->where('status_krs', 'DIAJUKAN')
+                ->orderByDesc('diajukan_at')
+                ->limit(10)
+                ->with(['mahasiswa.person', 'mahasiswa.prodi', 'tahunAkademik']))
+            ->columns([
+                TextColumn::make('mahasiswa.nim')->label('NIM')->copyable()->fontFamily('mono'),
+                TextColumn::make('mahasiswa.person.nama_lengkap')->label('Mahasiswa'),
+                TextColumn::make('mahasiswa.prodi.nama_prodi')->label('Prodi'),
+                TextColumn::make('mahasiswa.angkatan_id')->label('Angkatan'),
+                TextColumn::make('tahunAkademik.nama_tahun')->label('Periode'),
+                TextColumn::make('diajukan_at')->label('Diajukan')->dateTime('d M Y, H:i'),
             ])
-            ->get();
+            ->paginated([5, 10]);
+    }
 
-        return [
-            'rows' => $rows,
-        ];
+    public function getTableHeading(): string
+    {
+        return 'KRS Menunggu Persetujuan';
     }
 }

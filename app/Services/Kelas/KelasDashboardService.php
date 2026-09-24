@@ -26,11 +26,27 @@ class KelasDashboardService
      */
     protected function kelasWithMahasiswaAktifCount(): Collection
     {
-        return Kelas::query()
+        return $this->scopedKelasQuery()
             ->withCount([
                 'mahasiswaKelas as mahasiswa_aktif_count' => fn(Builder $q) => $q->whereNull('tanggal_keluar'),
             ])
             ->get(['id', 'nama_kelas', 'prodi_id', 'program_id', 'angkatan_id', 'kapasitas']);
+    }
+
+    /**
+     * Lapis scope organisasi paling dasar — Admin Prodi/Kaprodi hanya
+     * menghitung kelas milik Prodi-nya (pola sama dengan Monitoring KRS).
+     */
+    protected function scopedKelasQuery(): Builder
+    {
+        // Tanpa user login (queue/konsole) scope dianggap kosong, bukan "semua data".
+        $user = auth()->user();
+
+        if (! $user) {
+            return Kelas::query()->whereRaw('1 = 0');
+        }
+
+        return Kelas::query()->visibleTo($user);
     }
 
     public function overviewStats(): array
@@ -62,8 +78,20 @@ class KelasDashboardService
     {
         return KonfigurasiPembimbingAkademik::query()
             ->where('aktif', true)
+            ->whereIn('prodi_id', $this->accessibleProdiIds())
             ->get(['prodi_id', 'angkatan_id', 'mode'])
             ->keyBy(fn($k) => "{$k->prodi_id}-{$k->angkatan_id}");
+    }
+
+    protected function accessibleProdiIds(): array
+    {
+        $user = auth()->user();
+
+        if (! $user) {
+            return [];
+        }
+
+        return $user->accessibleProdi();
     }
 
     /**
@@ -75,6 +103,7 @@ class KelasDashboardService
             ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
             ->where('status', PembimbingAkademikStatus::AKTIF)
             ->whereNotNull('kelas_id')
+            ->whereIn('kelas_id', $this->scopedKelasQuery()->select('id'))
             ->pluck('kelas_id')
             ->unique()
             ->all();
@@ -120,7 +149,7 @@ class KelasDashboardService
      */
     public function distribusiPerProdi(): Collection
     {
-        return Kelas::query()
+        return $this->scopedKelasQuery()
             ->selectRaw('prodi_id, count(*) as total')
             ->with('prodi:id,nama_prodi')
             ->groupBy('prodi_id')
@@ -151,7 +180,7 @@ class KelasDashboardService
 
     public function problemQuery(): Builder
     {
-        return Kelas::query()
+        return $this->scopedKelasQuery()
             ->withCount([
                 'mahasiswaKelas as mahasiswa_aktif_count' => fn(Builder $q) => $q->whereNull('tanggal_keluar'),
             ])

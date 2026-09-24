@@ -3,6 +3,7 @@
 namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
+use App\Filament\Widgets\AkademikAlerts;
 use App\Filament\Widgets\AkademikKrsPendingList;
 use App\Filament\Widgets\AkademikOverview;
 use App\Filament\Widgets\KelasDistribution;
@@ -34,6 +35,7 @@ class DashboardAkademik extends BaseDashboard
     public function getWidgets(): array
     {
         return [
+            AkademikAlerts::class,
             AkademikOverview::class,
             KelasOverview::class,
             KelasHealthCheck::class,

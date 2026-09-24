@@ -104,6 +104,9 @@ class AdminProdiPermissionSeeder extends Seeder
             'VIEW:KelasHealthCheck',
             'VIEW:KelasDistribution',
             'VIEW:KelasProblemList',
+            'VIEW:AkademikOverview',
+            'VIEW:AkademikAlerts',
+            'VIEW:AkademikKrsPendingList',
             // Widgets
             'View:LatestActivityWidget',
         ];
