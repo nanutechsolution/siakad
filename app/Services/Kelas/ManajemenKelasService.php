@@ -300,4 +300,91 @@ class ManajemenKelasService
             )
             ->count();
     }
+    public function mutasiProdi(
+        Mahasiswa $mahasiswa,
+        int $prodiBaruId,
+        int $kelasBaruId,
+        ?int $kurikulumBaruId = null,
+        ?string $tanggalMutasi = null,
+    ): MahasiswaKelas {
+        return DB::transaction(function () use (
+            $mahasiswa,
+            $prodiBaruId,
+            $kelasBaruId,
+            $kurikulumBaruId,
+            $tanggalMutasi,
+        ) {
+            $tanggal = $tanggalMutasi ?? now()->toDateString();
+
+            $kelasBaru = Kelas::query()
+                ->lockForUpdate()
+                ->findOrFail($kelasBaruId);
+
+            /*
+         * Pastikan kelas tujuan memang milik Prodi tujuan.
+         */
+            if ((int) $kelasBaru->prodi_id !== $prodiBaruId) {
+                throw new ManajemenKelasException(
+                    'Kelas tujuan tidak sesuai dengan Program Studi tujuan.'
+                );
+            }
+
+            /*
+         * Ambil kelas aktif mahasiswa.
+         */
+            $kelasLama = MahasiswaKelas::query()
+                ->aktif()
+                ->where('mahasiswa_id', $mahasiswa->id)
+                ->lockForUpdate()
+                ->latest('tanggal_masuk')
+                ->first();
+
+            /*
+         * Jangan membuat mutasi ke kelas yang sama.
+         */
+            if ($kelasLama && (int) $kelasLama->kelas_id === $kelasBaruId) {
+                throw new ManajemenKelasException(
+                    'Mahasiswa sudah berada di kelas tersebut.'
+                );
+            }
+
+            /*
+         * Cek kapasitas kelas tujuan.
+         */
+            $sisaKapasitas = $this->kapasitasTersisa($kelasBaru);
+
+            if ($sisaKapasitas !== null && $sisaKapasitas <= 0) {
+                throw ManajemenKelasException::kapasitasPenuh(
+                    $kelasBaru->kapasitas
+                );
+            }
+
+            /*
+         * Tutup kelas lama.
+         */
+            if ($kelasLama) {
+                $kelasLama->update([
+                    'tanggal_keluar' => $tanggal,
+                ]);
+            }
+
+            /*
+         * Update Prodi mahasiswa.
+         */
+            $mahasiswa->update([
+                'prodi_id' => $prodiBaruId,
+                'kurikulum_id' => $kurikulumBaruId,
+            ]);
+
+            /*
+         * Buat histori penempatan baru.
+         */
+            return MahasiswaKelas::create([
+                'mahasiswa_id' => $mahasiswa->id,
+                'kelas_id' => $kelasBaruId,
+                'tanggal_masuk' => $tanggal,
+                'tanggal_keluar' => null,
+            ]);
+        });
+    }
 }
