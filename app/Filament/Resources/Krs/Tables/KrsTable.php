@@ -98,13 +98,20 @@ class KrsTable
                     ->label('Status KRS')
                     ->options(KrsStatusEnum::options()),
 
-                // Opsi prodi dikunci ke scope user — Admin Prodi tidak pernah
-                // bisa memilih (apalagi melihat) prodi di luar wewenangnya.
-                SelectFilter::make('mahasiswa.prodi_id')
+                // Filter bernama `prodi_id` (bukan `mahasiswa.prodi_id`) karena
+                // kolom tidak ada di tabel `krs` — query dibuat manual via
+                // whereHas, bukan nama kolom langsung seperti nama relasi.
+                SelectFilter::make('prodi_id')
                     ->label('Program Studi')
                     ->options(fn() => app(FormResolver::class)->prodiOptions(Auth::user()))
                     ->searchable()
-                    ->preload(),
+                    ->preload()
+                    ->query(fn(Builder $query, array $data): Builder => blank($data['value'] ?? null)
+                        ? $query
+                        : $query->whereHas(
+                            'mahasiswa',
+                            fn(Builder $q) => $q->where('prodi_id', (int) $data['value']),
+                        )),
             ])
             ->recordActions([
                 ActionGroup::make([
