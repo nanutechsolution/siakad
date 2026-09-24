@@ -44,7 +44,8 @@ class KrsPdfResolver implements PdfDataResolverInterface
             throw new RuntimeException("KRS dengan id [{$krsId}] tidak ditemukan.");
         }
 
-        // Dosen wali diambil dari mahasiswa_kelas -> kelas_dosen_wali (is_primary),
+        // Dosen wali diambil dari resolver yang sama dengan halaman akademik.
+        // Relasi dimuat lengkap agar nama memakai gelar dan NIDN tidak hilang.
         $dosenWali = null;
 
         $mahasiswa = Mahasiswa::find($krs->mahasiswa_id);
@@ -54,14 +55,8 @@ class KrsPdfResolver implements PdfDataResolverInterface
                 ->dosenWaliAktif($mahasiswa);
 
             if ($pembimbing) {
-                $dosenWali = DB::table('trx_dosen')
-                    ->join('ref_person', 'ref_person.id', '=', 'trx_dosen.person_id')
-                    ->where('trx_dosen.id', $pembimbing->dosen_id)
-                    ->select([
-                        'ref_person.nama_lengkap',
-                        'trx_dosen.nidn',
-                    ])
-                    ->first();
+                $pembimbing->loadMissing(['dosen.person.gelars']);
+                $dosenWali = $pembimbing->dosen;
             }
         }
         $kelasId = DB::table('mahasiswa_kelas')
@@ -138,8 +133,8 @@ class KrsPdfResolver implements PdfDataResolverInterface
             jenjang: $krs->jenjang,
             namaTahunAkademik: $krs->nama_tahun,
             semester: (int) $krs->semester,
-            namaDosenWali: $dosenWali->nama_lengkap ?? null,
-            nidnDosenWali: $dosenWali->nidn ?? null,
+            namaDosenWali: $dosenWali?->person?->nama_dengan_gelar,
+            nidnDosenWali: $dosenWali?->nidn,
             statusKrs: $krs->status_krs,
             totalSks: (int) $krs->total_sks_diambil,
             disetujuiPada: $krs->disetujui_pada,
