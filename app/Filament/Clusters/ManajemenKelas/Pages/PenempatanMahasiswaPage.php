@@ -263,11 +263,13 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                                 ManajemenKelasService::class
                             )->keanggotaanAktif($record->id);
 
-                            return $aktif
-                                ? Utf8::clean(
-                                    $aktif->kelas?->nama_kelas
-                                )
-                                : null;
+                            if (! $aktif?->kelas) {
+                                return null;
+                            }
+
+                            return Utf8::clean(
+                                $aktif->kelas->nama_kelas
+                            );
                         }
                     )
                     ->badge()
@@ -277,6 +279,30 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                             ? 'success'
                             : 'danger'
                     )
+                    ->placeholder('Belum ada kelas')
+                    ->searchable(
+                        query: function (
+                            Builder $query,
+                            string $search
+                        ): Builder {
+                            return $query->whereHas(
+                                'mahasiswaKelas',
+                                function (Builder $q) use ($search) {
+                                    $q->whereNull('tanggal_keluar')
+                                        ->whereHas(
+                                            'kelas',
+                                            fn(Builder $kelas) =>
+                                            $kelas->where(
+                                                'nama_kelas',
+                                                'like',
+                                                "%{$search}%"
+                                            )
+                                        );
+                                }
+                            );
+                        }
+                    )
+
                     ->placeholder('Belum ada kelas'),
             ])
             ->filters([
