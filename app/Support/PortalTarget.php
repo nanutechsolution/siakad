@@ -52,22 +52,30 @@ final class PortalTarget
     }
 
     /**
-     * Item untuk user menu Filament — null kalau user tidak punya portal lain.
-     * Satu-satunya tempat action dibangun supaya kedua panel tampil sama.
+     * Item untuk user menu Filament.
+     *
+     * WAJIB selalu mengembalikan Action — tidak pernah null. HasUserMenu
+     * memanggil $action->getName() tanpa cek, sehingga closure yang
+     * mengembalikan null membuat login user tanpa portal lain
+     * (mis. super_admin) error 500. Sembunyikan lewat ->visible() saja.
      */
-    public static function menuItem(): ?\Filament\Actions\Action
+    public static function menuItem(): \Filament\Actions\Action
     {
         $target = self::current();
 
+        $action = \Filament\Actions\Action::make('portal-switcher')
+            ->label($target['label'] ?? 'Portal lain')
+            ->icon($target['icon'] ?? 'heroicon-o-arrow-right-circle')
+            ->sort(-50);
+
         if ($target === null) {
-            return null;
+            return $action->visible(false);
         }
 
-        return \Filament\Actions\Action::make('portal-switcher')
+        return $action
             ->label($target['label'])
             ->icon($target['icon'])
             ->tooltip($target['description'])
-            ->url($target['url'])
-            ->sort(-50);
+            ->url($target['url']);
     }
 }
