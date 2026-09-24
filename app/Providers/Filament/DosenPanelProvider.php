@@ -61,6 +61,9 @@ class DosenPanelProvider extends PanelProvider
                 \App\Filament\Dosen\Widgets\BebanMengajarChart::class,      // Widget Grafik Batang Tatap Muka
                 \App\Filament\Dosen\Widgets\DispensasiWaliTable::class,
             ])
+            ->userMenuItems([
+                'portal' => fn() => \App\Support\PortalTarget::menuItem(),
+            ])
             ->navigationGroups(
                 // Me-render otomatis seluruh Navigation Group dari Enum
                 array_map(function ($group) {
