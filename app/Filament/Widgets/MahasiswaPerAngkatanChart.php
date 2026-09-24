@@ -70,14 +70,14 @@ class MahasiswaPerAngkatanChart extends ChartWidget
 
         // Batasi jumlah bar prodi supaya chart tetap terbaca.
         $topProdi = $prodi->sortByDesc(
-            fn(RefProdi $p) => $angkatan->sum(fn($ta) => $counts->get("{$p->id}.{$ta}", 0))
+            fn(RefProdi $p) => collect($angkatan)->sum(fn($ta) => $counts->get("{$p->id}.{$ta}", 0))
         )->take(8)->values();
 
         $colors = ['#3b82f6', '#8b5cf6', '#f59e0b', '#10b981', '#ef4444', '#06b6d4', '#f97316', '#64748b'];
 
         $datasets = $topProdi->map(fn(RefProdi $p, int $i) => [
             'label' => $p->nama_prodi,
-            'data' => $angkatan->map(fn($ta) => $counts->get("{$p->id}.{$ta}", 0))->all(),
+            'data' => collect($angkatan)->map(fn($ta) => $counts->get("{$p->id}.{$ta}", 0))->all(),
             'backgroundColor' => $colors[$i % count($colors)],
             'borderColor' => $colors[$i % count($colors)],
             'pointBackgroundColor' => $colors[$i % count($colors)],
