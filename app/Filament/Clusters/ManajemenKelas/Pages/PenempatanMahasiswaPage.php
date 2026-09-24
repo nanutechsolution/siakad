@@ -263,12 +263,25 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                                 ManajemenKelasService::class
                             )->keanggotaanAktif($record->id);
 
-                            if (! $aktif?->kelas) {
+                            $kelas = $aktif?->kelas;
+
+                            if (! $kelas) {
                                 return null;
                             }
 
-                            return Utf8::clean(
-                                $aktif->kelas->nama_kelas
+                            $kodeProdi = $kelas->prodi?->kode_prodi_internal
+                                ? Utf8::clean($kelas->prodi->kode_prodi_internal)
+                                : '-';
+
+                            $namaKelas = Utf8::clean(
+                                $kelas->nama_kelas
+                            );
+
+                            return sprintf(
+                                '%s · %s · %s',
+                                $kodeProdi,
+                                $namaKelas,
+                                $kelas->angkatan_id
                             );
                         }
                     )
@@ -278,29 +291,6 @@ class PenempatanMahasiswaPage extends Page implements HasTable
                         $state
                             ? 'success'
                             : 'danger'
-                    )
-                    ->placeholder('Belum ada kelas')
-                    ->searchable(
-                        query: function (
-                            Builder $query,
-                            string $search
-                        ): Builder {
-                            return $query->whereHas(
-                                'mahasiswaKelas',
-                                function (Builder $q) use ($search) {
-                                    $q->whereNull('tanggal_keluar')
-                                        ->whereHas(
-                                            'kelas',
-                                            fn(Builder $kelas) =>
-                                            $kelas->where(
-                                                'nama_kelas',
-                                                'like',
-                                                "%{$search}%"
-                                            )
-                                        );
-                                }
-                            );
-                        }
                     )
 
                     ->placeholder('Belum ada kelas'),
