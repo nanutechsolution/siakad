@@ -10,6 +10,7 @@ use App\Filament\Widgets\KelasDistribution;
 use App\Filament\Widgets\KelasHealthCheck;
 use App\Filament\Widgets\KelasOverview;
 use App\Filament\Widgets\KelasProblemList;
+use App\Filament\Widgets\MahasiswaPerAngkatanChart;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
 use Filament\Pages\Dashboard as BaseDashboard;
 use UnitEnum;
@@ -40,6 +41,7 @@ class DashboardAkademik extends BaseDashboard
             KelasOverview::class,
             KelasHealthCheck::class,
             KelasDistribution::class,
+            MahasiswaPerAngkatanChart::class,
             KelasProblemList::class,
             AkademikKrsPendingList::class,
         ];

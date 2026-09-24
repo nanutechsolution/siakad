@@ -103,6 +103,7 @@ class AdminProdiPermissionSeeder extends Seeder
             'VIEW:KelasOverview',
             'VIEW:KelasHealthCheck',
             'VIEW:KelasDistribution',
+            'VIEW:MahasiswaPerAngkatanChart',
             'VIEW:KelasProblemList',
             'VIEW:AkademikOverview',
             'VIEW:AkademikAlerts',
