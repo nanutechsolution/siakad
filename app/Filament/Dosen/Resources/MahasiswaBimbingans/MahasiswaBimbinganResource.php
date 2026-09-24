@@ -17,7 +17,6 @@ use Filament\Support\Icons\Heroicon;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Support\Facades\Auth;
 
 class MahasiswaBimbinganResource extends Resource
 {
@@ -27,25 +26,29 @@ class MahasiswaBimbinganResource extends Resource
     protected static ?string $navigationLabel = 'Bimbingan Akademik';
     protected static ?string $modelLabel = 'Mahasiswa Bimbingan';
     /**
-     * Otorisasi: Pastikan yang login adalah Dosen
+     * Defense-in-depth untuk Panel Dosen. Panel sudah terkunci oleh
+     * User::canAccessPanel('dosen') => isDosen(), jadi di sini cukup
+     * dipastikan ulang identitas dosen — TIDAK memakai daftar role.
+     *
+     * Kenapa tanpa hasAnyRole([..]): role di sistem ini di-assign manual
+     * lewat Shield, jadi dosen baru yang belum di-assign role akan
+     * salah-ditolak padahal datanya valid. Sebaliknya super_admin tanpa
+     * trx_dosen akan lolos cek role tapi selalu dapat query kosong.
+     * Siapa mahasiswa yang boleh dilihat tetap wewenang resolver
+     * PembimbingAkademik di getEloquentQuery() dan canView().
      */
     public static function canViewAny(): bool
     {
-        $user = Auth::user();
-
-        return $user?->person_id !== null
-            && $user->person?->dosen !== null
-            && $user->hasAnyRole(['Dosen', 'Dosen Wali', 'super_admin']);
+        return auth()->user()?->isDosen() ?? false;
     }
+
     public static function canView(Model $record): bool
     {
-        $user = Auth::user();
+        $dosenId = auth()->user()?->person?->dosen?->id;
 
-        if (! $user?->person_id || ! $user->person?->dosen) {
+        if (blank($dosenId)) {
             return false;
         }
-
-        $dosenId = $user->person->dosen->id;
 
         return app(PembimbingAkademikResolver::class)
             ->scopeMahasiswaBimbingan(
@@ -67,7 +70,7 @@ class MahasiswaBimbinganResource extends Resource
      */
     public static function getEloquentQuery(): Builder
     {
-        $dosenId = Auth::user()?->person?->dosen?->id;
+        $dosenId = auth()->user()?->person?->dosen?->id;
         $activeTaId = RefTahunAkademik::where('is_active', 1)->value('id');
 
         $query = parent::getEloquentQuery()
