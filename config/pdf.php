@@ -187,10 +187,13 @@ return [
         PdfDocumentType::DAFTAR_PEMBIMBING->value => [
             'resolver' => \App\Services\Pdf\Resolvers\DaftarPembimbingPdfResolver::class,
             'view' => 'pdf.daftar-pembimbing', // Sesuaikan dengan nama file blade Anda
-            'classification' => PdfClassification::DYNAMIC->value,
+            // Semi-permanent: butuh QR verifikasi, jadi harus disimpan dulu ke
+            // pdf_documents (generateArchived). DYNAMIC + QR saling menolak.
+            'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
 
-            'requires_signature' => true,
+            'requires_number' => false,
+            'requires_signature' => false,
             'requires_qr' => true,
             'orientation' => 'landscape',
         ],

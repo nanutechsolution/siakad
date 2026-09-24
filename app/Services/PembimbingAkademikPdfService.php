@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\PembimbingAkademikStatus;
 use App\Models\PembimbingAkademik;
+use App\Models\RefProdi;
 use App\Models\TrxDosen;
 use App\Services\Pdf\PdfService;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -17,47 +18,55 @@ class PembimbingAkademikPdfService
         protected PdfService $pdfService,
     ) {}
 
+    /**
+     * SK Penugasan Individu — ARCHIVED (penomoran + QR + penandatangan),
+     * jadi wajib lewat generateArchived(); download() menolak non-DYNAMIC.
+     */
     public function downloadSkPenugasan(
         PembimbingAkademik $pembimbingAkademik,
-    ) {
-        // Catatan: Jika ini masih error, pastikan $this->pdfService->download() 
-        // di class Anda juga me-return StreamedResponse, bukan sekadar Response.
-        return $this->pdfService->download(
-            PdfDocumentType::SK_PEMBIMBING_AKADEMIK,
-            [
-                'pembimbing_akademik_id' => $pembimbingAkademik->id,
-            ],
-        );
-    }
-
-    public function downloadSkMassalDosen(string $dosenId)
-    {
-        // 1. Generate Dokumen (Simpan ke DB, Buat QR, Pasang TTD)
+    ): StreamedResponse {
         $document = $this->pdfService->generateArchived(
-            type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK_MASSAL,
-            context: ['dosen_id' => $dosenId],
-            documentableType: 'dosen',
-            documentableId: $dosenId
+            type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK,
+            context: ['pembimbing_akademik_id' => $pembimbingAkademik->id],
+            documentableType: PembimbingAkademik::class,
+            documentableId: $pembimbingAkademik->id,
         );
 
-        // 2. Download file yang sudah jadi
         return $this->pdfService->downloadArchived($document);
     }
 
-    public function downloadDaftarPembimbing(array $filters)
+    public function downloadSkMassalDosen(string $dosenId): StreamedResponse
     {
-        // Langsung serahkan ke PdfService inti!
-        // Data 'filters' akan ditangkap oleh DaftarPembimbingPdfResolver
-        return $this->pdfService->download(
-            PdfDocumentType::DAFTAR_PEMBIMBING,
-            [
-                'filters' => $filters,
-            ]
+        $document = $this->pdfService->generateArchived(
+            type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK_MASSAL,
+            context: ['dosen_id' => $dosenId],
+            documentableType: TrxDosen::class,
+            documentableId: $dosenId,
         );
+
+        return $this->pdfService->downloadArchived($document);
     }
+
+    /**
+     * Rekap pembimbing: klasifikasinya DYNAMIC tetapi membutuhkan QR,
+     * jadi lewat generateArchived + downloadArchived (download() hanya
+     * untuk DYNAMIC tanpa QR).
+     */
+    public function downloadDaftarPembimbing(array $filters): StreamedResponse
+    {
+        $document = $this->pdfService->generateArchived(
+            type: PdfDocumentType::DAFTAR_PEMBIMBING,
+            context: ['filters' => $filters],
+            documentableType: RefProdi::class,
+            documentableId: (string) ($filters['prodi_id'] ?? 'semua-prodi'),
+        );
+
+        return $this->pdfService->downloadArchived($document);
+    }
+
     public function downloadDaftarBimbinganDosen(string $dosenId): StreamedResponse
     {
-        $dosen = TrxDosen::findOrFail($dosenId);
+        $dosen = TrxDosen::with('person')->findOrFail($dosenId);
 
         $records = PembimbingAkademik::query()
             ->where('dosen_id', $dosenId)
@@ -69,7 +78,10 @@ class PembimbingAkademikPdfService
             'records' => $records,
         ]);
 
-        $fileName = Str::ascii('daftar-bimbingan-' . $dosen->nidn . '.pdf');
+        // Fallback identifier: NIDN -> NUPTK -> nama dosen, agar nama file
+        // tidak kosong ketika NIDN belum diisi.
+        $identifier = Str::ascii($dosen->nidn ?: $dosen->nuptk ?: 'tanpa-id');
+        $fileName = Str::ascii("daftar-bimbingan-{$identifier}.pdf");
 
         return response()->streamDownload(function () use ($pdf) {
             echo $pdf->output();
