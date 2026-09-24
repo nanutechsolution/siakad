@@ -20,8 +20,7 @@ class KelasTable
     public static function configure(Table $table): Table
     {
         return $table
-            // PERBAIKAN: Eager load relasi prodi dan program untuk menghabisi N+1 query pada list table
-            ->modifyQueryUsing(fn(Builder $query) => $query->with(['prodi', 'program']))
+            ->modifyQueryUsing(fn(Builder $query) => $query->with(['prodi', 'program', 'kampus']))
             ->columns([
                 TextColumn::make('nama_kelas')
                     ->label('Nama Kelas')
@@ -49,12 +48,33 @@ class KelasTable
                     ->numeric()
                     ->alignCenter(),
 
+                TextColumn::make('status_kampus')
+                    ->label('Plot Kampus')
+                    ->getStateUsing(function (Kelas $record): string {
+                        return $record->kampus_id
+                            ? ($record->kampus?->nama_kampus ?? 'Kampus tidak ditemukan')
+                            : 'BELUM DI-PLOT';
+                    })
+                    ->badge()
+                    ->color(fn(Kelas $record): string => $record->kampus_id ? 'success' : 'danger')
+                    ->icon(fn(Kelas $record): string => $record->kampus_id
+                        ? 'heroicon-o-building-office-2'
+                        : 'heroicon-o-exclamation-triangle'),
+
                 TextColumn::make('mahasiswa_kelas_aktif_count')
                     ->label('Isi Kelas')
                     ->counts('mahasiswaKelasAktif')
                     ->badge()
                     ->color(function (int $state, Kelas $record): string {
-                        return $state >= $record->kapasitas ? 'danger' : 'success';
+                        if ($record->kapasitas === null) {
+                            return 'gray';
+                        }
+
+                        if ($state >= $record->kapasitas) {
+                            return 'danger';
+                        }
+
+                        return ($record->kapasitas - $state) <= 3 ? 'warning' : 'success';
                     })
                     ->alignCenter(),
             ])
@@ -85,12 +105,14 @@ class KelasTable
                             $berhasilHapus = 0;
 
                             foreach ($records as $record) {
-                                // Cek apakah kelas ini masih memiliki mahasiswa aktif ATAU dosen wali terikat
-                                // Pastikan di model Kelas Anda sudah ada relasi 'dosenWali' atau sesuaikan namanya
-                                $hasMahasiswaAktif = $record->mahasiswaKelasAktif()->exists();
-                                $hasDosenWali = method_exists($record, 'dosenWali') ? $record->dosenWali()->exists() : false;
+                                // Kelas pernah/sedang punya anggota -> jangan dihapus.
+                                // Mahasiswa KRS juga menolak FK kelas (restrict), jadi
+                                // amankan semuanya dalam satu cek: riwayat keanggotaan
+                                // dan dosen wali/pembimbing terikat.
+                                $adaRiwayat = $record->mahasiswaKelas()->exists();
+                                $adaDosenWali = $record->pembimbingAkademik()->exists();
 
-                                if ($hasMahasiswaAktif || $hasDosenWali) {
+                                if ($adaRiwayat || $adaDosenWali) {
                                     $gagalHapus++;
                                     continue; // Lewati data ini, jangan di-delete
                                 }
@@ -103,7 +125,7 @@ class KelasTable
                             if ($gagalHapus > 0) {
                                 Notification::make()
                                     ->title('Beberapa kelas gagal dihapus')
-                                    ->body("Ada {$gagalHapus} kelas yang tidak bisa dihapus karena masih memiliki mahasiswa aktif atau dosen wali terikat.")
+                                    ->body("Ada {$gagalHapus} kelas yang tidak bisa dihapus karena pernah/sedang punya anggota atau masih terikat dosen wali.")
                                     ->warning()
                                     ->persistent()
                                     ->send();

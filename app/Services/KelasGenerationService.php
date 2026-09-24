@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * Semua aturan "berapa kelas, berapa kapasitas per kelas" hidup di sini —
- * bukan di GenerateKelasWizard — supaya Page tetap murni UI/orkestrasi,
+ * bukan di GenerateKelasPage — supaya Page tetap murni UI/orkestrasi,
  * konsisten dengan MahasiswaPlottingService & MahasiswaMutasiService.
  */
 class KelasGenerationService
@@ -47,8 +47,9 @@ class KelasGenerationService
 
     /**
      * Membuat baris `kelas` KOSONG (tanpa plotting mahasiswa) dari hasil preview.
-     * Plotting tetap dilakukan terpisah lewat PlottingMahasiswaPage — memisahkan
-     * ini mencegah satu kesalahan hitung merusak data plotting yang sudah ada.
+     * Plotting tetap dilakukan terpisah lewat MahasiswasRelationManager —
+     * memisahkan ini mencegah satu kesalahan hitung merusak data plotting
+     * yang sudah ada.
      *
      * @param Collection<int, array{nama_kelas: string, kapasitas: int}> $preview
      * @return Collection<int, Kelas>

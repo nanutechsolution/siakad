@@ -20,25 +20,18 @@ class EditKelas extends EditRecord
         return [
             DeleteAction::make()
                 ->before(function (DeleteAction $action, Kelas $record) {
-                    // 1. Cek mahasiswa aktif
-                    $hasMahasiswaAktif = $record->mahasiswaKelasAktif()->exists();
+                    // Kelas pernah/sedang punya anggota -> jangan dihapus.
+                    // Mahasiswa KRS juga menolak FK kelas (restrict), jadi
+                    // amankan riwayat keanggotaan + dosen wali sekaligus.
+                    $adaRiwayat = $record->mahasiswaKelas()->exists();
+                    $adaDosenWali = $record->pembimbingAkademik()->exists();
 
-                    /**
-                     * 2. Cek relasi dosen wali
-                     * PENTING: Pastikan nama relasi di bawah ini ('dosenWali') sesuai dengan 
-                     * nama method relasi yang tertulis di dalam file App\Models\Kelas.php
-                     */
-                    $namaRelasiDosenWali = 'dosenWali'; // Jalur alternatif jika namanya 'kelasDosenWali' atau 'dosenWalis'
-                    $hasDosenWali = method_exists($record, $namaRelasiDosenWali) ? $record->{$namaRelasiDosenWali}()->exists() : false;
-
-                    // 3. Gabungkan kondisi dalam satu IF
-                    if ($hasMahasiswaAktif || $hasDosenWali) {
-                        // Tentukan pesan error yang spesifik agar user tahu penyebabnya
+                    if ($adaRiwayat || $adaDosenWali) {
                         $pesan = 'Kelas tidak dapat dihapus karena masih memiliki ';
-                        if ($hasMahasiswaAktif && $hasDosenWali) {
-                            $pesan .= 'mahasiswa aktif dan dosen wali yang terikat.';
-                        } elseif ($hasMahasiswaAktif) {
-                            $pesan .= 'mahasiswa aktif di dalamnya.';
+                        if ($adaRiwayat && $adaDosenWali) {
+                            $pesan .= 'anggota (aktif/riwayat) dan dosen wali yang terikat.';
+                        } elseif ($adaRiwayat) {
+                            $pesan .= 'riwayat keanggotaan mahasiswa di dalamnya.';
                         } else {
                             $pesan .= 'dosen wali yang terikat.';
                         }

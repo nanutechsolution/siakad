@@ -354,7 +354,9 @@ class GenerateKelasPage extends Page implements HasForms, HasActions
             ->actions([
                 Action::make('lihat')
                     ->label('Lihat Kelas')
-                    ->url(route('filament.admin.resources.kelas.index')), // sesuaikan nama route
+                    // Route name diambil dinamis dari resource — tidak dipatok
+                    // string, supaya tetap benar walau resource pindah cluster.
+                    ->url(\App\Filament\Resources\Kelas\KelasResource::getUrl('index')),
             ])
             ->send();
 

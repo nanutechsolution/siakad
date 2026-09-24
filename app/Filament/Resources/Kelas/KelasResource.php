@@ -2,7 +2,7 @@
 
 namespace App\Filament\Resources\Kelas;
 
-use App\Enums\NavigationGroup;
+use App\Filament\Clusters\ManajemenKelas\ManajemenKelasCluster;
 use App\Filament\Resources\Kelas\Pages\CreateKelas;
 use App\Filament\Resources\Kelas\Pages\EditKelas;
 use App\Filament\Resources\Kelas\Pages\ListKelas;
@@ -23,7 +23,12 @@ class KelasResource extends Resource
     protected static ?string $navigationLabel = 'Data Kelas';
     protected static ?string $modelLabel = 'Kelas';
     protected static ?string $pluralModelLabel = 'Daftar Kelas';
-    protected static string|UnitEnum|null $navigationGroup = NavigationGroup::PERKULIAHAN->value;
+    /*
+     * Terikat ke cluster Manajemen Kelas supaya menu "Data Kelas" hanya
+     * muncul satu kali di sidebar, bukan dua (resource lama + resource
+     * cluster yang sudah dihapus). NavigationGroup diwarisi dari cluster.
+     */
+    protected static ?string $cluster = ManajemenKelasCluster::class;
     protected static ?int $navigationSort = 1;
     public static function getEloquentQuery(): Builder
     {
