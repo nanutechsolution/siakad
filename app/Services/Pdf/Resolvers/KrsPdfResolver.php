@@ -31,8 +31,10 @@ class KrsPdfResolver implements PdfDataResolverInterface
                 'mahasiswas.nim',
                 'ref_person.nama_lengkap as nama_mahasiswa',
                 'ref_prodi.nama_prodi',
+                'ref_prodi.id as prodi_id',
                 'ref_prodi.jenjang',
                 'ref_fakultas.nama_fakultas',
+                'ref_fakultas.id as fakultas_id',
                 'ref_tahun_akademik.nama_tahun',
                 'ref_tahun_akademik.semester',
             ])
@@ -143,6 +145,8 @@ class KrsPdfResolver implements PdfDataResolverInterface
             disetujuiPada: $krs->disetujui_pada,
             items: $items,
             dicetakPada: now()->translatedFormat('d F Y H:i'),
+            prodiId: (int) $krs->prodi_id,
+            fakultasId: (int) $krs->fakultas_id,
         );
     }
 }

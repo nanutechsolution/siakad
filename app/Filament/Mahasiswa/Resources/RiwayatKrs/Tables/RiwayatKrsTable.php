@@ -93,12 +93,16 @@ class RiwayatKrsTable
                     ->color('gray')
                     ->authorize(true),
 
-                PdfDownloadAction::make(
+                PdfDownloadAction::makeArchived(
                     name: 'cetak-krs',
-                    label: 'Cetak KRS',
+                    label: 'Cetak KRS + QR',
                     type: PdfDocumentType::KRS,
                     contextResolver: fn($record) => [
                         'krs_id' => $record->id,
+                    ],
+                    documentableResolver: fn($record) => [
+                        'documentableType' => \App\Models\Mahasiswa::class,
+                        'documentableId' => $record->mahasiswa_id,
                     ],
                 )
                     ->icon('heroicon-m-arrow-down-tray')

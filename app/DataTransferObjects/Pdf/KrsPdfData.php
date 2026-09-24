@@ -2,9 +2,10 @@
 
 namespace App\DataTransferObjects\Pdf;
 
+use App\Contracts\Pdf\HasSignatureScopeInterface;
 use App\Contracts\Pdf\PdfDocumentDataInterface;
 
-final readonly class KrsPdfData implements PdfDocumentDataInterface
+final readonly class KrsPdfData implements PdfDocumentDataInterface, HasSignatureScopeInterface
 {
     public function __construct(
         public string $krsId,
@@ -22,6 +23,8 @@ final readonly class KrsPdfData implements PdfDocumentDataInterface
         public ?string $disetujuiPada,
         public array $items,
         public string $dicetakPada,
+        public ?int $prodiId = null,
+        public ?int $fakultasId = null,
     ) {}
 
     public function toArray(): array
@@ -42,6 +45,16 @@ final readonly class KrsPdfData implements PdfDocumentDataInterface
             'disetujuiPada' => $this->disetujuiPada,
             'items' => $this->items,
             'dicetakPada' => $this->dicetakPada,
+            'prodiId' => $this->prodiId,
+            'fakultasId' => $this->fakultasId,
+        ];
+    }
+
+    public function signatureScope(): array
+    {
+        return [
+            'prodi_id' => $this->prodiId,
+            'fakultas_id' => $this->fakultasId,
         ];
     }
 

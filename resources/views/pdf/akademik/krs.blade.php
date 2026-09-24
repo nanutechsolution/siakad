@@ -74,4 +74,65 @@
 <p class="mt-20" style="font-size:9px;">
     Disetujui pada: {{ $disetujuiPada ?? 'Belum disetujui' }} — Dicetak pada: {{ $dicetakPada }}
 </p>
+
+{{--
+    Blok tanda tangan.
+
+    - Mahasiswa di kiri  : pernyataan menyetujui isi KRS.
+    - Dosen Wali di kanan: persetujuan akademik.
+
+    TTD digital (PdfSigner) TIDAK dipakai di sini: KRS boleh dicetak kapan
+    saja oleh setiap mahasiswa, sedangkan PdfSigner melempar error bila
+    otoritas/pejabat belum dikonfigurasi — KRS yang tadinya bisa dicetak
+    jadi gagal. Data dua nama ini sudah tersedia dari resolver.
+--}}
+<div style="margin-top:35px; width:100%;">
+    <table style="width:100%;">
+        <tr>
+            <td width="45%" style="text-align:center; vertical-align:top;">
+                <p style="margin:0;">Mahasiswa,</p>
+                <br>
+                <br>
+                <br>
+                <p style="margin:0;"><strong>{{ $namaMahasiswa }}</strong></p>
+                <p style="margin:0; font-size:9px;">NIM {{ $nim }}</p>
+            </td>
+
+            <td width="10%"></td>
+
+            <td width="45%" style="text-align:center; vertical-align:top;">
+                <p style="margin:0;">
+                    Dosen Wali,
+                </p>
+                <br>
+                <br>
+                <br>
+                <p style="margin:0;">
+                    <strong>{{ $namaDosenWali ?? '................................................' }}</strong>
+                </p>
+                <p style="margin:0; font-size:9px;">
+                    @if($nidnDosenWali)
+                        NIDN {{ $nidnDosenWali }}
+                    @else
+                        NIDN ..............................
+                    @endif
+                </p>
+            </td>
+        </tr>
+    </table>
+</div>
+
+{{-- QR verifikasi: hanya tampil jika KRS dicetak lewat generateArchived() --}}
+@if(!empty($qrCodeBase64))
+    <table style="width:100%; margin-top:25px; font-size:10px;">
+        <tr>
+            <td width="70%"></td>
+            <td width="30%" class="text-center">
+                <img src="{{ $qrCodeBase64 }}" width="70"><br>
+                <span style="font-size:7px;">Pindai untuk verifikasi keaslian</span>
+            </td>
+        </tr>
+    </table>
+@endif
+
 @endsection

@@ -31,9 +31,12 @@ return [
         PdfDocumentType::KRS->value => [
             'resolver' => KrsPdfResolver::class,
             'view' => 'pdf.akademik.krs',
-            'classification' => PdfClassification::DYNAMIC->value,
+            'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
             'orientation' => 'portrait',
+            'requires_number' => false,
+            'requires_signature' => false,
+            'requires_qr' => true,
         ],
 
         PdfDocumentType::JADWAL_KULIAH->value => [
