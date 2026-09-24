@@ -7,6 +7,7 @@ namespace App\Services\Akademik;
 use App\Enums\KrsStatusEnum;
 use App\Models\JadwalKuliah;
 use App\Models\Krs;
+use App\Models\RefTahunAkademik;
 use App\Models\User;
 use Exception;
 use Illuminate\Support\Facades\Auth;
@@ -36,7 +37,19 @@ class KrsApprovalService
             }
 
             if (! $locked->is_financial_verified) {
-                throw new Exception('KRS belum lolos verifikasi keuangan.');
+                $mahasiswa = $locked->mahasiswa;
+                $ta = $locked->tahunAkademik;
+                $financialGate = ($mahasiswa && $ta)
+                    ? $this->validationService->checkKeuangan($mahasiswa, $ta)
+                    : null;
+
+                if (! $financialGate?->passed) {
+                    throw new Exception($financialGate?->message ?? 'KRS belum lolos verifikasi keuangan.');
+                }
+
+                // Sinkronkan flag historis agar tombol approve tidak berbeda
+                // dengan hasil gate keuangan yang baru saja dihitung.
+                $locked->forceFill(['is_financial_verified' => true])->save();
             }
 
             $totalSks = (int) $locked->details()->sum('sks_snapshot');

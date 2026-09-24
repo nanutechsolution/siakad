@@ -98,10 +98,10 @@ trait HasKrsReviewAction
             ->authorize(fn(Mahasiswa|Krs $record) => ($krs = self::krsOf($record)) !== null
                 && (bool) Auth::user()?->can('approve', $krs))
             ->visible(fn(Mahasiswa|Krs $record) => self::krsOf($record)?->status_krs === KrsStatusEnum::DIAJUKAN)
-            ->disabled(fn(Mahasiswa|Krs $record) => self::krsOf($record)?->is_financial_verified !== true)
-            ->tooltip(fn(Mahasiswa|Krs $record) => self::krsOf($record)?->is_financial_verified
-                ? 'Setujui KRS ini'
-                : 'Belum dapat disetujui: verifikasi keuangan belum lolos. Gunakan Override Keuangan bila memang didisposisikan.')
+            // Jangan mengunci tombol berdasarkan flag lama saja. GATE_KEUANGAN
+            // dapat lolos dari dispensasi/tagihan lunas walau flag belum tersinkron;
+            // KrsApprovalService menghitung ulang gate dan menyinkronkannya.
+            ->tooltip('Setujui KRS — sistem akan memeriksa ulang validasi keuangan')
             ->requiresConfirmation()
             ->modalDescription('Pastikan hasil validasi KRS di atas sudah ditinjau sebelum menyetujui.')
             ->schema([
