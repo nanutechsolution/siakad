@@ -28,8 +28,8 @@ class PembimbingAkademikPdfService
         $document = $this->pdfService->generateArchived(
             type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK,
             context: ['pembimbing_akademik_id' => $pembimbingAkademik->id],
-            documentableType: PembimbingAkademik::class,
-            documentableId: $pembimbingAkademik->id,
+            documentableType: 'pembimbing_akademik',
+            documentableId: (string) $pembimbingAkademik->id,
         );
 
         return $this->pdfService->downloadArchived($document);
@@ -40,7 +40,7 @@ class PembimbingAkademikPdfService
         $document = $this->pdfService->generateArchived(
             type: PdfDocumentType::SK_PEMBIMBING_AKADEMIK_MASSAL,
             context: ['dosen_id' => $dosenId],
-            documentableType: TrxDosen::class,
+            documentableType: 'dosen',
             documentableId: $dosenId,
         );
 

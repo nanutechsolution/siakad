@@ -89,7 +89,7 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
                 $accessible = app(FormResolver::class)->accessibleProdiIds(auth()->user());
 
                 return PembimbingAkademik::query()
-                    ->with(['mahasiswa.person.prodi', 'kelas.prodi', 'dosen.person.gelars'])
+                    ->with(['mahasiswa.person', 'mahasiswa.prodi', 'kelas.prodi', 'dosen.person.gelars'])
                     ->where('status', PembimbingAkademikStatus::AKTIF)
                     ->where(function (Builder $query) use ($term, $accessible): void {
                         $query
@@ -113,7 +113,8 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             })
             ->getOptionLabelUsing(function ($value): ?string {
                 $assignment = PembimbingAkademik::with([
-                    'mahasiswa.person.prodi',
+                    'mahasiswa.person',
+                    'mahasiswa.prodi',
                     'kelas.prodi',
                     'dosen.person.gelars',
                 ])->find($value);
@@ -145,7 +146,7 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             ->modalDescription('Pilih satu penugasan Dosen Wali aktif. SK resmi akan memakai penomoran, QR, dan penandatangan yang terkonfigurasi.')
             ->modalSubmitActionLabel('Cetak SK')
             ->schema([$this->penugasanSearchField()])
-            ->action(function (array $data): void {
+            ->action(function (array $data) {
                 try {
                     $assignment = PembimbingAkademik::with(['mahasiswa.prodi', 'kelas.prodi'])
                         ->whereKey($data['pembimbing_akademik_id'])
@@ -154,9 +155,13 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
 
                     $this->assertAssignmentAccessible($assignment);
 
-                    app(PembimbingAkademikPdfService::class)->downloadSkPenugasan($assignment);
-                } catch (RuntimeException $e) {
+                    // Response WAJIB di-return; kalau dibuang Livewire tidak
+                    // mengirim file sama sekali dan pengguna tidak melihat apa-apa.
+                    return app(PembimbingAkademikPdfService::class)->downloadSkPenugasan($assignment);
+                } catch (\Throwable $e) {
                     $this->sendErrorNotification('SK Individu', $e->getMessage());
+
+                    return null;
                 }
             });
     }
@@ -171,13 +176,16 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             ->modalDescription('Satu PDF berisi seluruh penugasan aktif dosen yang dipilih.')
             ->modalSubmitActionLabel('Cetak SK Massal')
             ->schema([$this->dosenSearchField('dosen_id', 'Dosen')])
-            ->action(function (array $data): void {
+            ->action(function (array $data) {
                 try {
                     $dosen = TrxDosen::query()->whereKey($data['dosen_id'])->where('is_active', true)->firstOrFail();
                     $this->assertDosenAccessible($dosen);
-                    app(PembimbingAkademikPdfService::class)->downloadSkMassalDosen($dosen->id);
-                } catch (RuntimeException $e) {
+
+                    return app(PembimbingAkademikPdfService::class)->downloadSkMassalDosen($dosen->id);
+                } catch (\Throwable $e) {
                     $this->sendErrorNotification('SK Massal', $e->getMessage());
+
+                    return null;
                 }
             });
     }
@@ -204,15 +212,18 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
                     ->searchable()
                     ->nullable(),
             ])
-            ->action(function (array $data): void {
+            ->action(function (array $data) {
                 try {
                     if (filled($data['prodi_id'] ?? null)) {
                         $allowed = app(FormResolver::class)->accessibleProdiIds(auth()->user());
                         abort_unless(in_array((int) $data['prodi_id'], $allowed, true), 403);
                     }
-                    app(PembimbingAkademikPdfService::class)->downloadDaftarPembimbing($data);
-                } catch (RuntimeException $e) {
+
+                    return app(PembimbingAkademikPdfService::class)->downloadDaftarPembimbing($data);
+                } catch (\Throwable $e) {
                     $this->sendErrorNotification('Rekap Pembimbing', $e->getMessage());
+
+                    return null;
                 }
             });
     }
@@ -227,13 +238,16 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             ->modalDescription('Daftar mahasiswa/kelas yang dibimbing, cocok sebagai lampiran kinerja atau BKD.')
             ->modalSubmitActionLabel('Cetak Daftar')
             ->schema([$this->dosenSearchField()])
-            ->action(function (array $data): void {
+            ->action(function (array $data) {
                 try {
                     $dosen = TrxDosen::query()->whereKey($data['dosen_id'])->firstOrFail();
                     $this->assertDosenAccessible($dosen);
-                    app(PembimbingAkademikPdfService::class)->downloadDaftarBimbinganDosen($dosen->id);
-                } catch (RuntimeException $e) {
+
+                    return app(PembimbingAkademikPdfService::class)->downloadDaftarBimbinganDosen($dosen->id);
+                } catch (\Throwable $e) {
                     $this->sendErrorNotification('Daftar Bimbingan', $e->getMessage());
+
+                    return null;
                 }
             });
     }
@@ -248,11 +262,13 @@ class CetakDokumenPage extends Page implements HasActions, HasForms
             ->modalHeading('Cetak Laporan Monitoring')
             ->modalDescription('Berisi statistik pembimbing akademik dan daftar mahasiswa yang belum memiliki Dosen Wali.')
             ->modalSubmitActionLabel('Cetak Laporan')
-            ->action(function (): void {
+            ->action(function () {
                 try {
-                    app(PembimbingAkademikPdfService::class)->downloadLaporanMonitoring();
-                } catch (RuntimeException $e) {
+                    return app(PembimbingAkademikPdfService::class)->downloadLaporanMonitoring();
+                } catch (\Throwable $e) {
                     $this->sendErrorNotification('Laporan Monitoring', $e->getMessage());
+
+                    return null;
                 }
             });
     }

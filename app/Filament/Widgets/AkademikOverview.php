@@ -22,9 +22,11 @@ class AkademikOverview extends BaseWidget
 
         return [
             Stat::make('Mahasiswa Aktif', number_format($data['mahasiswa']))
-                ->description("{$scope} · TA {$data['tahun']}")
+                ->description($data['status_belum_terkirim']
+                    ? "Belum ada status kuliah TA ini — {$scope} (belum diverifikasi)"
+                    : "{$scope} · TA {$data['tahun']}")
                 ->descriptionIcon('heroicon-m-users')
-                ->color('success'),
+                ->color($data['status_belum_terkirim'] ? 'warning' : 'success'),
 
             Stat::make('Belum Punya Kelas', number_format($data['belum_kelas']))
                 ->description('Belum ditempatkan di kelas aktif')

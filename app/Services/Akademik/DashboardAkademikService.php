@@ -15,6 +15,7 @@ use App\Models\Mahasiswa;
 use App\Models\MasterKurikulum;
 use App\Models\PembimbingAkademik;
 use App\Models\RefTahunAkademik;
+use App\Models\RiwayatStatusMahasiswa;
 use App\Models\TrxDosen;
 use Illuminate\Database\Eloquent\Builder;
 
@@ -54,15 +55,41 @@ final class DashboardAkademikService
     public function mahasiswaAktifQuery(): Builder
     {
         $ta = $this->tahunAktif();
+        $query = $this->scoped(Mahasiswa::class)->whereNull('deleted_at');
 
-        return $this->scoped(Mahasiswa::class)
-            ->whereNull('deleted_at')
-            ->when($ta, fn(Builder $q) => $q->whereHas(
-                'riwayatStatus',
-                fn(Builder $status) => $status
-                    ->where('tahun_akademik_id', $ta->id)
-                    ->where('status_kuliah', StatusKuliah::AKTIF->value),
-            ));
+        // Riwayat status kuliah adalah sumber status "aktif" — tetapi datanya
+        // sering belum lengkap untuk TA berjalan (kemungkinan masih di-import).
+        // Kalau TA aktif belum punya baris sama sekali, jangan sembunyikan
+        // seluruh mahasiswa (angka 0 menyesatkan): pakai semua mahasiswa
+        // dan tandai konteksnya sebagai "tanpa verifikasi status" di overview().
+        if (! $ta || ! RiwayatStatusMahasiswa::query()
+            ->where('tahun_akademik_id', $ta->id)
+            ->where('status_kuliah', StatusKuliah::AKTIF->value)
+            ->exists()
+        ) {
+            return $query;
+        }
+
+        return $query->whereHas(
+            'riwayatStatus',
+            fn(Builder $status) => $status
+                ->where('tahun_akademik_id', $ta->id)
+                ->where('status_kuliah', StatusKuliah::AKTIF->value),
+        );
+    }
+
+    /**
+     * true bila status kuliah TA aktif belum diisi sama sekali — untuk
+     * memberi konteks pada deskripsi stat, bukan membiarkan pengguna
+    * mengira seluruh mahasiswa berjumlah nol.
+     */
+    public function statusBelumTerkirim(): bool
+    {
+        $ta = $this->tahunAktif();
+
+        return $ta === null || ! RiwayatStatusMahasiswa::query()
+            ->where('tahun_akademik_id', $ta->id)
+            ->exists();
     }
 
     public function krsQuery(): Builder
@@ -115,6 +142,7 @@ final class DashboardAkademikService
             'disetujui' => (clone $krs)->where('status_krs', KrsStatusEnum::DISETUJUI)->count(),
             'ditolak' => (clone $krs)->where('status_krs', KrsStatusEnum::DITOLAK)->count(),
             'tahun' => $this->tahunAktif()?->nama_tahun ?? 'Belum ada TA aktif',
+            'status_belum_terkirim' => $this->statusBelumTerkirim(),
         ];
     }
 
