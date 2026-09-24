@@ -10,6 +10,7 @@ use App\Filament\Support\HasKrsReviewAction;
 use App\Models\JadwalKuliah;
 use App\Models\Krs;
 use App\Services\Akademik\KrsApprovalService;
+use App\Services\Akademik\KrsValidationService;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkAction;
@@ -68,14 +69,14 @@ class KrsTable
                 IconColumn::make('status_keuangan')
                     ->label('Keuangan')
                     ->boolean()
-                    ->getStateUsing(fn(Krs $record): bool => (bool) $record->is_financial_verified)
+                    ->getStateUsing(fn(Krs $record): bool => self::lolosKeuangan($record))
                     ->trueIcon('heroicon-o-check-circle')
                     ->falseIcon('heroicon-o-exclamation-triangle')
                     ->trueColor('success')
                     ->falseColor('warning')
-                    ->tooltip(fn(Krs $record) => $record->is_financial_verified
-                        ? 'Lolos verifikasi keuangan'
-                        : 'Belum lolos verifikasi keuangan'),
+                    ->tooltip(fn(Krs $record): string => self::lolosKeuangan($record)
+                        ? 'Lolos PaymentPolicy'
+                        : 'Belum lolos PaymentPolicy'),
 
                 TextColumn::make('status_krs')
                     ->label('Status')
@@ -168,7 +169,7 @@ class KrsTable
                         ->label('Override Keuangan')
                         ->icon('heroicon-o-currency-dollar')
                         ->color('warning')
-                        ->visible(fn(Krs $record) => ! $record->is_financial_verified)
+                        ->visible(fn(Krs $record) => ! self::lolosKeuangan($record))
                         ->authorize('update')
                         ->schema([
                             Textarea::make('financial_override_reason')
@@ -208,7 +209,7 @@ class KrsTable
                                 $layak = $user
                                     && $user->can('approve', $record)
                                     && $record->status_krs === KrsStatusEnum::DIAJUKAN
-                                    && $record->is_financial_verified;
+                                    && self::lolosKeuangan($record);
 
                                 if (! $layak) {
                                     $dilewati++;
@@ -233,6 +234,37 @@ class KrsTable
                         ->deselectRecordsAfterCompletion(),
                 ]),
             ]);
+    }
+
+    /** @var array<string, bool> cache per-request supaya PaymentPolicy tidak dihitung ulang per render */
+    protected static array $cacheKeuangan = [];
+
+    /**
+     * Sumber kebenaruan status keuangan antar UI:
+     * flag override/manual ATAU perhitungan live PaymentPolicy.
+     */
+    protected static function lolosKeuangan(Krs $record): bool
+    {
+        if ($record->is_financial_verified) {
+            return true;
+        }
+
+        $key = $record->getKey();
+
+        if (array_key_exists($key, self::$cacheKeuangan)) {
+            return self::$cacheKeuangan[$key];
+        }
+
+        $mahasiswa = $record->mahasiswa;
+        $ta = $record->tahunAkademik;
+
+        if (! $mahasiswa || ! $ta) {
+            return self::$cacheKeuangan[$key] = false;
+        }
+
+        return self::$cacheKeuangan[$key] = app(KrsValidationService::class)
+            ->checkKeuangan($mahasiswa, $ta)
+            ->passed;
     }
 
     protected static function ajukan(Krs $record): void
