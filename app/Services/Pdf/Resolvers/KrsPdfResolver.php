@@ -135,6 +135,7 @@ class KrsPdfResolver implements PdfDataResolverInterface
             semester: (int) $krs->semester,
             namaDosenWali: $dosenWali?->person?->nama_dengan_gelar,
             nidnDosenWali: $dosenWali?->nidn,
+            nuptkDosenWali: $dosenWali?->nuptk,
             statusKrs: $krs->status_krs,
             totalSks: (int) $krs->total_sks_diambil,
             disetujuiPada: $krs->disetujui_pada,

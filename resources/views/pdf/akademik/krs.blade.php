@@ -26,7 +26,14 @@
     <tr>
         <td>Dosen Wali</td>
         <td>:</td>
-        <td>{{ $namaDosenWali ?? '-' }} @if($nidnDosenWali)({{ $nidnDosenWali }})@endif</td>
+        <td>
+            {{ $namaDosenWali ?? '-' }}
+            @if($nidnDosenWali)
+                (NIDN {{ $nidnDosenWali }})
+            @elseif($nuptkDosenWali ?? null)
+                (NUPTK {{ $nuptkDosenWali }})
+            @endif
+        </td>
         <td>Status KRS</td>
         <td>:</td>
         <td>{{ $statusKrs }}</td>
@@ -113,6 +120,8 @@
                 <p style="margin:0; font-size:9px;">
                     @if($nidnDosenWali)
                         NIDN {{ $nidnDosenWali }}
+                    @elseif($nuptkDosenWali ?? null)
+                        NUPTK {{ $nuptkDosenWali }}
                     @else
                         NIDN ..............................
                     @endif
