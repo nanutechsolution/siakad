@@ -57,6 +57,7 @@ class DosenPanelProvider extends PanelProvider
             ->discoverWidgets(in: app_path('Filament/Dosen/Widgets'), for: 'App\Filament\Dosen\Widgets')
             ->widgets([
                 \App\Filament\Dosen\Widgets\DashboardDosenOverview::class, // Widget Utama Stats
+                \App\Filament\Dosen\Widgets\DosenJadwalWidget::class,
                 \App\Filament\Dosen\Widgets\BebanMengajarChart::class,      // Widget Grafik Batang Tatap Muka
                 \App\Filament\Dosen\Widgets\DispensasiWaliTable::class,
             ])
