@@ -5,15 +5,12 @@ declare(strict_types=1);
 namespace App\Services\Akademik;
 
 use App\Enums\KrsStatusEnum;
-use App\Enums\PembimbingAkademikJenis;
-use App\Enums\PembimbingAkademikStatus;
 use App\Enums\StatusKuliah;
 use App\Filament\Resources\RefTahunAkademiks\RefTahunAkademikResource;
 use App\Models\Kelas;
 use App\Models\Krs;
 use App\Models\Mahasiswa;
 use App\Models\MasterKurikulum;
-use App\Models\PembimbingAkademik;
 use App\Models\RefTahunAkademik;
 use App\Models\RiwayatStatusMahasiswa;
 use App\Models\TrxDosen;
@@ -164,15 +161,13 @@ final class DashboardAkademikService
         $krs = $this->krsQuery();
         $kelas = $this->kelasQuery();
 
-        $waliClassIds = PembimbingAkademik::query()
-            ->where('jenis', PembimbingAkademikJenis::DOSEN_WALI)
-            ->where('status', PembimbingAkademikStatus::AKTIF)
-            ->whereNotNull('kelas_id')
-            ->pluck('kelas_id');
-
         $tanpaWali = (clone $kelas)
             ->whereHas('mahasiswaKelasAktif')
-            ->whereNotIn('id', $waliClassIds)
+            // Ikuti relasi resmi Kelas::dosenWaliUtama(): harus DOSEN_WALI,
+            // AKTIF, dan is_primary=true. Query lama hanya memeriksa kelas_id
+            // sehingga assignment non-primary/jenis lain bisa membuat angka
+            // warning tidak sama dengan status "Dosen Wali Utama" pada model.
+            ->whereDoesntHave('dosenWaliUtama')
             ->count();
 
         $overCapacity = (clone $kelas)
