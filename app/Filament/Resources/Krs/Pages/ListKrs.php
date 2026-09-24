@@ -13,6 +13,7 @@ class ListKrs extends ListRecords
     protected function getHeaderActions(): array
     {
         return [
+            // Hanya tampil bagi pemegang Create:Krs — policy menutup sisanya.
             CreateAction::make()->label('Buat KRS Manual'),
         ];
     }

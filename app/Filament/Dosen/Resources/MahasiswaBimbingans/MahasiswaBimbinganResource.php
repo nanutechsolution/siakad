@@ -33,12 +33,28 @@ class MahasiswaBimbinganResource extends Resource
      */
     public static function canViewAny(): bool
     {
-        return Auth::user()?->person_id !== null && Auth::user()?->person?->dosen !== null;
+        $user = Auth::user();
+
+        return $user?->person_id !== null
+            && $user->person?->dosen !== null
+            && $user->hasAnyRole(['Dosen', 'Dosen Wali', 'super_admin']);
     }
-    #[Override]
     public static function canView(Model $record): bool
     {
-        return true;
+        $user = Auth::user();
+
+        if (! $user?->person_id || ! $user->person?->dosen) {
+            return false;
+        }
+
+        $dosenId = $user->person->dosen->id;
+
+        return app(PembimbingAkademikResolver::class)
+            ->scopeMahasiswaBimbingan(
+                Mahasiswa::query()->whereKey($record->getKey()),
+                $dosenId,
+            )
+            ->exists();
     }
 
     public static function canCreate(): bool

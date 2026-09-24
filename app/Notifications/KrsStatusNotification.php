@@ -22,8 +22,8 @@ class KrsStatusNotification extends Notification
         return [
             'title' => $this->status === 'DISETUJUI' ? 'KRS Disetujui' : 'KRS Ditolak',
             'body' => $this->status === 'DISETUJUI'
-                ? 'KRS Anda untuk periode ' . ($this->tahunAkademik ?? '-') . ' telah disetujui oleh Dosen Wali.'
-                : 'KRS Anda untuk periode ' . ($this->tahunAkademik ?? '-') . ' ditolak. Catatan: ' . ($this->catatan ?: '-'),
+                ? 'KRS Anda untuk periode ' . ($this->tahunAkademik ?? '-') . ' telah disetujui petugas akademik.'
+                : 'KRS Anda untuk periode ' . ($this->tahunAkademik ?? '-') . ' ditolak. Alasan: ' . ($this->catatan ?: '-'),
             'status' => $this->status,
         ];
     }

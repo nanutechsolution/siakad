@@ -52,6 +52,7 @@ class DatabaseSeeder extends Seeder
             // BackupPermissionSeeder::class,
             KeuanganSkemaTarifSeeder::class,
             KeuanganDetailTarifSPPSeeder::class,
+            AdminProdiPermissionSeeder::class,
 
         ]);
     }
