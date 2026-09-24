@@ -65,8 +65,12 @@ class TrxDosenForm
                                                                 ->columnSpanFull(),
                                                             TextInput::make('nik')
                                                                 ->label('NIK')
-                                                                ->numeric()
+                                                                ->inputMode('text')
+                                                                ->autocomplete('off')
                                                                 ->length(16)
+                                                                ->maxLength(16)
+                                                                ->rule('digits:16')
+                                                                ->placeholder('16 digit, termasuk 0 di depan')
                                                                 ->unique(table: 'ref_person', column: 'nik', ignoreRecord: true)
                                                                 ->required(),
                                                             TextInput::make('email')
@@ -131,15 +135,25 @@ class TrxDosenForm
                                                     TextInput::make('nidn')
                                                         ->label('NIDN')
                                                         ->unique(ignoreRecord: true)
+                                                        ->minLength(10)
                                                         ->maxLength(10)
-                                                        ->inputMode('numeric')
-                                                        ->nullable(),
+                                                        ->inputMode('text')
+                                                        ->autocomplete('off')
+                                                        ->rule('digits:10')
+                                                        ->dehydrateStateUsing(fn(?string $state): ?string => filled($state) ? trim($state) : null)
+                                                        ->placeholder('Contoh: 0012345678')
+                                                        ->helperText('10 digit. Masukkan sebagai teks agar angka 0 di depan tetap tersimpan.'),
                                                     TextInput::make('nuptk')
                                                         ->label('NUPTK')
                                                         ->unique(ignoreRecord: true)
+                                                        ->minLength(16)
                                                         ->maxLength(16)
-                                                        ->inputMode('numeric')
-                                                        ->nullable(),
+                                                        ->inputMode('text')
+                                                        ->autocomplete('off')
+                                                        ->rule('digits:16')
+                                                        ->dehydrateStateUsing(fn(?string $state): ?string => filled($state) ? trim($state) : null)
+                                                        ->placeholder('Contoh: 0012345678901234')
+                                                        ->helperText('16 digit. Dipakai sebagai fallback jika NIDN belum tersedia.'),
                                                     TextInput::make('asal_institusi')
                                                         ->label('Asal Institusi')
                                                         ->visible(fn(callable $get) => $get('jenis_dosen') === 'LB')

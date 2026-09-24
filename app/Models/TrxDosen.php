@@ -17,6 +17,8 @@ use Spatie\Activitylog\Support\LogOptions;
 
 class TrxDosen extends Model implements HasScopeStrategy
 {
+    /** @property string|null $nidn NIDN disimpan sebagai identifier teks 10 digit. */
+    /** @property string|null $nuptk NUPTK disimpan sebagai identifier teks 16 digit. */
     use SoftDeletes, HasUuids, VisibleToUser;
     use LogsActivity;
 

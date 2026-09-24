@@ -33,23 +33,25 @@ class TrxDosensTable
 
                 TextColumn::make('nidn')
                     ->label('NIDN')
-                    ->placeholder('—')
+                    ->placeholder('Belum diisi')
                     ->searchable()
                     ->sortable()
                     ->copyable()
-                    ->copyMessage('NIDN disalin')
-                    ->copyMessageDuration(1500)
+                    ->copyMessage('NIDN disalin — angka 0 di depan tetap dipertahankan')
+                    ->copyMessageDuration(1800)
+                    ->fontFamily('mono')
                     ->badge()
                     ->color('primary')
                     ->icon('heroicon-o-identification'),
                 TextColumn::make('nuptk')
                     ->label('NUPTK')
-                    ->placeholder('—')
+                    ->placeholder('Belum diisi')
                     ->searchable()
                     ->sortable()
                     ->copyable()
-                    ->copyMessage('NUPTK disalin')
-                    ->copyMessageDuration(1500)
+                    ->copyMessage('NUPTK disalin — angka 0 di depan tetap dipertahankan')
+                    ->copyMessageDuration(1800)
+                    ->fontFamily('mono')
                     ->badge()
                     ->color('gray')
                     ->icon('heroicon-o-credit-card')
@@ -141,12 +143,12 @@ class TrxDosensTable
                 Filter::make('memiliki_nidn')
                     ->label('Memiliki NIDN')
                     ->toggle()
-                    ->query(fn($query) => $query->whereNotNull('nidn')),
+                    ->query(fn($query) => $query->whereNotNull('nidn')->where('nidn', '!=', '')),
 
                 Filter::make('memiliki_nuptk')
                     ->label('Memiliki NUPTK')
                     ->toggle()
-                    ->query(fn($query) => $query->whereNotNull('nuptk')),
+                    ->query(fn($query) => $query->whereNotNull('nuptk')->where('nuptk', '!=', '')),
 
                 Filter::make('created_at')
                     ->label('Tanggal Dibuat')
