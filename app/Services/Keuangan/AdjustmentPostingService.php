@@ -94,12 +94,12 @@ class AdjustmentPostingService
                 throw new AdjustmentException('Nominal adjustment mengakibatkan total tagihan menjadi negatif. Operasi dibatalkan.');
             }
 
-            $kelebihanBayar = 0.0;
-            $totalBayar = (float) $tagihan->total_bayar;
+            $kelebihanBayar = '0.00';
+            $totalBayar = (string) $tagihan->total_bayar;
 
             // 5. Deteksi Overpayment & Penyesuaian total_bayar
-            if ($totalBayar > $newTotalTagihan) {
-                $kelebihanBayar = $totalBayar - $newTotalTagihan;
+            if (bccomp($totalBayar, $newTotalTagihan, 2) === 1) {
+                $kelebihanBayar = bcsub($totalBayar, $newTotalTagihan, 2);
 
                 if ($adjustment->tindak_lanjut_kelebihan_bayar === TindakLanjutKelebihanBayar::TIDAK_ADA) {
                     throw new AdjustmentException('Adjustment ini menyebabkan kelebihan bayar, wajib memilih tindak lanjut (Saldo/Refund).');
@@ -122,13 +122,19 @@ class AdjustmentPostingService
             $tagihan->total_tagihan = $newTotalTagihan;
             $tagihan->save();
 
-            $this->ledger->recordKoreksi(
-                mahasiswaId: $tagihan->mahasiswa_id,
-                nominal: number_format(abs((float) $adjustment->nominal), 2, '.', ''),
-                arah: ((float) $adjustment->nominal) >= 0 ? 'TAMBAH' : 'KURANG',
-                referensiDokumen: $adjustment->nomor_adjustment,
-                keterangan: 'Penyesuaian tagihan: ' . $adjustment->keterangan,
-            );
+            // Adjustment nominal 0 tidak menggerakkan uang — jangan tulis baris
+            // ledger, karena LedgerService melarang debit dan kredit sama-sama 0.
+            if (bccomp((string) $adjustment->nominal, '0.00', 2) !== 0) {
+                $this->ledger->recordKoreksi(
+                    mahasiswaId: $tagihan->mahasiswa_id,
+                    nominal: bccomp((string) $adjustment->nominal, '0.00', 2) > 0
+                        ? (string) $adjustment->nominal
+                        : bcmul((string) $adjustment->nominal, '-1', 2),
+                    arah: bccomp((string) $adjustment->nominal, '0.00', 2) > 0 ? 'TAMBAH' : 'KURANG',
+                    referensiDokumen: $adjustment->nomor_adjustment,
+                    keterangan: 'Penyesuaian tagihan: ' . $adjustment->keterangan,
+                );
+            }
 
             // 8. Finalisasi Status Adjustment
             $adjustment->update([
@@ -139,22 +145,9 @@ class AdjustmentPostingService
     }
 
     /**
-     * Mengambil saldo berjalan terakhir dari Ledger Mahasiswa.
-     */
-    public function hitungSaldoBerjalanTerakhir(string $mahasiswaId): float
-    {
-        $lastLedger = KeuanganGeneralLedger::where('mahasiswa_id', $mahasiswaId)
-            ->orderByDesc('created_at')
-            ->orderByDesc('id') // Tie-breaker
-            ->first();
-
-        return $lastLedger ? (float) $lastLedger->saldo_berjalan : 0.0;
-    }
-
-    /**
      * Memproses uang kelebihan akibat pengurangan tagihan (beasiswa retroaktif).
      */
-    private function prosesKelebihanBayar(string $mahasiswaId, float $kelebihanBayar, KeuanganAdjustment $adjustment): void
+    private function prosesKelebihanBayar(string $mahasiswaId, string $kelebihanBayar, KeuanganAdjustment $adjustment): void
     {
         if ($adjustment->tindak_lanjut_kelebihan_bayar === TindakLanjutKelebihanBayar::SALDO_KREDIT) {
             // Lock deposit record
@@ -162,7 +155,8 @@ class AdjustmentPostingService
             // Lock row manual (karena eloquent model tidak di query via lockForUpdate di firstOrCreate)
             $saldo = KeuanganSaldo::where('id', $saldo->id)->lockForUpdate()->first();
 
-            $saldo->increment('saldo', $kelebihanBayar);
+            $saldo->saldo = bcadd((string) $saldo->saldo, $kelebihanBayar, 2);
+            $saldo->save();
             $saldo->update(['last_updated_at' => now()]);
 
             KeuanganSaldoTransaction::create([
@@ -185,10 +179,10 @@ class AdjustmentPostingService
         }
     }
 
-    private function kalkulasiStatusBayar(float $totalBayar, float $totalTagihan): string
+    private function kalkulasiStatusBayar(string $totalBayar, string $totalTagihan): string
     {
-        if ($totalBayar >= $totalTagihan && $totalTagihan > 0) return 'LUNAS';
-        if ($totalBayar > 0 && $totalBayar < $totalTagihan) return 'CICIL';
+        if (bccomp($totalBayar, $totalTagihan, 2) >= 0 && bccomp($totalTagihan, '0.00', 2) > 0) return 'LUNAS';
+        if (bccomp($totalBayar, '0.00', 2) > 0 && bccomp($totalBayar, $totalTagihan, 2) < 0) return 'CICIL';
         return 'BELUM';
     }
 }
