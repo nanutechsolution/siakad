@@ -51,6 +51,10 @@ final class CicilanService
                     SELECT COUNT(*) FROM pembayaran_mahasiswas pm2
                     JOIN ref_status_verifikasi_pembayaran sv2 ON sv2.id = pm2.status_verifikasi_id
                     WHERE pm2.tagihan_id = tm.tagihan_id
+                      AND pm2.tagihan_type = CASE tm.jenis_tagihan
+                          WHEN \'SEMESTER\' THEN \'tagihan_mahasiswa\'
+                          WHEN \'NON_REGULER\' THEN \'tagihan_non_reguler\'
+                      END
                       AND sv2.is_final = 1
                       AND pm2.deleted_at IS NULL
                 ) as jumlah_cicilan

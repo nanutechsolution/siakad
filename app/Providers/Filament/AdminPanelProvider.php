@@ -39,6 +39,14 @@ class AdminPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => Blade::render('<x-active-academic-year />'),
             )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn() => view('components.pwa.head'),
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn() => view('components.pwa.register'),
+            )
             ->id('admin')
             ->path('admin')
             ->brandLogoHeight('2.25rem')

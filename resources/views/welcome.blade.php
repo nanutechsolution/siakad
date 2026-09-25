@@ -7,8 +7,6 @@
     ========================================================== -->
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1e1b4b">
-    <meta name="color-scheme" content="light">
     <meta name="author" content="Universitas Stella Maris Sumba">
     <meta name="description"
         content="SIAKAD Universitas Stella Maris Sumba (UNMARIS) adalah portal Sistem Informasi Akademik untuk mahasiswa, dosen, dan administrator dalam mengakses layanan akademik.">
@@ -30,8 +28,7 @@
     <!-- =========================================================
          FAVICON
     ========================================================== -->
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicons/logo-unmaris.svg') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo-unmaris.png') }}">
+    @include('components.pwa.head')
 
     <!-- =========================================================
          OPEN GRAPH / FACEBOOK / WHATSAPP
@@ -116,6 +113,7 @@
          TAILWIND / VITE
     ========================================================== -->
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('components.pwa.register')
 
     <!-- =========================================================
          STYLES

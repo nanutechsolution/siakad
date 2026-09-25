@@ -30,7 +30,10 @@ final class PendapatanService
 
         $query = MahasiswaInfoQuery::base()
             ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
-            ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
+            ->join('pembayaran_mahasiswas as pm', function ($join) {
+                $join->on('pm.tagihan_id', '=', 'tm.tagihan_id')
+                    ->whereRaw("pm.tagihan_type = CASE tm.jenis_tagihan WHEN 'SEMESTER' THEN 'tagihan_mahasiswa' WHEN 'NON_REGULER' THEN 'tagihan_non_reguler' END");
+            })
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
             ->whereNull('pm.deleted_at')
@@ -97,7 +100,10 @@ final class PendapatanService
 
         $pendapatanPerProdi = MahasiswaInfoQuery::base()
             ->joinSub($map, 'tm', fn($join) => $join->on('tm.mahasiswa_id', '=', 'mahasiswas.id'))
-            ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
+            ->join('pembayaran_mahasiswas as pm', function ($join) {
+                $join->on('pm.tagihan_id', '=', 'tm.tagihan_id')
+                    ->whereRaw("pm.tagihan_type = CASE tm.jenis_tagihan WHEN 'SEMESTER' THEN 'tagihan_mahasiswa' WHEN 'NON_REGULER' THEN 'tagihan_non_reguler' END");
+            })
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->whereNull('pm.deleted_at')
             ->where('sv.is_final', true)
@@ -174,7 +180,12 @@ final class PendapatanService
             ")
                 ->groupBy(
                     DB::raw('YEAR(pm.tanggal_bayar)'),
-                    DB::raw('MONTH(pm.tanggal_bayar)')
+                    DB::raw('MONTH(pm.tanggal_bayar)'),
+                    // MySQL hanya memperlakukan fungsi berdasarkan key GROUP BY
+                    // kolom mentah; CONCAT dari kolom yang sama tidak dianggap
+                    // functionally dependent, jadi label id/periode/label ikut
+                    // di-group agar lolos sql_mode ONLY_FULL_GROUP_BY.
+                    DB::raw("CONCAT(YEAR(pm.tanggal_bayar), '-', LPAD(MONTH(pm.tanggal_bayar),2,'0'))")
                 ),
         };
 
@@ -220,7 +231,10 @@ final class PendapatanService
                 fn($join) =>
                 $join->on('tm.mahasiswa_id', '=', 'm.id')
             )
-            ->join('pembayaran_mahasiswas as pm', 'pm.tagihan_id', '=', 'tm.tagihan_id')
+            ->join('pembayaran_mahasiswas as pm', function ($join) {
+                $join->on('pm.tagihan_id', '=', 'tm.tagihan_id')
+                    ->whereRaw("pm.tagihan_type = CASE tm.jenis_tagihan WHEN 'SEMESTER' THEN 'tagihan_mahasiswa' WHEN 'NON_REGULER' THEN 'tagihan_non_reguler' END");
+            })
             ->join('ref_status_verifikasi_pembayaran as sv', 'sv.id', '=', 'pm.status_verifikasi_id')
             ->leftJoin('ref_tahun_akademik as ta', 'ta.id', '=', 'tm.tahun_akademik_id')
             ->whereNull('m.deleted_at')

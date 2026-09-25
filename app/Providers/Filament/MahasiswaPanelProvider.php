@@ -46,6 +46,14 @@ class MahasiswaPanelProvider extends PanelProvider
                 PanelsRenderHook::GLOBAL_SEARCH_BEFORE,
                 fn() => Blade::render('<x-active-academic-year />'),
             )
+            ->renderHook(
+                PanelsRenderHook::HEAD_END,
+                fn() => view('components.pwa.head'),
+            )
+            ->renderHook(
+                PanelsRenderHook::BODY_END,
+                fn() => view('components.pwa.register'),
+            )
             ->topNavigation()
             ->profile()
             ->font('Instrument Sans')

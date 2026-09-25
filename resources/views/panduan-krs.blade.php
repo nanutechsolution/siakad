@@ -4,8 +4,6 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <meta name="theme-color" content="#1e1b4b">
-    <meta name="color-scheme" content="light">
     <meta name="author" content="Universitas Stella Maris Sumba">
     <meta name="description" content="Panduan resmi alur pengisian Kartu Rencana Studi (KRS) pada SIAKAD Universitas Stella Maris Sumba.">
     <meta name="robots" content="index, follow">
@@ -13,14 +11,14 @@
     <title>Panduan Pengisian KRS - SIAKAD UNMARIS</title>
 
     <link rel="canonical" href="{{ route('panduan.krs') }}">
-    <link rel="icon" type="image/svg+xml" href="{{ asset('favicons/logo-unmaris.svg') }}">
-    <link rel="apple-touch-icon" href="{{ asset('images/logo-unmaris.png') }}">
+    @include('components.pwa.head')
 
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @include('components.pwa.register')
 
     <style>
         body {
