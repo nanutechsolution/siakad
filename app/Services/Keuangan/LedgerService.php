@@ -4,7 +4,7 @@ namespace App\Services\Keuangan;
 
 use App\Enums\TipeTransaksiLedger;
 use App\Models\KeuanganGeneralLedger;
-use Illuminate\Support\Facades\Cache;
+use App\Models\Mahasiswa;
 use Illuminate\Support\Facades\DB;
 use RuntimeException;
 
@@ -53,38 +53,52 @@ class LedgerService
     ): KeuanganGeneralLedger {
         $this->validasiArahTransaksi($debit, $kredit);
 
-        return Cache::lock("ledger-mahasiswa:{$mahasiswaId}", 10)
-            ->block(5, fn() => DB::transaction(function () use (
-                $mahasiswaId,
-                $tipeTransaksi,
-                $debit,
-                $kredit,
-                $referensiDokumen,
-                $keterangan
-            ) {
-                $existing = $this->cariEntriIdempotent($referensiDokumen, $tipeTransaksi);
-                if ($existing) {
-                    return $existing;
-                }
+        return DB::transaction(function () use (
+            $mahasiswaId,
+            $tipeTransaksi,
+            $debit,
+            $kredit,
+            $referensiDokumen,
+            $keterangan
+        ) {
+            $existing = $this->cariEntriIdempotent($referensiDokumen, $tipeTransaksi);
+            if ($existing) {
+                return $existing;
+            }
 
-                $saldoSebelumnya = KeuanganGeneralLedger::query()
-                    ->where('mahasiswa_id', $mahasiswaId)
-                    ->orderByDesc('created_at')
-                    ->orderByDesc('id')
-                    ->value('saldo_berjalan') ?? '0.00';
+            // Lock the stable parent row instead of Cache::lock. The file cache
+            // store is process-local and cannot serialize ledger writes across
+            // multiple web/queue nodes; a DB row lock can.
+            Mahasiswa::query()
+                ->whereKey($mahasiswaId)
+                ->lockForUpdate()
+                ->firstOrFail();
 
-                $saldoBerjalan = bcadd(bcsub((string) $saldoSebelumnya, $kredit, 2), $debit, 2);
+            // Re-check after waiting for the parent lock: another transaction
+            // may have committed the same idempotency key while we waited.
+            $existing = $this->cariEntriIdempotent($referensiDokumen, $tipeTransaksi);
+            if ($existing) {
+                return $existing;
+            }
 
-                return KeuanganGeneralLedger::create([
-                    'mahasiswa_id' => $mahasiswaId,
-                    'referensi_dokumen' => $referensiDokumen,
-                    'tipe_transaksi' => $tipeTransaksi,
-                    'debit' => $debit,
-                    'kredit' => $kredit,
-                    'saldo_berjalan' => $saldoBerjalan,
-                    'keterangan' => $keterangan,
-                ]);
-            }));
+            $saldoSebelumnya = KeuanganGeneralLedger::query()
+                ->where('mahasiswa_id', $mahasiswaId)
+                ->orderByDesc('created_at')
+                ->orderByDesc('id')
+                ->value('saldo_berjalan') ?? '0.00';
+
+            $saldoBerjalan = bcadd(bcsub((string) $saldoSebelumnya, $kredit, 2), $debit, 2);
+
+            return KeuanganGeneralLedger::create([
+                'mahasiswa_id' => $mahasiswaId,
+                'referensi_dokumen' => $referensiDokumen,
+                'tipe_transaksi' => $tipeTransaksi,
+                'debit' => $debit,
+                'kredit' => $kredit,
+                'saldo_berjalan' => $saldoBerjalan,
+                'keterangan' => $keterangan,
+            ]);
+        });
     }
 
     /**

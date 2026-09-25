@@ -232,14 +232,49 @@ class SinkronisasiTagihanService
         $query = $this->resolver->resolve($data);
 
         $query->chunkById(200, function ($mahasiswaChunk) use ($callback, $tahunAkademikId) {
+            // 4 query per mahasiswa menjadi 4 query PER CHUNK lewat map di
+            // bawah. Preview sinkronisasi menyentuh seluruh target (10k+
+            // mahasiswa), jadi query-in-loop sebelumnya = puluhan ribu roundtrip.
+            $tagihanMap = DB::table('tagihan_mahasiswas')
+                ->whereIn('mahasiswa_id', $mahasiswaChunk->pluck('id'))
+                ->where('tahun_akademik_id', $tahunAkademikId)
+                ->get()
+                ->groupBy('mahasiswa_id')
+                ->map(fn($rows) => $rows->first());
+
+            $skemaMap = DB::table('keuangan_skema_tarif')
+                ->where('is_active', 1)
+                ->whereIn('prodi_id', $mahasiswaChunk->pluck('prodi_id')->filter()->unique())
+                ->whereIn('angkatan_id', $mahasiswaChunk->pluck('angkatan_id')->filter()->unique())
+                ->get()
+                ->groupBy(fn($skema) => "{$skema->angkatan_id}|{$skema->prodi_id}|{$skema->program_kelas_id}");
+
+            $tagihanIds = $tagihanMap->pluck('id')->values()->all();
+
+            $skemaIds = $tagihanMap->isEmpty()
+                ? []
+                : $skemaMap->map->id->unique()->values()->all();
+
+            $detailSkemaMap = $skemaIds === []
+                ? collect()
+                : DB::table('keuangan_detail_tarif')
+                    ->join('keuangan_komponen_biaya', 'keuangan_komponen_biaya.id', '=', 'keuangan_detail_tarif.komponen_biaya_id')
+                    ->whereIn('keuangan_detail_tarif.skema_tarif_id', $skemaIds)
+                    ->select('keuangan_detail_tarif.*', 'keuangan_komponen_biaya.nama_komponen')
+                    ->get()
+                    ->groupBy('skema_tarif_id');
+
+            $detailExistingMap = $tagihanIds === []
+                ? collect()
+                : TagihanMahasiswaDetail::whereIn('tagihan_id', $tagihanIds)
+                    ->get()
+                    ->groupBy('tagihan_id');
+
             foreach ($mahasiswaChunk as $mhs) {
                 // Sinkronisasi hanya relevan untuk mahasiswa yang SUDAH
                 // punya tagihan reguler di semester ini (kebalikan dari
                 // Generator, yang justru skip kalau sudah ada).
-                $tagihan = DB::table('tagihan_mahasiswas')
-                    ->where('mahasiswa_id', $mhs->id)
-                    ->where('tahun_akademik_id', $tahunAkademikId)
-                    ->first();
+                $tagihan = $tagihanMap->get($mhs->id);
 
                 if ($tagihan === null) {
                     $callback($mhs, null, collect(), null, collect());
@@ -251,25 +286,18 @@ class SinkronisasiTagihanService
                     continue;
                 }
 
-                $skemaTarif = DB::table('keuangan_skema_tarif')
-                    ->where('angkatan_id', $mhs->angkatan_id)
-                    ->where('prodi_id', $mhs->prodi_id)
-                    ->where('program_kelas_id', $mhs->program_id)
-                    ->where('is_active', 1)
-                    ->first();
+                $skemaTarif = $skemaMap->get(
+                    "{$mhs->angkatan_id}|{$mhs->prodi_id}|{$mhs->program_id}"
+                );
 
                 if ($skemaTarif === null) {
                     $callback($mhs, null, collect(), (object) (array) $tagihan, collect());
                     continue;
                 }
 
-                $detailSkema = DB::table('keuangan_detail_tarif')
-                    ->join('keuangan_komponen_biaya', 'keuangan_komponen_biaya.id', '=', 'keuangan_detail_tarif.komponen_biaya_id')
-                    ->where('keuangan_detail_tarif.skema_tarif_id', $skemaTarif->id)
-                    ->select('keuangan_detail_tarif.*', 'keuangan_komponen_biaya.nama_komponen')
-                    ->get();
+                $detailSkema = $detailSkemaMap->get($skemaTarif->id) ?? collect();
 
-                $detailExisting = TagihanMahasiswaDetail::where('tagihan_id', $tagihan->id)->get();
+                $detailExisting = $detailExistingMap->get($tagihan->id) ?? collect();
 
                 $callback($mhs, (object) (array) $skemaTarif, $detailSkema, (object) (array) $tagihan, $detailExisting);
             }

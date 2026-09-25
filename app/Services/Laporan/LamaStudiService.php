@@ -80,15 +80,29 @@ class LamaStudiService extends BaseLaporanService
     }
 
     /**
-     * Hitung mahasiswa dengan status tertentu
+     * Cache per-run lama studi tiap mahasiswa: method ini dipanggil dari
+     * rata-rata + tercepat + terlama.
+     *
+     * @var array<string, int|null>
+     */
+    private array $lamaStudiCache = [];
+
+    /**
+     * Hitung mahasiswa dengan status tertentu lewat relasi eager-loaded.
      */
     private function countByStatus($group, string $status): int
     {
-        return $group->filter(function ($mahasiswa) use ($status) {
-            return $mahasiswa->riwayatStatusMahasiswas()
-                ->where('status_kuliah', $status)
-                ->exists();
-        })->count();
+        return $group->filter(fn(Mahasiswa $mahasiswa): bool => $this->hasStatus($mahasiswa, $status))->count();
+    }
+
+    /**
+     * Cek status mahasiswa lewat relasi yang sudah di-eager-load (tanpa query
+     * tambahan per mahasiswa).
+     */
+    private function hasStatus(Mahasiswa $mahasiswa, string $status): bool
+    {
+        return $mahasiswa->riwayatStatusMahasiswas
+            ->contains(fn(RiwayatStatusMahasiswa $riwayat): bool => $riwayat->status_kuliah === $status);
     }
 
     /**
@@ -106,18 +120,13 @@ class LamaStudiService extends BaseLaporanService
     }
 
     /**
-     * Hitung rata-rata lama studi dalam semester
+     * Hitung rata-rata lama studi dalam semester (khusus mahasiswa LULUS,
+     * populasi yang sama dengan semester tercepat/terlama sehingga angka
+     * ringkasan berbobot jumlah_lulus di calculateSummary() konsisten).
      */
     private function calculateRataRataLamaStudi($group): float
     {
-        $lamaStudis = [];
-
-        foreach ($group as $mahasiswa) {
-            $lamaStudi = $this->calculateLamaStudiSingle($mahasiswa);
-            if ($lamaStudi !== null && $lamaStudi > 0) {
-                $lamaStudis[] = $lamaStudi;
-            }
-        }
+        $lamaStudis = $this->collectLamaStudiLulus($group);
 
         if (empty($lamaStudis)) {
             return 0;
@@ -131,60 +140,77 @@ class LamaStudiService extends BaseLaporanService
      */
     private function calculateLamaStudiSingle(Mahasiswa $mahasiswa): ?int
     {
+        $key = (string) $mahasiswa->getKey();
+
+        if (array_key_exists($key, $this->lamaStudiCache)) {
+            return $this->lamaStudiCache[$key];
+        }
+
         $angkatan = $mahasiswa->angkatan_id;
-        
-        // Hitung dari riwayat status
-        $lastStatus = $mahasiswa->riwayatStatusMahasiswas()
-            ->orderBy('tahun_akademik_id', 'desc')
+
+        // Relasi sudah di-eager-load; ambil status terakhir dari collection
+        // agar laporan besar tidak menjalankan first() per mahasiswa.
+        $lastStatus = $mahasiswa->riwayatStatusMahasiswas
+            ->sortByDesc('tahun_akademik_id')
             ->first();
 
         if (!$lastStatus) {
-            return null;
+            return $this->lamaStudiCache[$key] = null;
         }
 
         $tahunAkademik = $lastStatus->tahunAkademik;
-        
+
         // Parse tahun akademik (format: "2024/2025")
         $tahunStart = (int)explode('/', $tahunAkademik->nama_tahun)[0];
-        
+
         $jumlahTahun = $tahunStart - $angkatan;
         $semester = ($jumlahTahun * 2) + $tahunAkademik->semester;
 
-        return max(1, $semester);
+        return $this->lamaStudiCache[$key] = max(1, $semester);
     }
 
     /**
-     * Find fastest completion (terfelit semester)
+     * Lam studi hanya bermakna untuk mahasiswa berstatus LULUS — perhitungan
+     * sebelumnya menyertakan mahasiswa aktif/cuti/DO di sisi "tercepat",
+     * padahal metodologi lama studi adalah semester sampai lulus.
+     *
+     * @return array<int, int>
      */
-    private function findFastestCompletion($group): int
+    private function collectLamaStudiLulus($group): array
     {
         $lamaStudis = [];
 
         foreach ($group as $mahasiswa) {
-            if ($this->countByStatus($group, StatusKuliah::LULUS->value) > 0) {
-                $lamaStudi = $this->calculateLamaStudiSingle($mahasiswa);
-                if ($lamaStudi !== null && $lamaStudi > 0) {
-                    $lamaStudis[] = $lamaStudi;
-                }
+            if (! $this->hasStatus($mahasiswa, StatusKuliah::LULUS->value)) {
+                continue;
+            }
+
+            $lamaStudi = $this->calculateLamaStudiSingle($mahasiswa);
+
+            if ($lamaStudi !== null && $lamaStudi > 0) {
+                $lamaStudis[] = $lamaStudi;
             }
         }
+
+        return $lamaStudis;
+    }
+
+    /**
+     * Find fastest completion (semester paling cepat di antara yang lulus)
+     */
+    private function findFastestCompletion($group): int
+    {
+        $lamaStudis = $this->collectLamaStudiLulus($group);
 
         return !empty($lamaStudis) ? min($lamaStudis) : 0;
     }
 
     /**
-     * Find slowest completion (terlama semester)
+     * Find slowest completion (semester paling lama di antara yang lulus)
      */
     private function findSlowestCompletion($group): int
     {
-        $lamaStudis = [];
-
-        foreach ($group as $mahasiswa) {
-            $lamaStudi = $this->calculateLamaStudiSingle($mahasiswa);
-            if ($lamaStudi !== null && $lamaStudi > 0) {
-                $lamaStudis[] = $lamaStudi;
-            }
-        }
+        $lamaStudis = $this->collectLamaStudiLulus($group);
 
         return !empty($lamaStudis) ? max($lamaStudis) : 0;
     }
@@ -208,9 +234,24 @@ class LamaStudiService extends BaseLaporanService
             }
         }
 
-        $rataLamaStudiKeseluruhan = !empty($allLamaStudis) 
-            ? array_sum($allLamaStudis) / count($allLamaStudis) 
+        $rataLamaStudiKeseluruhan = !empty($allLamaStudis)
+            ? array_sum($allLamaStudis) / count($allLamaStudis)
             : 0;
+
+        // min()/max() melempar ValueError pada array kosong (PHP 8+) — laporan
+        // tanpa data sekalipun harus merender ringkasan, bukan error 500.
+        if (empty($dtos)) {
+            return [
+                'total_mahasiswa' => $totalMahasiswa,
+                'total_lulus' => 0,
+                'persentase_lulus_keseluruhan' => $this->hitungPersentase(0, $totalMahasiswa),
+                'total_angkatan' => 0,
+                'total_prodi' => 0,
+                'rata_lama_studi_keseluruhan' => 0,
+                'semester_tercepat_overall' => 0,
+                'semester_terlama_overall' => 0,
+            ];
+        }
 
         return [
             'total_mahasiswa' => $totalMahasiswa,

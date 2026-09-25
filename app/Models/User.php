@@ -36,7 +36,10 @@ class User extends Authenticatable implements FilamentUser
         'person_id',
         'password',
         'username',
-        'is_active'
+        'is_active',
+        'must_change_password',
+        'failed_login_attempts',
+        'locked_at',
     ];
     public function scopeVisibleTo(Builder $query, User $actor): Builder
     {

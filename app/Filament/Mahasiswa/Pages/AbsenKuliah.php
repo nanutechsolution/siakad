@@ -23,6 +23,10 @@ class AbsenKuliah extends Page
     public ?string $deviceFingerprint = null;
 
 
+    /**
+     * Dipanggil dari wire:submit (Enter pada keyboard HP maupun desktop)
+     * sekaligus dari tombol absen.
+     */
     public function submitToken(): void
     {
         $token = strtoupper(trim($this->tokenInput ?? ''));

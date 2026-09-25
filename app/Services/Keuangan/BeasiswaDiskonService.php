@@ -12,6 +12,24 @@ use App\Models\RefTahunAkademik;
 
 class BeasiswaDiskonService
 {
+    /** @var array<string, \Illuminate\Support\Collection> */
+    private array $assignmentCache = [];
+
+    /**
+     * Mengambil assignment beasiswa sekali per mahasiswa + tahun akademik.
+     * Generator memanggil service ini untuk setiap komponen biaya; tanpa cache
+     * pola tersebut menjadi N+1 query (mahasiswa x komponen).
+     */
+    private function assignmentsFor(Mahasiswa $mahasiswa, RefTahunAkademik $tahunAkademik): \Illuminate\Support\Collection
+    {
+        $key = $mahasiswa->getKey() . ':' . $tahunAkademik->getKey();
+
+        return $this->assignmentCache[$key] ??= KeuanganMahasiswaBeasiswa::with(['beasiswa.details'])
+            ->where('mahasiswa_id', $mahasiswa->id)
+            ->where('is_active', true)
+            ->get();
+    }
+
     /**
      * Menghitung total nilai diskon beasiswa untuk satu komponen tagihan.
      * Tidak akan mengembalikan nilai melebihi nominal dasar (tagihan tidak bisa negatif).
@@ -26,10 +44,7 @@ class BeasiswaDiskonService
             return 0.0;
         }
 
-        $beasiswaAktifs = KeuanganMahasiswaBeasiswa::with(['beasiswa.details'])
-            ->where('mahasiswa_id', $mahasiswa->id)
-            ->where('is_active', true)
-            ->get();
+        $beasiswaAktifs = $this->assignmentsFor($mahasiswa, $tahunAkademik);
 
         if ($beasiswaAktifs->isEmpty()) {
             return 0.0;

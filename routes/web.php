@@ -3,29 +3,75 @@
 use App\Enums\Pdf\PdfDocumentType;
 use App\Http\Controllers\Akademik\CetakKrsController;
 use App\Http\Controllers\Bara\NilaiRekapExportController;
+use App\Models\JadwalKuliah;
 use App\Models\PembayaranMahasiswa;
+use App\Models\RefPerson;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\Facades\Storage;
-use App\Http\Controllers\LaporanKeuanganExportController;
 use App\Http\Controllers\Mahasiswa\DokumenAkademikController;
 use App\Http\Controllers\Mahasiswa\KhsPdfController;
 use App\Http\Controllers\MigrationErrorReportController;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-Route::get('/laporan-keuangan/export/pdf/{page}', [
-    LaporanKeuanganExportController::class,
-    'pdf'
-])->name('laporan.keuangan.export.pdf');
+// A user whose password was reset by an administrator must be able to
+// complete the forced-change flow before the panel middleware redirects them.
+Route::middleware(['web', 'auth'])->group(function () {
+    Route::get('/password/force-change', function () {
+        abort_unless(auth()->user()->must_change_password, 404);
+
+        return view('auth.force-password-change');
+    })->name('password.force-change');
+
+    Route::post('/password/force-change', function (Request $request) {
+        abort_unless(auth()->user()->must_change_password, 404);
+
+        $validated = Validator::make($request->all(), [
+            'password' => ['required', 'string', 'min:12', 'confirmed'],
+        ])->validate();
+
+        $request->user()->forceFill([
+            'password' => Hash::make($validated['password']),
+            'must_change_password' => false,
+            'remember_token' => null,
+        ])->save();
+
+        // Kembali ke halaman portal (user bisa memilih panelnya masing-masing,
+        // sesuai guard yang dipakai panel terkait).
+        return redirect('/')->with('status', 'Password berhasil diperbarui. Silakan login kembali.');
+    })->name('password.force-change.store');
+});
+
+// Rute lama: sebelumnya membuka kelas Laporan Keuangan secara publik tanpa
+// auth, meng-`app()` class string dari URL, dan memanggil method `tableRows()`
+// yang sudah dihapus dari interface ProvidesLaporanData (hasilnya error 500
+// untuk siapa pun, termasuk tamu). Seluruh laporan kini punya aksi export
+// bawaan page (`HasLaporanFilterAndExport::exportPdf/exportExcel`) yang sudah
+// melewati auth + permission page, jadi rute ini dihapus.
 
 Route::get('/', function () {
     return view('welcome');
 });
 
-Route::get('/mahasiswa/photo/{person}', function ($person) {
+Route::middleware(['auth'])->get('/mahasiswa/photo/{person}', function (RefPerson $person) {
+    $user = auth()->user();
+
+    // Foto adalah data pribadi: hanya pemilik atau pihak yang berhak
+    // melihat record RefPerson tersebut yang boleh mengaksesnya.
+    abort_unless(
+        $user->person_id === $person->id
+            || Gate::forUser($user)->allows('view', $person)
+            || $user->hasAnyRole(['super_admin', 'BAAK', 'Admin Akademik', 'Admin Fakultas', 'Admin Prodi', 'Admin PMB', 'Admin SDM']),
+        403
+    );
+
     $path = $person->photo_path;
 
-    if (!Storage::disk('private')->exists($path)) {
+    if (! $path || !Storage::disk('private')->exists($path)) {
         abort(404);
     }
 
@@ -34,7 +80,11 @@ Route::get('/mahasiswa/photo/{person}', function ($person) {
 
 Route::middleware(['auth'])->group(function () {
     Route::get('/dosen/nilai/print/{id}', function ($id) {
-        $jadwal = \App\Models\JadwalKuliah::with(['mataKuliah', 'kelas', 'tahunAkademik'])->findOrFail($id);
+        $jadwal = JadwalKuliah::with(['mataKuliah', 'kelas', 'tahunAkademik'])->findOrFail($id);
+
+        // Daftar nilai memuat identitas seluruh peserta kelas, jadi hanya dosen
+        // yang berwenang menilai kelas tersebut yang boleh mencetaknya.
+        Gate::authorize('nilaiKelasDosen', $jadwal);
 
         // Ambil komponen nilai aktif dari kurikulum
         $komponenAktif = \App\Models\KurikulumKomponenNilai::with('komponen')
@@ -105,7 +155,8 @@ Route::get('/mahasiswa/reauth', function () {
 use App\Http\Controllers\PdfController;
 use App\Http\Controllers\PdfVerificationController;
 
-Route::get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])->name('khs.cetak');
+Route::middleware(['auth'])->get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])
+    ->name('khs.cetak');
 
 
 use App\Http\Controllers\SinkronisasiExportDownloadController;
@@ -133,6 +184,17 @@ Route::get('/pdf/download/{type}/{context}', function (
         base64_decode($context),
         true
     );
+
+    if (! is_array($context)) {
+        abort(422, 'Konteks dokumen tidak valid.');
+    }
+
+    $typeValue = $type;
+
+    // Context datang dari client (base64 JSON), jadi WAJIB diperiksa dulu
+    // terhadap pemanggil — kalau tidak, siapa pun bisa menukar mahasiswa_id.
+    app(\App\Support\Pdf\PdfContextGuard::class)
+        ->authorize(request(), $typeValue, $context);
 
     return $service->download(
         PdfDocumentType::from($type),
@@ -166,12 +228,12 @@ Route::middleware('auth')->get(
     [MidtransCheckoutController::class, 'show']
 )->name('midtrans.checkout');
 
-Route::get('/pembayaran/midtrans/result/{orderId}', [
+Route::middleware(['auth'])->get('/pembayaran/midtrans/result/{orderId}', [
     MidtransResultController::class,
     'index'
 ])->name('midtrans.result');
 
-Route::get('/pembayaran/midtrans/status/{orderId}', [
+Route::middleware(['auth', 'throttle:60,1'])->get('/pembayaran/midtrans/status/{orderId}', [
     MidtransResultController::class,
     'status'
 ])->name('midtrans.status');

@@ -15,33 +15,68 @@
     </div>
 
     <x-filament::section>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="border-b border-gray-200 text-left dark:border-gray-700">
-                    <th class="py-2">Kode MK</th>
-                    <th class="py-2">Nama MK</th>
-                    <th class="py-2 text-center">SKS</th>
-                    <th class="py-2 text-center">Nilai Terakhir</th>
-                    <th class="py-2 text-center">Mutu</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($data['mata_kuliah'] as $row)
-                    <tr class="border-b border-gray-100 dark:border-gray-800">
-                        <td class="py-2">{{ $row->mataKuliah?->kode_mk }}</td>
-                        <td class="py-2">{{ $row->mataKuliah?->nama_mk }}</td>
-                        <td class="py-2 text-center">{{ $row->sks_diakui }}</td>
-                        <td class="py-2 text-center">{{ $row->nilai_huruf_final }}</td>
-                        <td class="py-2 text-center">{{ number_format($row->nilai_indeks_final, 2) }}</td>
+        {{-- Desktop: tabel penuh --}}
+        <div class="hidden md:block">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 text-left dark:border-gray-700">
+                        <th class="py-2">Kode MK</th>
+                        <th class="py-2">Nama MK</th>
+                        <th class="py-2 text-center">SKS</th>
+                        <th class="py-2 text-center">Nilai Terakhir</th>
+                        <th class="py-2 text-center">Mutu</th>
                     </tr>
-                @empty
-                    <tr>
-                        <td colspan="5" class="py-4 text-center text-gray-400">
-                            Belum ada riwayat akademik yang tercatat.
-                        </td>
-                    </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody>
+                    @forelse ($data['mata_kuliah'] as $row)
+                        <tr class="border-b border-gray-100 dark:border-gray-800">
+                            <td class="py-2">{{ $row->mataKuliah?->kode_mk }}</td>
+                            <td class="py-2">{{ $row->mataKuliah?->nama_mk }}</td>
+                            <td class="py-2 text-center">{{ $row->sks_diakui }}</td>
+                            <td class="py-2 text-center">{{ $row->nilai_huruf_final }}</td>
+                            <td class="py-2 text-center">{{ number_format($row->nilai_indeks_final, 2) }}</td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="py-4 text-center text-gray-400">
+                                Belum ada riwayat akademik yang tercatat.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Mobile: kartu per mata kuliah --}}
+        <div class="space-y-3 md:hidden">
+            @forelse ($data['mata_kuliah'] as $row)
+                <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-semibold">
+                                {{ $row->mataKuliah?->nama_mk }}
+                            </p>
+                            <p class="mt-0.5 text-xs text-gray-500">
+                                {{ $row->mataKuliah?->kode_mk }}
+                                &middot; {{ $row->sks_diakui }} SKS
+                            </p>
+                        </div>
+                        <span class="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-sm font-bold
+                                     dark:bg-gray-800">
+                            {{ $row->nilai_huruf_final }}
+                        </span>
+                    </div>
+
+                    <dl class="mt-3 text-sm">
+                        <dt class="text-xs text-gray-500">Mutu</dt>
+                        <dd>{{ number_format($row->nilai_indeks_final, 2) }}</dd>
+                    </dl>
+                </div>
+            @empty
+                <p class="py-4 text-center text-sm text-gray-400">
+                    Belum ada riwayat akademik yang tercatat.
+                </p>
+            @endforelse
+        </div>
     </x-filament::section>
 </x-filament-panels::page>

@@ -8,6 +8,7 @@
                    dark:bg-gray-900 dark:ring-white/10">
             <div class="p-5 sm:p-6">
 
+            <form wire:submit="submitToken">
                 {{-- Section Label --}}
                 <div class="mb-4">
                     <label
@@ -22,12 +23,11 @@
                 </div>
 
 
-                {{-- Token Input --}}
-                <div>
+                {{-- Token Input --}}                <div>
                     <input
                         id="tokenInput"
                         type="text"
-                        wire:model.live="tokenInput"
+                        wire:model="tokenInput"
                         maxlength="10"
                         autocomplete="off"
                         autocapitalize="characters"
@@ -59,10 +59,9 @@
                 {{-- Submit --}}
                 <div class="mt-4">
                     <x-filament::button
-                        wire:click="submitToken"
+                        type="submit"
                         wire:loading.attr="disabled"
                         wire:target="submitToken"
-                        type="button"
                         icon="heroicon-m-check-circle"
                         class="w-full justify-center rounded-xl py-3 text-sm font-semibold">
                         <span wire:loading.remove wire:target="submitToken">
@@ -78,6 +77,7 @@
                         </span>
                     </x-filament::button>
                 </div>
+            </form>
 
 
                 {{-- Security Hint --}}

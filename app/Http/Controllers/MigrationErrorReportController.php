@@ -6,12 +6,17 @@ namespace App\Http\Controllers;
 
 use App\Domain\Migration\Enums\MigrationRowStatus;
 use App\Models\MigrationBatch;
+use Illuminate\Support\Facades\Gate;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 final class MigrationErrorReportController extends Controller
 {
     public function __invoke(MigrationBatch $batch): StreamedResponse
     {
+        // Report memuat NIM mentah + payload asli tiap baris; minimal harus
+        // lolos permission View:MigrationBatch (sebelumnya route hanya `auth`).
+        Gate::authorize('view', $batch);
+
         $fileName = "migration-error-report-{$batch->id}.csv";
 
         return response()->streamDownload(function () use ($batch): void {

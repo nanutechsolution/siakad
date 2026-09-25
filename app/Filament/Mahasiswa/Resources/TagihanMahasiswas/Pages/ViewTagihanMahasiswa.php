@@ -4,6 +4,7 @@ namespace App\Filament\Mahasiswa\Resources\TagihanMahasiswas\Pages;
 
 use App\Enums\Pdf\PdfDocumentType;
 use App\Enums\StatusVerifikasiPembayaran;
+use App\Enums\MetodePembayaran;
 use App\Filament\Mahasiswa\Resources\TagihanMahasiswas\TagihanMahasiswaResource;
 use App\Models\KeuanganSaldo;
 use App\Models\KeuanganSaldoTransaction;
@@ -21,6 +22,7 @@ use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 
 class ViewTagihanMahasiswa extends ViewRecord
@@ -82,30 +84,58 @@ class ViewTagihanMahasiswa extends ViewRecord
                         ]),
                 ])
                 ->action(function (array $data, PembayaranAllocationService $allocationService) {
-                    DB::transaction(function () use ($data, $allocationService) {
-                        // Lock baris saldo untuk menghindari race condition finansial
-                        $saldo = KeuanganSaldo::where('mahasiswa_id', $this->record->mahasiswa_id)
+                    // Kunci baris TAGIHAN dan SALDO di dalam transaksi — kalau
+                    // di luar, MySQL meng-commit otomatis sehingga lock langsung
+                    // lepas dan dua pembayaran paralel bisa double-spend saldo.
+                    $processed = DB::transaction(function () use ($data, $allocationService) {
+                        $tagihan = TagihanMahasiswa::whereKey($this->record->getKey())
                             ->lockForUpdate()
                             ->firstOrFail();
 
-                        $nominal = (string) $data['nominal_bayar'];
+                        $saldo = KeuanganSaldo::where('mahasiswa_id', $tagihan->mahasiswa_id)
+                            ->lockForUpdate()
+                            ->first();
+
+                        if ($saldo === null) {
+                            return 'no-saldo';
+                        }
+
+                        $nominal = number_format((float) $data['nominal_bayar'], 2, '.', '');
+                        $sisaTagihan = bcsub((string) $tagihan->total_tagihan, (string) $tagihan->total_bayar, 2);
+
+                        // Form sudah memvalidasi, tapi saldo/tagihan bisa berubah
+                        // sejak modal dibuka — cek ulang setelah baris dikunci supaya
+                        // saldo deposit tidak pernah jadi negatif dan pembayaran
+                        // tidak melebihi sisa tagihan.
+                        if (bccomp($nominal, (string) $saldo->saldo, 2) === 1
+                            || bccomp($nominal, $sisaTagihan, 2) === 1
+                            || bccomp($nominal, '0.00', 2) <= 0) {
+                            return 'stale';
+                        }
 
                         // 1. Potong saldo utama mahasiswa
                         $saldo->saldo = bcsub((string) $saldo->saldo, $nominal, 2);
                         $saldo->last_updated_at = now();
                         $saldo->save();
 
-                        // 2. Buat data pembayaran langsung DITERIMA (karena memakai dana internal bank sistem)
+                        // 2. Buat data pembayaran langsung DITERIMA (memakai dana
+                        //    internal bank sistem). Kolom yang dipakai harus sesuai
+                        //    skema: tagihan_type wajib terisi, dan tidak ada kolom
+                        //    `bank_tujuan`/`catatan` pada tabel ini.
                         $pembayaran = PembayaranMahasiswa::create([
                             'id' => Str::uuid()->toString(),
                             'idempotency_key' => Str::uuid()->toString(),
-                            'tagihan_id' => $this->record->id,
+                            'tagihan_id' => $tagihan->id,
+                            'tagihan_type' => $tagihan->getMorphClass(),
                             'nominal_bayar' => $nominal,
                             'tanggal_bayar' => now(),
-                            'bank_tujuan' => 'SALDO DEPOSIT INTERNAL',
+                            'metode_pembayaran' => MetodePembayaran::ADMIN,
                             'bukti_bayar_path' => null,
-                            'catatan' => 'Pembayaran instan via potong Saldo Deposit Mahasiswa.',
+                            'keterangan_pengirim' => 'SALDO DEPOSIT',
+                            'catatan_verifikasi' => 'Pembayaran instan via potong Saldo Deposit Mahasiswa.',
                             'status_verifikasi_id' => StatusVerifikasiPembayaran::VERIFIED,
+                            'verified_by' => Auth::id(),
+                            'verified_at' => now(),
                         ]);
 
                         // 3. Catat riwayat log mutasi keluar (OUT)
@@ -114,12 +144,26 @@ class ViewTagihanMahasiswa extends ViewRecord
                             'tipe' => 'OUT',
                             'nominal' => $nominal,
                             'referensi_id' => $pembayaran->id,
-                            'keterangan' => 'Pembayaran tagihan invoice ' . $this->record->kode_transaksi,
+                            'keterangan' => 'Pembayaran tagihan invoice ' . $tagihan->kode_transaksi,
                         ]);
 
                         // 4. Eksekusi alokasi pembagian dana FIFO ke tagihan detail komponen biaya
                         $allocationService->alokasikan($pembayaran);
+
+                        return 'ok';
                     });
+
+                    if ($processed !== 'ok') {
+                        Notification::make()
+                            ->danger()
+                            ->title('Pembayaran tidak dapat diproses')
+                            ->body($processed === 'no-saldo'
+                                ? 'Akun Anda belum memiliki saldo deposit.'
+                                : 'Saldo deposit atau sisa tagihan sudah berubah. Muat ulang halaman lalu coba lagi.')
+                            ->send();
+
+                        return;
+                    }
 
                     Notification::make()
                         ->success()

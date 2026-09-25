@@ -3,7 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Krs;
-use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Gate;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Str;
 class PdfController extends Controller
@@ -18,6 +18,10 @@ class PdfController extends Controller
             'details.mataKuliah',
             'mahasiswa.riwayatStatus' // Untuk ambil IPK/IPS
         ])->findOrFail($id);
+
+        // KHS memuat nilai akademik pribadi; policy menegakkan permission
+        // sekaligus scope organisasi/ownership mahasiswa.
+        Gate::authorize('view', $krs);
 
         // Render data ke view Blade khusus PDF
         // Anda perlu membuat file resources/views/pdf/khs.blade.php

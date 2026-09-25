@@ -23,12 +23,24 @@ class NilaiService
         }
 
         return DB::transaction(function () use ($krsDetail, $komponenId, $nilaiAngka) {
+            // Lock parent row so two concurrent component submissions for the
+            // same student cannot both calculate the final grade from stale
+            // component state.
+            $lockedDetail = KrsDetail::query()
+                ->whereKey($krsDetail->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            // Re-check the lock flag against the freshly locked row: guardEditable()
+            // ran on a possibly stale copy before this transaction opened.
+            $this->guardEditable($lockedDetail);
+
             $nilaiKomponen = KrsDetailNilai::updateOrCreate(
-                ['krs_detail_id' => $krsDetail->id, 'komponen_id' => $komponenId],
+                ['krs_detail_id' => $lockedDetail->id, 'komponen_id' => $komponenId],
                 ['nilai_angka' => $nilaiAngka]
             );
 
-            $this->hitungUlangNilaiAkhir($krsDetail);
+            $this->hitungUlangNilaiAkhir($lockedDetail);
 
             return $nilaiKomponen;
         });

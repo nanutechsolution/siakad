@@ -13,10 +13,15 @@ use App\Models\KeuanganSaldo;
 use App\Models\KeuanganSaldoTransaction;
 use App\Models\TagihanMahasiswa;
 use App\Models\User;
+use App\Services\Keuangan\LedgerService;
 use Illuminate\Support\Facades\DB;
 
 class AdjustmentPostingService
 {
+    public function __construct(
+        private readonly LedgerService $ledger,
+    ) {}
+
     /**
      * Mengeksekusi posting adjustment ke Tagihan dan General Ledger.
      * Menggunakan Pessimistic Locking untuk mencegah race condition.
@@ -24,34 +29,50 @@ class AdjustmentPostingService
      */
     public function posting(KeuanganAdjustment $adjustment, User $postedBy): void
     {
-        // Pastikan status legal melalui State Machine
-        app(AdjustmentStateMachine::class)->assertCanTransition($adjustment, StatusAdjustment::DIPOSTING, $postedBy);
-
         DB::transaction(function () use ($adjustment, $postedBy): void {
+            // 0. Lock BARIS ADJUSTMENT-nya dan baca status terbaru.
+            // Tanpa ini, dua request "Post" paralel keduanya lolos validasi
+            // state machine (DISETUJUI) lalu sama-sama posting → tagihan
+            // terpotong dua kali dan ledger dapat dua entri.
+            $lockedAdjustment = KeuanganAdjustment::query()
+                ->whereKey($adjustment->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
+            app(AdjustmentStateMachine::class)->assertCanTransition(
+                $lockedAdjustment,
+                StatusAdjustment::DIPOSTING,
+                $postedBy
+            );
+
+            // Lanjutkan dengan instance terkunci supaya seluruh pembacaan
+            // (nominal, nomor, tindak lanjut, status) dari baris terbaru.
+            $adjustment = $lockedAdjustment;
+
             // 1. Lock tagihan untuk update
-            $tagihan = TagihanMahasiswa::where('id', $adjustment->tagihan_id)->lockForUpdate()->firstOrFail();
+            $tagihan = TagihanMahasiswa::where('id', $lockedAdjustment->tagihan_id)->lockForUpdate()->firstOrFail();
 
             // 2. Cegah Stale Data (Logical Race Condition)
             // Jika tagihan di-update (misal ada pembayaran masuk) setelah adjustment diajukan, tolak eksekusi.
-            if ($adjustment->diajukan_at && $tagihan->updated_at > $adjustment->diajukan_at) {
+            if ($lockedAdjustment->diajukan_at && $tagihan->updated_at > $lockedAdjustment->diajukan_at) {
                 throw new AdjustmentException('Tagihan telah mengalami perubahan sejak adjustment ini diajukan. Harap tolak adjustment ini dan buat pengajuan ulang.');
             }
 
             // =========================================================================
             // 3. UPDATE RINCIAN/DETAIL TAGIHAN BERDASARKAN KOMPONEN BIAYA
             // =========================================================================
-            if ($adjustment->komponen_biaya_id) {
+            if ($lockedAdjustment->komponen_biaya_id) {
                 $detailTagihan = DB::table('tagihan_mahasiswas_details')
                     ->where('tagihan_id', $tagihan->id)
-                    ->where('komponen_biaya_id', $adjustment->komponen_biaya_id)
+                    ->where('komponen_biaya_id', $lockedAdjustment->komponen_biaya_id)
                     ->lockForUpdate()
                     ->first();
 
                 if ($detailTagihan) {
                     // Tambahkan nilai nominal adjustment ke nominal dasar yang ada di detail
-                    $nominalBaruDetail = (float) $detailTagihan->nominal_dasar + (float) $adjustment->nominal;
+                    $nominalBaruDetail = bcadd((string) $detailTagihan->nominal_dasar, (string) $adjustment->nominal, 2);
 
-                    if ($nominalBaruDetail < 0) {
+                    if (bccomp($nominalBaruDetail, '0.00', 2) < 0) {
                         throw new AdjustmentException('Nominal komponen detail tagihan menjadi negatif setelah penyesuaian. Operasi dibatalkan.');
                     }
 
@@ -66,10 +87,10 @@ class AdjustmentPostingService
             // =========================================================================
 
             // 4. Kalkulasi Tagihan Baru (Header)
-            $oldTotalTagihan = (float) $tagihan->total_tagihan;
-            $newTotalTagihan = $oldTotalTagihan + (float) $adjustment->nominal;
+            $oldTotalTagihan = (string) $tagihan->total_tagihan;
+            $newTotalTagihan = bcadd($oldTotalTagihan, (string) $adjustment->nominal, 2);
 
-            if ($newTotalTagihan < 0) {
+            if (bccomp($newTotalTagihan, '0.00', 2) < 0) {
                 throw new AdjustmentException('Nominal adjustment mengakibatkan total tagihan menjadi negatif. Operasi dibatalkan.');
             }
 
@@ -101,23 +122,13 @@ class AdjustmentPostingService
             $tagihan->total_tagihan = $newTotalTagihan;
             $tagihan->save();
 
-            // 7. Catat ke General Ledger (Buku Besar)
-            $saldoBerjalan = $this->hitungSaldoBerjalanTerakhir($tagihan->mahasiswa_id);
-            $nominalAdj = (float) $adjustment->nominal;
-
-            // Nominal positif = Debit (Penambahan piutang/tagihan institusi), Negatif = Kredit
-            $debit = $nominalAdj > 0 ? $nominalAdj : 0;
-            $kredit = $nominalAdj < 0 ? abs($nominalAdj) : 0;
-
-            KeuanganGeneralLedger::create([
-                'mahasiswa_id' => $tagihan->mahasiswa_id,
-                'referensi_dokumen' => $adjustment->nomor_adjustment,
-                'tipe_transaksi' => 'ADJUSTMENT',
-                'debit' => $debit,
-                'kredit' => $kredit,
-                'saldo_berjalan' => $saldoBerjalan + $debit - $kredit,
-                'keterangan' => 'Penyesuaian tagihan: ' . $adjustment->keterangan,
-            ]);
+            $this->ledger->recordKoreksi(
+                mahasiswaId: $tagihan->mahasiswa_id,
+                nominal: number_format(abs((float) $adjustment->nominal), 2, '.', ''),
+                arah: ((float) $adjustment->nominal) >= 0 ? 'TAMBAH' : 'KURANG',
+                referensiDokumen: $adjustment->nomor_adjustment,
+                keterangan: 'Penyesuaian tagihan: ' . $adjustment->keterangan,
+            );
 
             // 8. Finalisasi Status Adjustment
             $adjustment->update([
@@ -162,18 +173,15 @@ class AdjustmentPostingService
                 'keterangan' => 'Kompensasi overpayment dari adjustment: ' . $adjustment->nomor_adjustment,
             ]);
         } elseif ($adjustment->tindak_lanjut_kelebihan_bayar === TindakLanjutKelebihanBayar::REFUND_TUNAI) {
-            // Catat refund sebagai kewajiban transfer di ledger
-            $saldoBerjalan = $this->hitungSaldoBerjalanTerakhir($mahasiswaId);
-
-            KeuanganGeneralLedger::create([
-                'mahasiswa_id' => $mahasiswaId,
-                'referensi_dokumen' => $adjustment->nomor_adjustment,
-                'tipe_transaksi' => 'REFUND',
-                'debit' => 0,
-                'kredit' => $kelebihanBayar,
-                'saldo_berjalan' => $saldoBerjalan - $kelebihanBayar,
-                'keterangan' => 'Pengembalian tunai/transfer akibat adjustment: ' . $adjustment->nomor_adjustment,
-            ]);
+            // Catat refund sebagai kewajiban transfer di ledger — lewat
+            // LedgerService (satu-satunya pintu tulis) supaya urutan
+            // saldo_berjalan dan idempotency konsisten dengan jalur lain.
+            $this->ledger->recordRefund(
+                mahasiswaId: $mahasiswaId,
+                nominal: number_format($kelebihanBayar, 2, '.', ''),
+                referensiDokumen: $adjustment->nomor_adjustment,
+                keterangan: 'Pengembalian tunai/transfer akibat adjustment: ' . $adjustment->nomor_adjustment,
+            );
         }
     }
 

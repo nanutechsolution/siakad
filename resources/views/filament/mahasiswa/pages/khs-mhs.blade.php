@@ -70,36 +70,77 @@
 
     {{-- Tabel nilai --}}
     <x-filament::section>
-        <table class="w-full text-sm">
-            <thead>
-                <tr class="border-b border-gray-200 text-left dark:border-gray-700">
-                    <th class="py-2">Kode MK</th>
-                    <th class="py-2">Nama MK</th>
-                    <th class="py-2 text-center">SKS</th>
-                    <th class="py-2 text-center">Nilai Huruf</th>
-                    <th class="py-2 text-center">Bobot</th>
-                    <th class="py-2 text-center">Mutu</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse ($khs['mata_kuliah'] as $row)
-                <tr class="border-b border-gray-100 dark:border-gray-800">
-                    <td class="py-2">{{ $row->mataKuliah?->kode_mk }}</td>
-                    <td class="py-2">{{ $row->mataKuliah?->nama_mk }}</td>
-                    <td class="py-2 text-center">{{ $row->mataKuliah?->sks_default }}</td>
-                    <td class="py-2 text-center">{{ $row->nilai_huruf }}</td>
-                    <td class="py-2 text-center">{{ number_format($row->nilai_indeks, 2) }}</td>
-                    <td class="py-2 text-center">{{ number_format(($row->mataKuliah?->sks_default ?? 0) * $row->nilai_indeks, 2) }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="6" class="py-4 text-center text-gray-400">
-                        Belum ada nilai yang dipublikasikan untuk semester ini.
-                    </td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
+        {{-- Desktop: tabel penuh --}}
+        <div class="hidden md:block">
+            <table class="w-full text-sm">
+                <thead>
+                    <tr class="border-b border-gray-200 text-left dark:border-gray-700">
+                        <th class="py-2">Kode MK</th>
+                        <th class="py-2">Nama MK</th>
+                        <th class="py-2 text-center">SKS</th>
+                        <th class="py-2 text-center">Nilai Huruf</th>
+                        <th class="py-2 text-center">Bobot</th>
+                        <th class="py-2 text-center">Mutu</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @forelse ($khs['mata_kuliah'] as $row)
+                    <tr class="border-b border-gray-100 dark:border-gray-800">
+                        <td class="py-2">{{ $row->mataKuliah?->kode_mk }}</td>
+                        <td class="py-2">{{ $row->mataKuliah?->nama_mk }}</td>
+                        <td class="py-2 text-center">{{ $row->mataKuliah?->sks_default }}</td>
+                        <td class="py-2 text-center">{{ $row->nilai_huruf }}</td>
+                        <td class="py-2 text-center">{{ number_format($row->nilai_indeks, 2) }}</td>
+                        <td class="py-2 text-center">{{ number_format(($row->mataKuliah?->sks_default ?? 0) * $row->nilai_indeks, 2) }}</td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="6" class="py-4 text-center text-gray-400">
+                            Belum ada nilai yang dipublikasikan untuk semester ini.
+                        </td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Mobile: kartu per mata kuliah — 6 kolom tabel tidak terbaca di 360px --}}
+        <div class="space-y-3 md:hidden">
+            @forelse ($khs['mata_kuliah'] as $row)
+                <div class="rounded-xl border border-gray-200 p-3 dark:border-gray-700">
+                    <div class="flex items-start justify-between gap-3">
+                        <div class="min-w-0">
+                            <p class="truncate text-sm font-semibold">
+                                {{ $row->mataKuliah?->nama_mk }}
+                            </p>
+                            <p class="mt-0.5 text-xs text-gray-500">
+                                {{ $row->mataKuliah?->kode_mk }}
+                                &middot; {{ $row->mataKuliah?->sks_default }} SKS
+                            </p>
+                        </div>
+                        <span class="shrink-0 rounded-full bg-gray-100 px-2.5 py-1 text-sm font-bold
+                                     dark:bg-gray-800">
+                            {{ $row->nilai_huruf }}
+                        </span>
+                    </div>
+
+                    <dl class="mt-3 grid grid-cols-2 gap-2 text-sm">
+                        <div>
+                            <dt class="text-xs text-gray-500">Bobot</dt>
+                            <dd>{{ number_format($row->nilai_indeks, 2) }}</dd>
+                        </div>
+                        <div>
+                            <dt class="text-xs text-gray-500">Mutu</dt>
+                            <dd>{{ number_format(($row->mataKuliah?->sks_default ?? 0) * $row->nilai_indeks, 2) }}</dd>
+                        </div>
+                    </dl>
+                </div>
+            @empty
+                <p class="py-4 text-center text-sm text-gray-400">
+                    Belum ada nilai yang dipublikasikan untuk semester ini.
+                </p>
+            @endforelse
+        </div>
     </x-filament::section>
     @endif
 </x-filament-panels::page>

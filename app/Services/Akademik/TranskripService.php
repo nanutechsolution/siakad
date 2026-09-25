@@ -16,8 +16,28 @@ class TranskripService
      */
     public function sinkronkanKrsDetail(KrsDetail $detail): void
     {
-        if (! $detail->is_published) {
+        $target = $this->resolveTarget($detail);
+
+        if ($target === null) {
             return;
+        }
+
+        DB::transaction(function () use ($detail, $target): void {
+            $this->sinkronkanKrsDetailDalamTransaksi(
+                $detail,
+                $target['mahasiswaId'],
+                $target['mataKuliahId'],
+            );
+        });
+    }
+
+    /**
+     * @return array{mahasiswaId: string, mataKuliahId: int|string}|null
+     */
+    private function resolveTarget(KrsDetail $detail): ?array
+    {
+        if (! $detail->is_published) {
+            return null;
         }
 
         $detail->loadMissing([
@@ -29,37 +49,71 @@ class TranskripService
         $mataKuliah = $detail->jadwalKuliah?->mataKuliah;
 
         if (! $mahasiswa || ! $mataKuliah) {
+            return null;
+        }
+
+        return [
+            'mahasiswaId' => $mahasiswa->id,
+            'mataKuliahId' => $mataKuliah->id,
+        ];
+    }
+
+    /**
+     * Sinkronkan sekumpulan detail dalam SATU transaksi.
+     *
+     * Versi per-baris membuka transaksi (atau savepoint bila sudah berada di
+     * dalam transaksi induk) untuk tiap KRS detail — saat publish satu kelas
+     * berisi ratusan mahasiswa itu ratusan commit. Satu transaksi untuk seluruh
+     * batch mempertahankan perilaku all-or-nothing yang sama.
+     *
+     * @param  iterable<int, KrsDetail>  $details
+     */
+    private function sinkronkanKoleksi(iterable $details): void
+    {
+        $targets = [];
+
+        foreach ($details as $detail) {
+            $target = $this->resolveTarget($detail);
+
+            if ($target === null) {
+                continue;
+            }
+
+            $targets[] = [$detail, $target];
+        }
+
+        if ($targets === []) {
             return;
         }
 
-        DB::transaction(function () use ($detail, $mahasiswa, $mataKuliah) {
+        DB::transaction(function () use ($targets): void {
+            foreach ($targets as [$detail, $target]) {
+                $this->sinkronkanKrsDetailDalamTransaksi(
+                    $detail,
+                    $target['mahasiswaId'],
+                    $target['mataKuliahId'],
+                );
+            }
+        });
+    }
 
-            $existing = AkademikTranskrip::where([
-                'mahasiswa_id'   => $mahasiswa->id,
-                'mata_kuliah_id' => $mataKuliah->id,
-            ])->first();
+    private function sinkronkanKrsDetailDalamTransaksi(
+        KrsDetail $detail,
+        string $mahasiswaId,
+        int|string $mataKuliahId,
+    ): void {
+        $existing = AkademikTranskrip::query()
+            ->where('mahasiswa_id', $mahasiswaId)
+            ->where('mata_kuliah_id', $mataKuliahId)
+            ->lockForUpdate()
+            ->first();
 
-            if ($existing) {
-
-                if (! $this->shouldReplace($existing, $detail)) {
-                    return;
-                }
-
-                $existing->update([
-                    'krs_detail_id'      => $detail->id,
-                    'sks_diakui'         => $detail->sks_snapshot,
-                    'nilai_angka_final'  => $detail->nilai_angka,
-                    'nilai_huruf_final'  => $detail->nilai_huruf,
-                    'nilai_indeks_final' => $detail->nilai_indeks,
-                    'is_konversi'        => false,
-                ]);
-
+        if ($existing) {
+            if (! $this->shouldReplace($existing, $detail)) {
                 return;
             }
 
-            AkademikTranskrip::create([
-                'mahasiswa_id'       => $mahasiswa->id,
-                'mata_kuliah_id'     => $mataKuliah->id,
+            $existing->update([
                 'krs_detail_id'      => $detail->id,
                 'sks_diakui'         => $detail->sks_snapshot,
                 'nilai_angka_final'  => $detail->nilai_angka,
@@ -67,7 +121,20 @@ class TranskripService
                 'nilai_indeks_final' => $detail->nilai_indeks,
                 'is_konversi'        => false,
             ]);
-        });
+
+            return;
+        }
+
+        AkademikTranskrip::create([
+            'mahasiswa_id'       => $mahasiswaId,
+            'mata_kuliah_id'     => $mataKuliahId,
+            'krs_detail_id'      => $detail->id,
+            'sks_diakui'         => $detail->sks_snapshot,
+            'nilai_angka_final'  => $detail->nilai_angka,
+            'nilai_huruf_final'  => $detail->nilai_huruf,
+            'nilai_indeks_final' => $detail->nilai_indeks,
+            'is_konversi'        => false,
+        ]);
     }
 
     /**
@@ -80,9 +147,7 @@ class TranskripService
             'krsDetails.jadwalKuliah.mataKuliah',
         ]);
 
-        foreach ($jadwal->krsDetails as $detail) {
-            $this->sinkronkanKrsDetail($detail);
-        }
+        $this->sinkronkanKoleksi($jadwal->krsDetails);
     }
 
     /**
@@ -101,9 +166,7 @@ class TranskripService
             ])
             ->get();
 
-        foreach ($details as $detail) {
-            $this->sinkronkanKrsDetail($detail);
-        }
+        $this->sinkronkanKoleksi($details);
     }
 
     /**
@@ -119,9 +182,7 @@ class TranskripService
                 'jadwalKuliah.mataKuliah',
             ])
             ->chunkById(100, function ($details) {
-                foreach ($details as $detail) {
-                    $this->sinkronkanKrsDetail($detail);
-                }
+            $this->sinkronkanKoleksi($details);
             });
     }
 

@@ -28,11 +28,24 @@ class PembayaranAllocationService
         $tagihan = $pembayaran->tagihan;
 
         if ($tagihan instanceof TagihanMahasiswa) {
+            // Always re-read the invoice under the caller's transaction lock.
+            // Locking only detail rows still permits concurrent header totals to
+            // overwrite one another.
+            $tagihan = TagihanMahasiswa::query()
+                ->whereKey($tagihan->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $this->alokasikanTagihanMahasiswa($pembayaran, $tagihan);
             return;
         }
 
         if ($tagihan instanceof TagihanNonReguler) {
+            $tagihan = TagihanNonReguler::query()
+                ->whereKey($tagihan->getKey())
+                ->lockForUpdate()
+                ->firstOrFail();
+
             $this->alokasikanTagihanNonReguler($pembayaran, $tagihan);
             return;
         }

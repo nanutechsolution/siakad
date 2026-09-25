@@ -1,5 +1,6 @@
 <div class="space-y-3">
-    <table class="w-full text-sm">
+    <div class="overflow-x-auto">
+        <table class="w-full min-w-[18rem] text-sm">
         <thead>
             <tr class="text-left border-b border-gray-200 dark:border-gray-700">
                 <th class="py-2">Komponen</th>
@@ -28,5 +29,6 @@
                 </td>
             </tr>
         </tfoot>
-    </table>
+        </table>
+    </div>
 </div>

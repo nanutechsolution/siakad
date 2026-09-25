@@ -29,110 +29,27 @@ class ProcessCamabaStaging implements ShouldQueue
 
     public function handle(): void
     {
-        $payload = is_array($this->staging->payload)
-            ? $this->staging->payload
-            : json_decode($this->staging->payload, true);
-
+        // Idempotency + anti-dupe: lock the staging row for the whole write and
+        // bail out if a previous attempt already committed the records. Without
+        // this, a retry after a successful commit (worker crash after DB write)
+        // would create a second person/user/mahasiswa set.
         try {
-            DB::beginTransaction();
+            DB::transaction(function (): void {
+                $staging = PmbCamabaStaging::query()
+                    ->whereKey($this->staging->getKey())
+                    ->lockForUpdate()
+                    ->firstOrFail();
 
-            // 1. Cari Relasi ID dari Database SIAKAD berdasarkan teks dari PMB
-            $prodi = RefProdi::where('nama_prodi', $payload['nama_prodi'])
-                ->orWhere('kode_prodi_internal', $payload['kode_prodi'] ?? '')
-                ->first();
+                if ($staging->status === 'processed' && $staging->mahasiswa_id) {
+                    return;
+                }
 
-            if (!$prodi) {
-                throw new \Exception("Prodi dengan nama '{$payload['nama_prodi']}' tidak ditemukan di SIAKAD.");
-            }
-
-            // Cari program (Reguler dll), default ke ID 1 jika tidak ketemu
-            $program = RefProgram::where('kode_internal', $payload['kode_program'] ?? 'REG')->first();
-            $programId = $program ? $program->id : 1;
-
-            // 2. Buat Record di ref_person
-            $person = RefPerson::create([
-                'nama_lengkap' => mb_convert_case(
-                    trim($payload['nama_lengkap']),
-                    MB_CASE_TITLE,
-                    'UTF-8'
-                ),
-                'nik'           => $payload['nik'],
-                'email'         => $payload['email'] ?? null,
-                'no_hp'         => $payload['nomor_hp'] ?? null,
-                'tanggal_lahir' => $payload['tanggal_lahir'],
-                'tempat_lahir'  => $payload['tempat_lahir'] ?? null,
-                'jenis_kelamin' => $payload['jenis_kelamin'] ?? null,
-            ]);
-            Log::info('PERSON CREATED', [
-                'id' => $person->id,
-                'attributes' => $person->getAttributes(),
-            ]);
-            // 3. Buat Akun Filament (Users)
-            $passwordRaw = date('Ymd', strtotime($person->tanggal_lahir));
-            $emailUser = $person->email ?? ($this->staging->external_id . '@camaba.local');
-            try {
-                $user = User::create([
-                    'person_id' => $person->id,
-                    'name'      => $person->nama_lengkap,
-                    'username'  => $this->staging->external_id,
-                    'email'     => $emailUser,
-                    'password'  => Hash::make($passwordRaw),
-                    'is_active' => 1,
-                ]);
-                Log::info('USER CREATED', [
-                    'id' => $user->id,
-                    'person_id' => $user->person_id,
-                    'attributes' => $user->getAttributes(),
-                ]);
-                Log::info("User created successfully: " . $user->id);
-            } catch (\Exception $e) {
-                Log::error("USER CREATE FAILED: " . $e->getMessage());
-                throw $e; // Ini akan memicu rollback dan muncul di log error
-            }
-
-            // 4.5. Pastikan Tahun Angkatan Tersedia di Database
-            $angkatanTahun = (int) $payload['tahun_masuk'];
-            RefAngkatan::firstOrCreate(
-                ['id_tahun' => $angkatanTahun],
-                ['is_active_pmb' => 0] // Default value sesuai skema
-            );
-            // 5. Buat Data Mahasiswa Sementara (NIM berawalan PMB-)
-            $mahasiswa = Mahasiswa::create([
-                'person_id'     => $person->id,
-                'nim'           => $this->staging->external_id,
-                'angkatan_id'   => (int) $payload['tahun_masuk'],
-                'prodi_id'      => $prodi->id,
-                'program_id'    => $programId,
-            ]);
-            MahasiswaBiodata::create([
-                'mahasiswa_id' => $mahasiswa->id,
-                'alamat_ktp' => $payload['alamat'] ?? null,
-                'agama' => $payload['agama'] ?? null,
-                'nama_ayah' => $payload['nama_ayah'] ?? null,
-                'nik_ayah' => $payload['nik_ayah'] ?? null,
-                'pendidikan_ayah' => $payload['pendidikan_ayah'] ?? null,
-                'pekerjaan_ayah' => $payload['pekerjaan_ayah'] ?? null,
-                'nama_ibu' => $payload['nama_ibu'] ?? null,
-                'nik_ibu' => $payload['nik_ibu'] ?? null,
-                'pendidikan_ibu' => $payload['pendidikan_ibu'] ?? null,
-                'pekerjaan_ibu' => $payload['pekerjaan_ibu'] ?? null,
-            ]);
-            // 6. Tandai Sukses
-            $this->staging->update([
-                'status'       => 'processed',
-                'mahasiswa_id' => $mahasiswa->id,
-                'processed_at' => now(),
-                'error_log'    => null,
-            ]);
-
-            DB::commit();
-
-            Log::info("Staging PMB Sukses: {$this->staging->external_id} diimpor. Prodi ID: {$prodi->id}");
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error("Gagal proses Camaba Staging ID {$this->staging->id}: " . $e->getMessage());
-
-            $this->staging->update([
+                $this->processLocked($staging);
+            });
+        } catch (\Throwable $e) {
+            // Status 'failed' ditulis DI LUAR transaksi di atas supaya tidak ikut
+            // ter-rollback bersama data yang gagal.
+            $this->staging->newQuery()->whereKey($this->staging->getKey())->update([
                 'status'        => 'failed',
                 'error_log'     => $e->getMessage(),
                 'retry_count'   => DB::raw('retry_count + 1'),
@@ -141,5 +58,103 @@ class ProcessCamabaStaging implements ShouldQueue
 
             throw $e;
         }
+    }
+
+    private function processLocked(PmbCamabaStaging $staging): void
+    {
+        $payload = is_array($staging->payload)
+            ? $staging->payload
+            : json_decode($staging->payload, true);
+
+        // 1. Cari Relasi ID dari Database SIAKAD berdasarkan teks dari PMB
+        $prodi = RefProdi::where('nama_prodi', $payload['nama_prodi'])
+            ->orWhere('kode_prodi_internal', $payload['kode_prodi'] ?? '')
+            ->first();
+
+        if (!$prodi) {
+            throw new \Exception("Prodi dengan nama '{$payload['nama_prodi']}' tidak ditemukan di SIAKAD.");
+        }
+
+        // Cari program (Reguler dll), default ke ID 1 jika tidak ketemu
+        $program = RefProgram::where('kode_internal', $payload['kode_program'] ?? 'REG')->first();
+        $programId = $program ? $program->id : 1;
+
+        // 2. Buat Record di ref_person
+        $person = RefPerson::create([
+            'nama_lengkap' => mb_convert_case(
+                trim($payload['nama_lengkap']),
+                MB_CASE_TITLE,
+                'UTF-8'
+            ),
+            'nik'           => $payload['nik'],
+            'email'         => $payload['email'] ?? null,
+            'no_hp'         => $payload['nomor_hp'] ?? null,
+            'tanggal_lahir' => $payload['tanggal_lahir'],
+            'tempat_lahir'  => $payload['tempat_lahir'] ?? null,
+            'jenis_kelamin' => $payload['jenis_kelamin'] ?? null,
+        ]);
+        Log::info('PERSON CREATED', [
+            'id' => $person->id,
+            'attributes' => $person->getAttributes(),
+        ]);
+        // 3. Buat Akun Filament (Users)
+        $passwordRaw = date('Ymd', strtotime($person->tanggal_lahir));
+        $emailUser = $person->email ?? ($staging->external_id . '@camaba.local');
+        try {
+            $user = User::create([
+                'person_id' => $person->id,
+                'name'      => $person->nama_lengkap,
+                'username'  => $staging->external_id,
+                'email'     => $emailUser,
+                'password'  => Hash::make($passwordRaw),
+                'is_active' => 1,
+            ]);
+            Log::info('USER CREATED', [
+                'id' => $user->id,
+                'person_id' => $user->person_id,
+                'attributes' => $user->getAttributes(),
+            ]);
+            Log::info("User created successfully: " . $user->id);
+        } catch (\Exception $e) {
+            Log::error("USER CREATE FAILED: " . $e->getMessage());
+            throw $e; // Ini akan memicu rollback dan muncul di log error
+        }
+
+        // 4.5. Pastikan Tahun Angkatan Tersedia di Database
+        $angkatanTahun = (int) $payload['tahun_masuk'];
+        RefAngkatan::firstOrCreate(
+            ['id_tahun' => $angkatanTahun],
+            ['is_active_pmb' => 0] // Default value sesuai skema
+        );
+        // 5. Buat Data Mahasiswa Sementara (NIM berawalan PMB-)
+        $mahasiswa = Mahasiswa::create([
+            'person_id'     => $person->id,
+            'nim'           => $staging->external_id,
+            'angkatan_id'   => (int) $payload['tahun_masuk'],
+            'prodi_id'      => $prodi->id,
+            'program_id'    => $programId,
+        ]);
+        MahasiswaBiodata::create([
+            'mahasiswa_id' => $mahasiswa->id,
+            'alamat_ktp' => $payload['alamat'] ?? null,
+            'agama' => $payload['agama'] ?? null,
+            'nama_ayah' => $payload['nama_ayah'] ?? null,
+            'nik_ayah' => $payload['nik_ayah'] ?? null,
+            'pendidikan_ayah' => $payload['pendidikan_ayah'] ?? null,
+            'pekerjaan_ayah' => $payload['pekerjaan_ayah'] ?? null,
+            'nama_ibu' => $payload['nama_ibu'] ?? null,
+            'nik_ibu' => $payload['nik_ibu'] ?? null,
+            'pendidikan_ibu' => $payload['pendidikan_ibu'] ?? null,
+            'pekerjaan_ibu' => $payload['pekerjaan_ibu'] ?? null,
+        ]);
+        // 6. Tandai Sukses
+        $staging->update([
+            'status'       => 'processed',
+            'mahasiswa_id' => $mahasiswa->id,
+            'processed_at' => now(),
+            'error_log'    => null,
+        ]);
+
+        Log::info("Staging PMB Sukses: {$staging->external_id} diimpor. Prodi ID: {$prodi->id}");
     }
 }
