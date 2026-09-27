@@ -3,8 +3,12 @@
 namespace App\Filament\Mahasiswa\Pages;
 
 use App\Enums\MahasiswaNavigationGroup;
+use App\Models\District;
 use App\Models\Mahasiswa;
 use App\Models\ProfileChangeRequest;
+use App\Models\Province;
+use App\Models\Regency;
+use App\Models\Village;
 use Carbon\Carbon;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
@@ -17,7 +21,9 @@ use Filament\Infolists\Components\TextEntry;
 use Filament\Notifications\Notification;
 use Filament\Pages\Page;
 use Filament\Schemas\Components\Section;
+use Filament\Schemas\Components\Utilities\Get;
 use Filament\Schemas\Schema;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Storage;
 use UnitEnum;
@@ -30,7 +36,7 @@ class ProfilSaya extends Page implements HasForms
 
     protected static ?string $title = 'Profil Saya';
 
-    protected  string $view = 'filament.mahasiswa.pages.profil-saya';
+    protected string $view = 'filament.mahasiswa.pages.profil-saya';
 
     protected static ?string $slug = 'profil-saya';
 
@@ -81,7 +87,7 @@ class ProfilSaya extends Page implements HasForms
         $this->mahasiswa = Mahasiswa::query()
             ->with([
                 'person',
-                'biodata',
+                'biodata.village.district.regency.province',
                 'prodi',
             ])
             ->where('person_id', Auth::user()->person_id)
@@ -123,6 +129,10 @@ class ProfilSaya extends Page implements HasForms
             'alamat_ktp' => $biodata?->alamat_ktp,
             'alamat_domisili' => $biodata?->alamat_domisili,
             'kode_pos' => $biodata?->kode_pos,
+            'village_id' => $biodata?->village_id,
+            'province_id' => $biodata?->village?->district?->regency?->province?->id,
+            'regency_id' => $biodata?->village?->district?->regency?->id,
+            'district_id' => $biodata?->village?->district?->id,
 
             /*
              * FAMILY / PERSONAL
@@ -327,6 +337,71 @@ class ProfilSaya extends Page implements HasForms
                 )
                 ->icon('heroicon-o-home')
                 ->schema([
+                    Select::make('province_id')
+                        ->label('Provinsi')
+                        ->options(fn (): array => Province::query()
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->live()
+                        ->dehydrated(false) // hanya state UI untuk cascading; kolom tersimpan = village_id
+                        ->afterStateUpdated(function (callable $set): void {
+                            $set('regency_id', null);
+                            $set('district_id', null);
+                            $set('village_id', null);
+                        }),
+
+                    Select::make('regency_id')
+                        ->label('Kabupaten/Kota')
+                        ->options(fn (Get $get): array => Regency::query()
+                            ->when($get('province_id'), fn (Builder $query, $provinceId) => $query->where('province_id', $provinceId))
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->live()
+                        ->dehydrated(false)
+                        ->disabled(fn (Get $get): bool => blank($get('province_id')))
+                        ->afterStateUpdated(function (callable $set): void {
+                            $set('district_id', null);
+                            $set('village_id', null);
+                        }),
+
+                    Select::make('district_id')
+                        ->label('Kecamatan')
+                        ->options(fn (Get $get): array => District::query()
+                            ->when($get('regency_id'), fn (Builder $query, $regencyId) => $query->where('regency_id', $regencyId))
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->live()
+                        ->dehydrated(false)
+                        ->disabled(fn (Get $get): bool => blank($get('regency_id')))
+                        ->afterStateUpdated(function (callable $set): void {
+                            $set('village_id', null);
+                        }),
+
+                    Select::make('village_id')
+                        ->label('Desa/Kelurahan')
+                        ->options(fn (Get $get): array => Village::query()
+                            ->when($get('district_id'), fn (Builder $query, $districtId) => $query->where('district_id', $districtId))
+                            ->orderBy('name')
+                            ->pluck('name', 'id')
+                            ->all())
+                        ->searchable()
+                        ->preload()
+                        ->native(false)
+                        ->disabled(fn (Get $get): bool => blank($get('district_id')))
+                        ->helperText('Pilih provinsi, kabupaten/kota, dan kecamatan terlebih dahulu.'),
+
                     Textarea::make('alamat_ktp')
                         ->label('Alamat Sesuai KTP')
                         ->rows(4)
@@ -623,6 +698,7 @@ class ProfilSaya extends Page implements HasForms
             'alamat_ktp' => $data['alamat_ktp'] ?? null,
             'alamat_domisili' => $data['alamat_domisili'] ?? null,
             'kode_pos' => $data['kode_pos'] ?? null,
+            'village_id' => $data['village_id'] ?? null,
         ]);
     }
 
@@ -794,7 +870,7 @@ class ProfilSaya extends Page implements HasForms
             $this->mahasiswa->person?->tanggal_lahir,
             $this->mahasiswa->person?->tempat_lahir,
             $this->mahasiswa->person?->jenis_kelamin,
-        ])->every(fn($value) => filled($value));
+        ])->every(fn ($value) => filled($value));
 
         return [
             'label' => $complete ? 'Lengkap' : 'Belum lengkap',
@@ -814,7 +890,7 @@ class ProfilSaya extends Page implements HasForms
         }
 
         $filled = collect($values)
-            ->filter(fn($value) => filled($value))
+            ->filter(fn ($value) => filled($value))
             ->count();
 
         if ($filled === $total) {
@@ -844,6 +920,7 @@ class ProfilSaya extends Page implements HasForms
         if (blank($path)) {
             return null;
         }
+
         return Storage::disk('public')->url($path);
     }
 

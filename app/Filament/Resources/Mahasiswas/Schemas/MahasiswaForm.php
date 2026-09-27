@@ -3,7 +3,11 @@
 namespace App\Filament\Resources\Mahasiswas\Schemas;
 
 use App\Domain\Authorization\Services\FormResolver;
+use App\Models\District;
 use App\Models\Mahasiswa;
+use App\Models\Province;
+use App\Models\Regency;
+use App\Models\Village;
 use Filament\Forms\Components\DatePicker;
 use Filament\Forms\Components\FileUpload;
 use Filament\Forms\Components\Radio;
@@ -211,6 +215,67 @@ class MahasiswaForm
                                                 Section::make('Alamat')
                                                     ->icon('heroicon-o-map-pin')
                                                     ->schema([
+                                                        Select::make('province_id')
+                                                            ->label('Provinsi')
+                                                            ->options(fn(): array => Province::query()
+                                                                ->orderBy('name')
+                                                                ->pluck('name', 'id')
+                                                                ->all())
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->live()
+                                                            ->dehydrated(false) // hanya state UI untuk cascading; kolom tersimpan = village_id
+                                                            ->afterStateUpdated(function (callable $set): void {
+                                                                $set('regency_id', null);
+                                                                $set('district_id', null);
+                                                                $set('village_id', null);
+                                                            }),
+                                                        Select::make('regency_id')
+                                                            ->label('Kabupaten/Kota')
+                                                            ->options(fn(Get $get): array => Regency::query()
+                                                                ->when($get('province_id'), fn(Builder $query, $provinceId) => $query->where('province_id', $provinceId))
+                                                                ->orderBy('name')
+                                                                ->pluck('name', 'id')
+                                                                ->all())
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->live()
+                                                            ->dehydrated(false)
+                                                            ->disabled(fn(Get $get): bool => blank($get('province_id')))
+                                                            ->afterStateUpdated(function (callable $set): void {
+                                                                $set('district_id', null);
+                                                                $set('village_id', null);
+                                                            }),
+                                                        Select::make('district_id')
+                                                            ->label('Kecamatan')
+                                                            ->options(fn(Get $get): array => District::query()
+                                                                ->when($get('regency_id'), fn(Builder $query, $regencyId) => $query->where('regency_id', $regencyId))
+                                                                ->orderBy('name')
+                                                                ->pluck('name', 'id')
+                                                                ->all())
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->live()
+                                                            ->dehydrated(false)
+                                                            ->disabled(fn(Get $get): bool => blank($get('regency_id')))
+                                                            ->afterStateUpdated(function (callable $set): void {
+                                                                $set('village_id', null);
+                                                            }),
+                                                        Select::make('village_id')
+                                                            ->label('Desa/Kelurahan')
+                                                            ->relationship('village', 'name', modifyQueryUsing: function (Builder $query, Get $get): Builder {
+                                                                return $query
+                                                                    ->when($get('district_id'), fn(Builder $query, $districtId) => $query->where('district_id', $districtId))
+                                                                    ->orderBy('name');
+                                                            })
+                                                            ->searchable()
+                                                            ->preload()
+                                                            ->native(false)
+                                                            ->disabled(fn(Get $get): bool => blank($get('district_id')))
+                                                            ->helperText('Pilih provinsi, kabupaten/kota, dan kecamatan terlebih dahulu.'),
                                                         Textarea::make('alamat_ktp')
                                                             ->label('Alamat Sesuai KTP')
                                                             ->rows(2)

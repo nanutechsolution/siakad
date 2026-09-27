@@ -18,6 +18,8 @@ use App\Services\NeoFeeder\Contracts\NeoFeederClientInterface;
 use App\Services\NeoFeeder\NeoFeederClient;
 use App\Services\NeoFeeder\NeoFeederConfig;
 use App\Services\NeoFeeder\NeoFeederSettingsService;
+use App\Services\Wilayah\CahyadsnWilayahSource;
+use App\Contracts\WilayahSourceInterface;
 use Illuminate\Database\Eloquent\Relations\Relation;
 
 class AppServiceProvider extends ServiceProvider
@@ -36,6 +38,13 @@ class AppServiceProvider extends ServiceProvider
         );
 
         $this->app->bind(NeoFeederClientInterface::class, NeoFeederClient::class);
+        $this->app->bind(WilayahSourceInterface::class, function ($app): WilayahSourceInterface {
+            return new CahyadsnWilayahSource(
+                $app->make(\Illuminate\Http\Client\Factory::class),
+                (string) config('wilayah.source_url'),
+                (int) config('wilayah.timeout', 60),
+            );
+        });
     }
 
     /**
