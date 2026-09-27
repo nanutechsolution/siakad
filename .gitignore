@@ -6,6 +6,8 @@
 .phpactor.json
 .phpunit.result.cache
 /.codex
+CLAUDE.md
+PROMPT_GIS_PUBLIK.md
 /.cursor/
 /.idea
 /.nova
