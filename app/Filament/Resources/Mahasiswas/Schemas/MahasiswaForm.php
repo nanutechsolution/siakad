@@ -55,17 +55,17 @@ class MahasiswaForm
                                                     ->required()
                                                     ->native(false)
                                                     ->getOptionLabelFromRecordUsing(
-                                                        fn($record) => "{$record->nama_lengkap}" . ($record->nik ? " — NIK {$record->nik}" : '')
+                                                        fn ($record) => "{$record->nama_lengkap}".($record->nik ? " — NIK {$record->nik}" : '')
                                                     )
                                                     ->createOptionModalHeading('Buat Data Person Baru')
                                                     ->createOptionForm(self::personFieldset())
                                                     ->createOptionAction(
-                                                        fn($action) => $action
+                                                        fn ($action) => $action
                                                             ->modalWidth('lg')
                                                             ->modalDescription('Isi Nama Lengkap dan NIK terlebih dahulu. Data lain seperti kontak dan tanggal lahir bisa dilengkapi belakangan.')
                                                     )
                                                     ->editOptionForm(self::personFieldset())
-                                                    ->editOptionAction(fn($action) => $action->modalWidth('lg'))
+                                                    ->editOptionAction(fn ($action) => $action->modalWidth('lg'))
                                                     ->columnSpanFull()
                                                     ->helperText('Ketik nama atau NIK. Jika calon mahasiswa pernah tercatat (mis. alumni, anak dosen/pegawai), datanya akan muncul otomatis.'),
                                             ]),
@@ -90,7 +90,7 @@ class MahasiswaForm
                                                         }
 
                                                         $exists = Mahasiswa::where('nim', $nim)
-                                                            ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
+                                                            ->when($record, fn ($q) => $q->whereKeyNot($record->getKey()))
                                                             ->exists();
 
                                                         return $exists ? 'NIM sudah dipakai' : 'NIM tersedia';
@@ -102,7 +102,7 @@ class MahasiswaForm
                                                         }
 
                                                         $exists = Mahasiswa::where('nim', $nim)
-                                                            ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
+                                                            ->when($record, fn ($q) => $q->whereKeyNot($record->getKey()))
                                                             ->exists();
 
                                                         return $exists ? 'heroicon-o-x-circle' : 'heroicon-o-check-circle';
@@ -114,7 +114,7 @@ class MahasiswaForm
                                                         }
 
                                                         $exists = Mahasiswa::where('nim', $nim)
-                                                            ->when($record, fn($q) => $q->whereKeyNot($record->getKey()))
+                                                            ->when($record, fn ($q) => $q->whereKeyNot($record->getKey()))
                                                             ->exists();
 
                                                         return $exists ? 'danger' : 'success';
@@ -138,15 +138,15 @@ class MahasiswaForm
                                                     ->schema([
                                                         Select::make('prodi_id')
                                                             ->label('Program Studi')
-                                                            ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
+                                                            ->options(fn () => app(FormResolver::class)->prodiOptions(auth()->user()))
                                                             ->searchable()
                                                             ->preload()
                                                             ->required()
                                                             ->native(false)
                                                             ->live()
-                                                            ->disabled(fn(?Mahasiswa $record) => $record !== null)
+                                                            ->disabled(fn (?Mahasiswa $record) => $record !== null)
                                                             ->dehydrated() // Penting: agar nilai tetap dikirim saat form disimpan meski di-disable
-                                                            ->helperText(fn(?Mahasiswa $record) => $record !== null
+                                                            ->helperText(fn (?Mahasiswa $record) => $record !== null
                                                                 ? 'Program Studi tidak bisa diubah langsung. Gunakan aksi Mutasi Prodi.'
                                                                 : null)
                                                             ->afterStateUpdated(function (callable $set): void {
@@ -186,17 +186,17 @@ class MahasiswaForm
                                                             ->relationship(
                                                                 name: 'kurikulum',
                                                                 titleAttribute: 'nama_kurikulum',
-                                                                modifyQueryUsing: fn(Builder $query, Get $get) => $query
+                                                                modifyQueryUsing: fn (Builder $query, Get $get) => $query
                                                                     ->when(
                                                                         filled($get('prodi_id')),
-                                                                        fn(Builder $query) => $query->where('prodi_id', $get('prodi_id')),
+                                                                        fn (Builder $query) => $query->where('prodi_id', $get('prodi_id')),
                                                                     ),
                                                             )
                                                             ->searchable()
                                                             ->preload()
                                                             ->native(false)
                                                             ->nullable()
-                                                            ->disabled(fn(Get $get) => blank($get('prodi_id')))
+                                                            ->disabled(fn (Get $get) => blank($get('prodi_id')))
                                                             ->columnSpanFull()
                                                             ->helperText('Pilih Program Studi terlebih dahulu — daftar otomatis terfilter.'),
                                                     ]),
@@ -206,18 +206,33 @@ class MahasiswaForm
                                 // ================= TAB 2: BIODATA TAMBAHAN =================
                                 Tab::make('Biodata Tambahan')
                                     ->icon('heroicon-o-user-circle')
-                                    ->badge(fn(?Mahasiswa $record) => self::biodataCompleteness($record))
-                                    ->badgeColor(fn(?Mahasiswa $record) => self::biodataCompleteness($record) === '100%' ? 'success' : 'warning')
+                                    ->badge(fn (?Mahasiswa $record) => self::biodataCompleteness($record))
+                                    ->badgeColor(fn (?Mahasiswa $record) => self::biodataCompleteness($record) === '100%' ? 'success' : 'warning')
                                     ->schema([
                                         Section::make()
                                             ->relationship('biodata') // hasOne mahasiswa_biodata, auto save
+                                            // Derive parent cascade state from village_id; hanya village_id kolom DB,
+                                            // province/regency/district murni state UI (dehydrated(false)).
+                                            ->mutateRelationshipDataBeforeFillUsing(function (array $data): array {
+                                                $village = blank($data['village_id'] ?? null)
+                                                    ? null
+                                                    : Village::query()
+                                                        ->with('district.regency.province')
+                                                        ->find($data['village_id']);
+
+                                                return array_merge($data, [
+                                                    'province_id' => $village?->district?->regency?->province?->getKey(),
+                                                    'regency_id' => $village?->district?->regency?->getKey(),
+                                                    'district_id' => $village?->district?->getKey(),
+                                                ]);
+                                            })
                                             ->schema([
                                                 Section::make('Alamat')
                                                     ->icon('heroicon-o-map-pin')
                                                     ->schema([
                                                         Select::make('province_id')
                                                             ->label('Provinsi')
-                                                            ->options(fn(): array => Province::query()
+                                                            ->options(fn (): array => Province::query()
                                                                 ->orderBy('name')
                                                                 ->pluck('name', 'id')
                                                                 ->all())
@@ -233,8 +248,8 @@ class MahasiswaForm
                                                             }),
                                                         Select::make('regency_id')
                                                             ->label('Kabupaten/Kota')
-                                                            ->options(fn(Get $get): array => Regency::query()
-                                                                ->when($get('province_id'), fn(Builder $query, $provinceId) => $query->where('province_id', $provinceId))
+                                                            ->options(fn (Get $get): array => Regency::query()
+                                                                ->when($get('province_id'), fn (Builder $query, $provinceId) => $query->where('province_id', $provinceId))
                                                                 ->orderBy('name')
                                                                 ->pluck('name', 'id')
                                                                 ->all())
@@ -243,15 +258,15 @@ class MahasiswaForm
                                                             ->native(false)
                                                             ->live()
                                                             ->dehydrated(false)
-                                                            ->disabled(fn(Get $get): bool => blank($get('province_id')))
+                                                            ->disabled(fn (Get $get): bool => blank($get('province_id')))
                                                             ->afterStateUpdated(function (callable $set): void {
                                                                 $set('district_id', null);
                                                                 $set('village_id', null);
                                                             }),
                                                         Select::make('district_id')
                                                             ->label('Kecamatan')
-                                                            ->options(fn(Get $get): array => District::query()
-                                                                ->when($get('regency_id'), fn(Builder $query, $regencyId) => $query->where('regency_id', $regencyId))
+                                                            ->options(fn (Get $get): array => District::query()
+                                                                ->when($get('regency_id'), fn (Builder $query, $regencyId) => $query->where('regency_id', $regencyId))
                                                                 ->orderBy('name')
                                                                 ->pluck('name', 'id')
                                                                 ->all())
@@ -260,7 +275,7 @@ class MahasiswaForm
                                                             ->native(false)
                                                             ->live()
                                                             ->dehydrated(false)
-                                                            ->disabled(fn(Get $get): bool => blank($get('regency_id')))
+                                                            ->disabled(fn (Get $get): bool => blank($get('regency_id')))
                                                             ->afterStateUpdated(function (callable $set): void {
                                                                 $set('village_id', null);
                                                             }),
@@ -268,13 +283,13 @@ class MahasiswaForm
                                                             ->label('Desa/Kelurahan')
                                                             ->relationship('village', 'name', modifyQueryUsing: function (Builder $query, Get $get): Builder {
                                                                 return $query
-                                                                    ->when($get('district_id'), fn(Builder $query, $districtId) => $query->where('district_id', $districtId))
+                                                                    ->when($get('district_id'), fn (Builder $query, $districtId) => $query->where('district_id', $districtId))
                                                                     ->orderBy('name');
                                                             })
                                                             ->searchable()
                                                             ->preload()
                                                             ->native(false)
-                                                            ->disabled(fn(Get $get): bool => blank($get('district_id')))
+                                                            ->disabled(fn (Get $get): bool => blank($get('district_id')))
                                                             ->helperText('Pilih provinsi, kabupaten/kota, dan kecamatan terlebih dahulu.'),
                                                         Textarea::make('alamat_ktp')
                                                             ->label('Alamat Sesuai KTP')
@@ -407,7 +422,7 @@ class MahasiswaForm
                                                 TextEntry::make('feeder_locked_notice')
                                                     ->label('')
                                                     ->state('Sinkronisasi PDDikti tersedia setelah data mahasiswa disimpan.')
-                                                    ->visible(fn(?Mahasiswa $record) => $record === null),
+                                                    ->visible(fn (?Mahasiswa $record) => $record === null),
 
                                                 Grid::make(2)
                                                     ->schema([
@@ -420,11 +435,11 @@ class MahasiswaForm
 
                                                         TextEntry::make('last_synced_at')
                                                             ->label('Terakhir Sinkronisasi')
-                                                            ->state(fn(?Mahasiswa $record): string => $record?->last_synced_at
-                                                                ? $record->last_synced_at->translatedFormat('d F Y, H:i') . ' WIB'
+                                                            ->state(fn (?Mahasiswa $record): string => $record?->last_synced_at
+                                                                ? $record->last_synced_at->translatedFormat('d F Y, H:i').' WIB'
                                                                 : 'Belum pernah sinkron'),
                                                     ])
-                                                    ->visible(fn(?Mahasiswa $record) => $record !== null),
+                                                    ->visible(fn (?Mahasiswa $record) => $record !== null),
                                             ]),
                                     ]),
                             ]),
@@ -453,17 +468,17 @@ class MahasiswaForm
                                 TextEntry::make('created_at')
                                     ->label('Terdaftar Sejak')
                                     ->weight(FontWeight::Medium)
-                                    ->state(fn(?Mahasiswa $record) => $record?->created_at?->translatedFormat('d F Y') ?? '—'),
+                                    ->state(fn (?Mahasiswa $record) => $record?->created_at?->translatedFormat('d F Y') ?? '—'),
                                 TextEntry::make('updated_at')
                                     ->label('Terakhir Diubah')
-                                    ->state(fn(?Mahasiswa $record) => $record?->updated_at?->diffForHumans() ?? '—'),
+                                    ->state(fn (?Mahasiswa $record) => $record?->updated_at?->diffForHumans() ?? '—'),
                                 TextEntry::make('sync_status')
                                     ->label('Status PDDikti')
                                     ->badge()
-                                    ->color(fn(?Mahasiswa $record) => $record?->last_synced_at ? 'success' : 'gray')
-                                    ->state(fn(?Mahasiswa $record) => $record?->last_synced_at ? 'Tersinkron' : 'Belum Sinkron'),
+                                    ->color(fn (?Mahasiswa $record) => $record?->last_synced_at ? 'success' : 'gray')
+                                    ->state(fn (?Mahasiswa $record) => $record?->last_synced_at ? 'Tersinkron' : 'Belum Sinkron'),
                             ])
-                            ->visible(fn(?Mahasiswa $record) => $record !== null),
+                            ->visible(fn (?Mahasiswa $record) => $record !== null),
                     ])->columnSpan(['lg' => 1]),
             ])
             ->columns(3);
@@ -531,10 +546,10 @@ class MahasiswaForm
         ];
 
         $filled = collect($fields)
-            ->filter(fn($field) => filled($record->biodata->{$field}))
+            ->filter(fn ($field) => filled($record->biodata->{$field}))
             ->count();
 
-        return round(($filled / count($fields)) * 100) . '%';
+        return round(($filled / count($fields)) * 100).'%';
     }
 
     protected static function pendidikanOptions(): array
