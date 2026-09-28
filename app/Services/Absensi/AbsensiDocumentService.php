@@ -6,6 +6,7 @@ namespace App\Services\Absensi;
 
 use App\DataTransferObjects\Absensi\AbsensiDocumentData;
 use App\Models\JadwalKuliah;
+use App\Models\Kelas;
 use App\Models\PerkuliahanSesi;
 use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
@@ -45,10 +46,42 @@ class AbsensiDocumentService
             ->get();
     }
 
+    /**
+     * Opsi kelas untuk dropdown, dikelompokkan per prodi agar mudah dipilih.
+     * Label mengikuti konvensi project: "Kelas A — Angkatan 2024".
+     *
+     * @return array<string, array<int|string, string>>
+     */
+    public function kelasOptions(?int $prodiId = null, ?int $kampusId = null, ?User $user = null): array
+    {
+        $query = Kelas::query()->with('prodi')->orderBy('angkatan_id')->orderBy('nama_kelas');
+
+        if ($prodiId) {
+            $query->where('prodi_id', $prodiId);
+        }
+
+        if ($kampusId) {
+            $query->where('kampus_id', $kampusId);
+        }
+
+        if ($user) {
+            $query->visibleTo($user);
+        }
+
+        return $query
+            ->get()
+            ->groupBy(fn (Kelas $kelas) => $kelas->prodi?->nama_prodi ?? 'Tanpa Prodi')
+            ->map(fn (Collection $kelas) => $kelas
+                ->mapWithKeys(fn (Kelas $item) => [
+                    $item->id => "{$item->nama_kelas} — Angkatan {$item->angkatan_id}",
+                ])->all()
+            )->all();
+    }
+
     public function sessionOptions(string $jadwalKuliahId): Collection
     {
         return PerkuliahanSesi::query()
-            ->where('jadwal_kuliah_id', $jadwalKuliahId)
+            ->whereHas('jadwalKuliah', fn (Builder $query) => $query->whereKey($jadwalKuliahId)->visibleTo(auth()->user()))
             ->orderBy('pertemuan_ke')
             ->get(['id', 'pertemuan_ke', 'waktu_mulai_rencana', 'status_sesi']);
     }
@@ -150,18 +183,28 @@ class AbsensiDocumentService
         return new AbsensiDocumentData($mode, $academic, $rows, $summary, $meetings);
     }
 
-    /** @return list<array<string, mixed>> */
+    /**
+     * Roster resmi absensi berasal dari KRS yang sudah disetujui pada tahun
+     * akademik jadwal tersebut, bukan sekadar anggota kelas aktif.
+     * Ini menjaga manual/template konsisten dengan presensi online.
+     *
+     * @return list<array<string, mixed>>
+     */
     private function rosterRows(JadwalKuliah $jadwal): array
     {
-        return $jadwal->kelas->mahasiswaAktif()
-            ->with('person')
-            ->orderBy('mahasiswas.nim')
+        return $jadwal->krsDetails()
+            ->with(['krs.mahasiswa.person'])
+            ->whereHas('krs', fn (Builder $query) => $query
+                ->where('tahun_akademik_id', $jadwal->tahun_akademik_id)
+                ->berlaku())
+            ->where('status_ambil', '!=', 'K')
             ->get()
+            ->sortBy(fn ($detail) => $detail->krs?->mahasiswa?->nim ?? '')
             ->values()
-            ->map(fn ($mahasiswa, $index) => [
+            ->map(fn ($detail, $index) => [
                 'no' => $index + 1,
-                'nim' => $mahasiswa->nim,
-                'nama' => $mahasiswa->person?->nama_lengkap ?? '',
+                'nim' => $detail->krs?->mahasiswa?->nim ?? '',
+                'nama' => $detail->krs?->mahasiswa?->person?->nama_lengkap ?? '',
                 'status' => '',
                 'waktu' => '',
                 'keterangan' => '',
@@ -174,7 +217,10 @@ class AbsensiDocumentService
     {
         $students = $jadwal->krsDetails()
             ->with(['krs.mahasiswa.person'])
-            ->whereHas('krs', fn (Builder $query) => $query->where('tahun_akademik_id', $jadwal->tahun_akademik_id))
+            ->whereHas('krs', fn (Builder $query) => $query
+                ->where('tahun_akademik_id', $jadwal->tahun_akademik_id)
+                ->berlaku())
+            ->where('status_ambil', '!=', 'K')
             ->orderBy('id')
             ->get();
         $attendanceByDetail = $sesi->absensi()->with('krsDetail')->get()->keyBy('krs_detail_id');

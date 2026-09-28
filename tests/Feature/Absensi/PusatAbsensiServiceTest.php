@@ -59,6 +59,10 @@ class PusatAbsensiServiceTest extends TestCase
 
     private string $nama2 = '';
 
+    private string $nim3 = '';
+
+    private string $nama3 = '';
+
     private string $jadwalId = '';
 
     private string $sesiId = '';
@@ -77,6 +81,8 @@ class PusatAbsensiServiceTest extends TestCase
         $this->nim2 = 'T'.$this->suffix.'2';
         $this->nama1 = 'Mahasiswa Satu '.$this->suffix;
         $this->nama2 = 'Mahasiswa Dua '.$this->suffix;
+        $this->nim3 = 'T'.$this->suffix.'3';
+        $this->nama3 = 'Mahasiswa Tiga '.$this->suffix;
         $this->seedFixtures();
     }
 
@@ -298,6 +304,38 @@ class PusatAbsensiServiceTest extends TestCase
             DB::table('perkuliahan_sesi')->where('id', $otherSesiId)->delete();
             DB::table('jadwal_kuliah')->where('id', $otherJadwalId)->delete();
         }
+    }
+
+    public function test_manual_roster_uses_approved_krs_not_just_class_membership(): void
+    {
+        // Mahasiswa aktif di kelas, tapi TIDAK punya KRS disetujui → tidak boleh muncul.
+        $tanpaKrsId = $this->createMahasiswa($this->nim3, $this->nama3);
+        MahasiswaKelas::create([
+            'mahasiswa_id' => $tanpaKrsId,
+            'kelas_id' => $this->kelasId,
+            'tanggal_masuk' => '2099-01-01',
+            'tanggal_keluar' => null,
+        ]);
+
+        $document = app(AbsensiDocumentService::class)->resolve(
+            AbsensiDocumentService::MODE_MANUAL,
+            $this->tahunAkademikId,
+            $this->jadwalId,
+        );
+
+        $nims = array_column($document->rows, 'nim');
+
+        expect($nims)->toBe([$this->nim1, $this->nim2])
+            ->and($nims)->not->toContain($this->nim3);
+    }
+
+    public function test_kelas_options_group_by_prodi_and_include_angkatan(): void
+    {
+        $options = app(AbsensiDocumentService::class)->kelasOptions($this->prodiId);
+
+        expect(array_keys($options))->toContain('Prodi '.$this->suffix)
+            ->and($options['Prodi '.$this->suffix][$this->kelasId])
+            ->toBe('Kelas '.$this->suffix.' — Angkatan '.$this->angkatanId);
     }
 
     public function test_schedule_options_are_filtered_by_class_and_year(): void
