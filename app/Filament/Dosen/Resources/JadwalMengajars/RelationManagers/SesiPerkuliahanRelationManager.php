@@ -24,7 +24,6 @@ class SesiPerkuliahanRelationManager extends RelationManager
 {
     protected static string $relationship = 'sesiPerkuliahan';
 
-    protected static ?string $relatedResource = JadwalMengajarResource::class;
     public  function canCreate(): bool
     {
         return true;
