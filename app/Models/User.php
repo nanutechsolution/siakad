@@ -140,8 +140,6 @@ class User extends Authenticatable implements FilamentUser
             'Admin Fakultas',
             'Admin Prodi',
             'Admin Keuangan',
-            'Kasir',
-            'Verifikator Pembayaran',
             'Admin PMB',
             'Admin SDM',
             'Admin LPM',
