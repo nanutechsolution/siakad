@@ -54,6 +54,7 @@ class AppServiceProvider extends ServiceProvider
     {
         // 1. Registrasi Policy berbasis Model (Sangat disarankan & Clean)
         Gate::policy(\App\Models\KrsDetail::class, DosenNilaiPolicy::class);
+        Gate::policy(\App\Models\OidcClient::class, \App\Policies\OidcClientPolicy::class);
         // Gate::policy(\App\Models\JadwalKuliah::class, DosenJadwalKuliahPolicy::class);
         Gate::policy(JadwalKuliah::class, JadwalKuliahPolicy::class);
         // 2. Jika tetap ingin mempertahankan Alias String (inputNilaiDosen & revisiNilaiDosen)

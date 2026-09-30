@@ -3,26 +3,33 @@
 namespace App\Filament\Pages;
 
 use App\Enums\NavigationGroup;
+use App\Mail\CicilanTerverifikasiMailable;
 use App\Models\Mahasiswa;
 use App\Models\RefProdi;
 use App\Models\RefTahunAkademik;
 use App\Models\TagihanMahasiswa;
-use App\Services\Pembayaran\PaymentPolicyChecker;
-use App\Mail\CicilanTerverifikasiMailable;
+use App\Services\Akademik\NimService;
 use App\Services\Notifications\SmsService;
+use App\Services\Pembayaran\PaymentPolicyChecker;
 use BezhanSalleh\FilamentShield\Traits\HasPageShield;
-use Filament\Pages\Page;
-use Filament\Tables\Concerns\InteractsWithTable;
-use Filament\Tables\Contracts\HasTable;
-use Filament\Tables\Table;
-use Filament\Tables\Columns\TextColumn;
 use Filament\Actions\Action;
 use Filament\Actions\ActionGroup;
+use Filament\Actions\BulkAction;
+use Filament\Actions\BulkActionGroup;
+use Filament\Notifications\Notification;
+use Filament\Pages\Page;
+use Filament\Tables\Columns\TextColumn;
+use Filament\Tables\Concerns\InteractsWithTable;
+use Filament\Tables\Contracts\HasTable;
+use Filament\Tables\Enums\FiltersLayout;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
+use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Mail;
+use Livewire\Attributes\Computed;
 use UnitEnum;
 
 class CamabaActivationMonitor extends Page implements HasTable
@@ -30,113 +37,266 @@ class CamabaActivationMonitor extends Page implements HasTable
     use InteractsWithTable, HasPageShield;
 
     protected static ?string $navigationLabel = 'Generate NIM Monitor';
+
     protected static ?string $title = 'Generator NIM';
+
     protected string $view = 'filament.pages.camaba-activation-monitor';
+
     protected static string|UnitEnum|null $navigationGroup = NavigationGroup::AKADEMIK->value;
 
-    public int $totalCamaba = 0;
+    private const STATUS_BELUM_DITAGIHKAN = 'BELUM_DITAGIHKAN';
 
-    public int $siapGenerate = 0;
+    /** @var array<int|string, array<string, mixed>> Memo status per mahasiswa (hanya berlaku per request) */
+    protected array $statusMemo = [];
 
-    public int $belumSiap = 0;
+    protected ?RefTahunAkademik $taMemo = null;
 
-    public float $progressAktivasi = 0;
+    protected bool $taLoaded = false;
 
-    public float $totalTunggakan = 0;
+    /** @var array<int, int|string>|null */
+    protected ?array $pmbIdsMemo = null;
 
-    public int $belumDitagihkan = 0;
+    /* ---------------------------------------------------------------------
+     |  Helper data
+     | ------------------------------------------------------------------- */
 
-    public int $belumBayar = 0;
-
-    public int $cicilan = 0;
-
-    public int $lunas = 0;
-
-    public ?RefTahunAkademik $tahunAkademikAktif = null;
-
-    public function mount(): void
+    protected function activeTa(): ?RefTahunAkademik
     {
-        $this->loadStatistics();
+        if (! $this->taLoaded) {
+            $this->taMemo = RefTahunAkademik::where('is_active', true)->first();
+            $this->taLoaded = true;
+        }
+
+        return $this->taMemo;
     }
-    protected function loadStatistics(): void
+
+    protected static function rupiah(float|int|string|null $nilai): string
     {
-        $this->tahunAkademikAktif = RefTahunAkademik::where('is_active', true)->first();
+        return 'Rp ' . number_format((float) $nilai, 0, ',', '.');
+    }
 
-        $camaba = Mahasiswa::query()
+    /**
+     * @return array<int, int|string>
+     */
+    protected function pmbIds(): array
+    {
+        return $this->pmbIdsMemo ??= Mahasiswa::query()
             ->where('nim', 'like', 'PMB%')
-            ->with('prodi')
-            ->get();
+            ->pluck((new Mahasiswa)->getKeyName())
+            ->all();
+    }
 
-        $this->totalCamaba = $camaba->count();
-        $this->belumDitagihkan = 0;
-        $this->belumBayar = 0;
-        $this->cicilan = 0;
-        $this->lunas = 0;
-        $checker = app(PaymentPolicyChecker::class);
+    /**
+     * ID mahasiswa hasil filter + pencarian tabel yang sedang aktif.
+     *
+     * @return array<int, int|string>
+     */
+    protected function filteredIds(): array
+    {
+        $query = $this->getFilteredTableQuery();
 
-        $siap = 0;
-        $belum = 0;
+        if (method_exists($this, 'applySearchToTableQuery')) {
+            $query = $this->applySearchToTableQuery($query);
+        }
 
-        foreach ($camaba as $mahasiswa) {
+        return $query->toBase()
+            ->cloneWithout(['columns', 'orders'])
+            ->cloneWithoutBindings(['select', 'order'])
+            ->pluck((new Mahasiswa)->getQualifiedKeyName())
+            ->all();
+    }
 
-            $tagihan = TagihanMahasiswa::query()
-                ->where('mahasiswa_id', $mahasiswa->id)
-                ->when(
-                    $this->tahunAkademikAktif,
-                    fn($q) => $q->where(
-                        'tahun_akademik_id',
-                        $this->tahunAkademikAktif->id
-                    )
-                )
-                ->latest()
-                ->first();
+    /**
+     * Sumber tunggal status tagihan, kelayakan, dan nominal per mahasiswa.
+     * Dipakai oleh kartu statistik, kolom tabel, dan filter agar selalu konsisten.
+     *
+     * @param  array<int, int|string>  $ids
+     * @return array<int|string, array<string, mixed>>
+     */
+    protected function resolveStatuses(array $ids): array
+    {
+        $missing = array_values(array_diff($ids, array_keys($this->statusMemo)));
 
-            if (! $tagihan) {
-                $this->belumDitagihkan++;
-                $belum++;
-                continue;
-            }
+        if ($missing !== []) {
+            $ta = $this->activeTa();
+            $checker = app(PaymentPolicyChecker::class);
 
-            match ($tagihan->status_bayar) {
-                'BELUM' => $this->belumBayar++,
-                'CICIL' => $this->cicilan++,
-                'LUNAS' => $this->lunas++,
-            };
+            foreach (array_chunk($missing, 500) as $chunk) {
+                $mahasiswas = Mahasiswa::query()
+                    ->with('prodi')
+                    ->whereIn((new Mahasiswa)->getKeyName(), $chunk)
+                    ->get()
+                    ->keyBy(fn (Mahasiswa $m) => $m->getKey());
 
-            $result = $checker->cekKepatuhan($mahasiswa, $tagihan);
+                $tagihans = TagihanMahasiswa::query()
+                    ->whereIn('mahasiswa_id', $chunk)
+                    ->when($ta, fn ($q) => $q->where('tahun_akademik_id', $ta->id))
+                    ->orderByDesc('created_at')
+                    ->orderByDesc('id')
+                    ->get()
+                    ->groupBy('mahasiswa_id');
 
-            if ($result['passed']) {
-                $siap++;
-            } else {
-                $belum++;
+                foreach ($chunk as $id) {
+                    $rows = $tagihans->get($id);
+                    $mahasiswa = $mahasiswas->get($id);
+
+                    if (! $rows || $rows->isEmpty() || ! $mahasiswa) {
+                        $this->statusMemo[$id] = [
+                            'status' => self::STATUS_BELUM_DITAGIHKAN,
+                            'siap' => false,
+                            'total_tagihan' => 0.0,
+                            'total_bayar' => 0.0,
+                            'sisa' => 0.0,
+                        ];
+
+                        continue;
+                    }
+
+                    $terbaru = $rows->first();
+                    $hasil = $checker->cekKepatuhan($mahasiswa, $terbaru);
+
+                    $this->statusMemo[$id] = [
+                        'status' => strtoupper((string) $terbaru->status_bayar),
+                        'siap' => (bool) ($hasil['passed'] ?? false),
+                        'total_tagihan' => (float) $rows->sum('total_tagihan'),
+                        'total_bayar' => (float) $rows->sum('total_bayar'),
+                        'sisa' => (float) $rows->sum('sisa_tagihan'),
+                    ];
+                }
             }
         }
 
-        $this->siapGenerate = $siap;
-        $this->belumSiap = $belum;
+        return array_intersect_key($this->statusMemo, array_flip($ids));
+    }
 
-        $this->progressAktivasi = $this->totalCamaba > 0
-            ? round(($siap / $this->totalCamaba) * 100, 1)
+    /**
+     * @return array<string, mixed>
+     */
+    protected function statusFor(Mahasiswa $record): array
+    {
+        $id = $record->getKey();
+
+        return $this->resolveStatuses([$id])[$id];
+    }
+
+    /**
+     * Terapkan filter berbasis status (dihitung dari basis PMB).
+     */
+    protected function filterByStatus(Builder $query, callable $predicate): Builder
+    {
+        $ids = array_keys(array_filter($this->resolveStatuses($this->pmbIds()), $predicate));
+
+        return $query->whereIn((new Mahasiswa)->getQualifiedKeyName(), $ids);
+    }
+
+    /* ---------------------------------------------------------------------
+     |  Statistik (mengikuti filter & pencarian tabel)
+     | ------------------------------------------------------------------- */
+
+    #[Computed]
+    public function stats(): array
+    {
+        $rows = $this->resolveStatuses($this->filteredIds());
+
+        $s = [
+            'total' => count($rows),
+            'total_semua' => count($this->pmbIds()),
+            'siap' => 0,
+            'belum_siap' => 0,
+            'belum_ditagihkan' => 0,
+            'belum_bayar' => 0,
+            'cicilan' => 0,
+            'lunas' => 0,
+            'total_tagihan' => 0.0,
+            'total_bayar' => 0.0,
+            'tunggakan' => 0.0,
+        ];
+
+        foreach ($rows as $row) {
+            $row['siap'] ? $s['siap']++ : $s['belum_siap']++;
+
+            match ($row['status']) {
+                self::STATUS_BELUM_DITAGIHKAN => $s['belum_ditagihkan']++,
+                'BELUM' => $s['belum_bayar']++,
+                'CICIL' => $s['cicilan']++,
+                'LUNAS' => $s['lunas']++,
+                default => null,
+            };
+
+            $s['total_tagihan'] += $row['total_tagihan'];
+            $s['total_bayar'] += $row['total_bayar'];
+            $s['tunggakan'] += $row['sisa'];
+        }
+
+        $s['progress'] = $s['total'] > 0 ? round(($s['siap'] / $s['total']) * 100, 1) : 0;
+        $s['persen_terbayar'] = $s['total_tagihan'] > 0
+            ? round(($s['total_bayar'] / $s['total_tagihan']) * 100, 1)
             : 0;
 
-        $this->totalTunggakan = TagihanMahasiswa::query()
-            ->whereIn('mahasiswa_id', $camaba->pluck('id'))
-            ->sum('sisa_tagihan');
+        return $s;
     }
+
+    #[Computed]
+    public function tahunAkademikAktif(): ?RefTahunAkademik
+    {
+        return $this->activeTa();
+    }
+
+    /* ---------------------------------------------------------------------
+     |  Aksi NIM
+     | ------------------------------------------------------------------- */
+
+    protected function generateNim(Mahasiswa $record): void
+    {
+        DB::transaction(function () use ($record) {
+            $prodi = RefProdi::whereKey($record->prodi_id)->lockForUpdate()->first();
+
+            if (! $prodi) {
+                throw new \RuntimeException('Prodi tidak ditemukan');
+            }
+
+            $nim = app(NimService::class)->generate($record, $prodi);
+
+            $record->update(['nim' => $nim]);
+        });
+
+        unset($this->statusMemo[$record->getKey()]);
+    }
+
+    /* ---------------------------------------------------------------------
+     |  Tabel
+     | ------------------------------------------------------------------- */
 
     public function table(Table $table): Table
     {
-        return $table->query(
-            Mahasiswa::query()
-                ->where('nim', 'like', 'PMB%')
-                ->with(['person', 'prodi'])
-                ->withSum('tagihans as total_tagihan', 'total_tagihan')
-                ->withSum('tagihans as total_bayar', 'total_bayar')
-        )
+        $ta = $this->activeTa();
+        $batasTa = fn ($q) => $ta ? $q->where('tahun_akademik_id', $ta->id) : $q;
+
+        return $table
+            ->query(
+                Mahasiswa::query()
+                    ->with(['person', 'prodi', 'angkatan'])
+                    ->withSum(['tagihans as total_tagihan_sum' => $batasTa], 'total_tagihan')
+                    ->withSum(['tagihans as total_bayar_sum' => $batasTa], 'total_bayar')
+                    ->withSum(['tagihans as total_sisa_sum' => $batasTa], 'sisa_tagihan')
+            )
             ->heading('Daftar Calon Mahasiswa')
+            ->description('Angka pada kartu di atas mengikuti filter dan pencarian pada tabel ini.')
+            ->defaultSort('updated_at', 'desc')
+            ->striped()
+            ->paginated([10, 25, 50, 100])
+            ->defaultPaginationPageOption(25)
+            ->deferFilters(false)
+            ->persistFiltersInSession()
+            ->persistSearchInSession()
+            ->filtersLayout(FiltersLayout::AboveContentCollapsible)
+            ->filtersFormColumns(4)
+            ->emptyStateHeading('Tidak ada data')
+            ->emptyStateDescription('Tidak ada calon mahasiswa yang sesuai dengan filter atau pencarian.')
+            ->emptyStateIcon('heroicon-o-user-group')
             ->columns([
                 TextColumn::make('nim')
-                    ->label('NIM PMB')
+                    ->label('NIM')
                     ->searchable()
                     ->sortable()
                     ->copyable()
@@ -144,80 +304,113 @@ class CamabaActivationMonitor extends Page implements HasTable
 
                 TextColumn::make('person.nama_lengkap')
                     ->label('Mahasiswa')
-                    ->description(fn($record) => $record->person?->email)
+                    ->description(fn (Mahasiswa $record) => $record->person?->email)
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->wrap(),
 
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
                     ->badge()
+                    ->color('gray')
                     ->searchable()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(),
 
                 TextColumn::make('angkatan_id')
                     ->label('Angkatan')
                     ->badge()
-                    ->alignCenter(),
-                TextColumn::make('total_tagihan')
-                    ->label('Total Tagihan')
-                    ->state(function ($record) {
-                        $query = TagihanMahasiswa::where('mahasiswa_id', $record->id);
+                    ->alignCenter()
+                    ->toggleable(),
 
-                        if (! $query->exists()) {
-                            return 'Belum Diterbitkan Tagihan';
-                        }
-
-                        return $query->sum('total_tagihan');
-                    })
-                    ->formatStateUsing(
-                        fn($state) => is_numeric($state)
-                            ? 'Rp ' . number_format($state, 0, ',', '.')
-                            : $state
-                    )
+                TextColumn::make('status_tagihan')
+                    ->label('Status Tagihan')
                     ->badge()
-                    ->color(fn($state) => is_numeric($state) ? 'success' : 'gray'),
-                TextColumn::make('total_bayar')
-                    ->money('IDR'),
-                TextColumn::make('sisa_tagihan')
+                    ->state(fn (Mahasiswa $record) => match ($this->statusFor($record)['status']) {
+                        'BELUM' => 'Belum Bayar',
+                        'CICIL' => 'Cicilan',
+                        'LUNAS' => 'Lunas',
+                        default => 'Belum Ditagihkan',
+                    })
+                    ->color(fn (string $state) => match ($state) {
+                        'Belum Bayar' => 'danger',
+                        'Cicilan' => 'warning',
+                        'Lunas' => 'success',
+                        default => 'gray',
+                    })
+                    ->icon(fn (string $state) => match ($state) {
+                        'Belum Bayar' => 'heroicon-m-x-circle',
+                        'Cicilan' => 'heroicon-m-clock',
+                        'Lunas' => 'heroicon-m-check-circle',
+                        default => 'heroicon-m-minus-circle',
+                    }),
+
+                TextColumn::make('total_tagihan_sum')
+                    ->label('Total Tagihan')
+                    ->formatStateUsing(fn ($state) => self::rupiah($state))
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('total_bayar_sum')
+                    ->label('Terbayar')
+                    ->formatStateUsing(fn ($state) => self::rupiah($state))
+                    ->alignEnd()
+                    ->sortable()
+                    ->toggleable(),
+
+                TextColumn::make('total_sisa_sum')
                     ->label('Sisa')
-                    ->state(fn($record) => TagihanMahasiswa::where('mahasiswa_id', $record->id)->sum('sisa_tagihan'))
-                    ->money('IDR')
-                    ->color(fn($state) => $state > 0 ? 'danger' : 'success')
+                    ->formatStateUsing(fn ($state) => self::rupiah($state))
+                    ->color(fn ($state) => (float) $state > 0 ? 'danger' : 'success')
+                    ->weight('semibold')
+                    ->alignEnd()
                     ->sortable(),
 
-                TextColumn::make('progress')
-                    ->label('Progress')
-                    ->state(function ($record) {
-                        $checker = app(PaymentPolicyChecker::class);
-                        $ta = RefTahunAkademik::where('is_active', true)->first();
-                        if (!$ta) {
-                            return 'Tidak ada TA aktif';
-                        }
-                        $tagihan = TagihanMahasiswa::where('mahasiswa_id', $record->id)
-                            ->where('tahun_akademik_id', $ta->id)
-                            ->latest()
-                            ->first();
-
-                        if (!$tagihan) {
-                            return 'Belum ada tagihan';
-                        }
-                        return $checker->cekKepatuhan($record, $tagihan)['passed']
-                            ? 'Siap Generate'
-                            : 'Belum Memenuhi';
-                    })
+                TextColumn::make('kelayakan')
+                    ->label('Kelayakan NIM')
                     ->badge()
-                    ->color(fn($state) => match ($state) {
+                    ->state(function (Mahasiswa $record) {
+                        $status = $this->statusFor($record);
+
+                        if ($status['status'] === self::STATUS_BELUM_DITAGIHKAN) {
+                            return 'Belum Ditagihkan';
+                        }
+
+                        return $status['siap'] ? 'Siap Generate' : 'Belum Memenuhi';
+                    })
+                    ->color(fn (string $state) => match ($state) {
                         'Siap Generate' => 'success',
                         'Belum Memenuhi' => 'warning',
                         default => 'gray',
+                    })
+                    ->icon(fn (string $state) => match ($state) {
+                        'Siap Generate' => 'heroicon-m-check-badge',
+                        'Belum Memenuhi' => 'heroicon-m-exclamation-triangle',
+                        default => 'heroicon-m-minus-circle',
                     }),
 
                 TextColumn::make('updated_at')
-                    ->label('Update')
+                    ->label('Diperbarui')
                     ->since()
-                    ->sortable(),
+                    ->sortable()
+                    ->toggleable(isToggledHiddenByDefault: true),
             ])
             ->filters([
+                SelectFilter::make('status_nim')
+                    ->label('Status NIM')
+                    ->options([
+                        'belum' => 'Belum Digenerate (NIM PMB)',
+                        'sudah' => 'Sudah Digenerate (NIM Resmi)',
+                    ])
+                    ->default('belum')
+                    ->query(function (Builder $query, array $data) {
+                        return match ($data['value'] ?? null) {
+                            'belum' => $query->where('nim', 'like', 'PMB%'),
+                            'sudah' => $query->where('nim', 'not like', 'PMB%'),
+                            default => $query,
+                        };
+                    }),
 
                 SelectFilter::make('prodi')
                     ->label('Program Studi')
@@ -228,43 +421,25 @@ class CamabaActivationMonitor extends Page implements HasTable
                 SelectFilter::make('status_tagihan')
                     ->label('Status Tagihan')
                     ->options([
-                        'belum' => 'Belum Diterbitkan',
+                        'belum_ditagihkan' => 'Belum Ditagihkan',
                         'belum_bayar' => 'Belum Bayar',
                         'cicil' => 'Cicilan',
                         'lunas' => 'Lunas',
                     ])
                     ->query(function (Builder $query, array $data) {
-
-                        $value = $data['value'] ?? null;
-
-                        if (!$value) {
-                            return;
-                        }
-
-                        match ($value) {
-
-                            'belum' => $query->whereDoesntHave('tagihans'),
-
-                            'belum_bayar' => $query->whereHas(
-                                'tagihans',
-                                fn($q) =>
-                                $q->where('status_bayar', 'BELUM')
-                            ),
-
-                            'cicil' => $query->whereHas(
-                                'tagihans',
-                                fn($q) =>
-                                $q->where('status_bayar', 'CICIL')
-                            ),
-
-                            'lunas' => $query->whereHas(
-                                'tagihans',
-                                fn($q) =>
-                                $q->where('status_bayar', 'LUNAS')
-                            ),
-
+                        $target = match ($data['value'] ?? null) {
+                            'belum_ditagihkan' => self::STATUS_BELUM_DITAGIHKAN,
+                            'belum_bayar' => 'BELUM',
+                            'cicil' => 'CICIL',
+                            'lunas' => 'LUNAS',
                             default => null,
                         };
+
+                        if ($target === null) {
+                            return $query;
+                        }
+
+                        return $this->filterByStatus($query, fn (array $row) => $row['status'] === $target);
                     }),
 
                 SelectFilter::make('kelayakan')
@@ -274,157 +449,169 @@ class CamabaActivationMonitor extends Page implements HasTable
                         'belum' => 'Belum Memenuhi Persyaratan',
                     ])
                     ->query(function (Builder $query, array $data) {
-
-                        $value = $data['value'] ?? null;
-
-                        if (!$value) {
-                            return;
-                        }
-
-                        $ta = RefTahunAkademik::where('is_active', true)->first();
-
-                        if (!$ta) {
-                            return;
-                        }
-
-                        $checker = app(PaymentPolicyChecker::class);
-
-                        $ids = Mahasiswa::query()
-                            ->where('nim', 'like', 'PMB%')
-                            ->whereHas('tagihans', function ($q) use ($ta) {
-                                $q->where('tahun_akademik_id', $ta->id);
-                            })
-                            ->get()
-                            ->filter(function ($mahasiswa) use ($checker, $ta, $value) {
-
-                                $tagihan = TagihanMahasiswa::where('mahasiswa_id', $mahasiswa->id)
-                                    ->where('tahun_akademik_id', $ta->id)
-                                    ->latest()
-                                    ->first();
-
-                                if (!$tagihan) {
-                                    return false;
-                                }
-
-                                $passed = $checker->cekKepatuhan(
-                                    $mahasiswa,
-                                    $tagihan
-                                )['passed'];
-
-                                return $value === 'siap'
-                                    ? $passed
-                                    : ! $passed;
-                            })
-                            ->pluck('id');
-
-
-                        $query->whereIn('id', $ids);
+                        return match ($data['value'] ?? null) {
+                            'siap' => $this->filterByStatus($query, fn (array $row) => $row['siap'] === true),
+                            'belum' => $this->filterByStatus($query, fn (array $row) => $row['siap'] === false),
+                            default => $query,
+                        };
                     }),
+
                 Filter::make('memiliki_tunggakan')
                     ->label('Masih Memiliki Tunggakan')
-                    ->query(
-                        fn(Builder $query) =>
-                        $query->whereHas(
-                            'tagihans',
-                            fn($q) =>
-                            $q->where('sisa_tagihan', '>', 0)
-                        )
-                    ),
-
-                Filter::make('tanpa_tagihan')
-                    ->label('Belum Diterbitkan Tagihan')
-                    ->query(
-                        fn(Builder $query) =>
-                        $query->whereDoesntHave('tagihans')
-                    ),
-
-                Filter::make('sudah_generate')
-                    ->label('NIM Sudah Digenerate')
-                    ->query(
-                        fn(Builder $query) =>
-                        $query->where('nim', 'not like', 'PMB%')
-                    ),
-
-                Filter::make('belum_generate')
-                    ->label('NIM Belum Digenerate')
-                    ->query(
-                        fn(Builder $query) =>
-                        $query->where('nim', 'like', 'PMB%')
-                    ),
-
+                    ->toggle()
+                    ->query(fn (Builder $query) => $this->filterByStatus(
+                        $query,
+                        fn (array $row) => $row['sisa'] > 0
+                    )),
             ])
             ->recordActions([
+                ActionGroup::make([
+                    Action::make('send_reminder')
+                        ->label('Kirim Reminder')
+                        ->icon('heroicon-o-bell-alert')
+                        ->visible(fn (Mahasiswa $record) => str_starts_with((string) $record->nim, 'PMB'))
+                        ->requiresConfirmation()
+                        ->modalHeading('Kirim Reminder Pembayaran')
+                        ->modalDescription('Reminder akan dikirim melalui email dan SMS sesuai data kontak yang tersedia.')
+                        ->action(function (Mahasiswa $record) {
+                            $ta = $this->activeTa();
 
-                ActionGroup::make(
-                    [
-                        Action::make('send_reminder')
-                            ->label('Kirim Reminder')
-                            ->action(function (Mahasiswa $record) {
-                                $activeTa = RefTahunAkademik::where('is_active', 1)->first();
-                                $tagihan = $activeTa ? TagihanMahasiswa::where('mahasiswa_id', $record->id)
-                                    ->where('tahun_akademik_id', $activeTa->id)
-                                    ->latest()->first() : null;
+                            $tagihan = $ta
+                                ? TagihanMahasiswa::where('mahasiswa_id', $record->id)
+                                    ->where('tahun_akademik_id', $ta->id)
+                                    ->latest()
+                                    ->first()
+                                : null;
 
-                                $checker = app(PaymentPolicyChecker::class);
-                                $res = $tagihan ? $checker->cekKepatuhan($record, $tagihan) : ['passed' => false, 'unmet' => []];
+                            $hasil = $tagihan
+                                ? app(PaymentPolicyChecker::class)->cekKepatuhan($record, $tagihan)
+                                : ['passed' => false, 'unmet' => []];
 
-                                // Send DB notification via existing mailable and sms adapter
-                                if (! empty($record->person?->email)) {
-                                    try {
-                                        Mail::to($record->person->email)->queue(new CicilanTerverifikasiMailable($record, $res['unmet']));
-                                    } catch (\Throwable $e) {
-                                        // swallow and log via laravel logging (Filament will show result)
-                                    }
+                            $terkirim = [];
+
+                            if (! empty($record->person?->email)) {
+                                try {
+                                    Mail::to($record->person->email)
+                                        ->queue(new CicilanTerverifikasiMailable($record, $hasil['unmet'] ?? []));
+                                    $terkirim[] = 'email';
+                                } catch (\Throwable $e) {
+                                    report($e);
                                 }
+                            }
 
-                                if ($record->person?->no_hp) {
-                                    try {
-                                        app(SmsService::class)->send($record->person->no_hp, 'Silakan selesaikan tagihan untuk aktivasi NIM. Cek akun untuk detail.');
-                                    } catch (\Throwable $e) {
-                                    }
+                            if (! empty($record->person?->no_hp)) {
+                                try {
+                                    app(SmsService::class)->send(
+                                        $record->person->no_hp,
+                                        'Silakan selesaikan tagihan untuk aktivasi NIM. Cek akun untuk detail.'
+                                    );
+                                    $terkirim[] = 'SMS';
+                                } catch (\Throwable $e) {
+                                    report($e);
                                 }
+                            }
 
-                                \Filament\Notifications\Notification::make()
-                                    ->title('Reminder dikirim')
-                                    ->success()
+                            if ($terkirim === []) {
+                                Notification::make()
+                                    ->title('Reminder tidak terkirim')
+                                    ->body('Email/nomor HP belum tersedia atau pengiriman gagal.')
+                                    ->danger()
                                     ->send();
-                            }),
 
-                        Action::make('manual_generate_nim')
-                            ->label('Generate NIM Manual')
-                            ->color('success')
-                            ->requiresConfirmation()
-                            ->action(function (Mahasiswa $record) {
-                                if (! str_starts_with((string)$record->nim, 'PMB')) {
-                                    \Filament\Notifications\Notification::make()
-                                        ->title('Mahasiswa sudah memiliki NIM resmi')
-                                        ->danger()
-                                        ->send();
-                                    return;
+                                return;
+                            }
+
+                            Notification::make()
+                                ->title('Reminder dikirim')
+                                ->body('Terkirim melalui: ' . implode(' dan ', $terkirim) . '.')
+                                ->success()
+                                ->send();
+                        }),
+
+                    Action::make('manual_generate_nim')
+                        ->label('Generate NIM Manual')
+                        ->icon('heroicon-o-identification')
+                        ->color('success')
+                        ->visible(fn (Mahasiswa $record) => str_starts_with((string) $record->nim, 'PMB'))
+                        ->requiresConfirmation()
+                        ->modalHeading('Generate NIM Manual')
+                        ->modalDescription(fn (Mahasiswa $record) => $this->statusFor($record)['siap']
+                            ? 'Mahasiswa ini sudah memenuhi persyaratan. NIM resmi akan dibuat.'
+                            : 'PERHATIAN: Mahasiswa ini belum memenuhi persyaratan pembayaran. Generate manual akan melewati pemeriksaan kebijakan pembayaran.')
+                        ->action(function (Mahasiswa $record) {
+                            if (! str_starts_with((string) $record->nim, 'PMB')) {
+                                Notification::make()
+                                    ->title('Mahasiswa sudah memiliki NIM resmi')
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            try {
+                                $this->generateNim($record);
+                            } catch (\Throwable $e) {
+                                report($e);
+
+                                Notification::make()
+                                    ->title('NIM gagal dibuat')
+                                    ->body($e->getMessage())
+                                    ->danger()
+                                    ->send();
+
+                                return;
+                            }
+
+                            Notification::make()
+                                ->title('NIM berhasil dibuat')
+                                ->success()
+                                ->send();
+                        }),
+                ]),
+            ])
+            ->toolbarActions([
+                BulkActionGroup::make([
+                    BulkAction::make('generate_nim_terpilih')
+                        ->label('Generate NIM Terpilih')
+                        ->icon('heroicon-o-identification')
+                        ->color('success')
+                        ->requiresConfirmation()
+                        ->modalHeading('Generate NIM Terpilih')
+                        ->modalDescription('Hanya mahasiswa yang berstatus PMB dan memenuhi persyaratan yang akan diproses. Lainnya dilewati.')
+                        ->deselectRecordsAfterCompletion()
+                        ->action(function (Collection $records) {
+                            $status = $this->resolveStatuses($records->map->getKey()->all());
+
+                            $berhasil = 0;
+                            $dilewati = 0;
+                            $gagal = 0;
+
+                            foreach ($records as $record) {
+                                $memenuhi = str_starts_with((string) $record->nim, 'PMB')
+                                    && ($status[$record->getKey()]['siap'] ?? false);
+
+                                if (! $memenuhi) {
+                                    $dilewati++;
+
+                                    continue;
                                 }
 
-                                DB::transaction(function () use ($record) {
-                                    $prodi = RefProdi::whereKey($record->prodi_id)->lockForUpdate()->first();
-                                    if (! $prodi) throw new \RuntimeException('Prodi tidak ditemukan');
+                                try {
+                                    $this->generateNim($record);
+                                    $berhasil++;
+                                } catch (\Throwable $e) {
+                                    report($e);
+                                    $gagal++;
+                                }
+                            }
 
-                                    $nim = app(\App\Services\Akademik\NimService::class)->generate($record, $prodi);
-
-                                    $record->update(['nim' => $nim]);
-                                });
-
-                                \Filament\Notifications\Notification::make()
-                                    ->title('NIM berhasil dibuat')
-                                    ->success()
-                                    ->send();
-                            }),
-
-                    ]
-                )
+                            Notification::make()
+                                ->title('Proses Generate NIM selesai')
+                                ->body("Berhasil: {$berhasil} | Dilewati: {$dilewati} | Gagal: {$gagal}")
+                                ->color($gagal > 0 ? 'warning' : 'success')
+                                ->send();
+                        }),
+                ]),
             ]);
-    }
-
-    public function getTableQuery(): Builder
-    {
-        return Mahasiswa::query()->where('nim', 'like', 'PMB%')->with(['person', 'prodi', 'angkatan']);
     }
 }
