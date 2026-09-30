@@ -77,37 +77,37 @@ class PusatAbsensi extends Page implements HasForms
                                     ->live()
                                     ->native(false)
                                     ->required()
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('mode')),
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('mode')),
 
                                 Select::make('tahun_akademik_id')
                                     ->label('Tahun Akademik')
-                                    ->options(fn () => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
-                                    ->default(fn () => RefTahunAkademik::query()->where('is_active', true)->value('id'))
+                                    ->options(fn() => RefTahunAkademik::query()->orderByDesc('id')->pluck('nama_tahun', 'id'))
+                                    ->default(fn() => RefTahunAkademik::query()->where('is_active', true)->value('id'))
                                     ->searchable()
                                     ->live()
                                     ->native(false)
                                     ->required()
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('tahun_akademik_id')),
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('tahun_akademik_id')),
 
                                 Select::make('prodi_id')
                                     ->label('Program Studi')
-                                    ->options(fn () => app(FormResolver::class)->prodiOptions(auth()->user()))
+                                    ->options(fn() => app(FormResolver::class)->prodiOptions(auth()->user()))
                                     ->searchable()
                                     ->live()
                                     ->native(false)
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('prodi_id')),
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('prodi_id')),
 
                                 Select::make('kampus_id')
                                     ->label('Kampus')
-                                    ->options(fn () => RefKampus::query()->orderBy('nama_kampus')->pluck('nama_kampus', 'id'))
+                                    ->options(fn() => RefKampus::query()->orderBy('nama_kampus')->pluck('nama_kampus', 'id'))
                                     ->searchable()
                                     ->live()
                                     ->native(false)
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('kampus_id')),
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('kampus_id')),
 
                                 Select::make('kelas_id')
                                     ->label('Kelas')
-                                    ->options(fn () => app(AbsensiDocumentService::class)->kelasOptions(
+                                    ->options(fn() => app(AbsensiDocumentService::class)->kelasOptions(
                                         $this->nullableId('prodi_id'),
                                         $this->nullableId('kampus_id'),
                                         auth()->user(),
@@ -116,7 +116,7 @@ class PusatAbsensi extends Page implements HasForms
                                     ->searchable()
                                     ->live()
                                     ->native(false)
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('kelas_id')),
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('kelas_id')),
 
                                 Select::make('jadwal_kuliah_id')
                                     ->label('Mata Kuliah / Jadwal')
@@ -136,7 +136,7 @@ class PusatAbsensi extends Page implements HasForms
                                             )
                                             ->mapWithKeys(function ($jadwal) {
                                                 $code = trim($jadwal->mataKuliah?->kode_mk, ' ');
-                                                $label = trim($code.' - '.$jadwal->mataKuliah?->nama_mk.' ['.($jadwal->kelas?->nama_kelas ?? '-').'] '.$jadwal->hari.' '.$jadwal->jam_mulai.'-'.$jadwal->jam_selesai, ' -[]');
+                                                $label = trim($code . ' - ' . $jadwal->mataKuliah?->nama_mk . ' [' . ($jadwal->kelas?->nama_kelas ?? '-') . '] ' . $jadwal->hari . ' ' . $jadwal->jam_mulai . '-' . $jadwal->jam_selesai, ' -[]');
 
                                                 return [$jadwal->id => $label];
                                             })->all();
@@ -145,7 +145,7 @@ class PusatAbsensi extends Page implements HasForms
                                     ->live()
                                     ->native(false)
                                     ->required()
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('jadwal_kuliah_id')),
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('jadwal_kuliah_id')),
 
                                 Select::make('perkuliahan_sesi_id')
                                     ->label('Pertemuan')
@@ -157,23 +157,23 @@ class PusatAbsensi extends Page implements HasForms
 
                                         return app(AbsensiDocumentService::class)
                                             ->sessionOptions($jadwalId)
-                                            ->mapWithKeys(fn ($sesi) => [
-                                                $sesi->id => 'Pertemuan '.$sesi->pertemuan_ke
-                                                    .' — '.optional($sesi->waktu_mulai_rencana)->format('d/m/Y'),
+                                            ->mapWithKeys(fn($sesi) => [
+                                                $sesi->id => 'Pertemuan ' . $sesi->pertemuan_ke
+                                                    . ' — ' . optional($sesi->waktu_mulai_rencana)->format('d/m/Y'),
                                             ])->all();
                                     })
-                                    ->visible(fn (): bool => ($this->data['mode'] ?? '') === AbsensiDocumentService::MODE_ONLINE)
+                                    ->visible(fn(): bool => ($this->data['mode'] ?? '') === AbsensiDocumentService::MODE_ONLINE)
                                     ->searchable()
                                     ->live()
                                     ->native(false)
-                                    ->required(fn (): bool => ($this->data['mode'] ?? '') === AbsensiDocumentService::MODE_ONLINE)
-                                    ->afterStateUpdated(fn () => $this->resetPilihanDepan('perkuliahan_sesi_id')),
+                                    ->required(fn(): bool => ($this->data['mode'] ?? '') === AbsensiDocumentService::MODE_ONLINE)
+                                    ->afterStateUpdated(fn() => $this->resetPilihanDepan('perkuliahan_sesi_id')),
 
                                 DatePicker::make('tanggal')
                                     ->label('Tanggal')
-                                    ->visible(fn (): bool => ($this->data['mode'] ?? '') !== AbsensiDocumentService::MODE_ONLINE)
+                                    ->visible(fn(): bool => ($this->data['mode'] ?? '') !== AbsensiDocumentService::MODE_ONLINE)
                                     ->live()
-                                    ->afterStateUpdated(fn () => $this->resetPreview())
+                                    ->afterStateUpdated(fn() => $this->resetPreview())
                                     ->helperText('Kosongkan untuk memakai tanggal rencana pada sesi/periode akademik.'),
                             ]),
                     ]),
@@ -256,7 +256,7 @@ class PusatAbsensi extends Page implements HasForms
             ]);
 
         return response()->streamDownload(
-            fn () => print ($pdf->output()),
+            fn() => print($pdf->output()),
             $this->filename('pdf'),
             ['Content-Type' => 'application/pdf'],
         );

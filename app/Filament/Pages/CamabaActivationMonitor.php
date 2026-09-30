@@ -126,11 +126,11 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ->with('prodi')
                     ->whereIn((new Mahasiswa)->getKeyName(), $chunk)
                     ->get()
-                    ->keyBy(fn (Mahasiswa $m) => $m->getKey());
+                    ->keyBy(fn(Mahasiswa $m) => $m->getKey());
 
                 $tagihans = TagihanMahasiswa::query()
                     ->whereIn('mahasiswa_id', $chunk)
-                    ->when($ta, fn ($q) => $q->where('tahun_akademik_id', $ta->id))
+                    ->when($ta, fn($q) => $q->where('tahun_akademik_id', $ta->id))
                     ->orderByDesc('created_at')
                     ->orderByDesc('id')
                     ->get()
@@ -270,7 +270,7 @@ class CamabaActivationMonitor extends Page implements HasTable
     public function table(Table $table): Table
     {
         $ta = $this->activeTa();
-        $batasTa = fn ($q) => $ta ? $q->where('tahun_akademik_id', $ta->id) : $q;
+        $batasTa = fn($q) => $ta ? $q->where('tahun_akademik_id', $ta->id) : $q;
 
         return $table
             ->query(
@@ -304,7 +304,7 @@ class CamabaActivationMonitor extends Page implements HasTable
 
                 TextColumn::make('person.nama_lengkap')
                     ->label('Mahasiswa')
-                    ->description(fn (Mahasiswa $record) => $record->person?->email)
+                    ->description(fn(Mahasiswa $record) => $record->person?->email)
                     ->searchable()
                     ->sortable()
                     ->wrap(),
@@ -326,19 +326,19 @@ class CamabaActivationMonitor extends Page implements HasTable
                 TextColumn::make('status_tagihan')
                     ->label('Status Tagihan')
                     ->badge()
-                    ->state(fn (Mahasiswa $record) => match ($this->statusFor($record)['status']) {
+                    ->state(fn(Mahasiswa $record) => match ($this->statusFor($record)['status']) {
                         'BELUM' => 'Belum Bayar',
                         'CICIL' => 'Cicilan',
                         'LUNAS' => 'Lunas',
                         default => 'Belum Ditagihkan',
                     })
-                    ->color(fn (string $state) => match ($state) {
+                    ->color(fn(string $state) => match ($state) {
                         'Belum Bayar' => 'danger',
                         'Cicilan' => 'warning',
                         'Lunas' => 'success',
                         default => 'gray',
                     })
-                    ->icon(fn (string $state) => match ($state) {
+                    ->icon(fn(string $state) => match ($state) {
                         'Belum Bayar' => 'heroicon-m-x-circle',
                         'Cicilan' => 'heroicon-m-clock',
                         'Lunas' => 'heroicon-m-check-circle',
@@ -347,22 +347,22 @@ class CamabaActivationMonitor extends Page implements HasTable
 
                 TextColumn::make('total_tagihan_sum')
                     ->label('Total Tagihan')
-                    ->formatStateUsing(fn ($state) => self::rupiah($state))
+                    ->formatStateUsing(fn($state) => self::rupiah($state))
                     ->alignEnd()
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('total_bayar_sum')
                     ->label('Terbayar')
-                    ->formatStateUsing(fn ($state) => self::rupiah($state))
+                    ->formatStateUsing(fn($state) => self::rupiah($state))
                     ->alignEnd()
                     ->sortable()
                     ->toggleable(),
 
                 TextColumn::make('total_sisa_sum')
                     ->label('Sisa')
-                    ->formatStateUsing(fn ($state) => self::rupiah($state))
-                    ->color(fn ($state) => (float) $state > 0 ? 'danger' : 'success')
+                    ->formatStateUsing(fn($state) => self::rupiah($state))
+                    ->color(fn($state) => (float) $state > 0 ? 'danger' : 'success')
                     ->weight('semibold')
                     ->alignEnd()
                     ->sortable(),
@@ -379,12 +379,12 @@ class CamabaActivationMonitor extends Page implements HasTable
 
                         return $status['siap'] ? 'Siap Generate' : 'Belum Memenuhi';
                     })
-                    ->color(fn (string $state) => match ($state) {
+                    ->color(fn(string $state) => match ($state) {
                         'Siap Generate' => 'success',
                         'Belum Memenuhi' => 'warning',
                         default => 'gray',
                     })
-                    ->icon(fn (string $state) => match ($state) {
+                    ->icon(fn(string $state) => match ($state) {
                         'Siap Generate' => 'heroicon-m-check-badge',
                         'Belum Memenuhi' => 'heroicon-m-exclamation-triangle',
                         default => 'heroicon-m-minus-circle',
@@ -439,7 +439,7 @@ class CamabaActivationMonitor extends Page implements HasTable
                             return $query;
                         }
 
-                        return $this->filterByStatus($query, fn (array $row) => $row['status'] === $target);
+                        return $this->filterByStatus($query, fn(array $row) => $row['status'] === $target);
                     }),
 
                 SelectFilter::make('kelayakan')
@@ -450,8 +450,8 @@ class CamabaActivationMonitor extends Page implements HasTable
                     ])
                     ->query(function (Builder $query, array $data) {
                         return match ($data['value'] ?? null) {
-                            'siap' => $this->filterByStatus($query, fn (array $row) => $row['siap'] === true),
-                            'belum' => $this->filterByStatus($query, fn (array $row) => $row['siap'] === false),
+                            'siap' => $this->filterByStatus($query, fn(array $row) => $row['siap'] === true),
+                            'belum' => $this->filterByStatus($query, fn(array $row) => $row['siap'] === false),
                             default => $query,
                         };
                     }),
@@ -459,9 +459,9 @@ class CamabaActivationMonitor extends Page implements HasTable
                 Filter::make('memiliki_tunggakan')
                     ->label('Masih Memiliki Tunggakan')
                     ->toggle()
-                    ->query(fn (Builder $query) => $this->filterByStatus(
+                    ->query(fn(Builder $query) => $this->filterByStatus(
                         $query,
-                        fn (array $row) => $row['sisa'] > 0
+                        fn(array $row) => $row['sisa'] > 0
                     )),
             ])
             ->recordActions([
@@ -469,7 +469,7 @@ class CamabaActivationMonitor extends Page implements HasTable
                     Action::make('send_reminder')
                         ->label('Kirim Reminder')
                         ->icon('heroicon-o-bell-alert')
-                        ->visible(fn (Mahasiswa $record) => str_starts_with((string) $record->nim, 'PMB'))
+                        ->visible(fn(Mahasiswa $record) => str_starts_with((string) $record->nim, 'PMB'))
                         ->requiresConfirmation()
                         ->modalHeading('Kirim Reminder Pembayaran')
                         ->modalDescription('Reminder akan dikirim melalui email dan SMS sesuai data kontak yang tersedia.')
@@ -478,9 +478,9 @@ class CamabaActivationMonitor extends Page implements HasTable
 
                             $tagihan = $ta
                                 ? TagihanMahasiswa::where('mahasiswa_id', $record->id)
-                                    ->where('tahun_akademik_id', $ta->id)
-                                    ->latest()
-                                    ->first()
+                                ->where('tahun_akademik_id', $ta->id)
+                                ->latest()
+                                ->first()
                                 : null;
 
                             $hasil = $tagihan
@@ -532,10 +532,10 @@ class CamabaActivationMonitor extends Page implements HasTable
                         ->label('Generate NIM Manual')
                         ->icon('heroicon-o-identification')
                         ->color('success')
-                        ->visible(fn (Mahasiswa $record) => str_starts_with((string) $record->nim, 'PMB'))
+                        ->visible(fn(Mahasiswa $record) => str_starts_with((string) $record->nim, 'PMB'))
                         ->requiresConfirmation()
                         ->modalHeading('Generate NIM Manual')
-                        ->modalDescription(fn (Mahasiswa $record) => $this->statusFor($record)['siap']
+                        ->modalDescription(fn(Mahasiswa $record) => $this->statusFor($record)['siap']
                             ? 'Mahasiswa ini sudah memenuhi persyaratan. NIM resmi akan dibuat.'
                             : 'PERHATIAN: Mahasiswa ini belum memenuhi persyaratan pembayaran. Generate manual akan melewati pemeriksaan kebijakan pembayaran.')
                         ->action(function (Mahasiswa $record) {

@@ -44,7 +44,7 @@ class JadwalKuliah extends Model implements HasScopeStrategy
 
     public static function getProdiScopeColumn(): ?string
     {
-        return 'prodi_id';
+        return 'kelas.prodi_id';
     }
 
     public static function applyOwnershipScope(Builder $query, User $user, ScopeStrategy $strategy): Builder
