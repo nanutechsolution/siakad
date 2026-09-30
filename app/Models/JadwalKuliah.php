@@ -39,9 +39,8 @@ class JadwalKuliah extends Model implements HasScopeStrategy
     }
     public static function getFakultasScopeColumn(): ?string
     {
-        return 'prodi.fakultas_id';
+        return 'kelas.prodi.fakultas_id';
     }
-
     public static function getProdiScopeColumn(): ?string
     {
         return 'kelas.prodi_id';
