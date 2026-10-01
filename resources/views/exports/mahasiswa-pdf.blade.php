@@ -8,6 +8,7 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 8px;
+        margin-top: 8px;
     }
 
     .tabel-data thead {
@@ -43,7 +44,8 @@
     }
 </style>
 
-@include('pdf.partials.kop-header')
+<h3 class="text-center" style="margin-bottom:2px;">DAFTAR DATA MAHASISWA</h3>
+
 
 <table class="tabel-data">
     <thead>
@@ -65,4 +67,8 @@
         @endforeach
     </tbody>
 </table>
+
+<p class="mt-20" style="font-size:9px;">
+    Dicetak pada: {{ $dicetak }} oleh {{ $pencetak }}
+</p>
 @endsection
