@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Mahasiswas\Tables;
 
 use App\Domain\Authorization\Services\FormResolver;
+use App\Filament\Resources\Mahasiswas\Actions\MahasiswaExportActions;
 use App\Models\Mahasiswa;
 use Filament\Actions\ActionGroup;
 use Filament\Actions\BulkActionGroup;
@@ -87,20 +88,19 @@ class MahasiswasTable
                     ->color('gray')
                     ->placeholder('Belum diisi'),
 
-                TextColumn::make('prodi.kode_prodi_internal')
+                TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
-                    ->formatStateUsing(function ($state, Mahasiswa $record): string {
-                        return collect([
-                            $record->prodi?->kode_prodi_internal,
-                            $record->program?->nama_program,
-                            $record->angkatan?->id_tahun,
-                        ])
-                            ->filter(fn($value) => filled($value))
-                            ->implode(' - ');
-                    })
                     ->searchable()
                     ->sortable()
-                    ->wrap(),
+                    ->wrap()
+                    ->description(fn(Mahasiswa $record) => $record->program?->nama_program),
+
+                TextColumn::make('angkatan.id_tahun')
+                    ->label('Angkatan')
+                    ->sortable()
+                    ->badge()
+                    ->color('info')
+                    ->alignCenter(),
 
                 IconColumn::make('biodata_lengkap')
                     ->label('Biodata')
@@ -211,6 +211,9 @@ class MahasiswasTable
                 TrashedFilter::make(),
             ])
             ->filtersFormColumns(2)
+            ->headerActions([
+                MahasiswaExportActions::headerGroup(),
+            ])
             ->recordActions([
                 ActionGroup::make([
                     ViewAction::make(),
@@ -219,6 +222,8 @@ class MahasiswasTable
             ])
             ->toolbarActions([
                 BulkActionGroup::make([
+                    MahasiswaExportActions::bulkExcel(),
+                    MahasiswaExportActions::bulkPdf(),
                     DeleteBulkAction::make(),
                     ForceDeleteBulkAction::make(),
                     RestoreBulkAction::make(),
