@@ -39,12 +39,12 @@ class MahasiswaExportActions
                     fn($livewire) => static::unduhExcel($livewire->getFilteredSortedTableQuery())
                 ),
 
-            Action::make('exportPdf')
-                ->label('Export PDF')
-                ->icon('heroicon-o-document-text')
-                ->action(
-                    fn($livewire) => static::unduhPdf($livewire->getFilteredSortedTableQuery())
-                ),
+            // Action::make('exportPdf')
+            //     ->label('Export PDF')
+            //     ->icon('heroicon-o-document-text')
+            //     ->action(
+            //         fn($livewire) => static::unduhPdf($livewire->getFilteredSortedTableQuery())
+            //     ),
         ])
             ->label('Export')
             ->icon('heroicon-o-arrow-down-tray')
