@@ -8,7 +8,6 @@
         width: 100%;
         border-collapse: collapse;
         font-size: 8px;
-        margin-top: 8px;
     }
 
     .tabel-data thead {
@@ -44,11 +43,7 @@
     }
 </style>
 
-<h3 class="text-center" style="margin-bottom:2px;">DAFTAR DATA MAHASISWA</h3>
-
-<p class="text-center" style="margin-top:0; font-size:9px;">
-    Total: <strong>{{ number_format($total, 0, ',', '.') }}</strong> mahasiswa
-</p>
+@include('pdf.partials.kop-header')
 
 <table class="tabel-data">
     <thead>
@@ -70,8 +65,4 @@
         @endforeach
     </tbody>
 </table>
-
-<p class="mt-20" style="font-size:9px;">
-    Dicetak pada: {{ $dicetak }} oleh {{ $pencetak }}
-</p>
 @endsection
