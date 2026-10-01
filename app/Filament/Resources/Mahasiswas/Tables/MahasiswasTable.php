@@ -12,9 +12,8 @@ use Filament\Actions\ForceDeleteBulkAction;
 use Filament\Actions\RestoreBulkAction;
 use Filament\Actions\ViewAction;
 use Filament\Support\Enums\FontWeight;
-use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\IconColumn;
-use Filament\Tables\Columns\Layout\Stack;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\Filter;
 use Filament\Tables\Filters\SelectFilter;
@@ -22,9 +21,15 @@ use Filament\Tables\Filters\TernaryFilter;
 use Filament\Tables\Filters\TrashedFilter;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Support\Facades\DB;
 
 class MahasiswasTable
 {
+    /**
+     * Nilai khusus pada filter agama untuk mahasiswa yang agamanya belum terisi.
+     */
+    protected const AGAMA_KOSONG = '__kosong';
+
     public static function configure(Table $table): Table
     {
         return $table
@@ -48,6 +53,7 @@ class MahasiswasTable
                     ->weight(FontWeight::SemiBold)
                     ->description(fn(Mahasiswa $record) => $record->person?->nik ? 'NIK ' . $record->person->nik : null)
                     ->wrap(),
+
                 TextColumn::make('nim')
                     ->label('NIM')
                     ->searchable()
@@ -58,6 +64,7 @@ class MahasiswasTable
                     ->copyable()
                     ->copyMessage('NIM disalin')
                     ->color('primary'),
+
                 TextColumn::make('nisn')
                     ->label('NISN')
                     ->searchable()
@@ -73,6 +80,13 @@ class MahasiswasTable
                             : 'gray'
                     ),
 
+                TextColumn::make('biodata.agama')
+                    ->label('Agama')
+                    ->sortable()
+                    ->badge()
+                    ->color('gray')
+                    ->placeholder('Belum diisi'),
+
                 TextColumn::make('prodi.nama_prodi')
                     ->label('Program Studi')
                     ->searchable()
@@ -86,6 +100,7 @@ class MahasiswasTable
                     ->badge()
                     ->color('info')
                     ->alignCenter(),
+
                 IconColumn::make('biodata_lengkap')
                     ->label('Biodata')
                     ->tooltip(
@@ -101,6 +116,7 @@ class MahasiswasTable
                         self::biodataStatus($record)['color']
                     )
                     ->alignCenter(),
+
                 IconColumn::make('sync_status')
                     ->label('PDDikti')
                     ->boolean()
@@ -138,6 +154,38 @@ class MahasiswasTable
                     ->relationship('program', 'nama_program')
                     ->preload(),
 
+                SelectFilter::make('agama')
+                    ->label('Agama')
+                    ->multiple()
+                    ->options(fn() => self::agamaOptions())
+                    ->query(function (Builder $query, array $data): Builder {
+                        $values = $data['values'] ?? [];
+
+                        if (empty($values)) {
+                            return $query;
+                        }
+
+                        $kosong = in_array(self::AGAMA_KOSONG, $values, true);
+                        $agama = array_values(array_diff($values, [self::AGAMA_KOSONG]));
+
+                        return $query->where(function (Builder $q) use ($kosong, $agama) {
+                            if (! empty($agama)) {
+                                $q->whereHas(
+                                    'biodata',
+                                    fn(Builder $b) => $b->whereIn('agama', $agama)
+                                );
+                            }
+
+                            if ($kosong) {
+                                $q->orWhereDoesntHave('biodata')
+                                    ->orWhereHas(
+                                        'biodata',
+                                        fn(Builder $b) => $b->whereNull('agama')->orWhere('agama', '')
+                                    );
+                            }
+                        });
+                    }),
+
                 TernaryFilter::make('sync_status')
                     ->label('Status PDDikti')
                     ->placeholder('Semua')
@@ -151,8 +199,13 @@ class MahasiswasTable
                 Filter::make('biodata_belum_lengkap')
                     ->label('Biodata Belum Lengkap')
                     ->toggle()
-                    ->query(fn(Builder $query) => $query->whereDoesntHave('biodata')
-                        ->orWhereHas('biodata', fn($q) => $q->whereNull('nama_ayah')->orWhereNull('agama'))),
+                    ->query(fn(Builder $query) => $query->where(
+                        fn(Builder $q) => $q->whereDoesntHave('biodata')
+                            ->orWhereHas(
+                                'biodata',
+                                fn(Builder $b) => $b->whereNull('nama_ayah')->orWhereNull('agama')
+                            )
+                    )),
 
                 TrashedFilter::make(),
             ])
@@ -173,6 +226,25 @@ class MahasiswasTable
             ->emptyStateHeading('Belum ada mahasiswa')
             ->emptyStateDescription('Data mahasiswa yang terdaftar akan muncul di sini.')
             ->emptyStateIcon('heroicon-o-academic-cap');
+    }
+
+    /**
+     * Opsi filter agama: diambil dari nilai agama yang benar-benar ada di data,
+     * ditambah opsi "Belum diisi".
+     *
+     * @return array<string, string>
+     */
+    protected static function agamaOptions(): array
+    {
+        $options = DB::table('mahasiswa_biodata')
+            ->whereNotNull('agama')
+            ->where('agama', '!=', '')
+            ->distinct()
+            ->orderBy('agama')
+            ->pluck('agama', 'agama')
+            ->all();
+
+        return $options + [self::AGAMA_KOSONG => 'Belum diisi'];
     }
 
     /**
