@@ -68,7 +68,4 @@
     </tbody>
 </table>
 
-<p class="mt-20" style="font-size:9px;">
-    Dicetak pada: {{ $dicetak }} oleh {{ $pencetak }}
-</p>
 @endsection
