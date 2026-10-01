@@ -1,113 +1,77 @@
-<!DOCTYPE html>
-<html lang="id">
+@extends('pdf.layouts.base')
 
-<head>
-    <meta charset="utf-8">
-    <title>Daftar Data Mahasiswa</title>
-    <style>
-        @page {
-            margin: 28px 24px;
-        }
+@section('title', 'Daftar Data Mahasiswa')
 
-        body {
-            font-family: 'DejaVu Sans', sans-serif;
-            font-size: 8px;
-            color: #111827;
-        }
+@section('content')
+<style>
+    .tabel-data {
+        width: 100%;
+        border-collapse: collapse;
+        font-size: 8px;
+        margin-top: 8px;
+    }
 
-        .kop {
-            text-align: center;
-            margin-bottom: 10px;
-        }
+    .tabel-data thead {
+        display: table-header-group;
+    }
 
-        .kop .institusi {
-            font-size: 11px;
-            font-weight: bold;
-            text-transform: uppercase;
-        }
+    .tabel-data tr {
+        page-break-inside: avoid;
+    }
 
-        .kop .judul {
-            font-size: 13px;
-            font-weight: bold;
-            margin-top: 2px;
-        }
+    .tabel-data th {
+        background: #4F46E5;
+        color: #ffffff;
+        font-weight: bold;
+        text-align: left;
+        padding: 4px 3px;
+        border: 1px solid #4338CA;
+    }
 
-        .meta {
-            margin-bottom: 8px;
-            font-size: 8px;
-            color: #374151;
-        }
+    .tabel-data td {
+        padding: 3px;
+        border: 1px solid #D1D5DB;
+        vertical-align: top;
+    }
 
-        table {
-            width: 100%;
-            border-collapse: collapse;
-        }
+    .tabel-data tbody tr:nth-child(even) td {
+        background: #F9FAFB;
+    }
 
-        thead {
-            display: table-header-group;
-        }
+    .tabel-data .kolom-no {
+        text-align: center;
+        width: 4%;
+    }
+</style>
 
-        tr {
-            page-break-inside: avoid;
-        }
+<h3 class="text-center" style="margin-bottom:2px;">DAFTAR DATA MAHASISWA</h3>
 
-        th {
-            background: #4F46E5;
-            color: #ffffff;
-            font-weight: bold;
-            text-align: left;
-            padding: 4px 3px;
-            border: 1px solid #4338CA;
-        }
+<p class="text-center" style="margin-top:0; font-size:9px;">
+    Total: <strong>{{ number_format($total, 0, ',', '.') }}</strong> mahasiswa
+</p>
 
-        td {
-            padding: 3px;
-            border: 1px solid #D1D5DB;
-            vertical-align: top;
-        }
-
-        tbody tr:nth-child(even) td {
-            background: #F9FAFB;
-        }
-
-        .center {
-            text-align: center;
-        }
-    </style>
-</head>
-
-<body>
-    <div class="kop">
-        <div class="institusi">{{ $institusi }}</div>
-        <div class="judul">DAFTAR DATA MAHASISWA</div>
-    </div>
-
-    <div class="meta">
-        Total: <strong>{{ number_format($total, 0, ',', '.') }}</strong> mahasiswa
-        &nbsp;|&nbsp; Dicetak: {{ $dicetak }}
-        &nbsp;|&nbsp; Oleh: {{ $pencetak }}
-    </div>
-
-    <table>
-        <thead>
-            <tr>
-                <th class="center">No</th>
-                @foreach ($headings as $heading)
-                <th>{{ $heading }}</th>
-                @endforeach
-            </tr>
-        </thead>
-        <tbody>
-            @foreach ($rows as $index => $row)
-            <tr>
-                <td class="center">{{ $index + 1 }}</td>
-                @foreach ($row as $cell)
-                <td>{{ $cell }}</td>
-                @endforeach
-            </tr>
+<table class="tabel-data">
+    <thead>
+        <tr>
+            <th class="kolom-no">No</th>
+            @foreach ($headings as $heading)
+            <th>{{ $heading }}</th>
             @endforeach
-        </tbody>
-    </table>
-</body>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach ($rows as $index => $row)
+        <tr>
+            <td class="kolom-no">{{ $index + 1 }}</td>
+            @foreach ($row as $cell)
+            <td>{{ $cell }}</td>
+            @endforeach
+        </tr>
+        @endforeach
+    </tbody>
+</table>
 
-</html>
+<p class="mt-20" style="font-size:9px;">
+    Dicetak pada: {{ $dicetak }} oleh {{ $pencetak }}
+</p>
+@endsection
