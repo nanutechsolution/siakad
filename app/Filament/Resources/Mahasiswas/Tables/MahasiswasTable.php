@@ -89,17 +89,18 @@ class MahasiswasTable
 
                 TextColumn::make('prodi.kode_prodi_internal')
                     ->label('Program Studi')
+                    ->formatStateUsing(function ($state, Mahasiswa $record): string {
+                        return collect([
+                            $record->prodi?->kode_prodi_internal,
+                            $record->program?->nama_program,
+                            $record->angkatan?->id_tahun,
+                        ])
+                            ->filter(fn($value) => filled($value))
+                            ->implode(' - ');
+                    })
                     ->searchable()
                     ->sortable()
-                    ->wrap()
-                    ->description(fn(Mahasiswa $record) => $record->program?->nama_program),
-
-                TextColumn::make('angkatan.id_tahun')
-                    ->label('Angkatan')
-                    ->sortable()
-                    ->badge()
-                    ->color('info')
-                    ->alignCenter(),
+                    ->wrap(),
 
                 IconColumn::make('biodata_lengkap')
                     ->label('Biodata')
