@@ -87,7 +87,7 @@ class MahasiswasTable
                     ->color('gray')
                     ->placeholder('Belum diisi'),
 
-                TextColumn::make('prodi.nama_prodi')
+                TextColumn::make('prodi.kode_prodi_internal')
                     ->label('Program Studi')
                     ->searchable()
                     ->sortable()
