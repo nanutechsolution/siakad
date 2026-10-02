@@ -25,8 +25,13 @@ return [
     'kode_status_kuliah_aktif' => env('PDF_KODE_STATUS_KULIAH_AKTIF', 'A'),
     'kode_status_kuliah_cuti' => env('PDF_KODE_STATUS_KULIAH_CUTI', 'C'),
     'kode_status_kuliah_lulus' => env('PDF_KODE_STATUS_KULIAH_LULUS', 'L'),
-    'node_module_path' => env('PDF_NODE_MODULE_PATH'),
-
+    'chromium' => [
+        'node_binary' => env('PDF_NODE_BINARY'),
+        'npm_binary' => env('PDF_NPM_BINARY'),
+        'node_module_path' => env('PDF_NODE_MODULE_PATH'),
+        'chrome_path' => env('PDF_CHROME_PATH'),
+        'timeout' => (int) env('PDF_CHROME_TIMEOUT', 60),
+    ],
     'document_types' => [
         PdfDocumentType::KRS->value => [
             'resolver' => KrsPdfResolver::class,
