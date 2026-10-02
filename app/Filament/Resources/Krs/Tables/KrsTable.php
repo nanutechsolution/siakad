@@ -181,9 +181,9 @@ class KrsTable
                             $data['financial_override_reason'],
                         )),
 
-                    PdfDownloadAction::makeArchived(
+                    PdfPreviewAction::makeArchived(
                         name: 'cetak',
-                        label: 'Cetak KRS + QR',
+                        label: 'Pratinjau & Cetak KRS',
                         type: PdfDocumentType::KRS,
                         contextResolver: fn(Krs $record) => ['krs_id' => $record->id],
                         documentableResolver: fn(Krs $record) => [

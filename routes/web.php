@@ -153,6 +153,7 @@ Route::get('/mahasiswa/reauth', function () {
 
 
 use App\Http\Controllers\PdfController;
+use App\Http\Controllers\PdfDocumentController;
 use App\Http\Controllers\PdfVerificationController;
 
 Route::middleware(['auth'])->get('/khs/{id}/cetak', [PdfController::class, 'cetakKHS'])
@@ -203,6 +204,18 @@ Route::get('/pdf/download/{type}/{context}', function (
 })
     ->middleware('auth')
     ->name('pdf.download');
+Route::middleware(['web', 'auth'])
+    ->prefix('pdf/dokumen')
+    ->name('pdf.dokumen.')
+    ->group(function () {
+        Route::get('{document}/preview', [PdfDocumentController::class, 'preview'])
+            ->whereUuid('document')
+            ->name('preview');
+
+        Route::get('{document}/download', [PdfDocumentController::class, 'download'])
+            ->whereUuid('document')
+            ->name('download');
+    });
 Route::middleware(['auth'])
     ->prefix('mahasiswa/dokumen')
     ->name('mahasiswa.')
