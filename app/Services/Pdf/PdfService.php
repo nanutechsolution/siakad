@@ -86,7 +86,7 @@ class PdfService
         }
 
         $dto = $this->resolve($type, $context);
-        $fingerprint = $dto->fingerprint();
+        $fingerprint = hash('sha256', $dto->fingerprint() . '|tpl:' . ($definition['template_version'] ?? 1));
 
         /** @var PdfDocument|null $current */
         $current = PdfDocument::query()

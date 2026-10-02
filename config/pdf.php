@@ -27,13 +27,13 @@ return [
     'kode_status_kuliah_lulus' => env('PDF_KODE_STATUS_KULIAH_LULUS', 'L'),
 
     'document_types' => [
-
         PdfDocumentType::KRS->value => [
             'resolver' => KrsPdfResolver::class,
             'view' => 'pdf.akademik.krs',
             'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
             'orientation' => 'portrait',
+            'template_version' => 2,
             'requires_number' => false,
             'requires_signature' => false,
             'requires_qr' => true,
