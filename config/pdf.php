@@ -33,7 +33,7 @@ return [
             'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
             'orientation' => 'portrait',
-            'template_version' => 2,
+            'template_version' => 3,
             'requires_number' => false,
             'requires_signature' => false,
             'requires_qr' => true,

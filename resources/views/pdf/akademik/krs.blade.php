@@ -3,19 +3,17 @@
 @section('title', 'Kartu Rencana Studi - '.$nim)
 
 @php
-// Skala otomatis: makin banyak mata kuliah, makin rapat agar tetap 1 lembar.
+// Skala otomatis berdasarkan jumlah mata kuliah.
 $jumlahMk = count($items);
 
-if ($jumlahMk <= 10) {
-    $fs=9.5; $pad=4;
-    } elseif ($jumlahMk <=14) {
+if ($jumlahMk <= 12) {
     $fs=9; $pad=3;
-    } elseif ($jumlahMk <=18) {
-    $fs=8.5; $pad=2;
-    } elseif ($jumlahMk <=24) {
-    $fs=8; $pad=1.5;
+    } elseif ($jumlahMk <=16) {
+    $fs=8.5; $pad=2.5;
+    } elseif ($jumlahMk <=20) {
+    $fs=8; $pad=2;
     } else {
-    $fs=7.5; $pad=1;
+    $fs=7.5; $pad=1.5;
     }
     @endphp
 
@@ -24,8 +22,18 @@ if ($jumlahMk <= 10) {
     /* Paksa A4 portrait (menimpa A4 landscape pada layout base). */
     @page {
     size: A4 portrait;
-    margin: 145px 36px 65px 36px;
+    margin: 145px 36px 60px 36px;
     }
+
+    /* Kop disesuaikan untuk lebar portrait agar tidak membungkus berlebihan. */
+    .kop-table .logo-col { width: 12%; }
+    .kop-table .text-col { width: 76%; }
+    .kop-table .dummy-col { width: 12%; }
+    .kop-table .logo-col img { max-width: 56px; }
+    .institusi { font-size: 13pt; letter-spacing: 0; margin-bottom: 1px; }
+    .akreditasi { font-size: 8.5pt; margin-bottom: 2px; }
+    .kontak { font-size: 7.5pt; line-height: 1.2; }
+    .garis-ganda { margin-top: 6px; }
 
     .krs-judul {
     font-size: 12pt;
@@ -52,14 +60,20 @@ if ($jumlahMk <= 10) {
     }
 
     table.data.krs {
+    table-layout: fixed;
     margin-top: 6px;
     }
 
     table.data.krs th,
     table.data.krs td {
     font-size: {{ $fs }}pt;
-    padding: {{ $pad }}px 4px;
+    padding: {{ $pad }}px 3px;
     line-height: 1.15;
+    word-wrap: break-word;
+    }
+
+    table.data.krs tr {
+    page-break-inside: auto;
     }
 
     .krs-meta {
@@ -71,7 +85,6 @@ if ($jumlahMk <= 10) {
     width: 100%;
     border-collapse: collapse;
     margin-top: 10px;
-    page-break-inside: avoid;
     }
 
     table.krs-ttd td {
@@ -96,7 +109,7 @@ if ($jumlahMk <= 10) {
     @endpush
 
     @section('content')
-    <div class="avoid-break">
+    <div>
         <h3 class="krs-judul">KARTU RENCANA STUDI (KRS)</h3>
         <p class="krs-periode">{{ $namaTahunAkademik }} — Semester {{ $semester }}</p>
 
@@ -138,14 +151,14 @@ if ($jumlahMk <= 10) {
             <thead>
                 <tr>
                     <th width="4%">No</th>
-                    <th width="11%">Kode MK</th>
-                    <th>Nama Mata Kuliah</th>
-                    <th width="6%">SKS</th>
-                    <th width="11%">Kelas</th>
-                    <th width="15%">Jadwal</th>
-                    <th width="10%">Ruang</th>
-                    <th width="16%">Dosen Pengampu</th>
-                    <th width="8%">Status</th>
+                    <th width="9%">Kode MK</th>
+                    <th width="25%">Nama Mata Kuliah</th>
+                    <th width="5%">SKS</th>
+                    <th width="8%">Kelas</th>
+                    <th width="17%">Jadwal</th>
+                    <th width="9%">Ruang</th>
+                    <th width="17%">Dosen Pengampu</th>
+                    <th width="6%">Status</th>
                 </tr>
             </thead>
             <tbody>
@@ -177,11 +190,10 @@ if ($jumlahMk <= 10) {
         </p>
 
         {{--
-        Blok tanda tangan + QR dalam satu baris (3 kolom) agar hemat tinggi.
-
-        TTD digital (PdfSigner) TIDAK dipakai di sini: KRS boleh dicetak kapan
-        saja oleh setiap mahasiswa, sedangkan PdfSigner melempar error bila
-        otoritas/pejabat belum dikonfigurasi.
+        Tanda tangan + QR dalam satu baris (3 kolom) agar hemat tinggi.
+        TTD digital (PdfSigner) TIDAK dipakai: KRS boleh dicetak kapan saja
+        oleh setiap mahasiswa, sedangkan PdfSigner melempar error bila
+        pejabat belum dikonfigurasi.
     --}}
         <table class="krs-ttd">
             <tr>
