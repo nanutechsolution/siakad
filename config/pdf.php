@@ -25,15 +25,17 @@ return [
     'kode_status_kuliah_aktif' => env('PDF_KODE_STATUS_KULIAH_AKTIF', 'A'),
     'kode_status_kuliah_cuti' => env('PDF_KODE_STATUS_KULIAH_CUTI', 'C'),
     'kode_status_kuliah_lulus' => env('PDF_KODE_STATUS_KULIAH_LULUS', 'L'),
+    'node_module_path' => env('PDF_NODE_MODULE_PATH'),
 
     'document_types' => [
         PdfDocumentType::KRS->value => [
             'resolver' => KrsPdfResolver::class,
-            'view' => 'pdf.akademik.krs',
+            'view' => 'pdf.akademik.krs-chromium',
+            'engine' => 'chromium',
             'classification' => PdfClassification::SEMI_PERMANENT->value,
             'paper' => 'a4',
             'orientation' => 'portrait',
-            'template_version' => 3,
+            'template_version' => 4,
             'requires_number' => false,
             'requires_signature' => false,
             'requires_qr' => true,

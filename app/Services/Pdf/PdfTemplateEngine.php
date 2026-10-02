@@ -7,8 +7,12 @@ use Barryvdh\DomPDF\PDF as DomPdf;
 
 class PdfTemplateEngine
 {
-    public function render(string $view, array $data, array $definition = []): DomPdf
+    public function render(string $view, array $data, array $definition = []): DomPdf|ChromiumPdf
     {
+        if (($definition['engine'] ?? 'dompdf') === 'chromium') {
+            return new ChromiumPdf(view($view, $data)->render(), $definition);
+        }
+
         $pdf = Pdf::loadView($view, $data);
 
         $paper = $definition['paper'] ?? 'a4';
