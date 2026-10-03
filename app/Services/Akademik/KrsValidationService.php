@@ -50,7 +50,7 @@ class KrsValidationService
             ->orderByDesc('tanggal_mulai')
             ->first();
         // Jika belum ada semester sebelumnya (misalnya database baru)
-        if (! $previousTa) {
+        if (!$previousTa) {
             return KrsValidationResult::pass('GATE_KONTINUITAS');
         }
 
@@ -60,7 +60,7 @@ class KrsValidationService
             ->exists();
 
         // Mahasiswa baru -> tidak perlu cek gap semester
-        if (! $hasAnyHistory) {
+        if (!$hasAnyHistory) {
             return KrsValidationResult::pass('GATE_KONTINUITAS');
         }
 
@@ -73,7 +73,7 @@ class KrsValidationService
         $needsDispensasi = false;
         $reason = '';
 
-        if (! $riwayatSebelumnya) {
+        if (!$riwayatSebelumnya) {
             $needsDispensasi = true;
             $reason = "Terdeteksi gap semester (tidak ada riwayat pada semester {$previousTa->nama_tahun}).";
         } elseif ($riwayatSebelumnya->status_kuliah !== StatusKuliah::AKTIF->value) {
