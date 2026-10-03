@@ -6,6 +6,7 @@ namespace App\Filament\Resources\Krs\Pages;
 
 use App\Filament\Resources\Krs\KrsResource;
 use App\Models\JadwalKuliah;
+use App\Models\Krs;
 use App\Models\KrsDetail;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
@@ -13,6 +14,7 @@ use App\Services\Akademik\KrsValidationService;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\CreateRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
 
@@ -39,6 +41,28 @@ class CreateKrs extends CreateRecord
         }
 
         if ($mahasiswa && $ta) {
+            // 0. Guard duplikat: satu KRS per mahasiswa per tahun akademik
+            //    (unique key krs_mahasiswa_id_tahun_akademik_id_unique).
+            $krsAda = Krs::withoutGlobalScopes()
+                ->where('mahasiswa_id', $mahasiswa->id)
+                ->where('tahun_akademik_id', $ta->id)
+                ->first();
+
+            if ($krsAda) {
+                Notification::make()
+                    ->danger()
+                    ->title('KRS Sudah Ada')
+                    ->body(
+                        'Mahasiswa ini sudah memiliki KRS pada tahun akademik tersebut (status: '
+                            . ($krsAda->status_krs?->getLabel() ?? '-')
+                            . '). Gunakan aksi Edit, Ajukan, atau Buka Kembali pada KRS yang sudah ada.'
+                    )
+                    ->persistent()
+                    ->send();
+
+                $this->halt();
+            }
+
             $service = app(KrsValidationService::class);
 
             // 1. Gate Kontinuitas (Gap Semester)
@@ -107,50 +131,67 @@ class CreateKrs extends CreateRecord
         // Hapus array tersebut agar tidak ikut di-insert ke tabel KRS
         unset($data['jadwal_kuliah_ids'], $data['jadwal_mengulang_ids'], $data['is_eligible'], $data['validation_msg'], $data['active_kelas_id'], $data['mode_krs'], $data['prodi_id']);
 
-        // Kembalikan hasil dari DB::transaction langsung ke variabel $record
-        $record = DB::transaction(function () use ($data, $jadwalUtama, $jadwalMengulang) {
-            // Gabungkan ID jadwal tanpa duplikat
-            $jadwalIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
+        try {
+            // Kembalikan hasil dari DB::transaction langsung ke variabel $record
+            $record = DB::transaction(function () use ($data, $jadwalUtama, $jadwalMengulang) {
+                // Gabungkan ID jadwal tanpa duplikat
+                $jadwalIds = array_unique(array_merge($jadwalUtama, $jadwalMengulang));
 
-            // Hitung total SKS
-            $totalSksDiambil = (int) DB::table('jadwal_kuliah')
-                ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
-                ->whereIn('jadwal_kuliah.id', $jadwalIds)
-                ->sum('master_mata_kuliahs.sks_default');
+                // Hitung total SKS
+                $totalSksDiambil = (int) DB::table('jadwal_kuliah')
+                    ->join('master_mata_kuliahs', 'master_mata_kuliahs.id', '=', 'jadwal_kuliah.mata_kuliah_id')
+                    ->whereIn('jadwal_kuliah.id', $jadwalIds)
+                    ->sum('master_mata_kuliahs.sks_default');
 
-            // Buat ID KRS
-            $data['id'] = Str::uuid()->toString();
-            $data['total_sks_diambil'] = $totalSksDiambil;
-            $data['diajukan_at'] = now();
+                // Buat ID KRS
+                $data['id'] = Str::uuid()->toString();
+                $data['total_sks_diambil'] = $totalSksDiambil;
+                $data['diajukan_at'] = now();
 
-            // 2. Insert Header KRS menggunakan metode model Filament
-            $createdRecord = static::getModel()::create($data);
+                // 2. Insert Header KRS menggunakan metode model Filament
+                $createdRecord = static::getModel()::create($data);
 
-            // 3. Insert Details KRS
-            $detailInserts = [];
-            foreach ($jadwalIds as $jId) {
-                $mataKuliahId = DB::table('jadwal_kuliah')->where('id', $jId)->value('mata_kuliah_id');
-                $sks = DB::table('master_mata_kuliahs')->where('id', $mataKuliahId)->value('sks_default');
-                $statusAmbil = in_array($jId, $jadwalMengulang, true) ? 'U' : 'B';
+                // 3. Insert Details KRS
+                $detailInserts = [];
+                foreach ($jadwalIds as $jId) {
+                    $mataKuliahId = DB::table('jadwal_kuliah')->where('id', $jId)->value('mata_kuliah_id');
+                    $sks = DB::table('master_mata_kuliahs')->where('id', $mataKuliahId)->value('sks_default');
+                    $statusAmbil = in_array($jId, $jadwalMengulang, true) ? 'U' : 'B';
 
-                $detailInserts[] = [
-                    'krs_id'           => $createdRecord->id,
-                    'jadwal_kuliah_id' => $jId,
-                    'mata_kuliah_id'   => $mataKuliahId,
-                    'sks_snapshot'     => $sks,
-                    'status_ambil'     => $statusAmbil,
-                    'created_at'       => now(),
-                    'updated_at'       => now(),
-                ];
+                    $detailInserts[] = [
+                        'krs_id'           => $createdRecord->id,
+                        'jadwal_kuliah_id' => $jId,
+                        'mata_kuliah_id'   => $mataKuliahId,
+                        'sks_snapshot'     => $sks,
+                        'status_ambil'     => $statusAmbil,
+                        'created_at'       => now(),
+                        'updated_at'       => now(),
+                    ];
+                }
+
+                if (!empty($detailInserts)) {
+                    DB::table('krs_detail')->insert($detailInserts);
+                }
+
+                // Kembalikan model yang terbuat agar menjadi hasil dari DB::transaction
+                return $createdRecord;
+            });
+        } catch (QueryException $e) {
+            // Race: KRS yang sama dibuat bersamaan setelah guard beforeCreate().
+            if ((int) ($e->errorInfo[1] ?? 0) === 1062) {
+                Notification::make()
+                    ->danger()
+                    ->title('KRS Sudah Ada')
+                    ->body('KRS untuk mahasiswa dan tahun akademik ini baru saja dibuat. Muat ulang daftar KRS.')
+                    ->persistent()
+                    ->send();
+
+                $this->halt();
             }
 
-            if (!empty($detailInserts)) {
-                DB::table('krs_detail')->insert($detailInserts);
-            }
+            throw $e;
+        }
 
-            // Kembalikan model yang terbuat agar menjadi hasil dari DB::transaction
-            return $createdRecord;
-        });
         // Sekarang Intelephense tahu ini pasti mengembalikan Model
         return $record;
     }

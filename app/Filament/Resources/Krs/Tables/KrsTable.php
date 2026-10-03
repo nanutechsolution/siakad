@@ -128,7 +128,9 @@ class KrsTable
                         ->authorize('update'),
 
                     Action::make('ajukan')
-                        ->label('Ajukan')
+                        ->label(fn(Krs $record): string => $record->status_krs === KrsStatusEnum::DITOLAK
+                            ? 'Ajukan Kembali'
+                            : 'Ajukan')
                         ->icon('heroicon-o-paper-airplane')
                         ->color('info')
                         ->visible(fn(Krs $record) => in_array($record->status_krs, [
@@ -272,67 +274,166 @@ class KrsTable
             ->passed;
     }
 
+    /**
+     * Ajukan KRS berstatus DRAFT atau DITOLAK (pengajuan kembali setelah revisi).
+     *
+     * Status dibaca ulang dari database dengan lock di dalam transaksi, sehingga
+     * before_data pada audit log selalu status aktual (bukan hardcode DRAFT) dan
+     * klik ganda / UI usang tidak menghasilkan log ganda.
+     */
     protected static function ajukan(Krs $record): void
     {
-        $record->update([
-            'status_krs' => KrsStatusEnum::DIAJUKAN,
-            'diajukan_at' => now(),
-        ]);
+        $hasil = DB::transaction(function () use ($record): array {
+            $locked = Krs::withoutGlobalScopes()
+                ->whereKey($record->getKey())
+                ->lockForUpdate()
+                ->first();
 
-        DB::table('krs_status_logs')->insert([
-            'krs_id' => $record->getKey(),
-            'aksi' => 'DIAJUKAN',
-            'dilakukan_oleh' => Auth::id(),
-            'before_data' => json_encode(['status_krs' => KrsStatusEnum::DRAFT->value]),
-            'after_data' => json_encode(['status_krs' => KrsStatusEnum::DIAJUKAN->value]),
-            'catatan' => 'KRS diajukan untuk persetujuan.',
-            'created_at' => now(),
-        ]);
+            if (! $locked) {
+                return ['ok' => false, 'pesan' => 'KRS tidak ditemukan.'];
+            }
 
-        Notification::make()->title('KRS diajukan untuk persetujuan')->success()->send();
+            $statusSebelumnya = $locked->status_krs;
+
+            if (! in_array($statusSebelumnya, [KrsStatusEnum::DRAFT, KrsStatusEnum::DITOLAK], true)) {
+                return [
+                    'ok' => false,
+                    'pesan' => 'KRS berstatus ' . ($statusSebelumnya?->getLabel() ?? '-') . ' dan tidak dapat diajukan.',
+                ];
+            }
+
+            if (! $locked->details()->exists()) {
+                return [
+                    'ok' => false,
+                    'pesan' => 'KRS belum memiliki mata kuliah. Lengkapi mata kuliah terlebih dahulu sebelum diajukan.',
+                ];
+            }
+
+            $revisi = $statusSebelumnya === KrsStatusEnum::DITOLAK;
+
+            $atribut = [
+                'status_krs' => KrsStatusEnum::DIAJUKAN,
+                'diajukan_at' => now(),
+            ];
+
+            if ($revisi) {
+                // Riwayat penolakan tetap tersimpan di krs_status_logs; kolom
+                // ringkasan di-reset agar tidak terbaca sebagai hasil review baru.
+                $atribut['ditolak_oleh'] = null;
+                $atribut['ditolak_pada'] = null;
+                $atribut['catatan_admin'] = null;
+            }
+
+            $locked->forceFill($atribut)->save();
+
+            DB::table('krs_status_logs')->insert([
+                'krs_id' => $locked->getKey(),
+                'aksi' => 'DIAJUKAN',
+                'dilakukan_oleh' => Auth::id(),
+                'before_data' => json_encode(['status_krs' => $statusSebelumnya->value]),
+                'after_data' => json_encode(['status_krs' => KrsStatusEnum::DIAJUKAN->value]),
+                'catatan' => $revisi
+                    ? 'KRS diajukan kembali setelah revisi.'
+                    : 'KRS diajukan untuk persetujuan.',
+                'created_at' => now(),
+            ]);
+
+            return ['ok' => true, 'revisi' => $revisi];
+        });
+
+        if (! $hasil['ok']) {
+            Notification::make()
+                ->title('KRS tidak dapat diajukan')
+                ->body($hasil['pesan'])
+                ->warning()
+                ->send();
+
+            return;
+        }
+
+        Notification::make()
+            ->title($hasil['revisi'] ? 'KRS diajukan kembali untuk persetujuan' : 'KRS diajukan untuk persetujuan')
+            ->success()
+            ->send();
     }
 
+    /**
+     * Buka kembali KRS yang sudah DISETUJUI (kembali ke DRAFT).
+     *
+     * KRS DISETUJUI sudah menambah isi_kelas saat approve, sehingga membuka
+     * kembali WAJIB mengembalikannya (simetris dengan cancel). Tanpa ini,
+     * approve berikutnya menambah isi_kelas untuk kedua kalinya.
+     */
     protected static function bukaKembali(Krs $record, string $catatan): void
     {
-        $record->update([
-            'status_krs' => KrsStatusEnum::DRAFT,
-            'catatan_admin' => $catatan,
-        ]);
+        $pesanGagal = DB::transaction(function () use ($record, $catatan): ?string {
+            $locked = Krs::withoutGlobalScopes()
+                ->whereKey($record->getKey())
+                ->lockForUpdate()
+                ->first();
 
-        DB::table('krs_status_logs')->insert([
-            'krs_id' => $record->getKey(),
-            'aksi' => 'DIBUKA_KEMBALI',
-            'dilakukan_oleh' => Auth::id(),
-            'before_data' => json_encode(['status_krs' => KrsStatusEnum::DISETUJUI->value]),
-            'after_data' => json_encode(['status_krs' => KrsStatusEnum::DRAFT->value]),
-            'catatan' => $catatan,
-            'created_at' => now(),
-        ]);
+            if (! $locked || $locked->status_krs !== KrsStatusEnum::DISETUJUI) {
+                return 'Hanya KRS berstatus Disetujui yang dapat dibuka kembali.';
+            }
+
+            self::kembalikanKapasitas($locked);
+
+            $locked->update([
+                'status_krs' => KrsStatusEnum::DRAFT,
+                'catatan_admin' => $catatan,
+            ]);
+
+            DB::table('krs_status_logs')->insert([
+                'krs_id' => $locked->getKey(),
+                'aksi' => 'DIBUKA_KEMBALI',
+                'dilakukan_oleh' => Auth::id(),
+                'before_data' => json_encode(['status_krs' => KrsStatusEnum::DISETUJUI->value]),
+                'after_data' => json_encode(['status_krs' => KrsStatusEnum::DRAFT->value]),
+                'catatan' => $catatan,
+                'created_at' => now(),
+            ]);
+
+            return null;
+        });
+
+        if ($pesanGagal !== null) {
+            Notification::make()
+                ->title('KRS tidak dapat dibuka kembali')
+                ->body($pesanGagal)
+                ->warning()
+                ->send();
+
+            return;
+        }
 
         Notification::make()->title('KRS dibuka kembali')->body('Status kembali ke Draft untuk direvisi.')->success()->send();
     }
 
     protected static function cancel(Krs $record, string $catatan): void
     {
-        DB::transaction(function () use ($record, $catatan): void {
-            $record->update([
+        $pesanGagal = DB::transaction(function () use ($record, $catatan): ?string {
+            $locked = Krs::withoutGlobalScopes()
+                ->whereKey($record->getKey())
+                ->lockForUpdate()
+                ->first();
+
+            // Status dicek di dalam lock: mencegah isi_kelas dikurangi dua kali
+            // bila tombol ditekan ulang dari tampilan yang sudah usang.
+            if (! $locked || $locked->status_krs !== KrsStatusEnum::DISETUJUI) {
+                return 'Hanya KRS berstatus Disetujui yang dapat dibatalkan.';
+            }
+
+            $locked->update([
                 'status_krs' => KrsStatusEnum::DIBATALKAN,
                 'catatan_admin' => $catatan,
             ]);
 
             // KRS yang disetujui sudah menambah isi_kelas saat approve
             // (observer tidak aktif), jadi pembatalan harus mengembalikannya.
-            $jadwalIds = $record->details()->pluck('jadwal_kuliah_id')->filter()->values()->all();
-
-            if ($jadwalIds !== []) {
-                JadwalKuliah::query()
-                    ->whereIn('id', $jadwalIds)
-                    ->lockForUpdate()
-                    ->decrement('isi_kelas');
-            }
+            self::kembalikanKapasitas($locked);
 
             DB::table('krs_status_logs')->insert([
-                'krs_id' => $record->getKey(),
+                'krs_id' => $locked->getKey(),
                 'aksi' => 'DIBATALKAN',
                 'dilakukan_oleh' => Auth::id(),
                 'before_data' => json_encode(['status_krs' => KrsStatusEnum::DISETUJUI->value]),
@@ -340,13 +441,50 @@ class KrsTable
                 'catatan' => $catatan,
                 'created_at' => now(),
             ]);
+
+            return null;
         });
+
+        if ($pesanGagal !== null) {
+            Notification::make()
+                ->title('KRS tidak dapat dibatalkan')
+                ->body($pesanGagal)
+                ->warning()
+                ->send();
+
+            return;
+        }
 
         Notification::make()
             ->title('KRS dibatalkan')
             ->body('KRS mahasiswa tidak lagi berlaku pada periode ini.')
             ->success()
             ->send();
+    }
+
+    /**
+     * Kembalikan isi_kelas untuk seluruh jadwal pada KRS yang pernah DISETUJUI.
+     * Himpunan jadwal sama persis dengan yang ditambah KrsApprovalService::approve().
+     * Wajib dipanggil di dalam DB::transaction().
+     */
+    protected static function kembalikanKapasitas(Krs $krs): void
+    {
+        $jadwalIds = $krs->details()->pluck('jadwal_kuliah_id')->filter()->values()->all();
+
+        if ($jadwalIds === []) {
+            return;
+        }
+
+        // Kunci baris jadwal terlebih dahulu (urutan lock sama dengan approve).
+        JadwalKuliah::query()
+            ->whereIn('id', $jadwalIds)
+            ->lockForUpdate()
+            ->get(['id']);
+
+        JadwalKuliah::query()
+            ->whereIn('id', $jadwalIds)
+            ->where('isi_kelas', '>', 0)
+            ->decrement('isi_kelas');
     }
 
     protected static function overrideFinance(Krs $record, string $reason): void
