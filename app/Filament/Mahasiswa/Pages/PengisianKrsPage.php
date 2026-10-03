@@ -149,7 +149,7 @@ class PengisianKrsPage extends Page implements HasForms
         | Cek KRS Existing
         |--------------------------------------------------------------------------
         */
-        $this->hasExistingKrs = Krs::where(
+        $existingKrs = Krs::where(
             'mahasiswa_id',
             $this->mahasiswa->id
         )
@@ -157,14 +157,43 @@ class PengisianKrsPage extends Page implements HasForms
                 'tahun_akademik_id',
                 $this->activeTa->id
             )
-            ->exists();
+            ->latest('created_at')
+            ->first();
 
-        if ($this->hasExistingKrs) {
-            $this->setIneligible(
-                'Anda sudah memiliki pengajuan KRS untuk semester ini. Silakan cek menu Riwayat KRS.'
-            );
+        $this->hasExistingKrs = $existingKrs !== null;
 
-            return;
+        if ($existingKrs) {
+            match ($existingKrs->status_krs) {
+                'DIAJUKAN' => $this->setIneligible(
+                    'KRS Anda sedang menunggu persetujuan Dosen Wali.'
+                ),
+
+                'DISETUJUI' => $this->setIneligible(
+                    'KRS Anda untuk semester ini sudah disetujui.'
+                ),
+
+                'DIBATALKAN' => $this->setIneligible(
+                    'KRS Anda telah dibatalkan.'
+                ),
+
+                // DITOLAK → BOLEH LANJUT KE HALAMAN REVISI
+                'DITOLAK' => null,
+
+                // DRAFT → boleh lanjut
+                'DRAFT' => null,
+
+                default => null,
+            };
+
+            if (
+                in_array(
+                    $existingKrs->status_krs,
+                    ['DIAJUKAN', 'DISETUJUI', 'DIBATALKAN'],
+                    true
+                )
+            ) {
+                return;
+            }
         }
 
         /*
