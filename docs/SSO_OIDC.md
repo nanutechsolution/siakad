@@ -108,6 +108,40 @@ Gunakan library OIDC RP yang membaca discovery document; jangan menyalin token k
 - Gunakan scope minimum dan lifetime pendek. Simpan secret di environment lokal/secret manager, bukan `.env.example`, chat, tiket, atau repo.
 - Jangan pernah memakai secret production untuk tes. Setelah tes, nonaktifkan/hapus client sandbox dan revoke token-nya.
 
+## Uji alur dengan Postman
+
+`nonce` **wajib** pada authorization request (OIDC Core) — Siakad menolak request tanpa `nonce`
+dengan `invalid_request` 400. Ini bukan batasan untuk dilewati. Postman mengirim `nonce` secara
+bawaan pada Authorization Code grant (tab **Authorization → PKCE**); bila tidak muncul, tambahkan
+parameter berikut pada URL:
+
+```
+GET /oauth/authorize?response_type=code
+    &client_id=<client_id>
+    &scope=openid%20profile%20email%20siakad_identity%20account_status
+    &redirect_uri=https://oauth.pstmn.io/v1/callback
+    &state=<acak>
+    &nonce=<acak>
+    &code_challenge=<S256>
+    &code_challenge_method=S256
+```
+
+Alur yang diharapkan:
+
+1. **Belum login** → `302` ke portal (`/`); user login di panel; session menyimpan
+   `oidc.return_to`, lalu kembali persis ke `/oauth/authorize?...` (query utuh) —
+   bukan ke dashboard.
+2. **Sudah login + request valid** → halaman consent (`Izinkan akses ke ...`), lalu **Setujui**
+   → `302` ke redirect URI client dengan `code` + `state` (atau `error` bila client menolak).
+3. **Tukar code** → `POST /oauth/token` dengan `grant_type=authorization_code`, `code`,
+   `redirect_uri`, `client_id`, `client_secret`, `code_verifier` → respons berisi
+   `access_token` + `id_token`.
+4. **UserInfo** → `GET /oauth/userinfo` dengan header `Authorization: Bearer <access_token>`.
+
+Kegagalan umum yang disengaja (jangan dikecualikan): `code_challenge_method` selain `S256`,
+tanpa `nonce`, redirect URI tidak terdaftar, akun nonaktif, PKCE verifier salah, dan
+authorization code dipakai ulang.
+
 ## Logout, pencabutan, dan rotasi kunci
 
 - End-session membersihkan session Siakad dan hanya redirect ke URI post-logout yang terdaftar untuk client tersebut. End-session **tidak** mencabut semua token otomatis.

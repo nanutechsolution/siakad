@@ -43,54 +43,175 @@ class KrsValidationService
         RefTahunAkademik $taTarget
     ): KrsValidationResult {
 
-        // Cari semester reguler sebelumnya (abaikan semester pendek)
+        /*
+     * ============================================================
+     * 1. TENTUKAN SEMESTER MULAI STUDI MAHASISWA
+     * ============================================================
+     *
+     * Field mulai_studi_tahun_akademik_id adalah sumber kebenaran
+     * untuk menentukan sejak kapan mahasiswa mulai aktif sebagai
+     * mahasiswa di sistem.
+     */
+        if ($mahasiswa->mulai_studi_tahun_akademik_id) {
+
+            $mulaiStudi = RefTahunAkademik::query()
+                ->find($mahasiswa->mulai_studi_tahun_akademik_id);
+
+            /*
+         * Jika TA target adalah semester pertama mahasiswa,
+         * jangan lakukan validasi gap semester.
+         */
+            if (
+                $mulaiStudi
+                && $mulaiStudi->id === $taTarget->id
+            ) {
+                return KrsValidationResult::pass(
+                    'GATE_KONTINUITAS',
+                    'Mahasiswa baru pada semester ini: validasi gap semester tidak diperlukan.'
+                );
+            }
+        }
+
+        /*
+     * ============================================================
+     * 2. CARI SEMESTER REGULER SEBELUM TA TARGET
+     * ============================================================
+     *
+     * Semester pendek tidak dianggap sebagai semester kontinuitas.
+     */
         $previousTa = RefTahunAkademik::query()
             ->whereIn('semester', [1, 2])
-            ->where('tanggal_mulai', '<', $taTarget->tanggal_mulai)
+            ->where(
+                'tanggal_mulai',
+                '<',
+                $taTarget->tanggal_mulai
+            )
             ->orderByDesc('tanggal_mulai')
             ->first();
-        // Jika belum ada semester sebelumnya (misalnya database baru)
+
+        /*
+     * Belum ada semester reguler sebelumnya.
+     */
         if (!$previousTa) {
-            return KrsValidationResult::pass('GATE_KONTINUITAS');
+            return KrsValidationResult::pass(
+                'GATE_KONTINUITAS',
+                'Belum terdapat semester reguler sebelumnya.'
+            );
         }
 
-        // Apakah mahasiswa pernah memiliki riwayat akademik?
-        $hasAnyHistory = DB::table('riwayat_status_mahasiswas')
-            ->where('mahasiswa_id', $mahasiswa->id)
-            ->exists();
+        /*
+     * ============================================================
+     * 3. JANGAN CEK SEMESTER SEBELUM MAHASISWA MULAI STUDI
+     * ============================================================
+     *
+     * Contoh:
+     *
+     * Mulai studi  : Ganjil 2026/2027
+     * Target KRS   : Ganjil 2026/2027
+     *
+     * Tidak boleh mencari status Genap 2025/2026.
+     *
+     * Ini juga melindungi data mahasiswa baru yang sudah memiliki
+     * record riwayat AKTIF pada TA target.
+     */
+        if ($mahasiswa->mulai_studi_tahun_akademik_id) {
 
-        // Mahasiswa baru -> tidak perlu cek gap semester
-        if (!$hasAnyHistory) {
-            return KrsValidationResult::pass('GATE_KONTINUITAS');
+            $mulaiStudi = RefTahunAkademik::query()
+                ->find($mahasiswa->mulai_studi_tahun_akademik_id);
+
+            if (
+                $mulaiStudi
+                && $previousTa->tanggal_mulai < $mulaiStudi->tanggal_mulai
+            ) {
+                return KrsValidationResult::pass(
+                    'GATE_KONTINUITAS',
+                    'Semester sebelumnya berada sebelum mahasiswa mulai studi.'
+                );
+            }
         }
 
-        // Ambil status pada semester reguler sebelumnya
+        /*
+     * ============================================================
+     * 4. CEK RIWAYAT PADA SEMESTER SEBELUMNYA
+     * ============================================================
+     */
         $riwayatSebelumnya = DB::table('riwayat_status_mahasiswas')
-            ->where('mahasiswa_id', $mahasiswa->id)
-            ->where('tahun_akademik_id', $previousTa->id)
+            ->where(
+                'mahasiswa_id',
+                $mahasiswa->id
+            )
+            ->where(
+                'tahun_akademik_id',
+                $previousTa->id
+            )
             ->first();
 
         $needsDispensasi = false;
         $reason = '';
 
+        /*
+     * Tidak ada riwayat pada semester sebelumnya.
+     */
         if (!$riwayatSebelumnya) {
+
             $needsDispensasi = true;
-            $reason = "Terdeteksi gap semester (tidak ada riwayat pada semester {$previousTa->nama_tahun}).";
-        } elseif ($riwayatSebelumnya->status_kuliah !== StatusKuliah::AKTIF->value) {
+
+            $reason = sprintf(
+                'Terdeteksi gap semester (tidak ada riwayat pada semester %s).',
+                $previousTa->nama_tahun
+            );
+
+            /*
+     * Ada riwayat tetapi status bukan AKTIF.
+     */
+        } elseif (
+            $riwayatSebelumnya->status_kuliah
+            !== StatusKuliah::AKTIF->value
+        ) {
+
             $needsDispensasi = true;
-            $reason = "Status mahasiswa pada semester {$previousTa->nama_tahun} adalah {$riwayatSebelumnya->status_kuliah}, bukan AKTIF.";
+
+            $reason = sprintf(
+                'Status mahasiswa pada semester %s adalah %s, bukan AKTIF.',
+                $previousTa->nama_tahun,
+                $riwayatSebelumnya->status_kuliah
+            );
         }
 
+        /*
+     * ============================================================
+     * 5. CEK DISPENSASI
+     * ============================================================
+     */
         if ($needsDispensasi) {
+
             $hasDispensasi = DB::table('dispensasi_akademiks')
-                ->where('mahasiswa_id', $mahasiswa->id)
-                ->where('jenis', 'KRS')
-                ->where('status', 'AKTIF')
-                ->where('berlaku_mulai', '<=', $taTarget->tgl_selesai_krs)
-                ->where('berlaku_sampai', '>=', $taTarget->tgl_mulai_krs)
+                ->where(
+                    'mahasiswa_id',
+                    $mahasiswa->id
+                )
+                ->where(
+                    'jenis',
+                    'KRS'
+                )
+                ->where(
+                    'status',
+                    'AKTIF'
+                )
+                ->where(
+                    'berlaku_mulai',
+                    '<=',
+                    $taTarget->tgl_selesai_krs
+                )
+                ->where(
+                    'berlaku_sampai',
+                    '>=',
+                    $taTarget->tgl_mulai_krs
+                )
                 ->exists();
 
-            if (! $hasDispensasi) {
+            if (!$hasDispensasi) {
+
                 return KrsValidationResult::fail(
                     'GATE_KONTINUITAS',
                     $reason . ' Wajib memiliki dispensasi KRS yang masih berlaku.'
@@ -98,7 +219,9 @@ class KrsValidationService
             }
         }
 
-        return KrsValidationResult::pass('GATE_KONTINUITAS');
+        return KrsValidationResult::pass(
+            'GATE_KONTINUITAS'
+        );
     }
     public function checkKeuangan(Mahasiswa $mahasiswa, RefTahunAkademik $ta, bool $isOverride = false): KrsValidationResult
     {
