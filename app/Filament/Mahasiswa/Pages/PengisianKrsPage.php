@@ -2,12 +2,15 @@
 
 namespace App\Filament\Mahasiswa\Pages;
 
+use App\Enums\KrsStatusEnum;
 use App\Enums\MahasiswaNavigationGroup;
 use App\Models\JadwalKuliah;
 use App\Models\Krs;
 use App\Models\Mahasiswa;
 use App\Models\RefTahunAkademik;
+use App\Services\Akademik\KrsSubmissionService;
 use App\Services\Akademik\KrsValidationService;
+use DomainException;
 use Filament\Actions\Action;
 use Filament\Actions\Concerns\InteractsWithActions;
 use Filament\Forms\Components\CheckboxList;
@@ -21,7 +24,7 @@ use Filament\Schemas\Schema;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\HtmlString;
-use Illuminate\Support\Str;
+use Livewire\Attributes\Locked;
 use UnitEnum;
 
 class PengisianKrsPage extends Page implements HasForms
@@ -42,20 +45,60 @@ class PengisianKrsPage extends Page implements HasForms
 
     public ?array $data = [];
 
+    /*
+    |--------------------------------------------------------------------------
+    | State halaman
+    |--------------------------------------------------------------------------
+    |
+    | Seluruh property di bawah ditandai #[Locked] supaya tidak dapat diubah
+    | dari browser (Livewire update payload). Hanya server yang boleh
+    | mengubahnya.
+    |
+    */
+    #[Locked]
     public bool $isEligible = true;
 
+    #[Locked]
     public string $eligibilityMessage = '';
 
+    #[Locked]
     public ?Mahasiswa $mahasiswa = null;
 
+    #[Locked]
     public ?RefTahunAkademik $activeTa = null;
 
+    #[Locked]
     public bool $hasExistingKrs = false;
 
+    #[Locked]
     public ?int $activeKelasId = null;
+
+    /** ID KRS existing (DRAFT/DITOLAK) milik mahasiswa pada tahun akademik aktif. */
+    #[Locked]
+    public ?string $existingKrsId = null;
+
+    /** True setelah mahasiswa menekan "Perbaiki KRS" (form revisi tampil). */
+    #[Locked]
+    public bool $isRevision = false;
+
+    /** True bila KRS berstatus DITOLAK dan mahasiswa belum menekan "Perbaiki KRS". */
+    #[Locked]
+    public bool $needsRevision = false;
+
+    #[Locked]
+    public ?string $rejectionReason = null;
+
+    #[Locked]
+    public ?string $rejectedAt = null;
+
+    /** Alasan tombol "Perbaiki KRS" belum dapat dipakai (periode ditutup, tunggakan, dll). */
+    #[Locked]
+    public ?string $revisionBlockMessage = null;
 
     public function mount(): void
     {
+        $this->resetStateKrs();
+
         $this->mahasiswa = Mahasiswa::where(
             'person_id',
             Auth::user()->person_id
@@ -74,153 +117,59 @@ class PengisianKrsPage extends Page implements HasForms
             return;
         }
 
-        $service = app(KrsValidationService::class);
-
         /*
         |--------------------------------------------------------------------------
-        | Status Mahasiswa
+        | KRS Existing
         |--------------------------------------------------------------------------
+        |
+        | Status KRS dicek lebih dulu agar mahasiswa selalu melihat status
+        | terbaru KRS-nya (dan alasan penolakan bila DITOLAK) walaupun gate
+        | lain (periode/keuangan) sedang menutup pengisian.
+        |
         */
-        $valStatus = $service->checkStatusMahasiswa(
-            $this->mahasiswa,
-            $this->activeTa
+        $krs = app(KrsSubmissionService::class)->findKrs(
+            $this->mahasiswa->id,
+            $this->activeTa->id
         );
 
-        if (!$valStatus->passed) {
-            $this->setIneligible($valStatus->message);
+        $this->hasExistingKrs = $krs !== null;
+        $this->existingKrsId = $krs?->getKey();
 
-            return;
-        }
+        if ($krs) {
+            $pesanTerkunci = $this->pesanStatusTerkunci($krs->status_krs);
 
-        /*
-        |--------------------------------------------------------------------------
-        | Keuangan
-        |--------------------------------------------------------------------------
-        */
-        $valKeuangan = $service->checkKeuangan(
-            $this->mahasiswa,
-            $this->activeTa,
-            false
-        );
+            if ($pesanTerkunci !== null) {
+                $this->setIneligible($pesanTerkunci);
 
-        if (!$valKeuangan->passed) {
-            $this->setIneligible($valKeuangan->message);
-
-            return;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Kelas Aktif
-        |--------------------------------------------------------------------------
-        */
-        $this->activeKelasId = DB::table('mahasiswa_kelas')
-            ->where('mahasiswa_id', $this->mahasiswa->id)
-            ->whereNull('tanggal_keluar')
-            ->value('kelas_id');
-
-        if (!$this->activeKelasId) {
-            $this->setIneligible(
-                'Anda belum terdaftar di kelas manapun. Silakan hubungi bagian Akademik/Admin Prodi.'
-            );
-
-            return;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Kelengkapan Penawaran
-        |--------------------------------------------------------------------------
-        */
-        $valPenawaran = $service->checkKelengkapanPenawaranPaket(
-            $this->mahasiswa,
-            $this->activeTa,
-            $this->activeKelasId
-        );
-
-        if (!$valPenawaran->passed) {
-            $this->setIneligible($valPenawaran->message);
-
-            return;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
-        | Cek KRS Existing
-        |--------------------------------------------------------------------------
-        */
-        $existingKrs = Krs::where(
-            'mahasiswa_id',
-            $this->mahasiswa->id
-        )
-            ->where(
-                'tahun_akademik_id',
-                $this->activeTa->id
-            )
-            ->latest('created_at')
-            ->first();
-
-        $this->hasExistingKrs = $existingKrs !== null;
-
-        if ($existingKrs) {
-            match ($existingKrs->status_krs) {
-                'DIAJUKAN' => $this->setIneligible(
-                    'KRS Anda sedang menunggu persetujuan Dosen Wali.'
-                ),
-
-                'DISETUJUI' => $this->setIneligible(
-                    'KRS Anda untuk semester ini sudah disetujui.'
-                ),
-
-                'DIBATALKAN' => $this->setIneligible(
-                    'KRS Anda telah dibatalkan.'
-                ),
-
-                // DITOLAK → BOLEH LANJUT KE HALAMAN REVISI
-                'DITOLAK' => null,
-
-                // DRAFT → boleh lanjut
-                'DRAFT' => null,
-
-                default => null,
-            };
-
-            if (
-                in_array(
-                    $existingKrs->status_krs,
-                    ['DIAJUKAN', 'DISETUJUI', 'DIBATALKAN'],
-                    true
-                )
-            ) {
                 return;
             }
         }
 
+        $pesanGate = $this->evaluateGates();
+
         /*
         |--------------------------------------------------------------------------
-        | Periode KRS
+        | DITOLAK -> tampilkan kartu "KRS Perlu Diperbaiki"
         |--------------------------------------------------------------------------
         */
-        $now = now();
-
-        if (!$this->activeTa->buka_krs) {
-            $this->setIneligible(
-                'Pengisian KRS saat ini ditutup oleh administrator.'
-            );
+        if ($krs && $krs->status_krs === KrsStatusEnum::DITOLAK) {
+            $this->needsRevision = true;
+            $this->rejectionReason = app(KrsSubmissionService::class)->alasanPenolakan($krs);
+            $this->rejectedAt = $krs->ditolak_pada?->format('d M Y, H:i');
+            $this->revisionBlockMessage = $pesanGate;
 
             return;
         }
 
-        if (
-            $now->lt($this->activeTa->tgl_mulai_krs)
-            || $now->gt($this->activeTa->tgl_selesai_krs)
-        ) {
-            $this->setIneligible(
-                'Saat ini BUKAN masa pengisian KRS. Jadwal KRS: '
-                    . $this->activeTa->tgl_mulai_krs->format('d M Y')
-                    . ' s/d '
-                    . $this->activeTa->tgl_selesai_krs->format('d M Y')
-            );
+        if ($pesanGate !== null) {
+            $this->setIneligible($pesanGate);
+
+            return;
+        }
+
+        if ($krs) {
+            // DRAFT: lanjutkan pengeditan dengan pilihan yang sudah tersimpan.
+            $this->form->fill($this->pilihanAwalDariKrs($krs)['state']);
 
             return;
         }
@@ -228,10 +177,298 @@ class PengisianKrsPage extends Page implements HasForms
         $this->form->fill();
     }
 
+    private function resetStateKrs(): void
+    {
+        $this->isEligible = true;
+        $this->eligibilityMessage = '';
+        $this->hasExistingKrs = false;
+        $this->activeKelasId = null;
+        $this->existingKrsId = null;
+        $this->isRevision = false;
+        $this->needsRevision = false;
+        $this->rejectionReason = null;
+        $this->rejectedAt = null;
+        $this->revisionBlockMessage = null;
+    }
+
     private function setIneligible(string $message): void
     {
         $this->isEligible = false;
         $this->eligibilityMessage = $message;
+        $this->needsRevision = false;
+        $this->isRevision = false;
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Gate Pengisian KRS
+    |--------------------------------------------------------------------------
+    |
+    | Dipakai oleh mount(), mulaiRevisi(), dan simpanKrs() sehingga syarat
+    | pengisian selalu dihitung ulang di server pada setiap langkah.
+    | Mengembalikan pesan kegagalan, atau null bila seluruh gate lolos.
+    | Sebagai efek samping mengisi $activeKelasId.
+    |
+    */
+    private function evaluateGates(): ?string
+    {
+        if (!$this->mahasiswa || !$this->activeTa) {
+            return 'Data Mahasiswa atau Tahun Akademik aktif tidak ditemukan.';
+        }
+
+        $service = app(KrsValidationService::class);
+
+        $valStatus = $service->checkStatusMahasiswa(
+            $this->mahasiswa,
+            $this->activeTa
+        );
+
+        if (!$valStatus->passed) {
+            return $valStatus->message ?? 'Status mahasiswa belum memenuhi syarat pengisian KRS.';
+        }
+
+        $valKeuangan = $service->checkKeuangan(
+            $this->mahasiswa,
+            $this->activeTa,
+            false
+        );
+
+        if (!$valKeuangan->passed) {
+            return $valKeuangan->message ?? 'Syarat keuangan belum terpenuhi.';
+        }
+
+        $kelasId = DB::table('mahasiswa_kelas')
+            ->where('mahasiswa_id', $this->mahasiswa->id)
+            ->whereNull('tanggal_keluar')
+            ->value('kelas_id');
+
+        if (!$kelasId) {
+            return 'Anda belum terdaftar di kelas manapun. Silakan hubungi bagian Akademik/Admin Prodi.';
+        }
+
+        $this->activeKelasId = (int) $kelasId;
+
+        $valPenawaran = $service->checkKelengkapanPenawaranPaket(
+            $this->mahasiswa,
+            $this->activeTa,
+            $this->activeKelasId
+        );
+
+        if (!$valPenawaran->passed) {
+            return $valPenawaran->message ?? 'Penawaran mata kuliah belum lengkap.';
+        }
+
+        if (!$this->activeTa->buka_krs) {
+            return 'Pengisian KRS saat ini ditutup oleh administrator.';
+        }
+
+        $now = now();
+
+        if (
+            $now->lt($this->activeTa->tgl_mulai_krs)
+            || $now->gt($this->activeTa->tgl_selesai_krs)
+        ) {
+            return 'Saat ini BUKAN masa pengisian KRS. Jadwal KRS: '
+                . $this->activeTa->tgl_mulai_krs->format('d M Y')
+                . ' s/d '
+                . $this->activeTa->tgl_selesai_krs->format('d M Y');
+        }
+
+        return null;
+    }
+
+    /**
+     * Pesan untuk status KRS yang tidak boleh diubah mahasiswa.
+     * null = status masih boleh diproses (DRAFT / DITOLAK).
+     */
+    private function pesanStatusTerkunci(?KrsStatusEnum $status): ?string
+    {
+        return match ($status) {
+            KrsStatusEnum::DIAJUKAN => 'KRS Anda sedang menunggu persetujuan Dosen Wali.',
+            KrsStatusEnum::DISETUJUI => 'KRS Anda untuk semester ini sudah disetujui.',
+            KrsStatusEnum::DIBATALKAN => 'KRS Anda telah dibatalkan.',
+            default => null,
+        };
+    }
+
+    /*
+    |--------------------------------------------------------------------------
+    | Mode Revisi (KRS DITOLAK)
+    |--------------------------------------------------------------------------
+    |
+    | Dipanggil dari tombol "Perbaiki KRS". Tidak membuat/mengubah data:
+    | hanya membuka form dengan pilihan KRS sebelumnya.
+    |
+    */
+    public function mulaiRevisi(): void
+    {
+        if (!$this->needsRevision || !$this->mahasiswa || !$this->activeTa) {
+            return;
+        }
+
+        $krs = app(KrsSubmissionService::class)->findKrs(
+            $this->mahasiswa->id,
+            $this->activeTa->id
+        );
+
+        // Status berubah sejak halaman dimuat -> muat ulang state dari awal.
+        if (!$krs || $krs->status_krs !== KrsStatusEnum::DITOLAK) {
+            $this->mount();
+
+            return;
+        }
+
+        $pesanGate = $this->evaluateGates();
+
+        if ($pesanGate !== null) {
+            $this->revisionBlockMessage = $pesanGate;
+
+            Notification::make()
+                ->danger()
+                ->title('KRS Belum Dapat Diperbaiki')
+                ->body($pesanGate)
+                ->send();
+
+            return;
+        }
+
+        $pilihan = $this->pilihanAwalDariKrs($krs);
+
+        $this->revisionBlockMessage = null;
+        $this->needsRevision = false;
+        $this->isRevision = true;
+
+        $this->form->fill($pilihan['state']);
+
+        if ($pilihan['hilang'] > 0) {
+            Notification::make()
+                ->warning()
+                ->title('Sebagian Pilihan Sebelumnya Tidak Tersedia')
+                ->body(
+                    "{$pilihan['hilang']} mata kuliah pada KRS sebelumnya sudah tidak tersedia pada jadwal "
+                        . 'semester ini dan tidak dimuat. Silakan pilih kembali bila diperlukan.'
+                )
+                ->persistent()
+                ->send();
+        }
+    }
+
+    /**
+     * State awal form dari detail KRS yang tersimpan.
+     *
+     * @return array{state: array{jadwal_kuliah_ids: list<string>, jadwal_mengulang_ids: list<string>}, hilang: int}
+     */
+    private function pilihanAwalDariKrs(Krs $krs): array
+    {
+        $tersimpan = app(KrsSubmissionService::class)->pilihanTersimpan($krs);
+
+        $tersediaUtama = $this->jadwalUtamaTersedia();
+        $tersediaMengulang = $this->jadwalMengulangTersedia();
+
+        $hilang = 0;
+
+        if ($this->isModePaket()) {
+            // Mode PAKET: mata kuliah utama selalu paket kelas saat ini.
+            $utama = $tersediaUtama;
+        } else {
+            $utama = array_values(array_intersect($tersimpan['utama'], $tersediaUtama));
+            $hilang += count($tersimpan['utama']) - count($utama);
+        }
+
+        if ($this->tampilkanMataKuliahTambahan()) {
+            $mengulang = array_values(array_intersect($tersimpan['mengulang'], $tersediaMengulang));
+            $hilang += count($tersimpan['mengulang']) - count($mengulang);
+        } else {
+            $mengulang = [];
+        }
+
+        return [
+            'state' => [
+                'jadwal_kuliah_ids' => $utama,
+                'jadwal_mengulang_ids' => $mengulang,
+            ],
+            'hilang' => max(0, $hilang),
+        ];
+    }
+
+    private function isModePaket(): bool
+    {
+        return ($this->mahasiswa?->kurikulum?->mode_krs ?? 'PAKET') === 'PAKET';
+    }
+
+    private function tampilkanMataKuliahTambahan(): bool
+    {
+        if (!$this->mahasiswa || !$this->activeTa) {
+            return false;
+        }
+
+        return $this->mahasiswa->semesterPada($this->activeTa) > 2;
+    }
+
+    /**
+     * ID jadwal kelas mahasiswa pada tahun akademik aktif (mata kuliah utama).
+     *
+     * @return list<string>
+     */
+    private function jadwalUtamaTersedia(): array
+    {
+        if (!$this->activeTa || !$this->activeKelasId) {
+            return [];
+        }
+
+        return JadwalKuliah::query()
+            ->where('tahun_akademik_id', $this->activeTa->id)
+            ->where('kelas_id', $this->activeKelasId)
+            ->pluck('id')
+            ->map(fn($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * ID jadwal kelas lain pada prodi yang sama (mata kuliah tambahan/mengulang).
+     *
+     * @return list<string>
+     */
+    private function jadwalMengulangTersedia(): array
+    {
+        if (!$this->mahasiswa || !$this->activeTa || !$this->activeKelasId) {
+            return [];
+        }
+
+        return JadwalKuliah::query()
+            ->where('tahun_akademik_id', $this->activeTa->id)
+            ->whereHas('kelas', function ($query) {
+                $query->where('prodi_id', $this->mahasiswa->prodi_id);
+            })
+            ->where('kelas_id', '!=', $this->activeKelasId)
+            ->pluck('id')
+            ->map(fn($id) => (string) $id)
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<int, string>  $jadwalIds
+     */
+    private function hitungSks(array $jadwalIds): int
+    {
+        if ($jadwalIds === []) {
+            return 0;
+        }
+
+        return (int) DB::table('jadwal_kuliah')
+            ->join(
+                'master_mata_kuliahs',
+                'master_mata_kuliahs.id',
+                '=',
+                'jadwal_kuliah.mata_kuliah_id'
+            )
+            ->whereIn(
+                'jadwal_kuliah.id',
+                $jadwalIds
+            )
+            ->sum('master_mata_kuliahs.sks_default');
     }
 
     /*
@@ -239,25 +476,39 @@ class PengisianKrsPage extends Page implements HasForms
     | Filament Action
     |--------------------------------------------------------------------------
     |
-    | Tombol "Ajukan KRS" akan membuka modal konfirmasi.
+    | Tombol "Ajukan KRS" / "Ajukan Kembali KRS" membuka modal konfirmasi.
     |
     */
     public function ajukanKrsAction(): Action
     {
         return Action::make('ajukanKrs')
-            ->label('Ya, Ajukan KRS')
+            ->label(fn(): string => $this->isRevision
+                ? 'Ya, Ajukan Kembali KRS'
+                : 'Ya, Ajukan KRS')
             ->icon('heroicon-o-paper-airplane')
             ->color('primary')
-            ->modalHeading('Konfirmasi Pengajuan KRS')
+            ->visible(fn(): bool => $this->isEligible && !$this->needsRevision)
+            ->modalHeading(fn(): string => $this->isRevision
+                ? 'Konfirmasi Pengajuan Kembali KRS'
+                : 'Konfirmasi Pengajuan KRS')
             ->modalDescription(function (): string {
                 $summary = $this->getCurrentKrsSummary();
+
+                if ($this->isRevision) {
+                    return "Anda akan mengajukan kembali KRS dengan {$summary['totalMk']} "
+                        . "mata kuliah dan total {$summary['totalSks']} SKS "
+                        . "untuk Tahun Akademik {$this->activeTa?->nama_tahun}. "
+                        . 'Setelah diajukan kembali, KRS akan diperiksa ulang oleh Dosen Wali.';
+                }
 
                 return "Anda akan mengajukan {$summary['totalMk']} "
                     . "mata kuliah dengan total {$summary['totalSks']} SKS "
                     . "untuk Tahun Akademik {$this->activeTa?->nama_tahun}. "
-                    . "Setelah diajukan, KRS akan masuk ke proses persetujuan Dosen Wali.";
+                    . 'Setelah diajukan, KRS akan masuk ke proses persetujuan Dosen Wali.';
             })
-            ->modalSubmitActionLabel('Ya, Ajukan KRS')
+            ->modalSubmitActionLabel(fn(): string => $this->isRevision
+                ? 'Ya, Ajukan Kembali KRS'
+                : 'Ya, Ajukan KRS')
             ->modalCancelActionLabel('Periksa Kembali')
             ->modalIcon('heroicon-o-paper-airplane')
             ->modalIconColor('primary')
@@ -287,29 +538,9 @@ class PengisianKrsPage extends Page implements HasForms
             )
         );
 
-        if (empty($selectedIds)) {
-            return [
-                'totalMk' => 0,
-                'totalSks' => 0,
-            ];
-        }
-
-        $totalSks = (int) DB::table('jadwal_kuliah')
-            ->join(
-                'master_mata_kuliahs',
-                'master_mata_kuliahs.id',
-                '=',
-                'jadwal_kuliah.mata_kuliah_id'
-            )
-            ->whereIn(
-                'jadwal_kuliah.id',
-                $selectedIds
-            )
-            ->sum('master_mata_kuliahs.sks_default');
-
         return [
             'totalMk' => count($selectedIds),
-            'totalSks' => $totalSks,
+            'totalSks' => $this->hitungSks($selectedIds),
         ];
     }
 
@@ -412,18 +643,7 @@ class PengisianKrsPage extends Page implements HasForms
                     ->description(
                         'Pilih mata kuliah dari kelas lain jika Anda ingin mengulang atau mengambil mata kuliah tambahan.'
                     )
-                    ->visible(function () {
-                        if (
-                            !$this->mahasiswa
-                            || !$this->activeTa
-                        ) {
-                            return false;
-                        }
-
-                        return $this->mahasiswa->semesterPada(
-                            $this->activeTa
-                        ) > 2;
-                    })
+                    ->visible(fn(): bool => $this->tampilkanMataKuliahTambahan())
                     ->schema([
                         CheckboxList::make('jadwal_mengulang_ids')
                             ->label('')
@@ -481,7 +701,8 @@ class PengisianKrsPage extends Page implements HasForms
                             ->searchable()
                             ->columns(1),
                     ])
-                    ->collapsed(),
+                    // Terbuka otomatis bila sudah ada pilihan tambahan (draft/revisi).
+                    ->collapsed(fn(): bool => blank($this->data['jadwal_mengulang_ids'] ?? [])),
             ])
             ->statePath('data');
     }
@@ -504,24 +725,9 @@ class PengisianKrsPage extends Page implements HasForms
             )
         );
 
-        $totalSks = 0;
-
         $totalMk = count($selectedIds);
 
-        if ($totalMk > 0) {
-            $totalSks = (int) DB::table('jadwal_kuliah')
-                ->join(
-                    'master_mata_kuliahs',
-                    'master_mata_kuliahs.id',
-                    '=',
-                    'jadwal_kuliah.mata_kuliah_id'
-                )
-                ->whereIn(
-                    'jadwal_kuliah.id',
-                    $selectedIds
-                )
-                ->sum('master_mata_kuliahs.sks_default');
-        }
+        $totalSks = $this->hitungSks($selectedIds);
 
         $semesterMhs = $this->mahasiswa->semesterPada(
             $this->activeTa
@@ -580,25 +786,114 @@ class PengisianKrsPage extends Page implements HasForms
     |--------------------------------------------------------------------------
     | Simpan KRS
     |--------------------------------------------------------------------------
+    |
+    | Alur:
+    |  1. Guard state + hitung ulang seluruh gate di server.
+    |  2. Cek status KRS existing (terkunci / DITOLAK harus lewat "Perbaiki KRS").
+    |  3. Validasi SKS, bentrok, kuota (sama seperti pengajuan baru).
+    |  4. Persistensi lewat KrsSubmissionService (baru / DRAFT / revisi DITOLAK).
+    |
     */
     public function simpanKrs(): void
     {
-        if (!$this->isEligible) {
+        if (!$this->isEligible || !$this->mahasiswa || !$this->activeTa) {
             return;
         }
 
+        // Kartu "KRS Perlu Diperbaiki" belum dilewati -> submit tidak sah.
+        if ($this->needsRevision && !$this->isRevision) {
+            return;
+        }
+
+        $submissionService = app(KrsSubmissionService::class);
+
+        /*
+        |--------------------------------------------------------------------------
+        | Gate (status mahasiswa, keuangan, kelas, penawaran, periode)
+        |--------------------------------------------------------------------------
+        */
+        $pesanGate = $this->evaluateGates();
+
+        if ($pesanGate !== null) {
+            Notification::make()
+                ->danger()
+                ->title('KRS Belum Dapat Diajukan')
+                ->body($pesanGate)
+                ->send();
+
+            return;
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Status KRS Existing
+        |--------------------------------------------------------------------------
+        */
+        $existing = $submissionService->findKrs(
+            $this->mahasiswa->id,
+            $this->activeTa->id
+        );
+
+        if ($existing) {
+            $pesanTerkunci = $this->pesanStatusTerkunci($existing->status_krs);
+
+            if ($pesanTerkunci !== null) {
+                Notification::make()
+                    ->warning()
+                    ->title('KRS Tidak Dapat Diubah')
+                    ->body($pesanTerkunci)
+                    ->send();
+
+                $this->setIneligible($pesanTerkunci);
+
+                return;
+            }
+
+            if ($existing->status_krs === KrsStatusEnum::DITOLAK && !$this->isRevision) {
+                Notification::make()
+                    ->warning()
+                    ->title('KRS Perlu Diperbaiki Terlebih Dahulu')
+                    ->body('Muat ulang halaman, lalu tekan tombol "Perbaiki KRS".')
+                    ->send();
+
+                return;
+            }
+        }
+
+        /*
+        |--------------------------------------------------------------------------
+        | Pilihan Mata Kuliah (diverifikasi terhadap data server)
+        |--------------------------------------------------------------------------
+        */
         $data = $this->form->getState();
 
-        $jadwalUtama = $data['jadwal_kuliah_ids'] ?? [];
+        $jadwalUtama = $this->isModePaket()
+            ? $this->jadwalUtamaTersedia()
+            : array_map('strval', $data['jadwal_kuliah_ids'] ?? []);
 
-        $jadwalMengulang = $data['jadwal_mengulang_ids'] ?? [];
+        $jadwalMengulang = $this->tampilkanMataKuliahTambahan()
+            ? array_map('strval', $data['jadwal_mengulang_ids'] ?? [])
+            : [];
 
-        $jadwalIds = array_unique(
+        if (
+            array_diff($jadwalUtama, $this->jadwalUtamaTersedia()) !== []
+            || array_diff($jadwalMengulang, $this->jadwalMengulangTersedia()) !== []
+        ) {
+            Notification::make()
+                ->danger()
+                ->title('Pilihan Mata Kuliah Tidak Valid')
+                ->body('Terdapat mata kuliah yang tidak tersedia. Muat ulang halaman lalu coba lagi.')
+                ->send();
+
+            return;
+        }
+
+        $jadwalIds = array_values(array_unique(
             array_merge(
                 $jadwalUtama,
                 $jadwalMengulang
             )
-        );
+        ));
 
         if (empty($jadwalIds)) {
             Notification::make()
@@ -616,42 +911,10 @@ class PengisianKrsPage extends Page implements HasForms
 
         /*
         |--------------------------------------------------------------------------
-        | Validasi Penawaran
-        |--------------------------------------------------------------------------
-        */
-        $valPenawaran = $service->checkKelengkapanPenawaranPaket(
-            $this->mahasiswa,
-            $this->activeTa,
-            $this->activeKelasId
-        );
-
-        if (!$valPenawaran->passed) {
-            Notification::make()
-                ->danger()
-                ->title('KRS Belum Dapat Diajukan')
-                ->body($valPenawaran->message)
-                ->send();
-
-            return;
-        }
-
-        /*
-        |--------------------------------------------------------------------------
         | Total SKS
         |--------------------------------------------------------------------------
         */
-        $totalSksDiambil = (int) DB::table('jadwal_kuliah')
-            ->join(
-                'master_mata_kuliahs',
-                'master_mata_kuliahs.id',
-                '=',
-                'jadwal_kuliah.mata_kuliah_id'
-            )
-            ->whereIn(
-                'jadwal_kuliah.id',
-                $jadwalIds
-            )
-            ->sum('master_mata_kuliahs.sks_default');
+        $totalSksDiambil = $this->hitungSks($jadwalIds);
 
         /*
         |--------------------------------------------------------------------------
@@ -688,18 +951,7 @@ class PengisianKrsPage extends Page implements HasForms
         | SKS Mengulang
         |--------------------------------------------------------------------------
         */
-        $totalSksMengulang = (int) DB::table('jadwal_kuliah')
-            ->join(
-                'master_mata_kuliahs',
-                'master_mata_kuliahs.id',
-                '=',
-                'jadwal_kuliah.mata_kuliah_id'
-            )
-            ->whereIn(
-                'jadwal_kuliah.id',
-                $jadwalMengulang
-            )
-            ->sum('master_mata_kuliahs.sks_default');
+        $totalSksMengulang = $this->hitungSks($jadwalMengulang);
 
         /*
         |--------------------------------------------------------------------------
@@ -746,6 +998,11 @@ class PengisianKrsPage extends Page implements HasForms
         |--------------------------------------------------------------------------
         | Validasi Kuota
         |--------------------------------------------------------------------------
+        |
+        | Hanya membaca isi_kelas. KRS DITOLAK/DRAFT belum menjadi peserta
+        | kelas, jadi revisi tidak mengubah isi_kelas (berubah hanya saat
+        | approve / batalkan / buka kembali).
+        |
         */
         $valKuota = $service->checkKuotaKelas(
             $jadwalIds
@@ -766,110 +1023,37 @@ class PengisianKrsPage extends Page implements HasForms
         | Simpan
         |--------------------------------------------------------------------------
         */
-        DB::beginTransaction();
-
         try {
-            $krsId = Str::uuid()->toString();
-
-            $pembimbingAkademik = app(
-                \App\Services\Akademik\PembimbingAkademikResolver::class
-            )->dosenWaliAktif(
-                $this->mahasiswa
+            $hasil = $submissionService->ajukan(
+                $this->mahasiswa,
+                $this->activeTa,
+                (int) $this->activeKelasId,
+                $jadwalUtama,
+                $jadwalMengulang,
             );
-
-            $dosenWaliId = $pembimbingAkademik?->dosen_id;
-
-            $isPaket = (
-                $this->mahasiswa->kurikulum?->mode_krs
-                ?? 'PAKET'
-            ) === 'PAKET';
-
-            DB::table('krs')->insert([
-                'id' => $krsId,
-                'mahasiswa_id' => $this->mahasiswa->id,
-                'tahun_akademik_id' => $this->activeTa->id,
-                'kelas_id' => $this->activeKelasId,
-                'dosen_wali_id' => $dosenWaliId,
-                'is_paket_snapshot' => $isPaket,
-                'diajukan_at' => now(),
-                'status_krs' => 'DIAJUKAN',
-                'total_sks_diambil' => $totalSksDiambil,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
-
-            $detailInserts = [];
-
-            foreach ($jadwalIds as $jId) {
-                $jadwal = JadwalKuliah::with(
-                    'mataKuliah'
-                )->find($jId);
-
-                if (!$jadwal || !$jadwal->mataKuliah) {
-                    throw new \RuntimeException(
-                        'Data mata kuliah pada jadwal tidak ditemukan.'
-                    );
-                }
-
-                $statusAmbil = in_array(
-                    $jId,
-                    $jadwalMengulang,
-                    true
-                )
-                    ? 'U'
-                    : 'B';
-
-                $detailInserts[] = [
-                    'krs_id' => $krsId,
-                    'jadwal_kuliah_id' => $jId,
-                    'mata_kuliah_id' => $jadwal->mata_kuliah_id,
-                    'kode_mk_snapshot' => $jadwal->mataKuliah->kode_mk,
-                    'nama_mk_snapshot' => $jadwal->mataKuliah->nama_mk,
-                    'sks_snapshot' => $jadwal->mataKuliah->sks_default,
-                    'activity_type_snapshot' =>
-                    $jadwal->activity_type ?? 'REGULAR',
-                    'status_ambil' => $statusAmbil,
-                    'nilai_angka' => 0,
-                    'nilai_huruf' => null,
-                    'nilai_indeks' => 0,
-                    'is_published' => false,
-                    'is_locked' => false,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ];
-            }
-
-            DB::table('krs_detail')->insert(
-                $detailInserts
-            );
-
-            DB::table('krs_status_logs')->insert([
-                'krs_id' => $krsId,
-                'aksi' => 'DIAJUKAN',
-                'dilakukan_oleh' => Auth::id(),
-                'catatan' =>
-                'KRS diajukan secara mandiri oleh mahasiswa.',
-                'created_at' => now(),
-            ]);
-
-            DB::commit();
-
+        } catch (DomainException $e) {
             Notification::make()
-                ->success()
-                ->title('KRS Berhasil Diajukan')
-                ->body(
-                    'KRS Anda berhasil diajukan dan menunggu persetujuan Dosen Wali.'
-                )
+                ->danger()
+                ->title('KRS Belum Dapat Diajukan')
+                ->body($e->getMessage())
                 ->send();
 
-            $this->hasExistingKrs = true;
-
-            $this->setIneligible(
-                'KRS Anda berhasil diajukan. Silakan pantau status persetujuan di menu Riwayat KRS.'
+            // Status mungkin berubah saat proses berjalan (mis. sudah diajukan di tab lain).
+            $terbaru = $submissionService->findKrs(
+                $this->mahasiswa->id,
+                $this->activeTa->id
             );
-        } catch (\Throwable $e) {
-            DB::rollBack();
 
+            if ($terbaru) {
+                $pesanTerkunci = $this->pesanStatusTerkunci($terbaru->status_krs);
+
+                if ($pesanTerkunci !== null) {
+                    $this->setIneligible($pesanTerkunci);
+                }
+            }
+
+            return;
+        } catch (\Throwable $e) {
             report($e);
 
             Notification::make()
@@ -879,6 +1063,28 @@ class PengisianKrsPage extends Page implements HasForms
                     'Terjadi kesalahan saat menyimpan KRS. Silakan coba lagi atau hubungi Admin Prodi.'
                 )
                 ->send();
+
+            return;
         }
+
+        Notification::make()
+            ->success()
+            ->title($hasil->revisi ? 'KRS Berhasil Diajukan Kembali' : 'KRS Berhasil Diajukan')
+            ->body(
+                $hasil->revisi
+                    ? 'Perbaikan KRS Anda berhasil diajukan kembali dan menunggu persetujuan Dosen Wali.'
+                    : 'KRS Anda berhasil diajukan dan menunggu persetujuan Dosen Wali.'
+            )
+            ->send();
+
+        $this->hasExistingKrs = true;
+        $this->existingKrsId = $hasil->krsId;
+        $this->revisionBlockMessage = null;
+
+        $this->setIneligible(
+            $hasil->revisi
+                ? 'KRS Anda berhasil diajukan kembali. Silakan pantau status persetujuan di menu Riwayat KRS.'
+                : 'KRS Anda berhasil diajukan. Silakan pantau status persetujuan di menu Riwayat KRS.'
+        );
     }
 }

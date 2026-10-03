@@ -248,7 +248,219 @@
 
     </div>
 
+    @elseif($needsRevision)
+
+    {{-- ============================================================
+             KRS DITOLAK — KARTU "KRS PERLU DIPERBAIKI"
+        ============================================================= --}}
+
+    <div class="mx-auto max-w-3xl">
+
+        <div class="overflow-hidden rounded-2xl bg-white shadow-sm ring-1 ring-gray-950/5 dark:bg-gray-900 dark:ring-white/10">
+
+            {{-- Header --}}
+            <div class="border-b border-gray-200 bg-danger-50 px-4 py-5 dark:border-white/10 dark:bg-danger-950/30 sm:px-6">
+
+                <div class="flex items-start gap-4">
+
+                    <div class="flex h-12 w-12 shrink-0 items-center justify-center rounded-full bg-danger-100 dark:bg-danger-900/50">
+
+                        <x-filament::icon
+                            icon="heroicon-o-x-circle"
+                            class="h-7 w-7 text-danger-600 dark:text-danger-400" />
+
+                    </div>
+
+                    <div class="min-w-0">
+
+                        <h2 class="text-lg font-bold text-gray-950 dark:text-white sm:text-xl">
+                            KRS Perlu Diperbaiki
+                        </h2>
+
+                        <p class="mt-1 text-sm text-gray-600 dark:text-gray-400">
+                            Dosen Wali menolak pengajuan KRS Anda. Silakan perbaiki lalu ajukan kembali.
+                        </p>
+
+                    </div>
+
+                </div>
+
+            </div>
+
+
+            {{-- Content --}}
+            <div class="space-y-5 p-4 sm:p-6">
+
+                {{-- Informasi KRS --}}
+                <dl class="grid grid-cols-1 gap-4 rounded-xl bg-gray-50 p-4 dark:bg-gray-800/50 sm:grid-cols-3">
+
+                    <div class="min-w-0">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Tahun Akademik
+                        </dt>
+                        <dd class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
+                            {{ $activeTa?->nama_tahun ?? '-' }}
+                        </dd>
+                    </div>
+
+                    <div class="min-w-0">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Semester
+                        </dt>
+                        <dd class="mt-1 text-sm font-semibold text-gray-950 dark:text-white">
+                            @php
+                            $semesterKe = ($mahasiswa && $activeTa) ? $mahasiswa->semesterPada($activeTa) : null;
+                            @endphp
+                            {{ $semesterKe ? 'Semester ' . $semesterKe : '-' }}
+                        </dd>
+                    </div>
+
+                    <div class="min-w-0">
+                        <dt class="text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-gray-400">
+                            Status
+                        </dt>
+                        <dd class="mt-1">
+                            <x-filament::badge color="danger">
+                                Ditolak
+                            </x-filament::badge>
+                        </dd>
+                    </div>
+
+                </dl>
+
+
+                {{-- Alasan penolakan --}}
+                <div class="rounded-xl bg-danger-50 p-4 ring-1 ring-danger-200 dark:bg-danger-950/30 dark:ring-danger-800">
+
+                    <div class="flex gap-3">
+
+                        <x-filament::icon
+                            icon="heroicon-o-chat-bubble-left-ellipsis"
+                            class="mt-0.5 h-5 w-5 shrink-0 text-danger-600 dark:text-danger-400" />
+
+                        <div class="min-w-0">
+
+                            <p class="font-semibold text-danger-800 dark:text-danger-300">
+                                Alasan Penolakan
+                            </p>
+
+                            <p class="mt-1 whitespace-pre-line break-words text-sm leading-6 text-danger-700 dark:text-danger-400">
+                                {{ filled($rejectionReason) ? $rejectionReason : 'Dosen Wali tidak mencantumkan alasan penolakan.' }}
+                            </p>
+
+                            @if(filled($rejectedAt))
+                            <p class="mt-2 text-xs text-danger-600/80 dark:text-danger-400/80">
+                                Ditolak pada {{ $rejectedAt }}
+                            </p>
+                            @endif
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+
+                {{-- Pesan jika perbaikan belum dapat dilakukan --}}
+                @if(filled($revisionBlockMessage))
+
+                <div class="rounded-xl bg-warning-50 p-4 ring-1 ring-warning-200 dark:bg-warning-950/30 dark:ring-warning-800">
+
+                    <div class="flex gap-3">
+
+                        <x-filament::icon
+                            icon="heroicon-o-exclamation-triangle"
+                            class="mt-0.5 h-5 w-5 shrink-0 text-warning-600 dark:text-warning-400" />
+
+                        <div class="min-w-0">
+
+                            <p class="font-semibold text-warning-800 dark:text-warning-300">
+                                KRS Belum Dapat Diperbaiki Saat Ini
+                            </p>
+
+                            <p class="mt-1 break-words text-sm text-warning-700 dark:text-warning-400">
+                                {{ $revisionBlockMessage }}
+                            </p>
+
+                        </div>
+
+                    </div>
+
+                </div>
+
+                @endif
+
+
+                {{-- Aksi --}}
+                <div class="flex flex-col gap-3 pt-1 sm:flex-row sm:items-center sm:justify-between">
+
+                    <p class="text-xs text-gray-500 dark:text-gray-400">
+                        Perbaiki mata kuliah atau jadwal sesuai catatan Dosen Wali,
+                        lalu ajukan kembali KRS Anda.
+                    </p>
+
+                    <x-filament::button
+                        wire:click="mulaiRevisi"
+                        wire:loading.attr="disabled"
+                        wire:target="mulaiRevisi"
+                        :disabled="filled($revisionBlockMessage)"
+                        icon="heroicon-o-pencil-square"
+                        size="lg"
+                        class="w-full sm:w-auto">
+                        Perbaiki KRS
+                    </x-filament::button>
+
+                </div>
+
+            </div>
+
+        </div>
+
+    </div>
+
     @else
+
+    {{-- ============================================================
+             MODE REVISI (setelah klik "Perbaiki KRS")
+        ============================================================= --}}
+
+    @if($isRevision)
+
+    <div class="mb-6 overflow-hidden rounded-2xl border border-warning-200 bg-warning-50 dark:border-warning-800 dark:bg-warning-950/30">
+        <div class="p-4 sm:p-6">
+            <div class="flex items-start gap-4">
+                <div class="flex h-11 w-11 shrink-0 items-center justify-center rounded-xl bg-warning-100 text-warning-600 dark:bg-warning-900/60 dark:text-warning-300">
+                    <x-heroicon-o-pencil-square class="h-6 w-6" />
+                </div>
+
+                <div class="min-w-0">
+                    <h2 class="text-lg font-bold text-warning-950 dark:text-warning-100 sm:text-xl">
+                        Mode Revisi KRS
+                    </h2>
+
+                    <p class="mt-1 text-sm leading-6 text-warning-800 dark:text-warning-200">
+                        Pilihan KRS sebelumnya sudah dimuat. Ubah mata kuliah atau jadwal
+                        sesuai catatan Dosen Wali, lalu ajukan kembali.
+                    </p>
+                </div>
+            </div>
+
+            @if(filled($rejectionReason))
+            <div class="mt-4 rounded-xl bg-white/70 px-4 py-3 ring-1 ring-warning-200 dark:bg-gray-900/40 dark:ring-warning-800">
+                <p class="text-xs font-semibold uppercase tracking-wide text-warning-700 dark:text-warning-300">
+                    Alasan Penolakan
+                </p>
+
+                <p class="mt-1 whitespace-pre-line break-words text-sm leading-6 text-warning-900 dark:text-warning-100">
+                    {{ $rejectionReason }}
+                </p>
+            </div>
+            @endif
+        </div>
+    </div>
+
+    @endif
+
 
     {{-- ============================================================
              HEADER
@@ -289,8 +501,13 @@
                 <p class="text-sm leading-5 text-primary-800 dark:text-primary-200">
                     <span class="font-semibold">Yang perlu Anda lakukan:</span>
                     periksa mata kuliah, jadwal, dosen, dan ruang.
+                    @if($isRevision)
+                    Jika sudah benar, lanjutkan dengan
+                    <strong>Ajukan Kembali KRS</strong>.
+                    @else
                     Jika sudah benar, lanjutkan dengan
                     <strong>Ajukan KRS ke Dosen Wali</strong>.
+                    @endif
                 </p>
             </div>
             @endif
@@ -307,21 +524,32 @@
         {{ $this->form }}
 
         <div class="mt-6">
-            <div class="flex flex-col items-center gap-3 sm:flex-row sm:justify-end">
+            <div class="flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-end">
 
                 <x-filament::button
                     wire:click="mountAction('ajukanKrs')"
                     icon="heroicon-o-paper-airplane"
-                    size="lg">
+                    size="lg"
+                    class="w-full sm:w-auto">
+                    @if($isRevision)
+                    Ajukan Kembali KRS
+                    @else
                     Ajukan KRS ke Dosen Wali
+                    @endif
                 </x-filament::button>
 
             </div>
 
+            @if($isRevision)
+            <p class="mt-2 text-center text-xs text-gray-500 sm:text-right dark:text-gray-400">
+                Periksa kembali perubahan KRS Anda sebelum mengajukan kembali kepada Dosen Wali.
+            </p>
+            @else
             <p class="mt-2 text-center text-xs text-gray-500 sm:text-right dark:text-gray-400">
                 Periksa mata kuliah dan jadwal terlebih dahulu. Setelah diajukan,
                 KRS akan diperiksa oleh Dosen Wali.
             </p>
+            @endif
 
         </div>
 
