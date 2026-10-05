@@ -145,7 +145,7 @@ class KrsTable
                         ->label('Buka Kembali KRS')
                         ->icon('heroicon-o-lock-open')
                         ->color('warning')
-                        ->visible(fn(Krs $record) => $record->status_krs === KrsStatusEnum::DISETUJUI)
+                        // ->visible(fn(Krs $record) => $record->status_krs === KrsStatusEnum::DISETUJUI)
                         ->authorize('cancel')
                         ->schema([
                             Textarea::make('catatan_admin')
