@@ -167,12 +167,35 @@ class PengisianKrsPage extends Page implements HasForms
             return;
         }
 
-        if ($krs) {
-            // DRAFT: lanjutkan pengeditan dengan pilihan yang sudah tersimpan.
-            $this->form->fill($this->pilihanAwalDariKrs($krs)['state']);
+        // if ($krs) {
+        //     // DRAFT: lanjutkan pengeditan dengan pilihan yang sudah tersimpan.
+        //     $this->form->fill($this->pilihanAwalDariKrs($krs)['state']);
 
-            return;
+        //     return;
+        // }
+        if ($krs) {
+            // DRAFT: lanjutkan pilihan sebelumnya.
+            if ($krs->status_krs === KrsStatusEnum::DRAFT) {
+                $this->form->fill(
+                    $this->pilihanAwalDariKrs($krs)['state']
+                );
+
+                return;
+            }
+
+            // DIBATALKAN: boleh mengisi KRS kembali dari awal.
+            if ($krs->status_krs === KrsStatusEnum::DIBATALKAN) {
+                $this->form->fill([
+                    'jadwal_kuliah_ids' => $this->isModePaket()
+                        ? $this->jadwalUtamaTersedia()
+                        : [],
+                    'jadwal_mengulang_ids' => [],
+                ]);
+
+                return;
+            }
         }
+
 
         $this->form->fill();
     }
@@ -286,7 +309,7 @@ class PengisianKrsPage extends Page implements HasForms
         return match ($status) {
             KrsStatusEnum::DIAJUKAN => 'KRS Anda sedang menunggu persetujuan Dosen Wali.',
             KrsStatusEnum::DISETUJUI => 'KRS Anda untuk semester ini sudah disetujui.',
-            KrsStatusEnum::DIBATALKAN => 'KRS Anda telah dibatalkan.',
+            KrsStatusEnum::DIBATALKAN => null,
             default => null,
         };
     }

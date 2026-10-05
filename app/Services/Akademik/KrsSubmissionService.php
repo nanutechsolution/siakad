@@ -172,7 +172,7 @@ class KrsSubmissionService
 
         if (
             $krs !== null
-            && ! in_array($statusSebelumnya, [KrsStatusEnum::DRAFT, KrsStatusEnum::DITOLAK], true)
+            && ! in_array($statusSebelumnya, [KrsStatusEnum::DRAFT, KrsStatusEnum::DITOLAK,  KrsStatusEnum::DIBATALKAN,], true)
         ) {
             throw new DomainException($this->pesanStatusTerkunci($statusSebelumnya));
         }
