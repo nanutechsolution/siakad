@@ -28,8 +28,7 @@ class OidcClientsTable
                 TextColumn::make('id')
                     ->label('Client ID')
                     ->copyable()
-                    ->fontFamily('mono')
-                    ->limit(12),
+                    ->fontFamily('mono'),
 
                 TextColumn::make('scopes')
                     ->label('Scope')
