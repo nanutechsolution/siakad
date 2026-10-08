@@ -7,7 +7,6 @@ use Filament\Actions\Action;
 use Filament\Actions\BulkAction;
 use Filament\Actions\BulkActionGroup;
 use Filament\Actions\DeleteBulkAction;
-use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
 use Filament\Tables\Columns\TextColumn;
@@ -17,6 +16,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\UniqueConstraintViolationException;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Storage;
 use Throwable;
 
 class ProfileChangeRequestsTable
@@ -24,7 +24,7 @@ class ProfileChangeRequestsTable
     public static function configure(Table $table): Table
     {
         return $table
-            ->modifyQueryUsing(fn(Builder $query) => $query->latest())
+            ->modifyQueryUsing(fn (Builder $query) => $query->latest())
             ->columns([
                 TextColumn::make('mahasiswa.nim')
                     ->label('NIM')
@@ -37,7 +37,7 @@ class ProfileChangeRequestsTable
 
                 TextColumn::make('field_name')
                     ->label('Field')
-                    ->formatStateUsing(fn(string $state) => self::fieldLabels()[$state] ?? $state)
+                    ->formatStateUsing(fn (string $state) => self::fieldLabels()[$state] ?? $state)
                     ->badge()
                     ->color('gray'),
 
@@ -57,13 +57,13 @@ class ProfileChangeRequestsTable
 
                 TextColumn::make('status')
                     ->badge()
-                    ->color(fn(string $state) => match ($state) {
+                    ->color(fn (string $state) => match ($state) {
                         'pending' => 'warning',
                         'approved' => 'success',
                         'rejected' => 'danger',
                         default => 'gray',
                     })
-                    ->formatStateUsing(fn(string $state) => match ($state) {
+                    ->formatStateUsing(fn (string $state) => match ($state) {
                         'pending' => 'Menunggu',
                         'approved' => 'Disetujui',
                         'rejected' => 'Ditolak',
@@ -93,25 +93,25 @@ class ProfileChangeRequestsTable
                     ->label('Lampiran')
                     ->icon('heroicon-o-paper-clip')
                     ->color('gray')
-                    ->url(fn(ProfileChangeRequest $record) => $record->attachment_path
-                        ? \Illuminate\Support\Facades\Storage::url($record->attachment_path)
+                    ->url(fn (ProfileChangeRequest $record) => $record->attachment_path
+                        ? Storage::url($record->attachment_path)
                         : null)
                     ->openUrlInNewTab()
-                    ->visible(fn(ProfileChangeRequest $record) => filled($record->attachment_path)),
+                    ->visible(fn (ProfileChangeRequest $record) => filled($record->attachment_path)),
                 Action::make('approve')
                     ->label('Setujui')
                     ->icon('heroicon-o-check-circle')
                     ->color('success')
                     ->requiresConfirmation()
                     ->modalHeading('Setujui perubahan data?')
-                    ->modalDescription(fn(ProfileChangeRequest $record) => sprintf(
+                    ->modalDescription(fn (ProfileChangeRequest $record) => sprintf(
                         'Data "%s" milik %s akan diubah dari "%s" menjadi "%s". Perubahan langsung diterapkan ke data resmi mahasiswa.',
                         self::fieldLabels()[$record->field_name] ?? $record->field_name,
                         $record->mahasiswa->person->nama_lengkap ?? '-',
                         $record->old_value ?? '-',
                         $record->new_value
                     ))
-                    ->visible(fn(ProfileChangeRequest $record) => $record->status === 'pending')
+                    ->visible(fn (ProfileChangeRequest $record) => $record->status === 'pending')
                     ->action(function (ProfileChangeRequest $record) {
                         try {
                             $record->approve(Auth::user());
@@ -151,11 +151,11 @@ class ProfileChangeRequestsTable
                             ->required()
                             ->rows(3),
                     ])
-                    ->visible(fn(ProfileChangeRequest $record) => $record->status === 'pending')
+                    ->visible(fn (ProfileChangeRequest $record) => $record->status === 'pending')
                     ->action(function (ProfileChangeRequest $record, array $data) {
                         $record->reject(Auth::user(), $data['rejection_note']);
 
-                        \Filament\Notifications\Notification::make()
+                        Notification::make()
                             ->title('Pengajuan ditolak')
                             ->warning()
                             ->send();
@@ -179,9 +179,9 @@ class ProfileChangeRequestsTable
 
                             foreach ($records as $record) {
                                 /** @var ProfileChangeRequest $record */
-
                                 if ($record->status !== 'pending') {
                                     $skipped++;
+
                                     continue;
                                 }
 
@@ -227,8 +227,8 @@ class ProfileChangeRequestsTable
     }
 
     /**
-     * Label field_name yang tersimpan (kolom teknis di ref_person)
-     * supaya enak dibaca admin.
+     * Label field_name agar enak dibaca admin.
+     * Kebanyakan kolom berada di ref_person; nisn berada di mahasiswas.
      */
     public static function fieldLabels(): array
     {
@@ -238,6 +238,7 @@ class ProfileChangeRequestsTable
             'tanggal_lahir' => 'Tanggal Lahir',
             'tempat_lahir' => 'Tempat Lahir',
             'jenis_kelamin' => 'Jenis Kelamin',
+            'nisn' => 'NISN',
         ];
     }
 }
