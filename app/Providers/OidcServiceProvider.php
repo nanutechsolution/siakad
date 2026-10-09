@@ -14,7 +14,9 @@ use App\Http\Controllers\Oidc\JwksController;
 use App\Http\Controllers\Oidc\RevocationController;
 use App\Http\Controllers\Oidc\TokenController;
 use App\Http\Controllers\Oidc\UserinfoController;
+use App\Http\Responses\OidcAwareLoginResponse;
 use App\Models\OidcClient;
+use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Illuminate\Contracts\Auth\StatefulGuard;
 use Illuminate\Foundation\Http\Middleware\PreventRequestForgery;
 use Illuminate\Support\Facades\Auth;
@@ -46,6 +48,14 @@ class OidcServiceProvider extends ServiceProvider
         $this->app->when(AuthorizeController::class)
             ->needs(StatefulGuard::class)
             ->give(fn () => Auth::guard('web'));
+
+        // Bind login response. Bila tidak ada oidc.return_to (login panel
+        // biasa), perilaku identik dengan bawaan Filament:
+        // redirect()->intended(Filament::getUrl()).
+        $this->app->bind(
+            LoginResponse::class,
+            OidcAwareLoginResponse::class,
+        );
     }
 
     public function boot(): void

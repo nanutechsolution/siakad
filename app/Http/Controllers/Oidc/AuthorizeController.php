@@ -16,7 +16,16 @@ use Psr\Http\Message\ResponseInterface;
 use Psr\Http\Message\ServerRequestInterface;
 use Symfony\Component\HttpFoundation\Response;
 
-/** Enforces OIDC-specific request requirements around Passport's OAuth flow. */
+/**
+ * Enforces OIDC-specific request requirements around Passport's OAuth flow.
+ *
+ * Untuk user belum login, alur autentikasi diserahkan sepenuhnya ke Passport
+ * v13.8.0: `promptForLogin()` melempar AuthenticationException yang dirender
+ * Handler menjadi redirect ke halaman login, dan authorization request sudah
+ * divalidasi Passport sebelum redirect terjadi. URL authorize disimpan pada
+ * session `oidc.return_to` dan dipulihkan oleh OidcAwareLoginResponse setelah
+ * login, sehingga kembali ke /oauth/authorize dengan query string utuh.
+ */
 class AuthorizeController extends PassportAuthorizationController
 {
     public function __construct(
@@ -37,38 +46,35 @@ class AuthorizeController extends PassportAuthorizationController
         $params = $request->query();
 
         if (($params['response_type'] ?? null) !== 'code' || ! isset($params['client_id'])) {
-            return response()->json([
-                'error' => 'unsupported_response_type',
-                'error_description' => 'Only the OIDC authorization code flow is enabled.',
-            ], 400)->header('Cache-Control', 'no-store');
+            return $this->error('unsupported_response_type', 'Only the OIDC authorization code flow is enabled.', 400);
         }
 
-        if (! $request->user()) {
-            // Simpan URL authorization sebagai intended URL; setelah login di
-            // panel mana pun, LoginResponse::intended() kembali ke sini.
-            return redirect()->guest('/');
-        }
-
+        // Cek requirement OIDC sebelum memicu alur login: request yang cacat
+        // seharusnya langsung ditolak, bukan memaksa user login lebih dulu.
         if (($params['code_challenge_method'] ?? null) !== 'S256' || empty($params['code_challenge'])) {
-            return response()->json([
-                'error' => 'invalid_request',
-                'error_description' => 'PKCE S256 is required.',
-            ], 400)->header('Cache-Control', 'no-store');
+            return $this->error('invalid_request', 'PKCE S256 is required.', 400);
         }
 
         if (empty($params['nonce']) || ! is_string($params['nonce']) || strlen($params['nonce']) > 256) {
-            return response()->json([
-                'error' => 'invalid_request',
-                'error_description' => 'A valid OIDC nonce is required.',
-            ], 400)->header('Cache-Control', 'no-store');
+            return $this->error('invalid_request', 'A valid OIDC nonce is required.', 400);
         }
 
-        $user = $request->user();
+        // Belum terautentikasi: serahkan ke mekanisme login Passport.
+        // `validateAuthorizationRequest()` di dalamnya tetap memvalidasi
+        // client_id, redirect_uri (exact match) dan scope lebih dulu.
+        if ($this->guard->guest()) {
+            $request->session()->put('oidc.return_to', [
+                'url' => $request->fullUrl(),
+                'at' => time(),
+            ]);
+
+            return parent::authorize($psrRequest, $request, $psrResponse, $viewResponse);
+        }
+
+        $user = $this->guard->user();
+
         if (! app(AccountStatusResolver::class)->isActive($user)) {
-            return response()->json([
-                'error' => 'access_denied',
-                'error_description' => 'This account is not active.',
-            ], 403)->header('Cache-Control', 'no-store');
+            return $this->error('access_denied', 'This account is not active.', 403);
         }
 
         if ($user->must_change_password) {
@@ -79,11 +85,21 @@ class AuthorizeController extends PassportAuthorizationController
 
         $response = parent::authorize($psrRequest, $request, $psrResponse, $viewResponse);
 
-        // Existing Passport may auto-approve; capture code/nonce in that path too.
+        // Passport dapat auto-approve tanpa menampilkan consent; ikat nonce
+        // pada authorization code di jalur itu juga.
         if ($response instanceof Response) {
             $this->nonces->rememberFromRedirect($response, (string) $params['nonce']);
         }
 
         return $response;
+    }
+
+    /** OAuth error tanpa cache; tidak pernah merefleksikan parameter tak terpercaya. */
+    private function error(string $error, string $description, int $status): Response
+    {
+        return response()->json([
+            'error' => $error,
+            'error_description' => $description,
+        ], $status)->header('Cache-Control', 'no-store');
     }
 }

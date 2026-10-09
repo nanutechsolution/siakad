@@ -61,9 +61,11 @@ class AccountStatusResolver
         $tahunAktifId = $this->activeTahunAkademikId();
 
         if ($tahunAktifId === null) {
-            // Tidak ada tahun akademik aktif: tidak ada dasar untuk
-            // menilai status kuliah, maka hanya is_active users yang berlaku.
-            return true;
+            // Fail-closed: tanpa tahun akademik aktif tidak ada dasar untuk
+            // menilai status kuliah, maka SSO ditolak (sesuai dokumentasi
+            // docs/SSO_OIDC.md). Kebijakan ini mengikuti dokumen, bukan
+            // mengizinkan mahasiswa hanya berdasarkan users.is_active.
+            return false;
         }
 
         $status = RiwayatStatusMahasiswa::query()
@@ -95,6 +97,10 @@ class AccountStatusResolver
     {
         $id = RefTahunAkademik::query()
             ->where('is_active', true)
+            // Semestinya hanya satu tahun aktif; orderByDesc menjamin
+            // determinisme bila data menyimpang (tanpa ORDER BY MySQL boleh
+            // mengembalikan baris mana pun).
+            ->orderByDesc('id')
             ->value('id');
 
         return $id === null ? null : (int) $id;

@@ -138,18 +138,38 @@ Route::middleware(['web', 'auth'])->group(function () {
     Route::get('/bara/nilai/export', NilaiRekapExportController::class)
         ->name('bara.nilai.export');
 });
-Route::get('/mahasiswa/reauth', function () {
-    // 1. Logout dari guard mahasiswa
-    Auth::guard('mahasiswa')->logout();
+use Filament\Notifications\Notification;
 
-    // 2. Bersihkan sesi agar tidak ada data sampah dari sesi PMB
-    session()->invalidate();
-    session()->regenerateToken();
+// Re-auth akun PMB setelah NIM final terbit: paksa keluar dari sesi lama
+// lalu minta user login ulang dengan NIM baru.
+//
+// Guard yang dipakai adalah `web` — satu-satunya session guard di aplikasi
+// (lihat config/auth.php; ketiga panel Filament tidak meng-override
+// authGuard). Tidak ada guard `mahasiswa` di config, sehingga
+// Auth::guard('mahasiswa') akan melempar InvalidArgumentException (500).
+Route::middleware(['web', 'auth'])
+    ->get('/mahasiswa/reauth', function () {
+        // 1. Logout dari sesi web aktif
+        Auth::guard('web')->logout();
 
-    // 3. Redirect ke halaman login dengan pesan sukses yang jelas
-    return redirect('/mahasiswa/login')
-        ->with('status', 'NIM Anda sudah aktif! Silakan login kembali menggunakan NIM: ' . request('nim'));
-})->middleware('web');
+        // 2. Bersihkan sesi agar tidak ada data sampah dari sesi PMB
+        session()->invalidate();
+        session()->regenerateToken();
+
+        // 3. Redirect ke halaman login dengan pesan sukses.
+        //    Dipakai Notification Filament (bukan flash 'status' biasa):
+        //    layout base Filament selalu me-render komponen Notifications,
+        //    jadi pesannya tampil otomatis di /mahasiswa/login.
+        Notification::make()
+            ->title('NIM Anda sudah aktif')
+            ->body('Silakan login kembali menggunakan NIM: '.request('nim'))
+            ->success()
+            ->persistent()
+            ->send();
+
+        return redirect('/mahasiswa/login');
+    })
+    ->name('mahasiswa.reauth');
 
 
 use App\Http\Controllers\PdfController;

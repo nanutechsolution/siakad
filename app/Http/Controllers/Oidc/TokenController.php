@@ -10,6 +10,7 @@ use App\Services\Oidc\AuthorizationCodeNonceStore;
 use App\Services\Oidc\IdTokenSigner;
 use Laravel\Passport\ClientRepository;
 use Laravel\Passport\Http\Controllers\AccessTokenController as PassportAccessTokenController;
+use Laravel\Passport\RefreshToken;
 use Laravel\Passport\Token;
 use League\OAuth2\Server\AuthorizationServer;
 use Psr\Http\Message\ResponseInterface;
@@ -53,7 +54,8 @@ class TokenController extends PassportAccessTokenController
             return $response;
         }
 
-        if (($params['grant_type'] ?? null) !== 'authorization_code') {
+        $grantType = (string) ($params['grant_type'] ?? '');
+        if ($grantType !== 'authorization_code' && $grantType !== 'refresh_token') {
             return $response;
         }
 
@@ -65,12 +67,32 @@ class TokenController extends PassportAccessTokenController
 
         $user = User::query()->find($accessToken->user_id);
         if ($user === null || ! $this->status->isActive($user)) {
-            $accessToken->revoke();
+            // Cabut SELURUH token milik user ini, bukan hanya token yang baru
+            // terbit. Pada refresh grant, token baru dan refresh token lama
+            // adalah record berbeda — mencabut token barunya saja tetap
+            // menyisakan refresh token lama yang masih bisa dipakai.
+            Token::query()
+                ->where('user_id', $accessToken->user_id)
+                ->where('client_id', $accessToken->client_id)
+                ->get()
+                ->each(function (Token $token): void {
+                    $token->revoke();
+                    RefreshToken::query()
+                        ->where('access_token_id', $token->getKey())
+                        ->get()
+                        ->each(fn (RefreshToken $refreshToken) => $refreshToken->revoke());
+                });
 
             return response()->json([
                 'error' => 'access_denied',
                 'error_description' => 'This account is not active.',
             ], 403)->header('Cache-Control', 'no-store');
+        }
+
+        if ($grantType === 'refresh_token') {
+            // Refresh grant tidak menerbitkan id_token; cukup status aktif
+            // yang sudah diperiksa di atas.
+            return $response;
         }
 
         $code = (string) ($params['code'] ?? '');

@@ -88,6 +88,9 @@ class OidcClaimsBuilder
 
         if ($user->isDosen()) {
             $claims['nidn'] = (string) ($user->dosen?->nidn ?? '');
+            // NUPTK adalah salah satu identitas login dosen (label panel
+            // "Username/NIDN/NUPTK") — kirim bila tersedia.
+            $claims['nuptk'] = (string) ($user->dosen?->nuptk ?? '');
         }
 
         if ($user->person_id !== null) {

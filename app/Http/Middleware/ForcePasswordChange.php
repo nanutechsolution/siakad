@@ -16,9 +16,21 @@ class ForcePasswordChange
         // Jika user login dan flag must_change_password = true
         if ($user && $user->must_change_password) {
 
-            // Izinkan akses jika mereka sedang berada di halaman ganti password, 
-            // halaman logout, atau memproses form ganti password
-            if ($request->routeIs('password.force-change', 'password.force-change.store', 'logout', 'filament.admin.auth.logout')) {
+            // Izinkan akses jika mereka sedang berada di halaman ganti password,
+            // halaman logout, atau memproses form ganti password.
+            //
+            // Route logout dihardcode per panel oleh Filament
+            // (filament.{admin|dosen|mahasiswa}.auth.logout) — tanpa pola
+            // wildcard, panel dosen/mahasiswa tidak dikenali dan user
+            // terkunci selamanya: mencoba logout pun diarahkan kembali ke
+            // halaman ganti password, yang hanya menautkan ulang ke dirinya
+            // sendiri. Sebelumnya hanya admin yang tercantum eksplisit.
+            if ($request->routeIs(
+                'password.force-change',
+                'password.force-change.store',
+                'logout',
+                'filament.*.auth.logout',
+            )) {
                 return $next($request);
             }
 

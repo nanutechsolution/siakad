@@ -65,8 +65,16 @@ class OidcClientForm
                 Textarea::make('post_logout_redirect_uris')
                     ->label('Post-Logout Redirect URI (opsional, satu per baris)')
                     ->rows(2)
+                    ->helperText('Wajib HTTPS (kecuali loopback localhost untuk sandbox). Divalidasi dengan pencocokan persis oleh /oauth/end-session.')
                     ->afterStateHydrated(fn ($state, $set) => $set('post_logout_redirect_uris', self::urisToMultiline($state)))
-                    ->dehydrateStateUsing(fn (mixed $state): array => self::multilineToArray($state)),
+                    ->dehydrateStateUsing(fn (mixed $state): array => self::multilineToArray($state, true))
+                    ->rules([fn (): \Closure => function (string $attribute, mixed $value, \Closure $fail): void {
+                        foreach (self::multilineToArray($value, false) as $uri) {
+                            if (! str_starts_with($uri, 'https://') && ! str_starts_with($uri, 'http://localhost') && ! str_starts_with($uri, 'http://127.0.0.1')) {
+                                $fail('Post-Logout Redirect URI wajib memakai HTTPS (kecuali loopback localhost untuk sandbox).');
+                            }
+                        }
+                    }]),
 
                 Toggle::make('revoked')
                     ->label('Nonaktifkan Client')

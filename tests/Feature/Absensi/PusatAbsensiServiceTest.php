@@ -465,7 +465,7 @@ class PusatAbsensiServiceTest extends TestCase
         ]);
 
         $this->programId = DB::table('ref_program')->insertGetId([
-            'kode_internal' => substr('PR'.$this->suffix, 0, 20),
+            'kode_internal' => substr('PR'.$this->suffix, 0, 10),
             'nama_program' => 'Program '.$this->suffix,
             'created_at' => now(),
             'updated_at' => now(),

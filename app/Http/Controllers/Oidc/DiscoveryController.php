@@ -34,7 +34,7 @@ class DiscoveryController
             'claims_supported' => [
                 'sub', 'iss', 'aud', 'exp', 'iat', 'auth_time', 'nonce', 'at_hash',
                 'name', 'email', 'email_verified',
-                'nim', 'nidn', 'nip', 'preferred_username', 'active',
+                'nim', 'nidn', 'nuptk', 'nip', 'preferred_username', 'active',
             ],
             'claim_types_supported' => ['normal'],
             'request_parameter_supported' => false,

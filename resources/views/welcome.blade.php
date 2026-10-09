@@ -1,3 +1,31 @@
+@use(Filament\Facades\Filament)
+
+@php
+    // Portal publik (`/`) menampilkan kartu pilihan panel. Untuk user yang
+    // SUDAH login, hanya panel yang berhak (User::canAccessPanel) yang boleh
+    // dirender — sumber kebenaran yang sama dengan middleware Filament, jadi
+    // kartu yang tampil selalu mengarah ke panel yang pasti bisa dimasuki.
+    //
+    // TIDAK ada perubahan backend: route `/` tetap publik tanpa auth,
+    // sehingga redirectGuestsTo() dan alur OIDC tidak tersentuh.
+
+    $me = auth()->user();
+
+    $accessiblePanels = [];
+
+    if ($me !== null) {
+        // Urutan array menentukan urutan logout (mahasiswa -> dosen -> admin).
+        $accessiblePanels = array_values(array_filter(
+            ['mahasiswa', 'dosen', 'admin'],
+            fn (string $id) => $me->canAccessPanel(Filament::getPanel($id)),
+        ));
+    }
+
+    $logoutRoute = $accessiblePanels === []
+        ? null
+        : 'filament.'.$accessiblePanels[0].'.auth.logout';
+@endphp
+
 <!DOCTYPE html>
 <html lang="id">
 
@@ -165,6 +193,59 @@
             animation: fadeUpCard 0.5s ease-out 0.4s forwards;
             opacity: 0;
         }
+
+        /* Flash message dari /password/force-change (session 'status'). */
+        .flash-banner {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            max-width: 36rem;
+            margin: 0 auto 1.5rem;
+            padding: 0.75rem 1rem;
+            border: 1px solid #bbf7d0;
+            border-radius: 0.75rem;
+            background: #f0fdf4;
+            color: #166534;
+            font-size: 0.875rem;
+            line-height: 1.4;
+            font-weight: 500;
+            text-align: center;
+            animation: fadeUpCard 0.4s ease-out forwards;
+        }
+
+        .flash-banner svg {
+            flex-shrink: 0;
+        }
+
+        /* Variasi warning: "akun tanpa akses portal" (amber). */
+        .flash-banner--warning {
+            border-color: #fde68a;
+            background: #fffbeb;
+            color: #92400e;
+        }
+
+        /* Tombol keluar pada portal user login. */
+        .btn-logout {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.375rem;
+            padding: 0.375rem 1rem;
+            border: 1px solid #e2e8f0;
+            border-radius: 0.5rem;
+            background: #f8fafc;
+            color: #334155;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .btn-logout:hover {
+            border-color: #e2e8f0;
+            background: #f1f5f9;
+            color: #0f172a;
+        }
     </style>
 </head>
 
@@ -189,10 +270,19 @@
     ========================================================== -->
     <header class="w-full px-6 py-4 flex justify-between items-center z-10 shrink-0">
 
-        <div class="flex items-center gap-2">
+        <div class="flex items-center gap-3">
             <span class="font-bold text-indigo-950 text-sm tracking-wide">
                 SIAKAD UNMARIS
             </span>
+
+            @if ($me !== null)
+                <!-- Sudah login: tombol keluar. POST ke route logout Filament
+                     yang sudah ada (tanpa route baru). -->
+                <form method="POST" action="{{ $logoutRoute !== null ? route($logoutRoute) : url('/') }}">
+                    @csrf
+                    <button type="submit" class="btn-logout">Keluar</button>
+                </form>
+            @endif
         </div>
 
         <!-- System Status -->
@@ -222,6 +312,22 @@
     <main
         class="flex-1 flex flex-col items-center justify-center px-4 w-full max-w-4xl mx-auto z-10">
 
+        @if (session('status'))
+            <!-- Flash dari /password/force-change: portal ini adalah target
+                 redirect-nya, jadi pesannya wajib ikut dirender. -->
+            <div
+                class="flash-banner"
+                role="status"
+                aria-live="polite">
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24"
+                    stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M9 12.75 11.25 15 15 9.75M21 12a9 9 0 1 1-18 0 9 9 0 0 1 18 0Z" />
+                </svg>
+                <span>{{ session('status') }}</span>
+            </div>
+        @endif
+
         <!-- Branding Area -->
         <div class="text-center mb-8 sm:mb-10 animate-logo-pop">
 
@@ -237,11 +343,19 @@
 
             <h1
                 class="text-2xl sm:text-3xl font-bold text-indigo-950 tracking-tight mb-2">
-                Anda masuk sebagai siapa?
+                @if ($me !== null)
+                    Selamat datang, {{ $me->name }}
+                @else
+                    Anda masuk sebagai siapa?
+                @endif
             </h1>
 
             <p class="text-sm sm:text-base text-slate-500 font-medium">
-                Pilih peran Anda untuk masuk ke portal sistem
+                @if ($me !== null)
+                    Pilih portal yang ingin Anda buka.
+                @else
+                    Pilih peran Anda untuk masuk ke portal sistem
+                @endif
             </p>
 
         </div>
@@ -249,9 +363,25 @@
         <!-- =====================================================
              ROLE SELECTION CARDS
         ====================================================== -->
+        @if ($me !== null && $accessiblePanels === [])
+            <!-- Login tapi tidak ada satu pun panel yang berhak
+                 (mis. akun tanpa relasi akademik/kepegawaian dan tanpa
+                 role admin): jangan tampilkan kartu yang pasti 403. -->
+            <div
+                class="flash-banner flash-banner--warning"
+                role="alert">
+                <svg class="h-4 w-4 shrink-0" fill="none" viewBox="0 0 24 24"
+                    stroke-width="2" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round"
+                        d="M12 9v3.75m-9.303 3.376c-.866 1.5.217 3.374 1.948 3.374h14.71c1.73 0 2.813-1.874 1.948-3.374L13.949 3.378c-.866-1.5-3.032-1.5-3.898 0L2.697 16.126ZM12 15.75h.007v.008H12v-.008Z" />
+                </svg>
+                <span>Akun Anda belum memiliki akses ke portal manapun. Silakan hubungi administrator.</span>
+            </div>
+        @else
         <div
             class="w-full grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 lg:gap-6">
 
+            @if ($me === null || in_array('mahasiswa', $accessiblePanels, true))
             <!-- =================================================
                  1. MAHASISWA
             ================================================== -->
@@ -296,7 +426,9 @@
                 </div>
 
             </a>
+            @endif
 
+            @if ($me === null || in_array('dosen', $accessiblePanels, true))
             <!-- =================================================
                  2. DOSEN
             ================================================== -->
@@ -344,7 +476,9 @@
                 </div>
 
             </a>
+            @endif
 
+            @if ($me === null || in_array('admin', $accessiblePanels, true))
             <!-- =================================================
                  3. ADMINISTRATOR
             ================================================== -->
@@ -392,8 +526,10 @@
                 </div>
 
             </a>
+            @endif
 
         </div>
+        @endif
 
     </main>
 
