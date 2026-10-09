@@ -253,22 +253,22 @@ class SinkronisasiTagihanService
 
             $skemaIds = $tagihanMap->isEmpty()
                 ? []
-                : $skemaMap->map->id->unique()->values()->all();
+                : $skemaMap->flatten(1)->pluck('id')->unique()->values()->all();
 
             $detailSkemaMap = $skemaIds === []
                 ? collect()
                 : DB::table('keuangan_detail_tarif')
-                    ->join('keuangan_komponen_biaya', 'keuangan_komponen_biaya.id', '=', 'keuangan_detail_tarif.komponen_biaya_id')
-                    ->whereIn('keuangan_detail_tarif.skema_tarif_id', $skemaIds)
-                    ->select('keuangan_detail_tarif.*', 'keuangan_komponen_biaya.nama_komponen')
-                    ->get()
-                    ->groupBy('skema_tarif_id');
+                ->join('keuangan_komponen_biaya', 'keuangan_komponen_biaya.id', '=', 'keuangan_detail_tarif.komponen_biaya_id')
+                ->whereIn('keuangan_detail_tarif.skema_tarif_id', $skemaIds)
+                ->select('keuangan_detail_tarif.*', 'keuangan_komponen_biaya.nama_komponen')
+                ->get()
+                ->groupBy('skema_tarif_id');
 
             $detailExistingMap = $tagihanIds === []
                 ? collect()
                 : TagihanMahasiswaDetail::whereIn('tagihan_id', $tagihanIds)
-                    ->get()
-                    ->groupBy('tagihan_id');
+                ->get()
+                ->groupBy('tagihan_id');
 
             foreach ($mahasiswaChunk as $mhs) {
                 // Sinkronisasi hanya relevan untuk mahasiswa yang SUDAH
