@@ -244,16 +244,27 @@ class SinkronisasiTagihanService
 
             $skemaMap = DB::table('keuangan_skema_tarif')
                 ->where('is_active', 1)
-                ->whereIn('prodi_id', $mahasiswaChunk->pluck('prodi_id')->filter()->unique())
-                ->whereIn('angkatan_id', $mahasiswaChunk->pluck('angkatan_id')->filter()->unique())
+                ->whereNull('deleted_at')
+                ->whereIn(
+                    'prodi_id',
+                    $mahasiswaChunk->pluck('prodi_id')->filter()->unique()
+                )
+                ->whereIn(
+                    'angkatan_id',
+                    $mahasiswaChunk->pluck('angkatan_id')->filter()->unique()
+                )
                 ->get()
-                ->groupBy(fn($skema) => "{$skema->angkatan_id}|{$skema->prodi_id}|{$skema->program_kelas_id}");
+                ->keyBy(
+                    fn($skema) => "{$skema->angkatan_id}|{$skema->prodi_id}|{$skema->program_kelas_id}"
+                );
 
             $tagihanIds = $tagihanMap->pluck('id')->values()->all();
 
-            $skemaIds = $tagihanMap->isEmpty()
+
+            $skemaIds = $skemaMap->isEmpty()
                 ? []
-                : $skemaMap->flatten(1)->pluck('id')->unique()->values()->all();
+                : $skemaMap->pluck('id')->unique()->values()->all();
+
 
             $detailSkemaMap = $skemaIds === []
                 ? collect()
