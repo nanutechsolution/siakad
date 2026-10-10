@@ -4,9 +4,11 @@ declare(strict_types=1);
 
 namespace App\Http\Responses;
 
+use Filament\Auth\Http\Responses\Contracts\LoginResponse;
 use Filament\Facades\Filament;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Support\Str;
+use Livewire\Features\SupportRedirects\Redirector;
 
 /**
  * Login response khusus Siakad.
@@ -20,13 +22,24 @@ use Illuminate\Support\Str;
  * Karena itu AuthorizeController menyimpan path authorize pada session
  * `oidc.return_to`, dan response ini mengembalikan user persis ke
  * /oauth/authorize?... dengan query string utuh.
+ *
+ * WAJIB `implements LoginResponse`: `Login::authenticate()` mengembalikan
+ * `app(LoginResponse::class)` dengan return type berbasis kontrak
+ * (`?Contracts\LoginResponse`). Tanpa implement interface ini, setiap
+ * login panel melempar TypeError (500).
+ *
+ * Return type `RedirectResponse | Redirector` WAJIB union — mengikuti
+ * LoginResponse bawaan Filament. Saat request Livewire (form login Filament
+ * adalah Livewire), helper `redirect()` di-bind ulang ke
+ * Livewire\...\Redirector, sehingga `redirect()->to()`/`intended()`
+ * mengembalikan Redirector, bukan RedirectResponse.
  */
-class OidcAwareLoginResponse
+class OidcAwareLoginResponse implements LoginResponse
 {
     /** Masa berlaku return-to agar redirect lama tidak mengejutkan user nanti. */
     private const RETURN_TO_TTL = 600;
 
-    public function toResponse($request): RedirectResponse
+    public function toResponse($request): RedirectResponse|Redirector
     {
         $returnTo = $this->takeReturnTo($request);
 

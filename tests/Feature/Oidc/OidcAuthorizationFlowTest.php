@@ -121,7 +121,10 @@ class OidcAuthorizationFlowTest extends TestCase
         $this->actingAs($user);
 
         $authorize = $this->get('/oauth/authorize?'.http_build_query($this->authorizeParams()));
-        $authorize->assertOk()->assertSee('Izinkan akses');
+        $authorize->assertOk()
+            ->assertSee('Izinkan akses')
+            ->assertSee('Izinkan akses ke')
+            ->assertSee($client->name);
 
         // Ambil auth_token dari session consent lalu setujui.
         $authToken = session('authToken');

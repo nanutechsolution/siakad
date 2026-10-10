@@ -184,7 +184,10 @@ class OidcLoginReturnTest extends TestCase
         // 2. Login, lalu kembali ke URL authorize tersimpan.
         $this->actingAs($user);
         $authorize = $this->get($this->authorizeUrl());
-        $authorize->assertOk()->assertSee('Izinkan akses');
+        $authorize->assertOk()
+            ->assertSee('Izinkan akses')
+            ->assertSee('Izinkan akses ke')
+            ->assertSee('Return test '.$this->suffix);
 
         // 3. Setujui dan ambil authorization code.
         $authToken = session('authToken');

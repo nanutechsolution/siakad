@@ -5,6 +5,7 @@ namespace App\Filament\Resources\JadwalKuliahs\Schemas;
 use App\Models\DosenPengampu;
 use App\Models\JadwalKuliah;
 use App\Models\Kelas;
+use App\Models\RefRuang;
 use App\Models\RefTahunAkademik;
 use App\Models\TrxDosen;
 use Filament\Forms\Components\Repeater;
@@ -234,7 +235,8 @@ class JadwalKuliahForm
                                     'Sabtu' => 'Sabtu',
                                     'Minggu' => 'Minggu',
                                 ])
-                                ->required(),
+                                ->required()
+                                ->live(),
 
                             TimePicker::make('jam_mulai')
                                 ->label('Jam Mulai')
@@ -242,6 +244,7 @@ class JadwalKuliahForm
                                 ->seconds(false)
                                 ->format('H:i')
                                 ->displayFormat('H:i')
+                                ->live()
                                 ->required(),
 
                             TimePicker::make('jam_selesai')
@@ -252,6 +255,7 @@ class JadwalKuliahForm
                                 ->displayFormat('H:i')
                                 ->required()
                                 ->after('jam_mulai')
+                                ->live()
                                 ->rules(
                                     [
                                         fn(Get $get, ?JadwalKuliah $record): Closure => function (string $attribute, $value, Closure $fail) use ($get, $record) {
@@ -318,6 +322,92 @@ class JadwalKuliahForm
                                             }
                                         }
                                     ]
+                                ),
+                            TextEntry::make('info_ruangan_kosong')
+                                ->label('Informasi Ketersediaan Ruangan')
+                                ->state(function (
+                                    Get $get,
+                                    ?JadwalKuliah $record
+                                ) {
+                                    $hari = $get('hari');
+                                    $jamMulai = $get('jam_mulai');
+                                    $jamSelesai = $get('jam_selesai');
+
+                                    if (! $hari || ! $jamMulai || ! $jamSelesai) {
+                                        return new HtmlString(
+                                            '<span class="text-gray-500 text-sm">
+                    Pilih hari, jam mulai, dan jam selesai
+                    untuk melihat ruangan yang tersedia.
+                </span>'
+                                        );
+                                    }
+
+                                    if ($jamMulai >= $jamSelesai) {
+                                        return new HtmlString(
+                                            '<span class="text-danger-600 text-sm">
+                    Jam selesai harus lebih besar dari jam mulai.
+                </span>'
+                                        );
+                                    }
+
+                                    $rooms = self::getAvailableRooms($get, $record);
+
+                                    if ($rooms->isEmpty()) {
+                                        return new HtmlString(
+                                            '<div class="rounded-lg bg-warning-50 p-3
+                    text-sm text-warning-700
+                    dark:bg-warning-500/10 dark:text-warning-400">
+                    Tidak ditemukan ruangan kosong yang memenuhi
+                    kriteria kapasitas pada waktu tersebut.
+                </div>'
+                                        );
+                                    }
+
+                                    $items = $rooms->map(function ($room) {
+                                        return '<li class="py-1">'
+                                            . '<strong>' . e($room->kode_ruang) . '</strong>'
+                                            . ' — ' . e($room->nama_ruang)
+                                            . ' <span class="text-gray-500">'
+                                            . '(Kapasitas ' . (int) $room->kapasitas . ')'
+                                            . '</span></li>';
+                                    })->implode('');
+
+                                    return new HtmlString(
+                                        '<div class="rounded-lg border border-success-300
+                bg-success-50 p-3 dark:border-success-500/30
+                dark:bg-success-500/10">
+                <div class="font-semibold text-success-700
+                    dark:text-success-400 mb-2">
+                    ' . $rooms->count() . ' ruangan tersedia
+                </div>
+                <ul class="text-sm text-gray-700
+                    dark:text-gray-300">'
+                                            . $items .
+                                            '</ul>
+            </div>'
+                                    );
+                                })
+                                ->columnSpanFull(),
+
+                            Select::make('ruang_id')
+                                ->label('Ruang Kelas')
+                                ->options(
+                                    fn(
+                                        Get $get,
+                                        ?JadwalKuliah $record
+                                    ): array => self::getAvailableRooms($get, $record)
+                                        ->mapWithKeys(fn($room) => [
+                                            $room->id => "{$room->kode_ruang} — {$room->nama_ruang}"
+                                                . " (Kapasitas {$room->kapasitas})",
+                                        ])
+                                        ->all()
+                                )
+                                ->searchable()
+                                ->required()
+                                ->live()
+                                ->helperText(
+                                    'Daftar hanya menampilkan ruangan aktif yang tidak bentrok '
+                                        . 'dan memenuhi kebutuhan kapasitas kelas.'
                                 ),
                             Select::make('ruang_id')
                                 ->label('Ruang Kelas')
@@ -445,5 +535,63 @@ class JadwalKuliahForm
         $semester = (($tahunTa - $tahunAngkatan) * 2) + ($ta->semester == 1 ? 1 : 2);
 
         return $semester > 0 ? $semester : 1;
+    }
+    /**
+     * Mengambil ruangan aktif yang tidak bentrok dengan jadwal lain.
+     *
+     * Ruangan dicari lintas kampus.
+     * Jadwal yang sedang diedit dikecualikan dari pemeriksaan bentrok.
+     */
+    private static function getAvailableRooms(
+        Get $get,
+        ?JadwalKuliah $record = null
+    ) {
+        $tahunAkademikId = $get('tahun_akademik_id');
+        $hari = $get('hari');
+        $jamMulai = $get('jam_mulai');
+        $jamSelesai = $get('jam_selesai');
+
+        if (
+            ! $tahunAkademikId
+            || ! $hari
+            || ! $jamMulai
+            || ! $jamSelesai
+            || $jamMulai >= $jamSelesai
+        ) {
+            return RefRuang::query()->whereRaw('1 = 0')->get();
+        }
+
+        // Gunakan kebutuhan kapasitas kelas.
+        $kuota = (int) ($get('kuota_kelas') ?: 40);
+        $isiKelas = (int) ($get('isi_kelas') ?: 0);
+        $kapasitasDibutuhkan = max($kuota, $isiKelas);
+
+        // Jadwal lain yang waktunya beririsan.
+        $conflicts = JadwalKuliah::query()
+            ->where('tahun_akademik_id', $tahunAkademikId)
+            ->where('hari', $hari)
+            ->whereNotNull('ruang_id')
+            ->whereNotNull('jam_mulai')
+            ->whereNotNull('jam_selesai')
+            ->where('jam_mulai', '<', $jamSelesai)
+            ->where('jam_selesai', '>', $jamMulai);
+
+        // Abaikan jadwal yang sedang diedit.
+        if ($record?->exists) {
+            $conflicts->where('id', '!=', $record->getKey());
+        }
+
+        $ruangTerpakai = $conflicts
+            ->pluck('ruang_id')
+            ->unique()
+            ->values()
+            ->all();
+
+        return RefRuang::query()
+            ->where('is_active', true)
+            ->where('kapasitas', '>=', $kapasitasDibutuhkan)
+            ->whereNotIn('id', $ruangTerpakai)
+            ->orderBy('nama_ruang')
+            ->get();
     }
 }
